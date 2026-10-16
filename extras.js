@@ -53,10 +53,10 @@ window.EX_lockAvailable=async function(){try{return !!(window.PublicKeyCredentia
 window.EX_lockOn=()=>{const r=lockRec();return !!r&&typeof me==='function'&&me()&&r.user===window.EX_ME;};
 window.EX_lockEnroll=async function(){const m=(D.emps||[]).find(e=>e.id===window.EX_ME);if(!m)return false;
   try{const cred=await navigator.credentials.create({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rp:{name:'Electrix USA'},user:{id:new TextEncoder().encode(m.id),name:m.name,displayName:m.name},
-      pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'preferred'},timeout:60000}});
+      pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'preferred'},hints:['client-device'],timeout:60000}});
     localStorage.setItem(LK,JSON.stringify({cred:b64u(cred.rawId),user:m.id}));return true;}catch(e){console.warn('faceid enroll',e);return false;}};
 window.EX_lockOff=function(){try{localStorage.removeItem(LK);}catch(e){}};
-let unlocked=false,hiddenAt=0;
+let unlocked=false,hiddenAt=0,fails=0;
 function lockScreen(msg){let o=document.getElementById('exLock');if(!o){o=document.createElement('div');o.id='exLock';o.style.cssText='position:fixed;inset:0;z-index:950;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center';document.body.appendChild(o);}
   const dark=document.documentElement.dataset.theme==='dark';o.style.background=dark?'#000':'#fff';o.style.color=dark?'#f2f2f7':'#1F1E2A';
   o.innerHTML='<img src="'+(dark?'logo-dark.svg':'logo-light.svg')+'" style="height:42px"><div style="font-size:15px;opacity:.7">'+(msg||'')+'</div>'
@@ -64,9 +64,11 @@ function lockScreen(msg){let o=document.getElementById('exLock');if(!o){o=docume
    +'<button id="exUnlockPw" style="border:0;background:none;color:#D53C36;font-size:14px;text-decoration:underline">'+(typeof t==='function'?t('Use my password instead'):'Use my password instead')+'</button>';
   document.getElementById('exUnlock').onclick=()=>EX_unlock();document.getElementById('exUnlockPw').onclick=()=>{try{EX_lockOff();}catch(e){}window.EX_logout&&EX_logout().then(()=>location.reload());};}
 window.EX_lock=function(){if(!EX_lockOn())return;unlocked=false;lockScreen('');setTimeout(()=>EX_unlock(true),350);};
-window.EX_unlock=async function(auto){const r=lockRec();if(!r)return;try{await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),allowCredentials:[{type:'public-key',id:unb64u(r.cred)}],userVerification:'required',timeout:60000}});
+window.EX_unlock=async function(auto){const r=lockRec();if(!r)return;try{await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),allowCredentials:[{type:'public-key',id:unb64u(r.cred),transports:['internal']}],hints:['client-device'],userVerification:'required',timeout:60000}});
     unlocked=true;const o=document.getElementById('exLock');if(o)o.remove();}
-  catch(e){if(!auto)lockScreen(typeof t==='function'?t('Face ID did not work. Try again.'):'Try again');}};
+  catch(e){fails++;const gone=e&&(e.name==='NotAllowedError'||e.name==='InvalidStateError'||e.name==='SecurityError');
+    if(fails>=2||(gone&&!auto&&fails>=1)){lockScreen((typeof t==='function'?t('Face ID is not working on this phone. Sign in with your password — you can turn Face ID on again after.'):'Use your password'));const b=document.getElementById('exUnlock');if(b)b.style.display='none';const pw=document.getElementById('exUnlockPw');if(pw){pw.style.cssText='border:0;background:#1F1E2A;color:#fff;font-size:17px;font-weight:600;padding:15px 26px;border-radius:14px;min-width:240px';}return;}
+    if(!auto)lockScreen(typeof t==='function'?t('Face ID did not work. Try again.'):'Try again');}};
 document.addEventListener('visibilitychange',()=>{if(document.hidden){hiddenAt=Date.now();}else if(hiddenAt&&Date.now()-hiddenAt>60000&&EX_lockOn()){EX_lock();}});
 })();
 
