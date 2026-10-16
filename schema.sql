@@ -286,3 +286,9 @@ revoke execute on function public.my_emp() from public, anon;
 revoke execute on function public.is_member() from public, anon;
 grant execute on function public.admin_create_user(text,text), public.admin_set_password(text,text), public.save_records(jsonb), public.is_boss(), public.my_emp(), public.is_member() to authenticated;
 -- after the owner has signed up once, also run:  revoke execute on function public.setup_owner(text,text) from public, anon, authenticated;
+
+-- ===== private files: photos, receipts, voice notes, videos open only for signed-in team members =====
+-- (the app's helper adds the sign-in pass automatically; see sw.js)
+update storage.buckets set public = false where id = 'files';
+create policy "members only read files" on storage.objects as restrictive for select to public
+  using (bucket_id <> 'files' or (auth.uid() is not null and public.is_member()));
