@@ -5,7 +5,7 @@ const users={};      // email -> {id,pass}
 const tokens={};     // token -> email
 const records=new Map(); // coll\u0001id -> row
 const blobs={};      // path -> {type,buf}
-let clients=[];      // SSE {res,email}
+let clients=[];let PRIVATE=false;      // SSE {res,email}
 const now=()=>new Date().toISOString();
 // store like Postgres jsonb does: keys re-ordered (shorter first, then alphabetical), so the app must not depend on key order
 function pg(v){if(v===null||typeof v!=='object')return v;if(Array.isArray(v))return v.map(pg);const o={};Object.keys(v).filter(k=>v[k]!==undefined).sort((a,b)=>a.length-b.length||(a<b?-1:a>b?1:0)).forEach(k=>o[k]=pg(v[k]));return o;}
@@ -49,6 +49,9 @@ http.createServer(async (req,res)=>{
   if(p==='/realtime'){const em=tokens[u.searchParams.get('token')];res.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache','Access-Control-Allow-Origin':'*'});res.write(': ok\n\n');const c={res,email:em};clients.push(c);req.on('close',()=>{clients=clients.filter(x=>x!==c);});return;}
   // ---- storage
   if(p.startsWith('/storage/upload/')){const em=who(req);if(!isMember(em))return send(res,403,{error:'not allowed'});const k=p.slice('/storage/upload/'.length);const chunks=[];req.on('data',c=>chunks.push(c));req.on('end',()=>{blobs[k]={type:req.headers['content-type'],buf:Buffer.concat(chunks)};send(res,200,{Key:k});});return;}
+  if(p==='/__private'){PRIVATE=u.searchParams.get('on')==='1';return send(res,200,{PRIVATE});}
+  if(p.startsWith('/storage/v1/object/public/files/')){stats.pub=(stats.pub||0)+1;if(PRIVATE)return send(res,400,{error:'Bucket not found'});const k=p.slice('/storage/v1/object/public/files/'.length);const b=blobs[k];if(!b)return send(res,404,{});res.writeHead(200,{'Content-Type':b.type,'Access-Control-Allow-Origin':'*'});return res.end(b.buf);}
+  if(p.startsWith('/storage/v1/object/authenticated/files/')){stats.auth=(stats.auth||0)+1;const em=who(req);if(!em||!isMember(em))return send(res,400,{error:'not allowed'});const k=p.slice('/storage/v1/object/authenticated/files/'.length);const b=blobs[k];if(!b)return send(res,404,{});res.writeHead(200,{'Content-Type':b.type,'Access-Control-Allow-Origin':'*'});return res.end(b.buf);}
   if(p.startsWith('/storage/public/')){const k=p.slice('/storage/public/'.length);const b=blobs[k];if(!b)return send(res,404,{});res.writeHead(200,{'Content-Type':b.type,'Access-Control-Allow-Origin':'*'});return res.end(b.buf);}
   // ---- server functions (stand-ins)
   if(p==='/functions/v1/trello'&&req.method==='GET'){const em=who(req);if(!isMember(em))return send(res,401,{error:'not allowed'});res.writeHead(200,{'Content-Type':'application/pdf','Access-Control-Allow-Origin':'*'});return res.end('%PDF-1.4 fake plan');}

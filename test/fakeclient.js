@@ -22,7 +22,7 @@ function createClient(url,key,opts){const base=url.replace(/\/$/,'');const persi
     return q;}
   async function rpc(name,args){return call('/rpc/'+name,args);}
   function channel(){const ch={_h:null,on(ev,filter,h){ch._h=h;return ch;},subscribe(cb){const tk=sess?sess.access_token:'';const es=new EventSource(base+'/realtime?token='+encodeURIComponent(tk));es.onopen=()=>cb&&cb('SUBSCRIBED');es.onmessage=e=>{try{ch._h(JSON.parse(e.data));}catch(x){console.warn(x);}};es.onerror=()=>cb&&cb('CHANNEL_ERROR');ch._es=es;return ch;}};return ch;}
-  const storage={from(bucket){return {async upload(path,blob,o){const r=await fetch(base+'/storage/upload/'+path,{method:'POST',headers:Object.assign({'Content-Type':(o&&o.contentType)||'application/octet-stream'},sess?{Authorization:'Bearer '+sess.access_token}:{}),body:blob});return r.ok?{data:{path},error:null}:{data:null,error:{message:'upload failed'}};},getPublicUrl(path){return {data:{publicUrl:base+'/storage/public/'+path}};}};}};
+  const storage={from(bucket){return {async upload(path,blob,o){const r=await fetch(base+'/storage/upload/'+path,{method:'POST',headers:Object.assign({'Content-Type':(o&&o.contentType)||'application/octet-stream'},sess?{Authorization:'Bearer '+sess.access_token}:{}),body:blob});return r.ok?{data:{path},error:null}:{data:null,error:{message:'upload failed'}};},getPublicUrl(path){return {data:{publicUrl:base+'/storage/v1/object/public/files/'+path}};}};}};
   return {auth,from,rpc,channel,storage};}
 window.supabase={createClient};
 })();

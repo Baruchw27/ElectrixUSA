@@ -87,3 +87,12 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){hiddenAt=D
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')check();});
   setInterval(()=>{if(pending&&!busy()){pending=false;check();}},5000);
 })();
+
+// ---------- private files: give the background helper the sign-in pass (it never leaves the phone) ----------
+(function(){if(!('serviceWorker' in navigator))return;const CFG=window.EX_CFG||{};
+  async function pass(){try{const s=window.EX_sb?(await EX_sb.auth.getSession()).data.session:null;return {token:s?s.access_token:null,anon:CFG.anonKey||''};}catch(e){return {token:null,anon:CFG.anonKey||''};}}
+  navigator.serviceWorker.addEventListener('message',async ev=>{const d=ev.data||{};if(d.type==='ex-pass?'&&ev.ports&&ev.ports[0])ev.ports[0].postMessage(await pass());});
+  async function push(){try{const p=await pass();const reg=await navigator.serviceWorker.ready;(navigator.serviceWorker.controller||reg.active)&&(navigator.serviceWorker.controller||reg.active).postMessage(Object.assign({type:'ex-pass'},p));}catch(e){}}
+  let hooked=false;const hook=()=>{if(hooked||!window.EX_sb)return;hooked=true;try{EX_sb.auth.onAuthStateChange(()=>push());}catch(e){}push();};
+  setTimeout(hook,500);setInterval(()=>{hook();push();},10*60*1000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')push();});
+})();
