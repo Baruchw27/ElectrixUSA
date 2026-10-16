@@ -137,7 +137,7 @@ rep(`#pv[hidden]{display:none!important}`,`#pv[hidden]{display:none!important}ht
 
 // ---- the owner doesn't punch in
 rep(`show('punch',!o);`,`show('punch',!o&&m.role!=='owner');`);
-rep(`owner:['home','sites','jobs','sched','punch','code','more']`,`owner:['home','sites','jobs','sched','code','more']`);
+rep(`owner:['home','sites','jobs','sched','punch','code','more']`,`owner:['home','sites','jobs','sched','mat','code','more']`);
 
 // ---- wording for AI features that only ran inside Claude
 s=s.split(`t('Estimate building needs the installed app or the Claude page permission.')`).join(`t('AI estimating is coming to the app soon.')`);

@@ -52,6 +52,8 @@ async def main():
       await C.fill('#lgUser','baruch');await C.fill('#lgPass','ownerpass1');await C.evaluate("doLogin()")
       chk('owner signs in on public page',await until(C,"document.getElementById('m-login').classList.contains('hid')&&me()&&me().role==='owner'",10000),await C.evaluate("document.getElementById('lgErr').textContent"))
       chk('owner sees all jobs',await until(C,"D.sites.length>400",8000))
+      tabs=await C.evaluate("[...document.querySelectorAll('.tab')].filter(b=>b.style.display!=='none').map(b=>b.innerText.trim())")
+      chk(f'Material in the owner bottom bar {tabs}','Material' in tabs and 'Punch' not in tabs)
       for tb in await C.evaluate("[...document.querySelectorAll('.tab')].filter(b=>b.dataset.allowed==='1').map(b=>b.getAttribute('onclick').match(/'([a-z]+)'/)[1])"):
         await C.evaluate(f"goTab('{tb}');0");await C.wait_for_timeout(120)
       await C.reload();await C.wait_for_timeout(1500)
