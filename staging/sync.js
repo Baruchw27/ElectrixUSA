@@ -79,8 +79,14 @@ window.EX_uploadBlob=async function(blob,folder){if(!REAL||!sb||!st.online)retur
   const path=(folder||'media')+'/'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)+'.'+ext;const r=await withTO(sb.storage.from('files').upload(path,blob,{contentType:type.split(';')[0],upsert:false}),25000,'upload');if(r.error)throw r.error;
   return sb.storage.from('files').getPublicUrl(path).data.publicUrl;}catch(e){log('media upload failed',e);return null;}};
 // ---------- push ----------
+// did the server quietly drop a change we sent? compare each patched field to what came back; if it differs, the
+// save was refused (no permission) or someone else changed it first — either way the person should be told.
+function countRejected(sent,server){if(!Array.isArray(server))return 0;const by={};server.forEach(s=>{by[s.coll+'\u0001'+s.id]=s;});let n=0;
+  sent.forEach(row=>{if(row.coll==='emps')return;const s=by[row.coll+'\u0001'+row.id];if(!s||s.deleted)return;const d=s.data||{};
+    if(row.patch&&typeof row.patch==='object'){for(const f in row.patch){if(canon(d[f])!==canon(row.patch[f])){n++;break;}}}});
+  return n;}
 async function flush(){if(!REAL||!ready||flushing||!st.online)return;const keys=Object.keys(queue);if(!keys.length)return;flushing=true;paint();
-  let skipped=0;
+  let skipped=0,rejected=0;
   try{const ups=[],dels=[],refs=[];
     for(const k of keys){const o=queue[k];if(o.del)dels.push(o);else{
       // offload big blobs; the live object in D is the same reference for arrays, so update it too
@@ -92,9 +98,10 @@ async function flush(){if(!REAL||!ready||flushing||!st.online)return;const keys=
       else row={coll:o.coll,id:o.id,full:cur,by:st.user||null};
       ups.push(row);refs.push(o);}}
     const done=(k,o)=>{if(queue[k]===o)delete queue[k];};
-    for(let i=0;i<ups.length;i+=200){const part=ups.slice(i,i+200);const r=await withTO(sb.rpc('save_records',{rows:part}),20000,'save');if(r.error)throw r.error;part.forEach((x,n)=>done(x.coll+'\u0001'+x.id,refs[i+n]));saveQ();adopt(r.data);}
+    for(let i=0;i<ups.length;i+=200){const part=ups.slice(i,i+200);const r=await withTO(sb.rpc('save_records',{rows:part}),20000,'save');if(r.error)throw r.error;part.forEach((x,n)=>done(x.coll+'\u0001'+x.id,refs[i+n]));saveQ();adopt(r.data);rejected+=countRejected(part,r.data);}
     for(let i=0;i<dels.length;i+=200){const part=dels.slice(i,i+200);const r=await withTO(sb.rpc('save_records',{rows:part.map(o=>({coll:o.coll,id:o.id,deleted:true,full:o.meta||{},by:st.user||null}))}),20000,'save');if(r.error)throw r.error;part.forEach(o=>done(o.coll+'\u0001'+o.id,o));saveQ();}
-    st.err=skipped?((typeof t==='function'?t('Photo upload failed — will retry'):'Photo upload failed')):'';}
+    st.err=skipped?((typeof t==='function'?t('Photo upload failed — will retry'):'Photo upload failed')):'';
+    if(rejected){try{if(typeof toast==='function')toast((typeof t==='function'?t('Some changes could not be saved — showing the saved version.'):'Some changes could not be saved — showing the saved version.'),'bad');}catch(e){}}}
   catch(e){st.err=(e&&e.message)||'sync error';log('flush error',e);}
   finally{flushing=false;paint();if(Object.keys(queue).length){if(st.err)setTimeout(flush,5000);else schedule();}}}
 // take the server's merged version of what we just saved (it may include another phone's changes)
@@ -157,9 +164,21 @@ function paint(){let el=document.getElementById('exSync');if(!el){el=document.cr
 window.addEventListener('online',()=>{st.online=true;paint();flush();catchUp();});window.addEventListener('offline',()=>{st.online=false;paint();});
 
 // ---------- auth ----------
-async function resolveEmail(q){q=(q||'').trim();if(!q)return null;if(/@/.test(q))return q.toLowerCase();const r=await sb.rpc('resolve_login',{q});if(r.error){log(r.error);return null;}return r.data||null;}
-window.EX_login=async function(q,pass){const email=await resolveEmail(q);if(!email)return {err:'nouser'};const r=await sb.auth.signInWithPassword({email,password:pass});if(r.error)return {err:/confirm/i.test(r.error.message)?'confirm':'badpass',msg:r.error.message};return {ok:true,email};};
-window.EX_logout=async function(){try{if(sb)await withTO(sb.auth.signOut(),3000,'sign-out');}catch(e){}try{localStorage.removeItem('ex_auth');}catch(e){}queue={};saveQ();ready=false;localReady=false;};
+// sign in through the server-side "login" function: the name/phone -> email lookup happens on the server, so the
+// sign-in email is never handed back to someone who isn't signed in (closes the anonymous email-lookup leak).
+window.EX_login=async function(q,pass){q=(q||'').trim();if(!q||!pass)return {err:'badpass'};
+  try{const r=await withTO(sb.functions.invoke('login',{body:{q,password:pass}}),12000,'sign-in');
+    if(r.error||!r.data||!r.data.session)return {err:'badpass'};
+    const s=r.data.session;const ss=await sb.auth.setSession({access_token:s.access_token,refresh_token:s.refresh_token});
+    if(ss.error||!ss.data||!ss.data.user)return {err:'badpass'};
+    try{localStorage.setItem('ex_uid',ss.data.user.id);}catch(e){}
+    return {ok:true,email:ss.data.user.email};
+  }catch(e){return {err:'badpass',msg:(e&&e.message)||''};}};
+// signing out wipes this phone's copy of the company data and any unsent changes, so the next person to use the
+// phone (or the same person on another account) starts clean and can't see the previous account's cached data.
+window.EX_logout=async function(){try{if(sb)await withTO(sb.auth.signOut(),3000,'sign-out');}catch(e){}
+  try{localStorage.removeItem('ex_auth');localStorage.removeItem('ex_queue');localStorage.removeItem('ex_uid');localStorage.removeItem(typeof KEY!=='undefined'?KEY:'electrix_v29');}catch(e){}
+  queue={};saveQ();ready=false;localReady=false;};
 function tie(e,uid){if(!uid)return;const live=liveRecord('emps',e.id)||e;if(live.authUid!==uid){live.authUid=uid;try{save();}catch(x){}}}
 window.EX_createUser=async function(e,pass){const r=await sb.rpc('admin_create_user',{p_email:emailFor(e),p_pass:pass});if(r.error)return {err:r.error.message};if(!r.data)return {err:'failed'};tie(e,r.data);return {ok:true,email:emailFor(e)};};
 window.EX_setPassword=async function(e,pass){const r=await sb.rpc('admin_set_password',{p_email:emailFor(e),p_pass:pass});if(r.error)return {err:r.error.message};if(!r.data)return {err:'nouser'};tie(e,r.data);return {ok:true};};
@@ -173,7 +192,9 @@ window.EX_boot=async function(){if(!REAL)return {real:false};
   sb=window.supabase.createClient(CFG.url,CFG.anonKey,{auth:{persistSession:true,storageKey:'ex_auth',lock:async(_n,_t,fn)=>await fn()}});
   sbAux=window.supabase.createClient(CFG.url,CFG.anonKey,{auth:{persistSession:false,autoRefreshToken:false,storageKey:'ex_aux',lock:async(_n,_t,fn)=>await fn()}});
   window.EX_sb=sb;
-  let email=null;try{const s=await withTO(sb.auth.getSession(),6000,'sign-in');email=s.data.session&&s.data.session.user?s.data.session.user.email:null;}catch(e){email=cachedEmail();st.slow=true;}st.user=email;
+  let email=null,uid=null;try{const s=await withTO(sb.auth.getSession(),6000,'sign-in');const u=s.data.session&&s.data.session.user;email=u?u.email:null;uid=u?u.id:null;}catch(e){email=cachedEmail();st.slow=true;}st.user=email;
+  // account switch: if the person signed in now is not the one this phone's cached data belongs to, drop the old copy first
+  try{const prev=localStorage.getItem('ex_uid');if(uid){if(prev&&prev!==uid){localStorage.removeItem(typeof KEY!=='undefined'?KEY:'electrix_v29');localStorage.removeItem('ex_queue');queue={};}localStorage.setItem('ex_uid',uid);}}catch(e){}
   sb.auth.onAuthStateChange((ev,sess)=>{st.user=sess&&sess.user?sess.user.email:null;if(ev==='SIGNED_OUT'){ready=false;}});
   return {real:true,email};};
 // the job list and the material catalog ship with the app; if the database doesn't have them yet, the owner's phone fills them in once
