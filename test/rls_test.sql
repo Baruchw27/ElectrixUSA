@@ -76,3 +76,45 @@ reset role; select pg_temp.as_user('22222222-2222-2222-2222-222222222222','u7@el
 select 'T10 worker creates (should fail)'; select admin_create_user('u98@electrixusa.app','secret12');
 reset role;
 select 'T10 user row', email_confirmed_at is not null and encrypted_password like '$2%', (select count(*) from auth.identities i where i.user_id=u.id) from auth.users u where email='u99@electrixusa.app';
+-- 11) privacy between employees
+reset role;
+insert into records(coll,id,data) values
+ ('emps','u8','{"name":"Jon","role":"worker","lead":true,"crew":"c1","authUid":"55555555-5555-5555-5555-555555555555"}'),
+ ('emps','u9','{"name":"Pedro","role":"worker","crew":"c1"}'),
+ ('emps','u10','{"name":"Menachem","role":"office","title":"Material","authUid":"66666666-6666-6666-6666-666666666666"}'),
+ ('punches','pj','{"who":"u9","site":"s1"}'),('punches','po','{"who":"u2","site":"s1"}'),
+ ('exps','e1','{"who":"u2","amt":40}'),('exps','e7','{"who":"u7","amt":12}'),
+ ('inbox','n1','{"to":"u2","msg":"for Yossi"}'),('inbox','n7','{"to":"u7","msg":"for Carlos"}'),
+ ('meets','m1','{"by":"u2","with":["u1"],"title":"Yossi+Baruch"}'),('meets','m2','{"by":"u2","with":["u7"],"title":"Yossi+Carlos"}'),
+ ('push','pu1','{"who":"u2","sub":{"endpoint":"x"}}') on conflict (coll,id) do update set data=excluded.data, deleted=false;
+insert into auth.users(id,email) values ('55555555-5555-5555-5555-555555555555','u8@electrixusa.app'),('66666666-6666-6666-6666-666666666666','u10@electrixusa.app') on conflict do nothing;
+select pg_temp.as_user('22222222-2222-2222-2222-222222222222','u7@electrixusa.app'); set role authenticated;
+select 'T11 worker punches', string_agg(id,',' order by id) from records where coll='punches';
+select 'T11 worker exps', string_agg(id,',' order by id) from records where coll='exps';
+select 'T11 worker inbox', string_agg(id,',' order by id) from records where coll='inbox';
+select 'T11 worker meets', string_agg(id,',' order by id) from records where coll='meets';
+select 'T11 worker push', count(*) from records where coll='push';
+select 'T11 worker sees jobs list', count(*) from records where coll='sites';
+select 'T11 worker alerts the manager', count(*) from save_records('[{"coll":"inbox","id":"n99","full":{"to":"u2","msg":"Carlos is waiting"},"by":"u7"}]'::jsonb);
+select 'T11 worker re-sends same alert', count(*) from save_records('[{"coll":"inbox","id":"n99","full":{"to":"u2","msg":"Carlos is waiting"},"by":"u7"}]'::jsonb);
+with x as (update records set data='{"who":"u9","site":"hacked"}' where coll='punches' and id='pj' returning 1) select 'T11 worker cannot change others punch', count(*) from x;
+select 'T11 worker saves own punch', count(*) from save_records('[{"coll":"punches","id":"p7","full":{"who":"u7","site":"s1"},"by":"u7"}]'::jsonb);
+reset role;
+select 'T11 alert stored once', count(*) from records where coll='inbox' and id='n99' and data->>'to'='u2';
+select 'T11 pj untouched', data->>'site' from records where coll='punches' and id='pj';
+select pg_temp.as_user('55555555-5555-5555-5555-555555555555','u8@electrixusa.app'); set role authenticated;
+select 'T11 lead punches', string_agg(id,',' order by id) from records where coll='punches';
+reset role;
+select pg_temp.as_user('66666666-6666-6666-6666-666666666666','u10@electrixusa.app'); set role authenticated;
+select 'T11 office punches', count(*) from records where coll='punches';
+select 'T11 office (Material) exps', string_agg(id,',' order by id) from records where coll='exps';
+reset role;
+select pg_temp.as_user('44444444-4444-4444-4444-444444444444','u2@electrixusa.app'); set role authenticated;
+select 'T11 manager exps', count(*) from records where coll='exps';
+select 'T11 manager inbox', string_agg(id,',' order by id) from records where coll='inbox';
+select 'T11 manager meets', string_agg(id,',' order by id) from records where coll='meets';
+reset role;
+select pg_temp.as_user('11111111-1111-1111-1111-111111111111','u1@electrixusa.app'); set role authenticated;
+select 'T11 owner meets', string_agg(id,',' order by id) from records where coll='meets';
+select 'T11 owner punches', count(*) from records where coll='punches';
+reset role;

@@ -302,6 +302,7 @@ grant execute on function public.admin_create_user(text,text), public.admin_set_
 -- ===== private files: photos, receipts, voice notes, videos open only for signed-in team members =====
 -- (the app's helper adds the sign-in pass automatically; see sw.js)
 update storage.buckets set public = false where id = 'files';
+drop policy if exists "members only read files" on storage.objects;
 create policy "members only read files" on storage.objects as restrictive for select to public
   using (bucket_id <> 'files' or (auth.uid() is not null and public.is_member()));
 
@@ -380,3 +381,88 @@ select cron.schedule('geo-jobs', '*/3 * * * *', $$select net.http_post(url:=(sel
    or (s.data->>'lat' is not null and exists (select 1 from records b where b.coll='base' and b.id='lat' and jsonb_typeof(b.data)='number')
        and (s.data->'trip' is null or not coalesce((s.data->'trip'->>'road')::boolean,false)
             or (s.data->'trip'->>'fromLat')::numeric is distinct from (select (b.data #>> '{}')::numeric from records b where b.coll='base' and b.id='lat')))))$$);
+
+-- ===== who sees what (privacy between employees) =====
+-- the signed-in person's own employee record, looked up once per request
+create or replace function public.my_emp_data() returns jsonb language sql stable security definer set search_path = public as $$
+  select coalesce((select jsonb_build_object('id', id, 'role', data->>'role', 'title', data->>'title', 'all', coalesce((data->>'all')::boolean,false),
+                   'lead', coalesce((data->>'lead')::boolean,false), 'crew', data->>'crew')
+                   from public.records where coll = 'emps' and not deleted and data->>'authUid' = auth.uid()::text limit 1), '{}'::jsonb);
+$$;
+grant execute on function public.my_emp_data() to authenticated;
+-- is the record's person in my crew (crew leaders see their own crew's time)
+create or replace function public.in_my_crew(who text, crew text) returns boolean language sql stable security definer set search_path = public as $$
+  select crew is not null and exists (select 1 from public.records e where e.coll = 'emps' and e.id = who and e.data->>'crew' = crew);
+$$;
+-- the rules:
+--   hours, time off, sent-home, travel: your own; crew leaders also their crew; owner, managers and office everyone
+--   receipts: your own; owner, managers, "all", Payroll and Bookkeeper everyone
+--   notifications and phone-alert sign-ups: only your own
+--   meetings: the owner, whoever made it, and whoever it is with
+--   private notes: owner and the people it's shared with
+--   everything else (jobs, schedule, material, people list): the whole team
+create or replace function public.can_see2(c text, d jsonb, me jsonb) returns boolean language sql stable set search_path = public as $$
+  select case
+    when c = 'keep' then d->>'owner' = me->>'id' or coalesce(d->'collab','[]'::jsonb) ? (me->>'id')
+    when c = 'inbox' then d->>'to' = me->>'id'
+    when c = 'push' then d->>'who' = me->>'id'
+    when c = 'meets' then me->>'role' = 'owner' or d->>'by' = me->>'id' or coalesce(d->'with','[]'::jsonb) ? (me->>'id')
+    when c in ('punches','timeoff','goHomeLog','travel') then
+         me->>'role' in ('owner','manager','office') or (me->>'all')::boolean
+      or d->>'who' = me->>'id'
+      or ((me->>'lead')::boolean and public.in_my_crew(d->>'who', me->>'crew'))
+    when c = 'exps' then
+         me->>'role' in ('owner','manager') or (me->>'all')::boolean
+      or (me->>'role' = 'office' and me->>'title' in ('Payroll','Bookkeeper'))
+      or d->>'who' = me->>'id'
+    else true end;
+$$;
+alter policy "team can read" on public.records using ((select public.is_member()) and coalesce(public.can_see2(coll, data, (select public.my_emp_data())), false));
+alter policy "team can update" on public.records using ((select public.is_member()) and coalesce(public.can_see2(coll, data, (select public.my_emp_data())), false)) with check ((select public.is_member()));
+
+create or replace function public._row_exists(c text, i text) returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.records where coll = c and id = i);
+$$;
+revoke all on function public._row_exists(text, text) from public, anon;
+grant execute on function public._row_exists(text, text) to authenticated;
+-- saving skips a record the person isn't allowed to change (e.g. re-sending an alert addressed to someone else) instead of failing the whole save
+create or replace function public.save_records(rows jsonb)
+ returns table(coll text, id text, data jsonb, deleted boolean)
+ language plpgsql set search_path to 'public'
+as $function$
+#variable_conflict use_column
+declare r jsonb; un text[];
+begin
+  for r in select * from jsonb_array_elements(rows) loop
+   begin
+    if coalesce((r->>'deleted')::boolean, false) then
+      insert into public.records as t (coll, id, data, deleted, updated_by, updated_at)
+      values (r->>'coll', r->>'id', coalesce(r->'full', '{}'::jsonb), true, r->>'by', now())
+      on conflict (coll, id) do update set data = coalesce(r->'full', '{}'::jsonb), deleted = true, updated_by = r->>'by', updated_at = now();
+    elsif r ? 'full' then
+      insert into public.records as t (coll, id, data, deleted, updated_by, updated_at)
+      values (r->>'coll', r->>'id', r->'full', false, r->>'by', now())
+      on conflict (coll, id) do update set data = r->'full', deleted = false, updated_by = r->>'by', updated_at = now();
+    else
+      un := coalesce(array(select jsonb_array_elements_text(coalesce(r->'unset', '[]'::jsonb))), '{}'::text[]);
+      insert into public.records as t (coll, id, data, deleted, updated_by, updated_at)
+      values (r->>'coll', r->>'id', coalesce(r->'patch', '{}'::jsonb), false, r->>'by', now())
+      on conflict (coll, id) do update
+        set data = case
+              when t.deleted then coalesce(r->'patch', '{}'::jsonb)
+              when jsonb_typeof(t.data) <> 'object' then t.data
+              else (t.data || coalesce(r->'patch', '{}'::jsonb)) - un end,
+            deleted = false, updated_by = r->>'by', updated_at = now();
+    end if;
+   exception when insufficient_privilege then
+    -- an existing row this person can't see (e.g. re-sending an alert addressed to someone else): skip it.
+    -- a new row they may write but not read back (an alert for someone else): plain insert.
+    if not public._row_exists(r->>'coll', r->>'id') then
+      insert into public.records (coll, id, data, deleted, updated_by, updated_at)
+      values (r->>'coll', r->>'id', coalesce(r->'full', r->'patch', '{}'::jsonb), coalesce((r->>'deleted')::boolean, false), r->>'by', now());
+    end if;
+   end;
+  end loop;
+  return query select t.coll, t.id, t.data, t.deleted from public.records t
+    join (select x->>'coll' as c, x->>'id' as i from jsonb_array_elements(rows) x) k on t.coll = k.c and t.id = k.i;
+end $function$;

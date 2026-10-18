@@ -13,7 +13,16 @@ function uidOf(email){return users[email]&&users[email].id;}
 function emps(){return [...records.values()].filter(r=>r.coll==='emps'&&!r.deleted);}
 function isMember(email){if(!email)return false;const e=emps();if(!e.length)return true;const uid=uidOf(email);return e.some(r=>r.data.authUid===uid&&!r.data.inactive);}
 function myEmp(email){const uid=uidOf(email);const r=emps().find(r=>r.data.authUid===uid);return r?r.id:null;}
-function canSee(email,row){if(row.coll!=='keep')return true;const me=myEmp(email);return row.data.owner===me||(row.data.collab||[]).includes(me);}
+// same rules as can_see2 in schema.sql
+function meData(email){const uid=uidOf(email);const r=emps().find(r=>r.data.authUid===uid);return r?Object.assign({id:r.id},r.data):{};}
+function canSee(email,row){const d=row.data||{};const me=meData(email);const c=row.coll;
+  if(c==='keep')return d.owner===me.id||(d.collab||[]).includes(me.id);
+  if(c==='inbox')return d.to===me.id;
+  if(c==='push')return d.who===me.id;
+  if(c==='meets')return me.role==='owner'||d.by===me.id||(d.with||[]).includes(me.id);
+  if(['punches','timeoff','goHomeLog','travel'].includes(c))return ['owner','manager','office'].includes(me.role)||!!me.all||d.who===me.id||(!!me.lead&&!!me.crew&&emps().some(e=>e.id===d.who&&e.data.crew===me.crew));
+  if(c==='exps')return ['owner','manager'].includes(me.role)||!!me.all||(me.role==='office'&&['Payroll','Bookkeeper'].includes(me.title))||d.who===me.id;
+  return true;}
 function isBoss(email){const uid=uidOf(email);return emps().some(r=>r.data.authUid===uid&&!r.data.inactive&&(['owner','manager'].includes(r.data.role)||r.data.all||(r.data.role==='office'&&r.data.title==='Payroll')));}
 function body(req){return new Promise(r=>{let b='';req.on('data',c=>b+=c);req.on('end',()=>{try{r(b?JSON.parse(b):{});}catch(e){r({raw:b});}});});}
 function send(res,code,obj,type){res.writeHead(code,{'Content-Type':type||'application/json','Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'*','Access-Control-Allow-Methods':'*'});res.end(type?obj:JSON.stringify(obj));}
@@ -39,9 +48,10 @@ http.createServer(async (req,res)=>{
     for(const r of rows){const k=r.coll+'\u0001'+r.id;const old=records.get(k);let data;
       if(r.deleted)data=r.full||{};else if('full' in r)data=r.full;else if(old&&!old.deleted&&(old.data===null||typeof old.data!=='object'||Array.isArray(old.data)))data=old.data;else{data=old&&!old.deleted?Object.assign({},old.data,r.patch||{}):Object.assign({},r.patch||{});(r.unset||[]).forEach(f=>delete data[f]);}
       const row={coll:r.coll,id:r.id,data:pg(data),deleted:!!r.deleted,updated_by:r.by||null,updated_at:now()};
+      if(old&&!canSee(em,old))continue; // existing row this person can't see: skipped (like the real server)
       if(r.coll==='keep'&&!r.deleted&&!old){const me=myEmp(em);if(emps().length&&data.owner!==me)return send(res,403,{error:'new row violates row-level security policy'});}
       records.set(k,row);const msg='data: '+JSON.stringify({eventType:'UPDATE',new:row})+'\n\n';clients.forEach(c=>{if(isMember(c.email)&&canSee(c.email,row))c.res.write(msg);});}
-    return send(res,200,rows.map(r=>records.get(r.coll+'\u0001'+r.id)).filter(Boolean).map(r=>({coll:r.coll,id:r.id,data:r.data,deleted:r.deleted})));}
+    return send(res,200,rows.map(r=>records.get(r.coll+'\u0001'+r.id)).filter(Boolean).filter(r=>canSee(em,r)).map(r=>({coll:r.coll,id:r.id,data:r.data,deleted:r.deleted})));}
   // ---- records
   if(p==='/records'&&req.method==='GET'){const em=who(req);stats.pulls++;const after=u.searchParams.get('after');if(after)stats.catchups=(stats.catchups||0)+1;if(!isMember(em))return send(res,200,[]);const from=+u.searchParams.get('from')||0,to=+u.searchParams.get('to')||999;const all=[...records.values()].sort((a,b)=>a.coll<b.coll?-1:a.coll>b.coll?1:a.id<b.id?-1:1);return send(res,200,all.filter(r=>canSee(em,r)&&(!after||r.updated_at>after)).slice(from,to+1));}
   if(p==='/records'&&req.method==='POST'){const em=who(req);if(!em)return send(res,401,{error:'JWT expired'});if(!isMember(em))return send(res,403,{error:'new row violates row-level security policy'});const b=await body(req);const rows=Array.isArray(b)?b:[b];stats.upserts++;stats.rows+=rows.length;

@@ -15,3 +15,10 @@ create table net.calls(id serial, url text, body jsonb, headers jsonb);
 create function net.http_post(url text, body jsonb, headers jsonb) returns bigint language sql as $$ insert into net.calls(url,body,headers) values (url,body,headers) returning id::bigint $$;
 grant all on net.calls to authenticated; grant usage on sequence net.calls_id_seq to authenticated;
 create extension pgcrypto;
+-- pg_cron stand-in (jobs are only recorded, never run)
+create schema if not exists cron;
+create table if not exists cron.job(jobid serial primary key, jobname text unique, schedule text, command text);
+create or replace function cron.schedule(n text, s text, c text) returns bigint language sql as $$ insert into cron.job(jobname,schedule,command) values (n,s,c) on conflict (jobname) do update set schedule=excluded.schedule, command=excluded.command returning jobid::bigint $$;
+create or replace function cron.unschedule(id bigint) returns boolean language sql as $$ delete from cron.job where jobid=id returning true $$;
+create or replace function cron.unschedule(n text) returns boolean language sql as $$ delete from cron.job where jobname=n returning true $$;
+create or replace function net.http_post(url text, body jsonb, headers jsonb, timeout_milliseconds int) returns bigint language sql as $$ insert into net.calls(url,body,headers) values (url,body,headers) returning id::bigint $$;
