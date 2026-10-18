@@ -1,129 +1,142 @@
 # Electrix USA — security & reliability review
 
-**Date:** 17–18 October 2026 · **Reviewed by:** Claude (the app's author) · **For:** independent audit (ChatGPT) and Baruch
-
+**Date:** 17–18 October 2026 · **By:** Claude (the app's author) · **For:** independent audit (ChatGPT) and Baruch
 **Live app:** https://baruchw27.github.io/ElectrixUSA/ · **Database:** Supabase project `lnbcrptcdufnmqsvsisv` (free plan) · **Code:** this folder
 
-This report says what was tested, how, what failed, what was fixed, and what is still open. Passing tests are evidence, not proof. The raw outputs are in `evidence/`. The database rules are all in `schema.sql`; the newest ones are at the end of that file.
+This report lists what was tested, how, what failed, what was fixed and what is still open. Passing tests are evidence, not proof.
+- **Raw outputs:** `evidence/`.
+- **Database rules:** all in `schema.sql`; the newest definitions are at the end of the file and override earlier ones with the same name.
+
+**Independent check of this report:** before publishing, a separate checker read the first draft against the code and evidence. It found 6 wrong or overstated claims and 10 real gaps. All 10 gaps were fixed and re-tested live, and the claims are corrected below; see "Found by the independent check".
 
 ## How it was tested
 
 | Where | What | Changes data? |
 |---|---|---|
-| **Staging database:** a local PostgreSQL 16 with a Supabase stand-in (`test/supabase_stub.sql`), the full `schema.sql` and fake employees | Every rule, attack attempt and the load test (`test/rls_test.sql`; output in `evidence/staging_database_rules.txt` and `evidence/load_test.txt`) | Yes, staging only |
-| **Live database:** real employee accounts, each check run as that person through the same rules the app uses | Spot-checks of the fixes (`evidence/live_server_checks.txt`) | **No.** Every live check ran inside one transaction that was rolled back. |
-| **Browser:** headless Chromium driving the real app, against a fake Supabase server that copies the database rules | Two phones syncing, offline use, every button for 9 roles (about 2,700 clicks), 279 screens checked for width, a scale test with 150 people and a year of data | Test copy only |
+| **Staging database:** local PostgreSQL 16 with a Supabase stand-in (`test/supabase_stub.sql`) and the full `schema.sql` | Every rule and attack attempt T1–T16 (`test/rls_test.sql`; output in `evidence/staging_database_rules.txt`). Load test (`evidence/load_test.txt`). | Staging only |
+| **Live database:** real employee accounts, run through the same rules the app uses | Spot-checks of every fix (`evidence/live_server_checks.txt`) | **No.** Each run was one transaction that was rolled back. |
+| **Browser:** headless Chromium driving the real app against a fake server that copies the rules (`test/fakeserver.js`) | Two phones syncing, offline use, every visible button for 9 roles, 279 screens checked for width, 150 people with a year of data | Test copy only |
 
-The fake server (`test/fakeserver.js`) copies the read and change rules. It is a model, so the database rules were checked on the real database engine in staging, and spot-checked on the live database.
-
-## Results: the three things you asked to prove
+## The three things you asked to prove
 
 ### 1. No privilege escalation
+**Before:**
+- A worker could make himself owner (confirmed live, rolled back).
+- A manager or Payroll person could reset the owner's password.
 
-Before this review, a worker could make himself owner. I confirmed this on the live database inside a rolled-back test. A manager or Payroll person could also reset the owner's password.
+**Now, enforced by the database on every save (`guard_record`), including direct API requests:**
+- **Only the owner adds or changes privileged or office people:** owner, manager, everyone-access, and any office role (Payroll, Bookkeeper, Material, and so on). Managers, everyone-access and Payroll can add and edit workers: crew, crew leader, name, phone.
+- **Everyone else** can change only their own language and phone.
+- **Password resets:** only the owner can reset or re-create a sign-in that belongs to a privileged person. The check looks at every employee record tied to that sign-in, by sign-in id and by email (`signin_privileged`).
+- **One sign-in, one person:** two employee records can't share a sign-in or an email, so a look-alike record can't be planted.
+- **Passwords:** 8 or more characters, letters and numbers, common passwords refused (app and server).
+- **First-time setup** (`setup_owner`) is closed now that the owner exists.
 
-**What is in place now:**
-
-- **Change rules are checked by the database** (`guard_record`) on every save, including direct API requests that skip the app.
-- **Only the owner can grant or change privilege.** That covers the roles owner and manager, everyone-access, and the Payroll and Bookkeeper titles. Managers can still add and edit workers and ordinary office staff.
-- **Workers can change only their own language and phone** on their employee record.
-- **Only the owner can reset a privileged person's password.** This applies to `admin_set_password` and to `admin_create_user` when the sign-in already exists.
-- **Passwords:** at least 8 characters, letters and numbers, and common passwords are refused. The app and the server both check this.
-
-**Live evidence (rolled back):** for each attempt below the save call returned, but the database record did not change.
-
-- Worker saves role=owner → his role is still worker.
-- Manager saves his own role=owner → still manager.
-- Payroll saves her own role=owner → still office.
-- Manager or Payroll resets the owner's password → "not allowed".
-- Manager makes a worker a manager → refused.
-- Manager moves a worker to another crew, a normal job → allowed.
+**Live results:**
+- Refused: worker, manager or Payroll saving role=owner; manager or Payroll resetting the owner's password; manager making a worker a manager; manager deactivating the owner; manager adding an office person; manager adding a look-alike record with the owner's email.
+- Allowed: manager moving a worker to another crew; manager adding a worker; manager resetting a worker's password.
 
 ### 2. No data leaking between employees
-
-| Data | Who can read it (enforced by the database) |
+| Data | Who can read it (database rule `can_see2`) |
 |---|---|
-| Hours, time off, sent-home log, travel | The person himself; crew leaders their own crew; office, managers and owner everyone |
-| Receipts | The person himself; owner, managers, everyone-access, Payroll and Bookkeeper |
-| Alerts (inbox), phone-alert sign-ups | Only the person they are addressed to |
-| Meetings | The owner, whoever made it, and whoever it is with |
-| Private notes | The owner of the note and the people it is shared with |
-| Jobs, schedule, material, people list (names, roles, phone numbers) | The whole team, by design |
+| Hours, time off, sent-home log, travel | The person; crew leader for his crew; office, managers, everyone-access, owner |
+| Receipts | The person; owner, managers, everyone-access, Payroll, Bookkeeper |
+| Alerts (inbox), phone-alert sign-ups | Only the person they belong to |
+| Meetings | Owner, whoever made it, whoever it's with |
+| Private notes | The note's owner and the people it's shared with |
+| Jobs, schedule, material, crews, and the whole employee list (names, roles, crews, phones, plus each record's internal sign-in id and sign-in email) | The whole team, by design |
 
-**Each route was checked separately:**
-
-- **The API and the sync download:** the same database read rule (`can_see2`) applies. Live, worker Carlos sees 0 of other people's hours, receipts and alerts, and all 426 jobs.
-- **Realtime updates:** Supabase realtime uses the same read rule (`records` is the only published table). This was not tested separately with a realtime client.
-- **File storage:** receipt, hours and time-off photos, and note pictures, open only for people who may see that record (`file_ok`). Live, the worker sees 0 of other people's receipt photos. The `files` bucket is private.
-- **AI search:** limited to the owner and managers. The AI features are switched off on the server anyway, because no AI key is set.
-- **Offline and cached data:** a turned-off employee's phone checks access on every catch-up. When access is gone it wipes the company data on the phone and goes back to sign-in (`test/t_sync.py` step 11b). On sign-in, a phone downloads only what the database lets that person see.
-- **The anonymous key, used before sign-in:** it has no access to any table. It can call `resolve_login` (turns a name or phone into the internal sign-in email) and `no_team_yet`.
+**Each route checked:**
+- **API and the phone download:** the same rule applies. Live, a worker sees 0 of others' hours, receipts and alerts, and all 426 jobs.
+- **Files:** photos of receipts, hours, time off and private notes open only for people who may see that record (`file_ok`). Live: 0 of others' receipt photos. The bucket is private.
+- **Realtime:** `records` is the only published table, and Supabase applies the same read rule to realtime changes. *Not tested with a separate realtime client.*
+- **AI search:** the button is limited to owner and managers **in the app only**. The server's AI function checks only that the person is on the team, and is unused because no AI key is set. **Open:** if AI is switched on, the role check must be added on the server too.
+- **Offline and cached data:** when an employee is turned off, the server stops answering him immediately (`is_member`). On its next catch-up his phone sees that, wipes the company data and goes to sign-in (`test/t_sync.py` step 11b).
+- **The anonymous key (before sign-in):** no access to any table. It can call `resolve_login` (turns a name or phone into the internal sign-in email) and `no_team_yet`.
 
 ### 3. No silent manipulation of payroll
-
 **Hours:**
+- **Workers:** clock in and out for themselves only. A new clock-in can't be in the future or more than 3 days back (phones that were offline catch up). A clock-out can't be before the clock-in or in the future. Once saved, a clock-in can't be moved and a clock-out can't be changed.
+- **Out-of-fence approval:** managers and office, never their own.
+- **Clock-time edits and deleting hours:** only Payroll, everyone-access and the owner.
+- **Nobody can move a record to another person.** Exceptions: Payroll and everyone-access for hours, Payroll and Bookkeeper for receipts, managers for time off and travel.
 
-- **Workers** can clock in and clock out for themselves only. They cannot move a clock-in, change a clock-out once it is saved, approve their own out-of-fence clock-in, delete hours, or create hours for someone else.
-- **Out-of-fence approval** is for managers and office. They can approve, but they cannot edit times.
-- **Clock times** can be edited only by Payroll, everyone-access and the owner.
+**Time off:** approve or deny is for owner, managers, everyone-access and Payroll. A worker can request, or cancel his own. Dates can't change once it's been answered.
 
-**Time off:** approving or denying is for owner, managers, everyone-access and Payroll. A worker can only request, or cancel his own.
-
-**Receipts:**
-
-- Only Payroll, Bookkeeper, everyone-access and the owner can mark a receipt paid.
-- A paid receipt can't be changed by the person who submitted it.
+**Receipts:** only Payroll, Bookkeeper, everyone-access and the owner mark paid. A paid receipt is locked for the person who submitted it.
 
 **Who changed what:**
+- **Author:** every save's author is stamped by the database from the sign-in, never from what the phone claims. Live: a save claiming "by Baruch" was recorded as the worker's.
+- **History:** `records_history` gets a row for every change to every record: who, when, before and after. Only the server can read it. Live: a test punch's history showed who made each change in order: worker (clock-in), worker (clock-out), office (approval), Payroll (correction).
+- **No forging:** a task's sender, each chat message's author, and an alert's sender can't be faked. Alerts now carry their real sender.
 
-- **Who** is stamped by the database from the sign-in, so a phone can't claim to be someone else. Live: a save that claimed to be by Baruch was recorded as Carlos's.
-- **Change history:** `records_history` gets a row for every change to every record, with who, when, before and after. Only the server can read it, not the app. Live: a test punch's history read `u7:null > u7:5000 > o2:5000 > o3:6000` (clock-in, clock-out, office approval, Payroll correction).
-- **Signed messages:** a task's sender and each chat message's author can't be faked.
+**Not fully closed:**
+- The clock-in time and GPS position come from the phone. A tampered phone can still lie within the allowed window.
+- Automatic travel pay is worked out on the worker's phone when he clocks in. The server checks it's his own record and locks it afterwards, but doesn't recompute the amount. Recommended fix: compute travel pay on the server.
 
 ## Everything checked (your 10 sections)
-
 | # | Area | Result |
 |---|---|---|
-| 1 | Employee access and permissions | **Fixed:** self-promotion, manager or Payroll taking over the owner, workers seeing others' data, impersonation through the `by` and `from` fields. **Verified live.** |
-| 2 | Database and server security | **Fixed:** read and change rules checked per person. The anonymous key gets nothing. Signed-in users can't delete rows directly or truncate (deleting is a flag that stays in history). Server secrets, history and backups are unreadable from the app. No service-role key or secret is in the browser code; only the public anon key and the public push key are. Supabase's own security check now shows only informational items and the accepted ones listed below. |
-| 3 | Authentication | Supabase Auth (bcrypt passwords, signed session tokens). Expired or invalid tokens get nothing. Turned-off employees lose access at once (`is_member`) and their phone is wiped. **Open:** no self-service password reset by email; resets go through the owner or a manager. Sign-in rate limits are Supabase's defaults; I didn't change them. |
-| 4 | Payroll and time clock | **Fixed and verified live:** see section 3 above. |
-| 5 | Files and receipts | **Fixed:** private bucket; photos tied to private records only for people who may see the record; nobody can overwrite someone else's file; 50 MB limit; only pictures, video, audio, PDF, Word, Excel, CAD and plain text accepted, so web pages and SVG are refused. Viewer: only pictures and PDFs show on screen, other files download. |
-| 6 | Web vulnerabilities | **SQL injection:** none. All database access goes through the API or fixed SQL functions with parameters. **XSS (code smuggled in through saved text):** a full code review found about 30 places where saved data reached the screen without escaping. All were fixed: escaping now also covers `'`; pictures and links from saved data only accept real image or https addresses; values inside buttons are cleaned; the file viewer no longer displays web pages. On top of that, the database refuses quotes and `<>` in record ids and in the fields that hold ids (`site`, `who`, `to`, `re`…). **CSRF:** not applicable, because the app uses bearer tokens, not cookies. **Rate limiting:** Supabase defaults. **Dependencies:** pinned versions from public CDNs (supabase-js, ZXing 0.21.3, Tesseract 5.1.1); not checked against advisories. **Security headers:** GitHub Pages can't set them, so there is no CSP; see open items. |
-| 7 | Offline sync and several users | Only the fields that changed are sent, and the server checks every change again when it arrives, including changes made offline. A change that isn't allowed is skipped on the server (`test/t_sync.py`: no normal save was refused). Two people editing the **same field** at the same time: the last one wins. The history keeps both versions. |
-| 8 | Owner protection | Only the owner can grant owner, manager, everyone-access, Payroll or Bookkeeper, or reset those people's passwords. Every change is in the history. **Open:** no second confirmation step (like re-entering a password) for owner actions. |
-| 9 | Backup and recovery | **Added:** a daily copy of every record at 3:07 AM, 14 rotating days, plus the change history. A restore from the daily copy was tested on staging (test 14: undo a mass mistake). A failed sync can't erase data, because deletes are flags and the history keeps the old value. **Open:** the free plan has no off-site backup; Supabase Pro (about $25/month) adds daily off-site backups. |
-| 10 | Performance and reliability | **Load test on staging** (`evidence/load_test.txt`), with 15,800 records and 50 employees, all saving at the same moment on a 2-core test machine. **Found and fixed:** each save took about 0.5 s because the reply checked the read rule against the whole table. It now takes 4 ms (about 33× more saves per second). The read rule was made inline-able, and crew leaders' crews are looked up once per request. Screen speed: every screen with 150 people and a year of data on a 4× slowed phone runs at about 0.4–0.6 s. Slow or lost internet: time limits on every server call, the app opens from the phone's copy, and work waits on the phone (`t_freeze`, `t_offline`). |
+| 1 | Permissions | Fixed and verified live (above). |
+| 2 | Database and server | **Read, change and settings rules:** checked per person. Only managers and up change the office location, crews and the schedule. Only office and up change a job's location, clock-in fence or drive time, or delete a job. Only the sender or a manager deletes a task. Only the note's owner hands a note to someone else. **Table access:** the anonymous key gets no table; signed-in users can't hard-delete rows (deleting is a flag, kept in history) or truncate. **Unreadable from the app:** server secrets, history, backups. **Browser code:** no secret key, only the public anon and push keys. **Supabase security check:** remaining items are informational (tables with no client access, on purpose) or listed under "Still open". |
+| 3 | Authentication | Supabase Auth (bcrypt, signed tokens). Turned-off employees lose access at once and their phone is wiped. **Open:** no self-service password reset by email; sign-in rate limits are Supabase defaults, not reviewed. |
+| 4 | Payroll and time clock | See section 3 above. |
+| 5 | Files | **Done:** private bucket; record-tied photos only for people who may see the record; nobody overwrites someone else's file; 50 MB limit; accepted types are pictures (no SVG), video, audio, PDF, Word, Excel, CAD and plain text, so web pages are refused. **Viewer:** only pictures and PDFs are displayed; everything else downloads. |
+| 6 | Web vulnerabilities | **SQL injection:** none found. Access goes through the API or fixed functions with parameters. **Stored code injection (XSS):** a code review found about 30 places where saved text reached the screen unescaped. All were fixed: escaping now covers `'`; pictures and links from saved data must be real image or https addresses; values inside buttons are cleaned. The database also refuses quotes and `<>` in record ids and in id fields (`site`, `who`, `to`, `re`, …). The escaping helpers have unit tests (`t_sanitize`). *Not done: a test that feeds deliberately malicious text through every screen.* **CSRF:** not applicable (bearer tokens, no cookies). **Dependencies:** pinned CDN versions, not scanned against advisories. **Headers:** GitHub Pages can't set a CSP. |
+| 7 | Offline sync and several users | Only changed fields are sent, and the server re-checks every change on arrival, including offline ones. A refused change is skipped and the phone takes the server's version back. Same field edited by two people at once: the last save wins; the history keeps both versions. |
+| 8 | Owner protection | Only the owner grants privilege or office roles, or resets those people's passwords. Every change is in the history. **Open:** no second confirmation step (re-entering a password) for owner actions. |
+| 9 | Backup and recovery | Daily copy of every record at 07:07 UTC (03:07 New York summer time), 14 rotating days, plus the full change history. **Restore tested on staging (T14):** a mass mistake was undone from the daily copy. **Open:** no off-site backup on the free plan (Supabase Pro, about $25/month). |
+| 10 | Performance | **Load test on staging**, 15,800 records, every employee saving at the same moment (`evidence/load_test.txt`). **Before the fix:** 25 people → 3 per second, 8.5 s each. **After:** 25 people → 206 per second, 0.12 s each; 50 people → 206 per second, 0.24 s each. A single save went from 223 ms to 14 ms. **Cause:** the save's reply checked the read rule against the whole table. **Also:** 25 phones downloading everything at the same moment take about 4.4 s each (see open items). On screen, with 150 people and a year of data on a 4× slowed phone, the heaviest screens (Schedule, Punch) take about 0.4–0.6 s; side by side, the version before the security changes was the same. |
 
-## Bugs found and fixed during this review
+## Found by the independent check — fixed and verified live
+1. **Alert hijack:** a worker could register his phone to receive the owner's push alerts. Fixed: phone-alert sign-ups are your own only.
+2. **Fake alerts:** fixed. The server stamps every alert with its real sender. Anyone on the team can still send an alert to anyone, which is needed for "Carlos needs material".
+3. **Taking over another person's hours, receipts or time off** by moving them into your own name: fixed.
+4. **Travel records:** an existing record can't be changed by the worker. *A new one still carries the pay worked out on his phone (see open items).*
+5. **Changing the dates of approved time off:** fixed.
+6. **Look-alike record to unlock the owner's password reset:** fixed (one sign-in per person, and every matching record is checked).
+7. **Managers creating office staff,** who can read hours and approve fences: now owner-only.
+8. **Workers editing company settings, job fences and drive times, or deleting jobs, tasks or stock:** fixed. Worker phones no longer save job locations or drive times; the server works them out.
+9. **A note collaborator taking ownership of a note:** fixed.
+10. **Clock-in backdating and future clock-outs:** limited (see section 3).
 
-- **Worker could make himself owner.** The database didn't check field changes.
-- **Manager or Payroll could reset the owner's password**, or re-create the owner's sign-in.
-- **Workers could read everyone's hours, receipts and alerts** through the API. The screens hid them; the database didn't.
-- **The office location was saved as a list.** Merging a change into a plain value turned `41.12` into `[41.12, {}]`. It was repaired in the database the same night.
-- **My own privacy fix briefly stopped some normal saves.** An upsert must pass the read rule using only the changed fields, so a clock-out could be skipped. Saves now update existing records and insert new ones. Nobody used the app in that window.
-- **Saves slowed down as data grew:** about 0.5 s each at 15,800 records. Fixed (4 ms).
-- **Supplier deliveries were tagged with a job by mistake.** Fixed.
-- **About 30 places displayed saved text without escaping.** Fixed (see section 6 of the table).
+**Claims corrected:** the AI-search limit is in the app only; `setup_owner` was still open to the anonymous key (now closed); the speed numbers are now in the evidence file; the whole employee record (sign-in id and email included) is visible to the team.
 
-## Still open: needs a decision or attention
+## Other bugs found and fixed during the review
+- **The office location was being saved as a list:** `41.12` became `[41.12, {}]`. It was repaired the same night.
+- **A privacy fix briefly made some normal saves (a clock-out) get skipped:** fixed within minutes, and nobody used the app in that window.
+- **Supplier deliveries were tagged with a job by mistake.**
+- **Any phone could re-locate the office from the address:** that is how the office pin moved on 18 Oct 03:51 UTC (from Shauly's phone; shown in the history). The live app now keeps the office location on the server only.
 
-1. **Off-site backups:** need Supabase Pro (about $25/month). The free plan only has the in-database daily copy added here.
-2. **Leaked-password check** (HaveIBeenPwned) also needs Supabase Pro.
-3. **No Content-Security-Policy header**, because GitHub Pages can't set it. The app also uses inline scripts, so a strict CSP would need restructuring. The escaping and database checks above are the defense.
-4. **The session token is stored in browser storage** (Supabase default). Any code smuggled into the page could read it, which is why the escaping work matters. Phones lock with Face ID when that is set up.
-5. **Phone numbers and names are visible to the whole team.** This is a business decision, not a bug.
-6. **The phone downloads all history at sign-in, then trims it.** That is fine for about 2 years at this size, but the download should later be limited to recent months.
-7. **`_row_exists` is callable by any signed-in user.** It reveals only whether a record id exists, never the content. It is needed by the save function.
-8. **`can_see2` has no fixed search path,** so the database can inline it for speed. It uses only built-in operators.
-9. **Same-field edits:** if two people edit the same field at the same time, the last save wins. The history shows both versions.
-10. **Not done:** a separate test that uses deliberately malicious text to try to inject code; a third-party dependency vulnerability scan; real-phone testing of the barcode and label reader; a live realtime-channel test with two signed-in workers.
+## Still open — needs a decision or attention
+1. **Off-site backups and the leaked-password check** both need Supabase Pro (about $25/month).
+2. **Travel pay** is worked out on the worker's phone. It should be computed on the server before travel pay is relied on.
+3. **Clock times and GPS come from the phone** and can't be fully trusted. Out-of-fence clock-ins already need approval.
+4. **The AI function** checks only team membership, not role. It must get a role check before AI is switched on.
+5. **No Content-Security-Policy** (GitHub Pages can't set headers, and the app uses inline scripts). The session token sits in browser storage, which is the Supabase default. Escaping and the database checks are the defence.
+6. **The whole team sees names, roles, phones and each person's sign-in email.** That is a business choice; restricting it is possible.
+7. **Phones download all history they may see at sign-in.** That is fine for about 2 years at this size; after that, the download should be limited to recent months.
+8. **`_row_exists`:** any signed-in user can call it. It reveals only whether a record id exists, never its content, and the save function needs it.
+9. **`can_see2` has no fixed search path,** so the database can inline it for speed. It uses only built-in operators.
+10. **Not done:**
+    - a test that feeds malicious text through every screen
+    - a dependency scan
+    - real-phone testing of the barcode and label reader
+    - a realtime test with two signed-in workers
+    - sign-in rate limits review
 
 ## Files for the auditor
-
-- **`schema.sql`:** every database rule. The newest are at the end: `can_see2` (read rule), `guard_record` (change rule), `stamp_record` (authorship and id checks), `log_record` (history), `backup_records`, `file_ok` (files), `save_records`.
-- **`test/rls_test.sql`:** the attack tests T1–T15 run on staging. `evidence/staging_database_rules.txt` is their output.
-- **`evidence/live_server_checks.txt`:** the live checks, all rolled back.
-- **`evidence/load_test.txt`:** the load test.
-- **`evidence/SUMMARY_browser_tests.txt`:** the browser test results, with the full output in the other files in `evidence/`.
-- **`sync.js`:** how phones download and save. **`index.html`:** the app; `esc`, `safeSrc`, `safeHref` and `jsq` are the escaping helpers.
+- `schema.sql`: all database rules. The newest are at the end:
+  - `guard_record`, the change rules v3
+  - `can_see2`, the read rule
+  - `stamp_record`, authorship and id checks
+  - `log_record`, history
+  - `backup_records`
+  - `file_ok`, the file rule
+  - `save_records`
+  - `signin_privileged` and `admin_set_password`
+- `test/rls_test.sql`: attack tests T1–T16. Their output is `evidence/staging_database_rules.txt`.
+- `evidence/live_server_checks.txt`: both live runs, all rolled back.
+- `evidence/load_test.txt`: the load test, before and after.
+- `evidence/SUMMARY_browser_tests.txt`: browser tests; the full output of each is in the other `evidence/` files.
+- `sync.js` (download and save) · `extras.js` (file viewer) · `index.html` (the app; the helpers are `esc`, `safeSrc`, `safeHref` and `jsq`).

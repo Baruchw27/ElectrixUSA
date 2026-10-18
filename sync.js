@@ -71,12 +71,12 @@ async function offloadBlobs(coll,id,data){let changed=false;const seen=[];
   await walk(data,'');return changed;}
 async function upload(coll,id,key,dataUrl){try{const m=/^data:([^;,]+)/.exec(dataUrl);const type=m?m[1]:'application/octet-stream';const blob=await (await fetch(dataUrl)).blob();
   const ext=(type.split('/')[1]||'bin').replace(/[^a-z0-9]/gi,'').slice(0,8);const path=coll+'/'+id+'/'+key.replace(/[^a-z0-9_-]/gi,'_')+'_'+Date.now().toString(36)+'.'+ext;
-  const r=await sb.storage.from('files').upload(path,blob,{contentType:type,upsert:true});if(r.error)throw r.error;
+  const r=await withTO(sb.storage.from('files').upload(path,blob,{contentType:type,upsert:true}),25000,'upload');if(r.error)throw r.error;
   return sb.storage.from('files').getPublicUrl(path).data.publicUrl;}catch(e){log('upload failed',e);return null;}}
 
 // voice notes and videos go straight to storage (too big to keep in the phone copy)
 window.EX_uploadBlob=async function(blob,folder){if(!REAL||!sb||!st.online)return null;try{const type=blob.type||'application/octet-stream';const ext=(type.split('/')[1]||'bin').split(';')[0].replace(/[^a-z0-9]/gi,'').slice(0,8)||'bin';
-  const path=(folder||'media')+'/'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)+'.'+ext;const r=await sb.storage.from('files').upload(path,blob,{contentType:type.split(';')[0],upsert:false});if(r.error)throw r.error;
+  const path=(folder||'media')+'/'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)+'.'+ext;const r=await withTO(sb.storage.from('files').upload(path,blob,{contentType:type.split(';')[0],upsert:false}),25000,'upload');if(r.error)throw r.error;
   return sb.storage.from('files').getPublicUrl(path).data.publicUrl;}catch(e){log('media upload failed',e);return null;}};
 // ---------- push ----------
 async function flush(){if(!REAL||!ready||flushing||!st.online)return;const keys=Object.keys(queue);if(!keys.length)return;flushing=true;paint();
@@ -92,8 +92,8 @@ async function flush(){if(!REAL||!ready||flushing||!st.online)return;const keys=
       else row={coll:o.coll,id:o.id,full:cur,by:st.user||null};
       ups.push(row);refs.push(o);}}
     const done=(k,o)=>{if(queue[k]===o)delete queue[k];};
-    for(let i=0;i<ups.length;i+=200){const part=ups.slice(i,i+200);const r=await sb.rpc('save_records',{rows:part});if(r.error)throw r.error;part.forEach((x,n)=>done(x.coll+'\u0001'+x.id,refs[i+n]));saveQ();adopt(r.data);}
-    for(let i=0;i<dels.length;i+=200){const part=dels.slice(i,i+200);const r=await sb.rpc('save_records',{rows:part.map(o=>({coll:o.coll,id:o.id,deleted:true,full:o.meta||{},by:st.user||null}))});if(r.error)throw r.error;part.forEach(o=>done(o.coll+'\u0001'+o.id,o));saveQ();}
+    for(let i=0;i<ups.length;i+=200){const part=ups.slice(i,i+200);const r=await withTO(sb.rpc('save_records',{rows:part}),20000,'save');if(r.error)throw r.error;part.forEach((x,n)=>done(x.coll+'\u0001'+x.id,refs[i+n]));saveQ();adopt(r.data);}
+    for(let i=0;i<dels.length;i+=200){const part=dels.slice(i,i+200);const r=await withTO(sb.rpc('save_records',{rows:part.map(o=>({coll:o.coll,id:o.id,deleted:true,full:o.meta||{},by:st.user||null}))}),20000,'save');if(r.error)throw r.error;part.forEach(o=>done(o.coll+'\u0001'+o.id,o));saveQ();}
     st.err=skipped?((typeof t==='function'?t('Photo upload failed — will retry'):'Photo upload failed')):'';}
   catch(e){st.err=(e&&e.message)||'sync error';log('flush error',e);}
   finally{flushing=false;paint();if(Object.keys(queue).length){if(st.err)setTimeout(flush,5000);else schedule();}}}
@@ -170,8 +170,8 @@ window.EX_whoami=function(){return st.user;};
 
 // ---------- boot ----------
 window.EX_boot=async function(){if(!REAL)return {real:false};
-  sb=window.supabase.createClient(CFG.url,CFG.anonKey,{auth:{persistSession:true,storageKey:'ex_auth'}});
-  sbAux=window.supabase.createClient(CFG.url,CFG.anonKey,{auth:{persistSession:false,autoRefreshToken:false,storageKey:'ex_aux'}});
+  sb=window.supabase.createClient(CFG.url,CFG.anonKey,{auth:{persistSession:true,storageKey:'ex_auth',lock:async(_n,_t,fn)=>await fn()}});
+  sbAux=window.supabase.createClient(CFG.url,CFG.anonKey,{auth:{persistSession:false,autoRefreshToken:false,storageKey:'ex_aux',lock:async(_n,_t,fn)=>await fn()}});
   window.EX_sb=sb;
   let email=null;try{const s=await withTO(sb.auth.getSession(),6000,'sign-in');email=s.data.session&&s.data.session.user?s.data.session.user.email:null;}catch(e){email=cachedEmail();st.slow=true;}st.user=email;
   sb.auth.onAuthStateChange((ev,sess)=>{st.user=sess&&sess.user?sess.user.email:null;if(ev==='SIGNED_OUT'){ready=false;}});

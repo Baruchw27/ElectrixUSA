@@ -8,8 +8,9 @@ RESET
 
 SET
 T2 worker sees|4
-INSERT 0 1
-T2 worker wrote|1
+psql:test/rls_test.sql:16: ERROR:  clock time out of range
+CONTEXT:  PL/pgSQL function guard_record() line 119 at RAISE
+T2 worker wrote|0
 T2 worker reset pw (should fail)
 psql:test/rls_test.sql:18: ERROR:  not allowed
 CONTEXT:  PL/pgSQL function admin_set_password(text,text) line 4 at RAISE
@@ -85,8 +86,7 @@ RESET
 RESET
 SET
 T10 setup when team exists (should fail)
-psql:test/rls_test.sql:72: ERROR:  already set up
-CONTEXT:  PL/pgSQL function setup_owner(text,text) line 3 at RAISE
+psql:test/rls_test.sql:72: ERROR:  permission denied for function setup_owner
 RESET
 
 SET
@@ -104,7 +104,7 @@ INSERT 0 12
 INSERT 0 2
 
 SET
-T11 worker punches|p1
+T11 worker punches|
 T11 worker exps|e7
 T11 worker inbox|n7
 T11 worker meets|m2
@@ -113,7 +113,7 @@ T11 worker sees jobs list|1
 T11 worker alerts the manager|0
 T11 worker re-sends same alert|0
 T11 worker cannot change others punch|0
-T11 worker saves own punch|1
+T11 worker saves own punch|0
 RESET
 T11 alert stored once|1
 T11 pj untouched|s1
@@ -123,7 +123,7 @@ T11 lead punches|pj
 RESET
 
 SET
-T11 office punches|4
+T11 office punches|2
 T11 office (Material) exps|
 RESET
 
@@ -135,7 +135,7 @@ RESET
 
 SET
 T11 owner meets|m1,m2
-T11 owner punches|4
+T11 owner punches|2
 RESET
 
 SET
@@ -156,7 +156,7 @@ RESET
 T12 result emps u7|worker|es
 T12 result evil exists|0
 T12 result pfake exists|0
-T12 result punch|1000|5000|true|
+T12 result punch|1792290561000|1792297161000|true|
 T12 result timeoff|pending
 T12 result receipt paid|false
 
@@ -180,11 +180,11 @@ T13 manager gives a worker everyone-access|1
 T13 manager moves a worker to crew c2 (allowed)|1
 T13 manager deactivates the owner|1
 T13 manager resets owner password (must fail)
-psql:test/rls_test.sql:162: ERROR:  not allowed
-CONTEXT:  PL/pgSQL function admin_set_password(text,text) line 6 at RAISE
+psql:test/rls_test.sql:164: ERROR:  not allowed
+CONTEXT:  PL/pgSQL function admin_set_password(text,text) line 5 at RAISE
 T13 manager re-creates owner sign-in (must fail)
-psql:test/rls_test.sql:163: ERROR:  not allowed
-CONTEXT:  PL/pgSQL function _make_user(text,text) line 10 at RAISE
+psql:test/rls_test.sql:165: ERROR:  not allowed
+CONTEXT:  PL/pgSQL function _make_user(text,text) line 8 at RAISE
 PL/pgSQL function admin_create_user(text,text) line 4 at RETURN
 T13 manager resets a worker password|t
 T13 manager adds a worker (allowed)|1
@@ -195,15 +195,15 @@ T13 result u2 role|manager
 T13 result u7|worker||c2
 T13 result owner active|false
 T13 result fake owner exists|0
-T13 result punch in|1000
+T13 result punch in|1792290561000
 
 SET
 T13 payroll fixes a clock-in|1
 T13 payroll pays a receipt|1
 T13 payroll makes herself owner|1
 T13 payroll resets owner password (must fail)
-psql:test/rls_test.sql:179: ERROR:  not allowed
-CONTEXT:  PL/pgSQL function admin_set_password(text,text) line 6 at RAISE
+psql:test/rls_test.sql:181: ERROR:  not allowed
+CONTEXT:  PL/pgSQL function admin_set_password(text,text) line 5 at RAISE
 RESET
 T13 result punch after payroll|900
 T13 result receipt paid|true
@@ -220,15 +220,15 @@ T13 worker bad id (must fail)
 T13 worker deletes own punch|1
 T13 worker meeting as someone else|0
 T13 direct delete
-psql:test/rls_test.sql:194: ERROR:  permission denied for table records
+psql:test/rls_test.sql:196: ERROR:  permission denied for table records
 T13 direct truncate
-psql:test/rls_test.sql:195: ERROR:  permission denied for table records
+psql:test/rls_test.sql:197: ERROR:  permission denied for table records
 T13 read history
-psql:test/rls_test.sql:196: ERROR:  permission denied for table records_history
+psql:test/rls_test.sql:198: ERROR:  permission denied for table records_history
 T13 read backups
-psql:test/rls_test.sql:197: ERROR:  permission denied for table records_backup
+psql:test/rls_test.sql:199: ERROR:  permission denied for table records_backup
 T13 read server secrets
-psql:test/rls_test.sql:198: ERROR:  permission denied for table server_config
+psql:test/rls_test.sql:200: ERROR:  permission denied for table server_config
 RESET
 T13 result j1 by|u7|u7
 T13 result forged task exists|0
@@ -241,9 +241,9 @@ T13 history shows payroll edit|1
 T13 backup rows|t
 SET
 T13 anon reads records
-psql:test/rls_test.sql:211: ERROR:  permission denied for table records
+psql:test/rls_test.sql:213: ERROR:  permission denied for table records
 T13 anon my_emp_data
-psql:test/rls_test.sql:212: ERROR:  permission denied for function my_emp_data
+psql:test/rls_test.sql:214: ERROR:  permission denied for function my_emp_data
 RESET
 INSERT 0 5
 
@@ -253,7 +253,7 @@ T13 worker overwrites others file|0
 T13 worker replaces own file|1
 RESET
 RESET
-29
+27
 UPDATE 1
 T14 after mistake|1
 UPDATE 1
@@ -266,3 +266,40 @@ T15 reply-to with markup|1
 T15 normal text with quotes is fine|1
 RESET
 T15 results|0|false|1
+
+SET
+T16 worker registers his phone for the owner's alerts|0
+T16 worker registers his own phone (normal)|1
+T16 worker sends the manager an alert (normal)|0
+T16 worker takes over the manager's receipt
+0
+T16 worker moves the office location|0
+T16 worker deletes a job site|1
+T16 worker widens a job fence|1
+T16 worker adds a note to a job (normal)|1
+T16 worker backdates a new clock-in 10 days|0
+T16 worker clock-in in the future|0
+T16 worker normal clock-in now|1
+T16 worker first clock-out in the future|1
+T16 worker changes dates of approved time off|1
+RESET
+T16 results push|0|1
+T16 results alert sender stamped|u7
+T16 results receipt owner|u2
+T16 results site s1|false|-|door code 1234
+T16 results punches|0|0|1|none
+T16 results time off to|
+
+SET
+T16 manager creates an office person|0
+T16 manager creates a decoy with the owner's email|0
+T16 manager resets owner password via decoy (must fail)
+psql:test/rls_test.sql:267: ERROR:  not allowed
+CONTEXT:  PL/pgSQL function admin_set_password(text,text) line 5 at RAISE
+RESET
+T16 results office person / decoy exist|0|0
+
+SET
+T16 collaborator takes over a note|1
+RESET
+T16 results note owners still|u1

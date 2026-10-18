@@ -6,7 +6,7 @@ fake supabase on 8787
   ✓ setup link shows
   ✓ owner signed in
   ✓ server got the data
-   server: 2255 records ['emps', 'crews', 'sites', 'stock', 'base', '_']
+   server: 2254 records ['emps', 'crews', 'sites', 'stock', 'base', '_']
   ✓ demo data cleared (no fake tasks)
   ✓ passwords never uploaded
   ✓ team sign-ins created

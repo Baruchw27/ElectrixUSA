@@ -5,10 +5,10 @@
 <meta name="theme-color" content="#ffffff"><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Electrix Field</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
-<script>window.EX_VER='vmvdb6sxj';</script><script src="config.js"></script>
+<script>window.EX_VER='vmvdd09zr';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vmvdb6sxj"></script>
-<script src="extras.js?vmvdb6sxj"></script>
+<script src="sync.js?vmvdd09zr"></script>
+<script src="extras.js?vmvdd09zr"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -2010,7 +2010,7 @@ function checkGPS(){
   if(D.demo){box.className='gps ok';box.textContent=t('Demo mode — GPS fence skipped');gpsOk=true;return;}
   const s=D.sites.find(x=>x.id===document.getElementById('punchSite').value);
   if(!s){box.className='gps wait';box.textContent='';gpsOk=false;return;}
-  if(!s.lat){if(!s.geoTried&&typeof fetch!=='undefined'&&navigator.onLine!==false){box.className='gps wait';box.textContent=t('Finding this job on the map…');gpsOk=false;const sid=s.id;
+  if(!s.lat){if(!s.geoTried&&canSiteGeo()&&typeof fetch!=='undefined'&&navigator.onLine!==false){box.className='gps wait';box.textContent=t('Finding this job on the map…');gpsOk=false;const sid=s.id;
       geocode(geoQuery(s)).then(g=>{s.geoTried=true;if(g){s.lat=g.lat;s.lng=g.lng;s.rad=s.rad||300;}save();}).catch(()=>{s.geoTried=true;}).finally(()=>{if(document.getElementById('punchSite').value===sid)checkGPS();});return;}
     box.className='gps no';box.innerHTML='📍 '+t('This job has no GPS point yet — you can\'t punch in here.')+(canFenceEdit(me())?'<button class="btn gr" style="margin-top:8px" onclick="fenceHere(\''+jsq(s.id)+'\')">📍 '+t('I am at this job — save my spot as its GPS point')+'</button><div style="font-size:12px;margin-top:4px;color:var(--g4)">'+t('Or open the Geofence and paste the Google Maps link.')+'</div>':fenceHelpBtn(s.id));gpsOk=false;return;}
   box.className='gps wait';box.textContent='Checking your location…';gpsOk=false;
@@ -2123,7 +2123,7 @@ function setStage(k){const s=D.sites.find(x=>x.id===stgSite);if(!s)return;const 
 function setPhase(p){const s=D.sites.find(x=>x.id===stgSite);if(!s)return;s.phase=p;save();pickStage(stgSite);refreshAfterStage();}
 function refreshAfterStage(){try{if(!document.getElementById('m-folder').classList.contains('hid'))openFolder(fdSite);}catch(e){}try{renderJobs();}catch(e){}try{renderSites();}catch(e){}try{renderPunch();}catch(e){}}
 function geoQuery(s){let n=s.name;const g=n.match(/Greens At Chester\s+B\d+\s+(.+)$/i);if(g)return g[1]+', Chester, NY';if(/Greenhills/i.test(n))return 'Greenhills, Monsey, NY';if(/Highview Estates/i.test(n))return 'Belz Way, Monroe, NY';if(/Palm Tree/i.test(n))return 'Palm Tree, Monroe, NY';if(/^CR 105$/i.test(n))return 'County Road 105, Monroe, NY';if(/^tully$/i.test(n))return 'Tully, NY';n=n.replace(/^Greens At Chester$/i,'Greens at Chester, NY');return n;}
-let _geoBusy=false;async function geocodeMissing(){if(_geoBusy||typeof fetch==='undefined'||!navigator.onLine)return;_geoBusy=true;try{for(const s of D.sites){if(s.lat||s.geoTried)continue;if((s.stage==='priced'||s.stage==='done')&&s.id!==fdSite)continue;try{const g=await geocode(geoQuery(s));s.geoTried=true;if(g){s.lat=g.lat;s.lng=g.lng;s.rad=s.rad||300;}save();}catch(e){break;}await new Promise(r=>setTimeout(r,1200));}}finally{_geoBusy=false;}}
+let _geoBusy=false;async function geocodeMissing(){if(!canSiteGeo())return;if(_geoBusy||typeof fetch==='undefined'||!navigator.onLine)return;_geoBusy=true;try{for(const s of D.sites){if(s.lat||s.geoTried)continue;if((s.stage==='priced'||s.stage==='done')&&s.id!==fdSite)continue;try{const g=await geocode(geoQuery(s));s.geoTried=true;if(g){s.lat=g.lat;s.lng=g.lng;s.rad=s.rad||300;}save();}catch(e){break;}await new Promise(r=>setTimeout(r,1200));}}finally{_geoBusy=false;}}
 setTimeout(()=>{try{geocodeMissing();}catch(e){}},2500);
 
 // ───────────── ADDRESS SEARCH ─────────────
@@ -2433,11 +2433,14 @@ function ccCalc(){try{
 // ───────────── AUTO TRAVEL — from the office to the job, computed, no form ─────────────
 const OFFICE={name:'Electrix USA office — 73 N Airmont Rd, Suffern',lat:41.1246,lng:-74.1192};
 D.base=D.base||Object.assign({},OFFICE);
-(function(){if(!D.base.geo&&typeof fetch!=='undefined'){geocode('73 N Airmont Rd, Suffern, NY 10901').then(g=>{if(g){D.base.lat=g.lat;D.base.lng=g.lng;D.base.geo=true;save();}}).catch(()=>{});}})();
-async function roadTrip(s){if(!s||!s.lat)return null;if(s.trip&&s.trip.fromLat===D.base.lat)return s.trip;
+(function(){if(!D.base.geo&&typeof fetch!=='undefined'){geocode('73 N Airmont Rd, Suffern, NY 10901').then(g=>{if(g&&!window.EX_REAL){D.base.lat=g.lat;D.base.lng=g.lng;D.base.geo=true;save();}}).catch(()=>{});}})();
+// job locations, fences and drive times are kept by the server (and the office); a worker's phone works them out for itself only
+function canSiteGeo(){if(!window.EX_REAL)return true;const m=me();return !!m&&(m.role==='owner'||m.role==='office'||isBoss(m));}
+const _tripMemo={};
+async function roadTrip(s){if(!s||!s.lat)return null;if(s.trip&&s.trip.fromLat===D.base.lat)return s.trip;if(_tripMemo[s.id]&&_tripMemo[s.id].fromLat===D.base.lat)return _tripMemo[s.id];
   let trip=null;try{const r=await fetch('https://router.project-osrm.org/route/v1/driving/'+D.base.lng+','+D.base.lat+';'+s.lng+','+s.lat+'?overview=false');const j=await r.json();if(j&&j.routes&&j.routes[0])trip={mi:j.routes[0].distance/1609.34,min:j.routes[0].duration/60,road:true};}catch(e){}
   if(!trip)trip={mi:distMi(D.base.lat,D.base.lng,s.lat,s.lng)*1.25,min:distMi(D.base.lat,D.base.lng,s.lat,s.lng)*1.25/0.55,road:false};
-  trip.fromLat=D.base.lat;s.trip=trip;try{save();}catch(e){}return trip;}
+  trip.fromLat=D.base.lat;if(canSiteGeo()){s.trip=trip;try{save();}catch(e){}}else _tripMemo[s.id]=trip;return trip;}
 function gmapsDir(s){return 'https://www.google.com/maps/dir/?api=1&destination='+(s&&s.lat?s.lat+','+s.lng:encodeURIComponent((s&&s.name)||''))+'&travelmode=driving';}
 const travelMinMin=()=>D.travelMin!=null&&D.travelMin!==''?+D.travelMin:25;
 const isLocalTrip=(s,min)=>!(s&&s.travelPay!=null&&s.travelPay!=='')&&(min||0)<=travelMinMin();

@@ -857,3 +857,210 @@ $$;
 
 alter function public.emp_privileged(jsonb) set search_path = pg_catalog;
 revoke execute on function public.in_my_crew(text, text) from authenticated;
+
+-- ===== change rules v3 (after the independent check) =====
+create or replace function public._num(x text) returns numeric language sql immutable set search_path = pg_catalog as $$
+  select case when x ~ '^-?[0-9]+(\.[0-9]+)?$' then x::numeric end;
+$$;
+-- the sign-in being reset or re-created belongs to a privileged person? (checks every employee record tied to that sign-in,
+-- by sign-in id and by email, so a look-alike record can't hide the real one)
+create or replace function public.signin_privileged(em text) returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.records r where r.coll = 'emps' and not r.deleted and public.emp_privileged(r.data)
+                 and (lower(r.data->>'authEmail') = lower(em)
+                      or r.data->>'authUid' = (select id::text from auth.users where lower(email) = lower(em) limit 1)));
+$$;
+revoke execute on function public.signin_privileged(text) from public, anon, authenticated;
+create or replace function public.admin_set_password(p_email text, p_pass text) returns uuid
+language plpgsql security definer set search_path = public, auth, extensions as $$
+declare uid uuid;
+begin
+  if not public.is_boss() then raise exception 'not allowed'; end if;
+  if not public.i_am_owner() and (public.signin_privileged(p_email) or public.emp_by_email(p_email) is null) then raise exception 'not allowed'; end if;
+  perform public._pw_check(p_pass);
+  update auth.users set encrypted_password = crypt(p_pass, gen_salt('bf')), updated_at = now()
+  where lower(email) = lower(p_email) returning id into uid;
+  return uid;
+end $$;
+create or replace function public._make_user(p_email text, p_pass text) returns uuid
+language plpgsql security definer set search_path = public, auth, extensions as $$
+declare uid uuid; em text := lower(trim(p_email));
+begin
+  if not (public.is_boss() or public.no_team_yet()) then raise exception 'not allowed'; end if;
+  perform public._pw_check(p_pass);
+  select id into uid from auth.users where lower(email) = em;
+  if uid is not null then
+    if not public.no_team_yet() and not public.i_am_owner() and (public.signin_privileged(em) or public.emp_by_email(em) is null) then raise exception 'not allowed'; end if;
+    update auth.users set encrypted_password = crypt(p_pass, gen_salt('bf')), email_confirmed_at = coalesce(email_confirmed_at, now()), updated_at = now() where id = uid;
+    return uid;
+  end if;
+  uid := gen_random_uuid();
+  insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+                          created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change,
+                          email_change_token_current, reauthentication_token, phone_change, phone_change_token)
+  values ('00000000-0000-0000-0000-000000000000', uid, 'authenticated', 'authenticated', em, crypt(p_pass, gen_salt('bf')), now(),
+          '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now(), '', '', '', '', '', '', '', '');
+  insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+  values (gen_random_uuid(), uid, uid::text, jsonb_build_object('sub', uid::text, 'email', em, 'email_verified', true), 'email', now(), now(), now());
+  return uid;
+end $$;
+-- the owner is set up: the first-time setup call is closed for good
+revoke execute on function public.setup_owner(text, text) from public, anon, authenticated;
+revoke execute on function public.emp_privileged(jsonb) from public, anon;
+grant execute on function public.emp_privileged(jsonb) to authenticated;
+
+create or replace function public.guard_record() returns trigger language plpgsql security invoker set search_path = public as $$
+declare me jsonb; role text; boss boolean; office boolean; payroll boolean; money boolean; hours boolean; approver boolean; material boolean;
+        o jsonb; n jsonb := new.data; f text; nowms bigint := (extract(epoch from now()) * 1000)::bigint;
+begin
+  if current_user not in ('authenticated','anon') or auth.uid() is null then return new; end if;   -- the server's own jobs
+  if tg_op = 'INSERT' and public._row_exists(new.coll, new.id) then return new; end if;               -- judged by the update that follows
+  me := public.my_emp_data();
+  if me = '{}'::jsonb then return new; end if;                                                          -- first-time setup
+  role := coalesce(me->>'role','');
+  o := case when tg_op = 'UPDATE' then old.data else null end;
+
+  -- for everyone, owner included: alerts carry their real sender; phone-alert sign-ups are your own
+  if new.coll = 'inbox' and tg_op = 'INSERT' and jsonb_typeof(n) = 'object' then
+    new.data := n || jsonb_build_object('from', me->>'id'); n := new.data; end if;
+  if new.coll = 'push' and ((o is null and n->>'who' is distinct from me->>'id') or (o is not null and o->>'who' is distinct from me->>'id')
+                            or (not new.deleted and n->>'who' is distinct from me->>'id')) then
+    raise exception 'not allowed' using errcode = '42501'; end if;
+  -- the office's employee records: unique sign-in per person (no look-alike records)
+  if new.coll = 'emps' and not new.deleted and (
+       (n ? 'authUid' and n->>'authUid' is distinct from o->>'authUid' and exists (select 1 from public.records x where x.coll='emps' and not x.deleted and x.id <> new.id and x.data->>'authUid' = n->>'authUid'))
+    or (n ? 'authEmail' and lower(n->>'authEmail') is distinct from lower(o->>'authEmail') and exists (select 1 from public.records x where x.coll='emps' and not x.deleted and x.id <> new.id and lower(x.data->>'authEmail') = lower(n->>'authEmail')))) then
+    raise exception 'that sign-in already belongs to someone' using errcode = '42501'; end if;
+
+  if role = 'owner' then return new; end if;
+  boss := public.is_boss();                                   -- managers, everyone-access, Payroll
+  office := role = 'office';
+  payroll := office and me->>'title' = 'Payroll';
+  material := office and me->>'title' = 'Material';
+  money := coalesce((me->>'all')::boolean,false) or (office and me->>'title' in ('Payroll','Bookkeeper'));
+  hours := coalesce((me->>'all')::boolean,false) or payroll;
+  approver := role in ('manager','office') or coalesce((me->>'all')::boolean,false);
+
+  if new.coll = 'emps' then
+    -- only the owner adds or changes privileged or office people (owner, manager, everyone-access, any office title)
+    if boss then
+      if public.emp_privileged(n) or coalesce(n->>'role','') = 'office'
+         or (o is not null and (public.emp_privileged(o) or coalesce(o->>'role','') = 'office')) then
+        if not (o is not null and old.id = me->>'id' and not new.deleted and (n - 'lang' - 'phone') = (o - 'lang' - 'phone')) then
+          raise exception 'only the owner can change this person' using errcode = '42501'; end if;
+      end if;
+      return new;
+    end if;
+    if new.deleted or o is null or old.id <> me->>'id' or (n - 'lang' - 'phone') is distinct from (o - 'lang' - 'phone') then
+      raise exception 'not allowed' using errcode = '42501'; end if;
+    return new;
+  end if;
+
+  -- company settings: office location, crews, schedule, app settings — managers / everyone-access / Payroll only
+  if new.coll in ('base','crews','sched','_') then
+    if not boss then raise exception 'not allowed' using errcode = '42501'; end if;
+    return new;
+  end if;
+
+  if new.coll = 'sites' then
+    -- the fence (where you may clock in) and the drive time (travel pay) and removing a job: office and up
+    if not (boss or office) and (new.deleted
+         or n->'lat' is distinct from o->'lat' or n->'lng' is distinct from o->'lng' or n->'rad' is distinct from o->'rad'
+         or n->'fenceOk' is distinct from o->'fenceOk' or n->'trip' is distinct from o->'trip') then
+      raise exception 'not allowed' using errcode = '42501'; end if;
+    return new;
+  end if;
+
+  if new.coll = 'stock' then
+    if new.deleted and not (boss or material) then raise exception 'not allowed' using errcode = '42501'; end if;
+    return new;
+  end if;
+  if new.coll = 'mats' then
+    if new.deleted and not (boss or material or o->>'from' = me->>'id') then raise exception 'not allowed' using errcode = '42501'; end if;
+    return new;
+  end if;
+  if new.coll = 'keep' then
+    -- only the note's owner can hand it to someone else
+    if o is not null and o->>'owner' is distinct from me->>'id' and (n->>'owner' is distinct from o->>'owner' or new.deleted) then
+      raise exception 'not allowed' using errcode = '42501'; end if;
+    return new;
+  end if;
+
+  if new.coll = 'jobs' then
+    -- a task says who sent it, and chat messages say who wrote them: nobody signs as someone else
+    if not boss and ((o is null and coalesce(n->>'from', me->>'id') <> me->>'id') or (o is not null and n->>'from' is distinct from o->>'from')) then
+      raise exception 'not allowed' using errcode = '42501'; end if;
+    if new.deleted and not boss and o->>'from' is distinct from me->>'id' then raise exception 'not allowed' using errcode = '42501'; end if;
+    for f in select k from jsonb_object_keys(n) k where k like 'm\_%' loop
+      if (o is null or o->f is distinct from n->f) and n->f->>'by' is distinct from me->>'id'
+         and not (o ? f and ((n->f) - 'seen' - 'got') = ((o->f) - 'seen' - 'got')) then
+        raise exception 'not allowed' using errcode = '42501'; end if;
+    end loop;
+    return new;
+  end if;
+  if new.coll = 'meets' then
+    if (o is null and n->>'by' is distinct from me->>'id') or (o is not null and o->>'by' is distinct from me->>'id') then
+      raise exception 'not allowed' using errcode = '42501'; end if;
+    return new;
+  end if;
+  if new.coll not in ('punches','timeoff','exps','travel','goHomeLog') then return new; end if;
+
+  if new.coll = 'goHomeLog' then
+    if not (role = 'manager' or coalesce((me->>'all')::boolean,false)) then raise exception 'not allowed' using errcode = '42501'; end if;
+    return new;
+  end if;
+
+  if new.deleted then
+    if new.coll = 'punches' and not hours then raise exception 'not allowed' using errcode = '42501'; end if;
+    if new.coll = 'exps' and not money and (o->>'who' is distinct from me->>'id' or coalesce((o->>'paid')::boolean,false)) then raise exception 'not allowed' using errcode = '42501'; end if;
+    if new.coll in ('timeoff','travel') and not boss and o->>'who' is distinct from me->>'id' then raise exception 'not allowed' using errcode = '42501'; end if;
+    return new;
+  end if;
+
+  -- records belong to one person: made for yourself, and never moved to someone else
+  -- (Payroll / everyone-access for hours, Payroll / Bookkeeper for receipts, managers for time off and travel)
+  if ((o is null and n->>'who' is distinct from me->>'id') or (o is not null and n->>'who' is distinct from o->>'who'))
+     and not (new.coll = 'punches' and hours) and not (new.coll = 'exps' and money) and not (new.coll in ('timeoff','travel') and boss) then
+    raise exception 'not allowed' using errcode = '42501'; end if;
+
+  if new.coll = 'punches' and not hours then
+    -- a new clock-in can't be in the future or more than 3 days back (offline phones catch up), a clock-out not before it
+    if o is null and (public._num(n->>'in') is null or public._num(n->>'in') > nowms + 300000 or public._num(n->>'in') < nowms - 3*86400000
+                      or (n->'out' is not null and n->'out' <> 'null'::jsonb and (public._num(n->>'out') < public._num(n->>'in') or public._num(n->>'out') > nowms + 300000))) then
+      raise exception 'clock time out of range' using errcode = '42501'; end if;
+    -- approving an out-of-fence clock-in: managers / office, never your own
+    if coalesce(n->>'approvedBy','') <> coalesce(o->>'approvedBy','')
+       or (coalesce((o->>'pending')::boolean,false) and not coalesce((n->>'pending')::boolean,false)) then
+      if not approver or o is null or o->>'who' = me->>'id' or (n->>'approvedBy' is distinct from me->>'id' and coalesce(n->>'approvedBy','') <> '') then
+        raise exception 'not allowed' using errcode = '42501'; end if;
+    end if;
+    if o is not null then
+      if n->>'in' is distinct from o->>'in' or n->'edits' is distinct from o->'edits' then
+        raise exception 'clock times can only be changed by Payroll' using errcode = '42501'; end if;
+      if o->'out' is not null and o->'out' <> 'null'::jsonb and n->'out' is distinct from o->'out' then
+        raise exception 'clock times can only be changed by Payroll' using errcode = '42501'; end if;
+      if (o->'out' is null or o->'out' = 'null'::jsonb) and n->'out' is not null and n->'out' <> 'null'::jsonb then
+        if o->>'who' is distinct from me->>'id' and not approver then raise exception 'not allowed' using errcode = '42501'; end if;
+        if public._num(n->>'out') > nowms + 300000 or public._num(n->>'out') < public._num(o->>'in') then
+          raise exception 'clock time out of range' using errcode = '42501'; end if;
+      end if;
+    end if;
+  elsif new.coll = 'timeoff' and not boss then
+    -- you can ask (or cancel your own); approving is for owner, managers, everyone-access, Payroll;
+    -- the dates of an answered request don't change
+    if (o is null and coalesce(n->>'status','pending') <> 'pending')
+       or (o is not null and n->>'status' is distinct from o->>'status' and n->>'status' <> 'cancelled')
+       or (o is not null and coalesce(o->>'status','pending') <> 'pending' and (n - 'status' - 'seen' - 'read') is distinct from (o - 'status' - 'seen' - 'read')) then
+      raise exception 'not allowed' using errcode = '42501'; end if;
+  elsif new.coll = 'exps' and not money then
+    if coalesce((n->>'paid')::boolean,false) and not coalesce((o->>'paid')::boolean,false) then raise exception 'not allowed' using errcode = '42501'; end if;
+    if n->>'paidBy' is distinct from o->>'paidBy' or n->>'paidAt' is distinct from o->>'paidAt' then raise exception 'not allowed' using errcode = '42501'; end if;
+    if coalesce((o->>'paid')::boolean,false) and (n - 'seen' - 'read') is distinct from (o - 'seen' - 'read') then raise exception 'not allowed' using errcode = '42501'; end if;
+  elsif new.coll = 'travel' and not boss then
+    if o is not null and (n->>'status' is distinct from o->>'status' or n->>'minutes' is distinct from o->>'minutes' or n->>'pay' is distinct from o->>'pay' or n->>'miles' is distinct from o->>'miles') then
+      raise exception 'not allowed' using errcode = '42501'; end if;
+  end if;
+  return new;
+end $$;
+create or replace trigger records_guard before insert or update on public.records
+  for each row when (new.coll in ('emps','punches','timeoff','exps','travel','goHomeLog','jobs','meets','inbox','push','base','crews','sched','_','sites','stock','mats','keep'))
+  execute function public.guard_record();

@@ -31,3 +31,14 @@ Earlier live run (same method, also rolled back) additionally showed:
   worker: approve own time off -> refused (stays pending); worker: mark own receipt paid -> refused (stays unpaid)
   worker: a job saved claiming "by Baruch" -> recorded as changed by u7
   worker: create a fake owner employee record -> refused; create hours for someone else -> refused; task signed as Baruch -> refused
+
+SECOND LIVE RUN — after the independent check found more gaps (same method: real accounts, everything ROLLED BACK)
+u7  register own phone to receive Baruch's alerts           refused (not saved)
+u7  alert to manager (normal) while claiming from=Baruch     saved; sender recorded by the server as u7
+u7  move the office location                                 refused (office lat unchanged 41.1192165)
+u7  widen a job's clock-in fence / delete a job              refused (job s2 not deleted, radius unchanged)
+u7  clock-in backdated 10 days                               refused (not saved)
+u7  clock-in now (normal)                                    saved
+u2  manager adds an office person                            refused (owner only)
+u2  manager adds a look-alike record with Baruch's email     refused (sign-in already belongs to someone)
+u2  manager adds a worker (normal)                           saved

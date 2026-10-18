@@ -119,15 +119,17 @@ select 'T11 owner meets', string_agg(id,',' order by id) from records where coll
 select 'T11 owner punches', count(*) from records where coll='punches';
 reset role;
 -- 12) no self-promotion / self-approval
+\set t0 `echo $(( $(date +%s) * 1000 - 7200000 ))`
+\set t1 `echo $(( $(date +%s) * 1000 - 600000 ))`
 select pg_temp.as_user('22222222-2222-2222-2222-222222222222','u7@electrixusa.app'); set role authenticated;
 select 'T12 worker makes himself owner', count(*) from save_records('[{"coll":"emps","id":"u7","patch":{"role":"owner"},"by":"u7"}]'::jsonb);
 select 'T12 worker changes own language', count(*) from save_records('[{"coll":"emps","id":"u7","patch":{"lang":"es"},"by":"u7"}]'::jsonb);
 select 'T12 worker adds a fake boss', count(*) from save_records('[{"coll":"emps","id":"evil","full":{"name":"x","role":"owner","authUid":"22222222-2222-2222-2222-222222222222"},"by":"u7"}]'::jsonb);
 select 'T12 worker punch for someone else', count(*) from save_records('[{"coll":"punches","id":"pfake","full":{"who":"u9","site":"s1","in":1},"by":"u7"}]'::jsonb);
-select 'T12 worker own punch in', count(*) from save_records('[{"coll":"punches","id":"pw","full":{"who":"u7","site":"s1","in":1000,"out":null,"pending":true},"by":"u7"}]'::jsonb);
+select 'T12 worker own punch in', count(*) from save_records(format('[{"coll":"punches","id":"pw","full":{"who":"u7","site":"s1","in":%s,"out":null,"pending":true},"by":"u7"}]', :t0)::jsonb);
 select 'T12 worker approves own punch', count(*) from save_records('[{"coll":"punches","id":"pw","patch":{"pending":false,"approvedBy":"u7"},"by":"u7"}]'::jsonb);
 select 'T12 worker moves clock-in', count(*) from save_records('[{"coll":"punches","id":"pw","patch":{"in":1},"by":"u7"}]'::jsonb);
-select 'T12 worker clocks out', count(*) from save_records('[{"coll":"punches","id":"pw","patch":{"out":5000},"by":"u7"}]'::jsonb);
+select 'T12 worker clocks out', count(*) from save_records(format('[{"coll":"punches","id":"pw","patch":{"out":%s},"by":"u7"}]', :t1)::jsonb);
 select 'T12 worker changes clock-out later', count(*) from save_records('[{"coll":"punches","id":"pw","patch":{"out":99999},"by":"u7"}]'::jsonb);
 select 'T12 worker time off', count(*) from save_records('[{"coll":"timeoff","id":"tw","full":{"who":"u7","status":"pending"},"by":"u7"}]'::jsonb);
 select 'T12 worker approves own time off', count(*) from save_records('[{"coll":"timeoff","id":"tw","patch":{"status":"approved"},"by":"u7"}]'::jsonb);
@@ -204,7 +206,7 @@ select 'T13 result receipt amt', data->>'amt' from records where id='xw';
 select 'T13 result punch still there', deleted::text from records where id='pw';
 select 'T13 result fake meeting', count(*) from records where id='mz';
 select 'T13 history rows for pw', count(*) from records_history where id='pw';
-select 'T13 history shows payroll edit', count(*) from records_history where id='pw' and by_who='u11' and old_data->>'in'='1000' and new_data->>'in'='900';
+select 'T13 history shows payroll edit', count(*) from records_history where id='pw' and by_who='u11' and old_data->>'in'=:'t0' and new_data->>'in'='900';
 select 'T13 backup rows', public.backup_records() > 0;
 -- anon gets nothing
 set role anon;
@@ -234,3 +236,39 @@ select 'T15 reply-to with markup', count(*) from save_records($j$[{"coll":"jobs"
 select 'T15 normal text with quotes is fine', count(*) from save_records($j$[{"coll":"jobs","id":"zq2","full":{"desc":"Install 7\" can lights, Joe's job <rough>","from":"u7"},"by":"u7"}]$j$::jsonb);
 reset role;
 select 'T15 results', (select count(*) from records where id='zq1'), (select (data ? 'm_zz')::text from records where id='j1'), (select count(*) from records where id='zq2');
+-- 16) after the independent check: push sign-ups, alert sender, taking over records, settings, fences, notes, decoy sign-in, time ranges
+\set tn `echo $(( $(date +%s) * 1000 ))`
+select pg_temp.as_user('22222222-2222-2222-2222-222222222222','u7@electrixusa.app'); set role authenticated;
+select 'T16 worker registers his phone for the owner''s alerts', count(*) from save_records('[{"coll":"push","id":"pz1","full":{"who":"u1","sub":{"endpoint":"x"}},"by":"u7"}]'::jsonb);
+select 'T16 worker registers his own phone (normal)', count(*) from save_records('[{"coll":"push","id":"pz2","full":{"who":"u7","sub":{"endpoint":"x"}},"by":"u7"}]'::jsonb);
+select 'T16 worker sends the manager an alert (normal)', count(*) from save_records('[{"coll":"inbox","id":"nz1","full":{"to":"u2","msg":"Carlos needs material","from":"u1"},"by":"u7"}]'::jsonb);
+select 'T16 worker takes over the manager''s receipt'; select count(*) from save_records('[{"coll":"exps","id":"e1","patch":{"who":"u7"},"by":"u7"}]'::jsonb);
+select 'T16 worker moves the office location', count(*) from save_records('[{"coll":"base","id":"lat","full":1,"by":"u7"}]'::jsonb);
+select 'T16 worker deletes a job site', count(*) from save_records('[{"coll":"sites","id":"s1","deleted":true,"full":{},"by":"u7"}]'::jsonb);
+select 'T16 worker widens a job fence', count(*) from save_records('[{"coll":"sites","id":"s1","patch":{"rad":99999},"by":"u7"}]'::jsonb);
+select 'T16 worker adds a note to a job (normal)', count(*) from save_records('[{"coll":"sites","id":"s1","patch":{"note":"door code 1234"},"by":"u7"}]'::jsonb);
+select 'T16 worker backdates a new clock-in 10 days', count(*) from save_records(format('[{"coll":"punches","id":"pz3","full":{"who":"u7","site":"s1","in":%s,"out":null},"by":"u7"}]', :tn - 864000000)::jsonb);
+select 'T16 worker clock-in in the future', count(*) from save_records(format('[{"coll":"punches","id":"pz4","full":{"who":"u7","site":"s1","in":%s,"out":null},"by":"u7"}]', :tn + 7200000)::jsonb);
+select 'T16 worker normal clock-in now', count(*) from save_records(format('[{"coll":"punches","id":"pz5","full":{"who":"u7","site":"s1","in":%s,"out":null},"by":"u7"}]', :tn - 60000)::jsonb);
+select 'T16 worker first clock-out in the future', count(*) from save_records(format('[{"coll":"punches","id":"pz5","patch":{"out":%s},"by":"u7"}]', :tn + 7200000)::jsonb);
+select 'T16 worker changes dates of approved time off', count(*) from save_records('[{"coll":"timeoff","id":"tw","patch":{"to":"2027-12-31"},"by":"u7"}]'::jsonb);
+reset role;
+select 'T16 results push', (select count(*) from records where id='pz1'), (select count(*) from records where id='pz2');
+select 'T16 results alert sender stamped', data->>'from' from records where id='nz1';
+select 'T16 results receipt owner', data->>'who' from records where id='e1';
+select 'T16 results office lat is still a number', jsonb_typeof(data) from records where coll='base' and id='lat';
+select 'T16 results site s1', deleted::text, coalesce(data->>'rad','-'), coalesce(data->>'note','-') from records where coll='sites' and id='s1';
+select 'T16 results punches', (select count(*) from records where id='pz3'), (select count(*) from records where id='pz4'), (select count(*) from records where id='pz5'), (select coalesce(data->>'out','none') from records where id='pz5');
+select 'T16 results time off to', data->>'to' from records where id='tw';
+-- manager: office staff are owner-only; decoy record with the owner's email can't unlock a password reset
+select pg_temp.as_user('44444444-4444-4444-4444-444444444444','u2@electrixusa.app'); set role authenticated;
+select 'T16 manager creates an office person', count(*) from save_records('[{"coll":"emps","id":"u30","full":{"name":"New office","role":"office","title":"Inspections"},"by":"u2"}]'::jsonb);
+select 'T16 manager creates a decoy with the owner''s email', count(*) from save_records('[{"coll":"emps","id":"u31","full":{"name":"Decoy","role":"worker","authEmail":"u1@electrixusa.app"},"by":"u2"}]'::jsonb);
+select 'T16 manager resets owner password via decoy (must fail)'; select admin_set_password('u1@electrixusa.app','takeover99');
+reset role;
+select 'T16 results office person / decoy exist', (select count(*) from records where id='u30'), (select count(*) from records where id='u31');
+-- note collaborator can't take the note
+select pg_temp.as_user('22222222-2222-2222-2222-222222222222','u7@electrixusa.app'); set role authenticated;
+select 'T16 collaborator takes over a note', count(*) from save_records((select jsonb_build_array(jsonb_build_object('coll','keep','id',id,'patch',jsonb_build_object('owner','u7'),'by','u7')) from records where coll='keep' and data->>'owner'<>'u7' and data->'collab' ? 'u7' limit 1));
+reset role;
+select 'T16 results note owners still', string_agg(distinct data->>'owner', ',') from records where coll='keep' and data->'collab' ? 'u7';

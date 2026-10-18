@@ -8,6 +8,6 @@
   ✓ wire123456 → accepted
   ✓ Brian2026x → accepted
   ✓ fresh123 → accepted
-  ✓ 300 auto passwords all pass the rules, e.g. ['panel223925', 'spark134576', 'relay104522']
+  ✓ 300 auto passwords all pass the rules, e.g. ['amp204356', 'ohm669083', 'panel129225']
   ✓ no page errors []
 12 passed, 0 failed

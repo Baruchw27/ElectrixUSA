@@ -20,7 +20,3 @@ t_mic: 38 passed, 0 failed
 t_picker: 27 passed, 0 failed
 t_width: 279 pages checked, 0 too wide
 t_sanitize: 13 passed, 0 failed
-click_real: ALL OK — no errors on any click
-click_demo: ALL OK — no errors on any click
-flow_demo: page errors: none
-t_scale: over 400ms: {'u1/sched': 519, 'u1/punch': 453, 'u2/sched': 433, 'u2/punch': 484, 'o1/sched': 537}
