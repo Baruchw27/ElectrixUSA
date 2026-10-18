@@ -200,8 +200,8 @@ window.EX_login=async function(q,pass){q=(q||'').trim();if(!q||!pass)return {err
     const uid=ss.data.user.id;try{localStorage.setItem('ex_uid',uid);}catch(e){}
     // recover this employee's own encrypted stash from a previous logout (device key unwraps it; not tied to password).
     try{const enc=localStorage.getItem('ex_qenc__'+uid);if(enc){const dk=await deviceKey();if(dk){const rec=await decWith(dk,enc);if(rec&&typeof rec==='object'){Object.keys(rec).forEach(k=>{if(!queue[k])queue[k]=rec[k];});localStorage.removeItem('ex_qenc__'+uid);saveQ();}}}}catch(e){}
-    // migrate away any legacy plaintext stash left by an older build: load it, then delete it so no plaintext lingers.
-    try{const pf=localStorage.getItem('ex_queue__'+uid);if(pf){const rec=JSON.parse(pf)||{};Object.keys(rec).forEach(k=>{if(!queue[k])queue[k]=rec[k];});localStorage.removeItem('ex_queue__'+uid);saveQ();}}catch(e){}
+    // any legacy plaintext stash from an older build is DISCARDED, not loaded, so no unencrypted work is ever restored.
+    try{localStorage.removeItem('ex_queue__'+uid);}catch(e){}
     return {ok:true,email:ss.data.user.email};
   }catch(e){return {err:'badpass',msg:(e&&e.message)||''};}};
 // signing out wipes this phone's copy of the company data, the saved session, and the biometric sign-in, so the next
@@ -231,18 +231,19 @@ window.EX_logout=async function(){
       } else secured=false;
     }catch(e){try{localStorage.removeItem('ex_qenc__'+uid);}catch(e2){}secured=false;}
   }
-  const keepQueue = secured===false; // couldn't secure it -> keep the live queue so the work is not lost
+  // If there is unsent work we could NOT securely encrypt, do NOT sign out: keeping an unencrypted queue on a shared
+  // phone would both expose it and risk the next employee seeing it. Stay signed in and tell the person to sync first.
+  if(secured===false){
+    try{if(typeof toast==='function')toast(typeof t==='function'?t('You have unsent changes that could not be secured on this phone. Connect to the internet and let them finish saving before you sign out.'):'Unsent changes could not be secured — connect and let them save before signing out.','bad');}catch(e){}
+    return {aborted:true,secured:false,stashed:0};
+  }
+  // Nothing unsent, or it is safely encrypted: sign out and clear everything personal from this phone.
   try{if(sb)await withTO(sb.auth.signOut(),3000,'sign-out');}catch(e){}
-  // privacy on a shared phone: clear the data cache, the saved session and the biometric sign-in.
-  try{['ex_auth','ex_uid','electrix_bio','ex_faceid_asked'].forEach(k=>localStorage.removeItem(k));
+  try{['ex_auth','ex_uid','ex_queue','electrix_bio','ex_faceid_asked'].forEach(k=>localStorage.removeItem(k));
       localStorage.removeItem(typeof KEY!=='undefined'?KEY:'electrix_v29');}catch(e){}
-  if(!keepQueue){try{localStorage.removeItem('ex_queue');}catch(e){}queue={};}
-  ready=false;localReady=false;
-  try{if(typeof toast==='function'){
-    if(secured) toast(typeof t==='function'?t('Some changes will finish saving next time you sign in.'):'Some changes will finish saving next time you sign in.');
-    else if(secured===false) toast(typeof t==='function'?t('Could not safely save your unsent changes on this device — reconnect and let them sync before signing out.'):'Could not safely save your unsent changes — reconnect before signing out.','bad');
-  }}catch(e){}
-  return {stashed,secured};};
+  queue={};ready=false;localReady=false;
+  if(secured){try{if(typeof toast==='function')toast(typeof t==='function'?t('Some changes will finish saving next time you sign in.'):'Some changes will finish saving next time you sign in.');}catch(e){}}
+  return {stashed,secured,aborted:false};};
 function tie(e,uid){if(!uid)return;const live=liveRecord('emps',e.id)||e;if(live.authUid!==uid){live.authUid=uid;try{save();}catch(x){}}}
 window.EX_createUser=async function(e,pass){const r=await sb.rpc('admin_create_user',{p_email:emailFor(e),p_pass:pass});if(r.error)return {err:r.error.message};if(!r.data)return {err:'failed'};tie(e,r.data);return {ok:true,email:emailFor(e)};};
 window.EX_setPassword=async function(e,pass){const r=await sb.rpc('admin_set_password',{p_email:emailFor(e),p_pass:pass});if(r.error)return {err:r.error.message};if(!r.data)return {err:'nouser'};tie(e,r.data);return {ok:true};};
@@ -259,8 +260,9 @@ window.EX_boot=async function(){if(!REAL)return {real:false};
   let email=null,uid=null;try{const s=await withTO(sb.auth.getSession(),6000,'sign-in');const u=s.data.session&&s.data.session.user;email=u?u.email:null;uid=u?u.id:null;}catch(e){email=cachedEmail();st.slow=true;}st.user=email;
   // account switch: if the person signed in now is not the one this phone's cached data belongs to, drop the old copy first
   try{const prev=localStorage.getItem('ex_uid');if(uid){if(prev&&prev!==uid){localStorage.removeItem(typeof KEY!=='undefined'?KEY:'electrix_v29');['ex_queue','electrix_bio','ex_faceid_asked'].forEach(k=>localStorage.removeItem(k));queue={};}localStorage.setItem('ex_uid',uid);}}catch(e){}
-  // restore this employee's own stashed unsent changes (saved at their last logout); another employee's stash stays under its own uid and is never loaded here
-  try{if(uid){const sk='ex_queue__'+uid;const raw=localStorage.getItem(sk);if(raw){const q=JSON.parse(raw)||{};Object.keys(q).forEach(k=>{if(!queue[k])queue[k]=q[k];});localStorage.removeItem(sk);saveQ();}}}catch(e){}
+  // an auto-resumed session (same uid) recovers its own encrypted stash; a legacy plaintext stash is discarded, never loaded
+  try{if(uid){try{localStorage.removeItem('ex_queue__'+uid);}catch(e){}
+    const enc=localStorage.getItem('ex_qenc__'+uid);if(enc){const dk=await deviceKey();if(dk){const rec=await decWith(dk,enc);if(rec&&typeof rec==='object'){Object.keys(rec).forEach(k=>{if(!queue[k])queue[k]=rec[k];});localStorage.removeItem('ex_qenc__'+uid);saveQ();}}}}}catch(e){}
   sb.auth.onAuthStateChange((ev,sess)=>{st.user=sess&&sess.user?sess.user.email:null;if(ev==='SIGNED_OUT'){ready=false;}});
   return {real:true,email};};
 // the job list and the material catalog ship with the app; if the database doesn't have them yet, the owner's phone fills them in once
