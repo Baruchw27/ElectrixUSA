@@ -32,8 +32,12 @@ window.EX_emailFor=emailFor;
 
 // ---------- walking D ----------
 function colls(){return Object.keys(D).filter(k=>!SKIP.has(k)&&D[k]!==null&&typeof D[k]==='object');}
+// Stock quantity is owned by the server RPC apply_stock_txn (atomic deltas), never by the normal patch sync —
+// otherwise a device's absolute qty write would clobber another device's concurrent change. Strip qty from the
+// sync view everywhere snap is set; the live value still comes down from the server on pull/catch-up for display.
+function upStrip(coll,data){if(coll==='stock'&&data&&typeof data==='object'){const d=Object.assign({},data);delete d.qty;return d;}return data;}
 function recordsOf(k){const v=D[k];const out={};
-  if(Array.isArray(v)){v.forEach(x=>{if(!x||typeof x!=='object')return;if(!x.id)x.id=nid(k.slice(0,2));let r=x;if(k==='emps'){r=Object.assign({},x);EMP_STRIP.forEach(f=>delete r[f]);r.authEmail=emailFor(x);}out[x.id]=r;});}
+  if(Array.isArray(v)){v.forEach(x=>{if(!x||typeof x!=='object')return;if(!x.id)x.id=nid(k.slice(0,2));let r=x;if(k==='emps'){r=Object.assign({},x);EMP_STRIP.forEach(f=>delete r[f]);r.authEmail=emailFor(x);}else if(k==='stock'){r=Object.assign({},x);delete r.qty;}out[x.id]=r;});}
   else{Object.keys(v).forEach(id=>{out[id]=v[id];});}
   return out;}
 function scalars(){const out={};Object.keys(D).forEach(k=>{if(SKIP.has(k))return;const v=D[k];if(v===null||typeof v!=='object')out[k]=v;});return out;}
@@ -160,7 +164,7 @@ window.EX_saveNow=async function(){if(!REAL)return {ok:true,rejected:[]};
   const seen={},rejected=[];collected.forEach(x=>{const k=x.coll+'\u0001'+x.id;if(!seen[k]){seen[k]=1;rejected.push(x);}});
   return {ok:!hadError&&rejected.length===0,rejected};};
 // take the server's merged version of what we just saved (it may include another phone's changes)
-function adopt(rows){if(!Array.isArray(rows))return;let changed=false;rows.forEach(r=>{const key=r.coll;if(queue[r.coll+'\u0001'+r.id])return;const j=r.deleted?null:canon(r.coll==='_'?(r.data||{}).v:r.data);
+function adopt(rows){if(!Array.isArray(rows))return;let changed=false;rows.forEach(r=>{const key=r.coll;if(queue[r.coll+'\u0001'+r.id])return;const j=r.deleted?null:canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));
     if(r.deleted){if(snap[key]&&r.id in snap[key]){applyRows([r],{replace:false});delete snap[key][r.id];changed=true;}return;}
     const mine=r.coll==='emps'?(snap[key]||{})[r.id]:null;if(snap[key]&&snap[key][r.id]===j)return;
     if(r.coll==='emps'){const live=liveRecord('emps',r.id);if(live&&canon(stripEmp(live))===j)return;}
@@ -187,7 +191,7 @@ async function catchUp(){if(!REAL||!ready||catching||!st.online)return;catching=
     const since=new Date((lastPull||Date.now())-3*60000).toISOString();const t0=Date.now();const rows=[];let from=0;
     while(true){const r=await withTO(sb.from('records').select('coll,id,data,deleted').gt('updated_at',since).range(from,from+999),20000,'catch-up');if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<1000)break;from+=1000;}
     lastPull=t0;const fresh=rows.filter(r=>!queue[r.coll+'\u0001'+r.id]);
-    if(fresh.length){applyRows(fresh,{replace:false});fresh.forEach(r=>{const k=r.coll;if(r.deleted){if(snap[k])delete snap[k][r.id];}else{(snap[k]=snap[k]||{})[r.id]=canon(r.coll==='_'?(r.data||{}).v:r.data);}});localSave();bump();}
+    if(fresh.length){applyRows(fresh,{replace:false});fresh.forEach(r=>{const k=r.coll;if(r.deleted){if(snap[k])delete snap[k][r.id];}else{(snap[k]=snap[k]||{})[r.id]=canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));}});localSave();bump();}
     try{if(sb.removeAllChannels)await withTO(sb.removeAllChannels(),3000,'reconnect');}catch(e){}subscribe();flush();st.err='';paint();}
   catch(e){log('catch-up',e);}finally{catching=false;}}
 window.EX_catchUp=catchUp;
