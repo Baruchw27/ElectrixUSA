@@ -1,0 +1,28 @@
+  ✓ False: many jobs in list (427)
+  ✓ False: search opens
+  ✓ False: full list shown (427)
+  ✓ False: typing 'bates' narrows to 1
+  ✓ False: closes after pick
+  ✓ False: picked job is selected (177 Bates Dr — Shauly)
+  ✓ False: change event fired (1)
+  ✓ False: nothing found message
+  ✓ False: cancel keeps choice
+  ✓ False: two words + Enter picks (177 Bates Dr — Shauly)
+  ✓ False: short lists untouched (visible 1)
+  ✓ False: Spanish placeholder '🔍 Escribe para buscar…'
+  ✓ False: no page errors []
+  ✓ True: many jobs in list (427)
+  ✓ True: search opens
+  ✓ True: full list shown (427)
+  ✓ True: typing 'bates' narrows to 1
+  ✓ True: closes after pick
+  ✓ True: picked job is selected (177 Bates Dr — Shauly)
+  ✓ True: change event fired (1)
+  ✓ True: nothing found message
+  ✓ True: cancel keeps choice
+  ✓ True: two words + Enter picks (177 Bates Dr — Shauly)
+  ✓ True: short lists untouched (visible 1)
+  ✓ touch: scroll does not open
+  ✓ True: Spanish placeholder '🔍 Escribe para buscar…'
+  ✓ True: no page errors []
+27 passed, 0 failed

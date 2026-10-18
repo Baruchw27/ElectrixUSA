@@ -1,0 +1,12 @@
+fake supabase on 8787
+  ✓ setup link hidden once set up
+  ✓ signed in
+  ✓ Face ID offered after sign-in
+  ✓ Face ID turned on
+  ✓ lock screen on reopen, then unlocks with Face ID
+  ✓ lock shows
+  ✓ tap unlock works
+  ✓ More has Face ID lock (On)
+  ✓ can turn it off
+  ✓ no page errors
+10 passed 0 failed []

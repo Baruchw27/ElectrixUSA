@@ -1,0 +1,2 @@
+clicks: 2891
+ALL OK — no errors on any click

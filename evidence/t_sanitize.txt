@@ -1,0 +1,14 @@
+  ✓ esc turns quotes and brackets into text 
+  ✓ photo from the camera passes 
+  ✓ voice note passes 
+  ✓ web photo passes 
+  ✓ a web page as a picture is refused 
+  ✓ a picture address with a quote is refused 
+  ✓ plain http picture refused 
+  ✓ https link passes 
+  ✓ phone link passes 
+  ✓ script link refused 
+  ✓ id stays the same 
+  ✓ accented name kept 
+  ✓ quotes removed from button values 
+13 passed, 0 failed

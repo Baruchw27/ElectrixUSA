@@ -1,0 +1,15 @@
+  ✓ server down: app opens from the phone in 0.2s
+  ✓ no frozen Loading screen
+  ✓ can move around the app while the server is down
+  ✓ edit kept on the phone
+  ✓ server back: edit reaches the server by itself
+  ✓ …and nothing was lost from the phone
+  ✓ slow server: opens in 0.2s
+  ✓ sleeping phone did not get it live (feed was dead)
+  ✓ waking up pulls what changed
+  ✓ …using a small catch-up, not a full download
+  ✓ live feed reconnected after waking
+  ✓ sign out works with no signal (0.2s)
+  ✓ new phone with no server: clear message, not frozen
+  ✓ no page errors
+14 passed, 0 failed

@@ -1,0 +1,15 @@
+=== 25 employees saving at the same moment (clock-in + task receipt + stock count + catch-up read), 30 s
+number of transactions actually processed: 2405
+number of failed transactions: 0 (0.000%)
+latency average = 313.621 ms
+tps = 79.714069 (without initial connection time)
+=== 50 employees saving at the same moment (clock-in + task receipt + stock count + catch-up read), 30 s
+number of transactions actually processed: 1309
+number of failed transactions: 0 (0.000%)
+latency average = 1174.607 ms
+tps = 42.567422 (without initial connection time)
+=== 25 phones downloading the whole company (15,800 records) at the same moment, 20 s
+number of transactions actually processed: 125
+number of failed transactions: 0 (0.000%)
+latency average = 4406.104 ms
+tps = 5.673947 (without initial connection time)

@@ -1,0 +1,19 @@
+  ✓ Request new material button
+  ✓ Material from the garage button
+  ✓ Take out opens the camera
+  ✓ 2 counted
+  ✓ Done asks 'For which job?'
+  ✓ Keep scanning hides the question
+  ✓ pick-up saved for that job
+  ✓ garage count went down by 2
+  ✓ scanner + window closed
+  ✓ Put back asks where it's coming from
+  ✓ put back saved with job
+  ✓ count back up
+  ✓ supplier needs a name
+  ✓ supplier delivery saved
+  ✓ Done with nothing scanned just closes
+  ✓ Take a picture opens the camera (siCam)
+  ✓ Put back window has 'From which job?'
+  ✓ no page errors []
+18 passed, 0 failed

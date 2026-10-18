@@ -1,0 +1,268 @@
+INSERT 0 4
+CREATE FUNCTION
+
+SET
+INSERT 0 4
+T1 owner sees|4
+RESET
+
+SET
+T2 worker sees|4
+INSERT 0 1
+T2 worker wrote|1
+T2 worker reset pw (should fail)
+psql:test/rls_test.sql:18: ERROR:  not allowed
+CONTEXT:  PL/pgSQL function admin_set_password(text,text) line 4 at RAISE
+RESET
+
+SET
+T3 stranger sees|0
+T3 stranger insert (should fail)
+psql:test/rls_test.sql:23: ERROR:  new row violates row-level security policy for table "records"
+psql:test/rls_test.sql:24: ERROR:  syntax error at or near "set"
+LINE 1: ...3 stranger update', count(*) from (update records set data='...
+                                                             ^
+RESET
+SET
+T4 resolve|u7@electrixusa.app|u7@electrixusa.app|
+RESET
+
+SET
+T5 boss reset|t
+RESET
+T5 hash set|t
+UPDATE 1
+
+SET
+T6 inactive sees|0
+RESET
+INSERT 0 2
+
+SET
+INSERT 0 1
+UPDATE 0
+UPDATE 1
+UPDATE 1
+psql:test/rls_test.sql:43: ERROR:  permission denied for table server_config
+RESET
+T7 calls|https://x.supabase.co/functions/v1/notify|{"to": "u2", "msg": "Carlos is waiting to be clocked in"}
+T7 calls|https://x.supabase.co/functions/v1/trello|{"card": "https://trello.com/c/AbC123/x", "phase": "rough", "stage": "inspection"}
+RESET
+UPDATE 1
+
+SET
+INSERT 0 2
+T8 owner sees notes|2
+RESET
+
+SET
+T8 Carlos sees notes|Shared w Carlos
+T8 Carlos fakes owner note (should fail)
+psql:test/rls_test.sql:53: ERROR:  new row violates row-level security policy for table "records"
+INSERT 0 1
+T8 Carlos own note ok|1
+RESET
+
+SET
+T8 Yossi sees notes|0
+RESET
+
+SET
+(jobs,j9,"{""desc"": ""Hang lights"", ""status"": ""open""}",f)
+(jobs,j9,"{""desc"": ""Hang lights"", ""status"": ""prog""}",f)
+RESET
+
+SET
+(jobs,j9,"{""pri"": true, ""status"": ""prog""}",f)
+T9 merged|{"pri": true, "status": "prog"}
+(jobs,j9,{},t)
+T9 deleted|t
+RESET
+
+SET
+T9 stranger save (should fail)
+RESET
+RESET
+SET
+T10 setup when team exists (should fail)
+psql:test/rls_test.sql:72: ERROR:  already set up
+CONTEXT:  PL/pgSQL function setup_owner(text,text) line 3 at RAISE
+RESET
+
+SET
+T10 boss creates|t
+RESET
+
+SET
+T10 worker creates (should fail)
+psql:test/rls_test.sql:76: ERROR:  not allowed
+CONTEXT:  PL/pgSQL function admin_create_user(text,text) line 3 at RAISE
+RESET
+T10 user row|t|1
+RESET
+INSERT 0 12
+INSERT 0 2
+
+SET
+T11 worker punches|p1
+T11 worker exps|e7
+T11 worker inbox|n7
+T11 worker meets|m2
+T11 worker push|0
+T11 worker sees jobs list|1
+T11 worker alerts the manager|0
+T11 worker re-sends same alert|0
+T11 worker cannot change others punch|0
+T11 worker saves own punch|1
+RESET
+T11 alert stored once|1
+T11 pj untouched|s1
+
+SET
+T11 lead punches|pj
+RESET
+
+SET
+T11 office punches|4
+T11 office (Material) exps|
+RESET
+
+SET
+T11 manager exps|2
+T11 manager inbox|n1,n99
+T11 manager meets|m1,m2
+RESET
+
+SET
+T11 owner meets|m1,m2
+T11 owner punches|4
+RESET
+
+SET
+T12 worker makes himself owner|1
+T12 worker changes own language|1
+T12 worker adds a fake boss|0
+T12 worker punch for someone else|0
+T12 worker own punch in|1
+T12 worker approves own punch|1
+T12 worker moves clock-in|1
+T12 worker clocks out|1
+T12 worker changes clock-out later|1
+T12 worker time off|1
+T12 worker approves own time off|1
+T12 worker receipt|1
+T12 worker marks own receipt paid|1
+RESET
+T12 result emps u7|worker|es
+T12 result evil exists|0
+T12 result pfake exists|0
+T12 result punch|1000|5000|true|
+T12 result timeoff|pending
+T12 result receipt paid|false
+
+SET
+T12 manager approves|2
+RESET
+T12 manager result|approved|u2
+
+SET
+T12 office approves out-of-fence punch|1
+RESET
+RESET
+INSERT 0 1
+INSERT 0 1
+UPDATE 1
+
+SET
+T13 manager makes himself owner|1
+T13 manager makes a worker a manager|1
+T13 manager gives a worker everyone-access|1
+T13 manager moves a worker to crew c2 (allowed)|1
+T13 manager deactivates the owner|1
+T13 manager resets owner password (must fail)
+psql:test/rls_test.sql:162: ERROR:  not allowed
+CONTEXT:  PL/pgSQL function admin_set_password(text,text) line 6 at RAISE
+T13 manager re-creates owner sign-in (must fail)
+psql:test/rls_test.sql:163: ERROR:  not allowed
+CONTEXT:  PL/pgSQL function _make_user(text,text) line 10 at RAISE
+PL/pgSQL function admin_create_user(text,text) line 4 at RETURN
+T13 manager resets a worker password|t
+T13 manager adds a worker (allowed)|1
+T13 manager adds a fake owner (must fail)|0
+T13 manager edits Carlos clock-in (Payroll only)|1
+RESET
+T13 result u2 role|manager
+T13 result u7|worker||c2
+T13 result owner active|false
+T13 result fake owner exists|0
+T13 result punch in|1000
+
+SET
+T13 payroll fixes a clock-in|1
+T13 payroll pays a receipt|1
+T13 payroll makes herself owner|1
+T13 payroll resets owner password (must fail)
+psql:test/rls_test.sql:179: ERROR:  not allowed
+CONTEXT:  PL/pgSQL function admin_set_password(text,text) line 6 at RAISE
+RESET
+T13 result punch after payroll|900
+T13 result receipt paid|true
+T13 result u11 role|office
+
+SET
+T13 worker claims to be the owner in by|1
+T13 worker sends a task as the owner|0
+T13 worker writes chat as the owner|1
+T13 worker writes own chat|1
+T13 worker changes paid receipt amount|1
+T13 worker bad id (must fail)
+0
+T13 worker deletes own punch|1
+T13 worker meeting as someone else|0
+T13 direct delete
+psql:test/rls_test.sql:194: ERROR:  permission denied for table records
+T13 direct truncate
+psql:test/rls_test.sql:195: ERROR:  permission denied for table records
+T13 read history
+psql:test/rls_test.sql:196: ERROR:  permission denied for table records_history
+T13 read backups
+psql:test/rls_test.sql:197: ERROR:  permission denied for table records_backup
+T13 read server secrets
+psql:test/rls_test.sql:198: ERROR:  permission denied for table server_config
+RESET
+T13 result j1 by|u7|u7
+T13 result forged task exists|0
+T13 result chat|false|true
+T13 result receipt amt|20
+T13 result punch still there|false
+T13 result fake meeting|0
+T13 history rows for pw|5
+T13 history shows payroll edit|1
+T13 backup rows|t
+SET
+T13 anon reads records
+psql:test/rls_test.sql:211: ERROR:  permission denied for table records
+T13 anon my_emp_data
+psql:test/rls_test.sql:212: ERROR:  permission denied for function my_emp_data
+RESET
+INSERT 0 5
+
+SET
+T13 worker sees files|exps/notyet/rec.jpg,exps/xw/rec.jpg,stockLog/s9/p.jpg
+T13 worker overwrites others file|0
+T13 worker replaces own file|1
+RESET
+RESET
+29
+UPDATE 1
+T14 after mistake|1
+UPDATE 1
+T14 after restore|0
+T14 history kept the mistake and the fix|t
+
+SET
+T15 site id with a quote|0
+T15 reply-to with markup|1
+T15 normal text with quotes is fine|1
+RESET
+T15 results|0|false|1

@@ -1,0 +1,33 @@
+LIVE SERVER CHECKS — run 2026-10-18 against the real Electrix database, inside one transaction that was ROLLED BACK
+(nothing was saved). Each line runs as a real employee account, through the same rules the app uses.
+
+who    test                                                     result
+u7     worker Carlos: other people's hours visible              0
+u7     worker: other people's receipts visible                  0
+u7     worker: other people's alerts visible                    0
+u7     worker: others' receipt photos visible                   0
+u7     worker: jobs list visible (normal)                       426
+u7     worker: save role=owner                                  accepted by the save call, but ->
+check    Carlos role in database                                worker   (change refused by the database)
+u7     worker: clock in (normal)                                1
+u7     worker: clock out (normal)                               1
+u7     worker: move clock-in earlier                            accepted by the save call, but ->
+check    punch in / out / changed by                            1000 / 5000 / u7   (clock-in unchanged; author stamped by the server)
+u6     crew leader Jon: hours visible only for                  u7 (his own crew)
+u2     manager Yossi: save own role=owner                       accepted by the save call, but ->
+check    Yossi role                                             manager  (refused)
+u2     manager: reset Baruch's password                         BLOCKED: not allowed
+o3     payroll Miriam: reset Baruch's password                  BLOCKED: not allowed
+u7     worker: delete rows directly                             BLOCKED: permission denied for table records
+u7     worker: read change history                              BLOCKED: permission denied for table records_history
+u7     worker: read server secrets                              BLOCKED: permission denied for table server_config
+check  history entries written for the test punch               2 (clock-in, clock-out; refused change not recorded as a change)
+
+Earlier live run (same method, also rolled back) additionally showed:
+  manager: make Carlos a manager -> refused (Carlos stays worker); manager: move Carlos to crew c2 -> allowed
+  manager: deactivate Baruch -> refused; payroll: make herself owner -> refused
+  worker: approve own out-of-fence clock-in -> refused; Material office approves it -> allowed
+  Material office: change a clock-out -> refused; Payroll corrects a clock-out -> allowed, history shows u7 > u7 > o2 > o3
+  worker: approve own time off -> refused (stays pending); worker: mark own receipt paid -> refused (stays unpaid)
+  worker: a job saved claiming "by Baruch" -> recorded as changed by u7
+  worker: create a fake owner employee record -> refused; create hours for someone else -> refused; task signed as Baruch -> refused

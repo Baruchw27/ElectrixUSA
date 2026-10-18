@@ -1,0 +1,26 @@
+t_sync: 79 passed, 0 failed []
+t_freeze: 14 passed, 0 failed
+t_public: 12 passed, 0 failed
+t_private: 9 passed, 0 failed
+t_update: 6 passed, 0 failed
+t_faceid: 10 passed 0 failed []
+t_preseed: 14 passed 0 failed []
+t_offline: service worker active True | app opens with no signal True
+t_garage: 18 passed, 0 failed
+t_scan: 26 passed, 0 failed
+t_scan_real: 5 passed, 0 failed
+t_upc: 10 passed, 0 failed
+t_label: 12 passed, 0 failed
+t_pw: 12 passed, 0 failed
+t_receipt: 18 passed, 0 failed
+t_near: 10 passed, 0 failed
+t_meet_gps: 34 passed, 0 failed
+t_media: 47 passed, 0 failed
+t_mic: 38 passed, 0 failed
+t_picker: 27 passed, 0 failed
+t_width: 279 pages checked, 0 too wide
+t_sanitize: 13 passed, 0 failed
+click_real: ALL OK — no errors on any click
+click_demo: ALL OK — no errors on any click
+flow_demo: page errors: none
+t_scale: over 400ms: {'u1/sched': 519, 'u1/punch': 453, 'u2/sched': 433, 'u2/punch': 484, 'o1/sched': 537}

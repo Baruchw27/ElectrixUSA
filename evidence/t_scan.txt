@@ -1,0 +1,27 @@
+  ✓ Take out has 'Scan barcodes'
+  ✓ camera scanner opens
+  ✓ new barcode asks which item
+  ✓ UPC-A stored as EAN-13
+  ✓ then asks how many, with the item name
+  ✓ barcode remembered on the item (12/2 Romex 250ft)
+  ✓ first box counted
+  ✓ known barcode → shows the item + 'how many?' right away
+  ✓ a second scan while asking is ignored
+  ✓ tap 5 → button says Take out 5
+  ✓ + makes it 6
+  ✓ typing 12 works
+  ✓ 12 more added → 13
+  ✓ + adds one
+  ✓ − removes one
+  ✓ Wrong item → asks which item again
+  ✓ can't take out 0 / − stops at 1
+  ✓ Cancel adds nothing
+  ✓ new item created with its barcode
+  ✓ two lines now
+  ✓ skip leaves list as is
+  ✓ ✕ closes and stops the camera
+  ✓ lines show in Take out
+  ✓ Put back asks 'how many are you putting back'
+  ✓ Put back recognizes the remembered barcode right away
+  ✓ no page errors []
+26 passed, 0 failed

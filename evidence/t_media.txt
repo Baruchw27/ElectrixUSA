@@ -1,0 +1,48 @@
+  ✓ new task shows 🎙 Hold to talk + 🎥 Video
+  ✓ recording shows red dot + timer + slide hint
+  ✓ hold + let go attaches the voice note (1)
+  ✓ voice bubble shows with ▶ and length
+  ✓ mic released after recording
+  ✓ slide left cancels
+  ✓ quick tap → hands-free (Done / Cancel)
+  ✓ Done attaches second voice note
+  ✓ ✕ removes a voice note
+  ✓ video attached
+  ✓ video shows a player
+  ✓ task sent with only a voice note + video {'desc': '🎙 Voice note', 'media': ['audio', 'video'], 'to': ['u2']}
+  ✓ Yossi notified
+  ✓ form cleared for next task
+  ✓ task card shows 🎙 and 🎥
+  ✓ chat shows the task + voice note + video
+  ✓ ▶ plays (button turns to pause)
+  ✓ finishes and resets
+  ✓ recording stops the voice note that was playing
+  ✓ WhatsApp-style icons (mic / send / camera are drawn icons)
+  ✓ typing bar with 🎥, message box and 🎙
+  ✓ voice reply saved as a chat message
+  ✓ Baruch notified of the reply
+  ✓ reply bubble on the right (mine)
+  ✓ typing swaps 🎙 for ➤
+  ✓ text message in the chat
+  ✓ Baruch notified of the text
+  ✓ my message shows a single ✓ (Baruch hasn't got it yet)
+  ✓ swipe right shows 'Replying to Baruch'
+  ✓ ✕ cancels the reply
+  ✓ reply remembers the message it answers
+  ✓ reply bubble shows the quote
+  ✓ quote bar cleared after sending
+  ✓ tapping the quote jumps to the original
+  ✓ finger swipe right → reply ([True, 'task'])
+  ✓ finger scroll up/down is left alone (no reply, page scrolls) [False, None]
+  ✓ scrolling up/down doesn't start a reply
+  ✓ Baruch's card shows unread count
+  ✓ Baruch's own task message is blue (Yossi opened it)
+  ✓ Yossi's messages show on the left
+  ✓ Yossi now sees blue ✓✓ on his message
+  ✓ unread count clears after reading
+  ✓ closing mid-recording stops the mic
+  ✓ someone not on the task can't reply
+  ✓ Spanish: Mantén para hablar
+  ✓ no recorder → clear message ['Voice note deleted', 'Voice note deleted', "🎙 This phone can't record here. Update the phone or use the 🎤 on the keyboard."]
+  ✓ no page errors []
+47 passed, 0 failed

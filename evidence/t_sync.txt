@@ -1,0 +1,103 @@
+/tmp/claude-0/-home-claude/bd7165b7-9d93-5fa3-a44f-208a1e1dae13/scratchpad/app/test/t_sync.py:92: SyntaxWarning: invalid escape sequence '\s'
+  check('task details say Carlos – Seen + time',await A.evaluate("/Carlos\s*Seen \d/.test(document.getElementById('jobdBody').innerText)"),await A.evaluate("document.getElementById('jobdBody').innerText.slice(0,300)"))
+fake supabase on 8787
+1. Owner first-time setup
+  ✓ login screen shows
+  ✓ setup link shows
+  ✓ owner signed in
+  ✓ server got the data
+   server: 2255 records ['emps', 'crews', 'sites', 'stock', 'base', '_']
+  ✓ demo data cleared (no fake tasks)
+  ✓ passwords never uploaded
+  ✓ team sign-ins created
+  ✓ passwords saved in private note
+  ✓ every employee tied to its sign-in
+2. Worker phone signs in
+  ✓ worker sees login
+  ✓ wrong password refused
+  ✓ Carlos signed in
+  ✓ Carlos has all 426 jobs data
+  ✓ Carlos does not receive the owner's private notes
+  ✓ a note shared with Carlos reaches him
+  ✓ Carlos cannot switch users
+  ✓ demo switch hidden
+3. Live sync between phones
+  ✓ task reaches Carlos live
+  ✓ notification reaches Carlos
+  ✓ schedule reaches Carlos
+  ✓ GPS point reaches Carlos
+3b. Read receipts (✓ / ✓✓ / blue ✓✓)
+  ✓ owner sees "delivered" once it is on Carlos's phone
+  ✓ not "seen" before Carlos looks at it
+  ✓ owner card shows gray double check
+  ✓ owner sees "seen" after Carlos opens it
+  ✓ owner card turns blue
+  ✓ task details say Carlos – Seen + time
+  ✓ Carlos does not see the check marks
+  ✓ viewing as Jon does not mark it seen
+3c. Voice note on a task travels to the other phone
+  ✓ voice note uploaded to the server (not kept on the phone)
+  ✓ voice note reaches Carlos
+  ✓ Carlos opens the chat → owner sees the voice note blue
+  ✓ Carlos text reply reaches the owner
+  ✓ owner's card shows 1 unread
+  ✓ Carlos gets a notification about it
+  ✓ the file downloads
+4. Punch in on worker phone → owner sees it
+  ✓ GPS says on site
+  ✓ punch saved
+  ✓ owner sees Carlos punched in
+  ✓ owner home lists Carlos on the job
+5. Time off request → owner approves → worker sees
+  ✓ owner gets request
+  ✓ worker sees approved
+5a. Privacy between employees
+  ✓ owner's own hours/receipt/alert saved
+  ✓ worker phone has only his own hours
+  ✓ worker phone has no one else's receipts
+  ✓ worker phone never receives other people's alerts
+  ✓ worker can still send the owner an alert
+  ✓ worker phone has nothing stuck waiting to upload
+5b. Rapid edits while saving
+  ✓ last edit wins on the other phone
+  ✓ same on the server
+  ✓ two phones editing different parts of one task: both changes kept
+  ✓ saving does not make the screen jump (no echo re-render)
+6. Offline on the worker phone
+  ✓ change waits on phone
+  ✓ change goes out when back online
+7. Photos go to storage, not the database
+  ✓ photo stored as a link
+8. Security
+  ✓ stranger reads nothing
+  ✓ stranger cannot write
+  ✓ cannot steal a worker sign-in
+  ✓ worker cannot reset passwords
+9. Owner resets a password; old one stops working
+  ✓ owner reset ok
+  ✓ new password works
+10. Reload keeps you signed in and loads fast from phone copy
+  ✓ still signed in after reload
+12. Real-app features
+  ✓ field jobs get GPS points in the background
+  ✓ new job gets its GPS point automatically
+  ✓ GPS point syncs to the crew
+  ✓ Trello file opens inside the app
+  ✓ AI features answer through the server
+  ✓ travel ON in real app
+  ✓ road time computed and travel bonus logged
+  ✓ travel shows on owner phone
+  ✓ travel uses the 40-min drive
+10b. Office location saved twice stays a plain number (was corrupted to [n,{}])
+  ✓ office location still a number after 2 saves
+  ✓ office name still text after 2 saves
+  ✓ other phone gets the number
+  ✓ no normal save was refused by the server rules
+11. Sign out
+  ✓ signed out shows login
+11b. Office turns an employee off → his phone loses the data right away
+  ✓ turned-off phone goes back to sign-in
+  ✓ turned-off phone's saved company data is wiped
+  ✓ no page errors
+
+79 passed, 0 failed []

@@ -1,0 +1,13 @@
+  ✓ best name ['7" Bananya Asst.'] (want 7" Bananya Asst)
+  ✓ best name ['15A 125V Self-Test GFCI Receptacle'] (want 15A 125V Self-Test GFCI Receptacle)
+  ✓ best name ['12/2 NM-B W/G 250 FT'] (want 12/2 NM-B W/G 250 FT)
+  ✓ junk line from the photo is not offered ['7" Bananya Asst.']
+  ✓ no name on the label → nothing guessed []
+  ✓ took a picture of the label
+  ✓ shows the name from the label
+  ✓ item made with that name + barcode saved
+  ✓ counted
+  ✓ next scan knows it right away
+  ✓ label reader down → type the item
+  ✓ no page errors []
+12 passed, 0 failed

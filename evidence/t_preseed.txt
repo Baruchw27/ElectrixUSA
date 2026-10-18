@@ -1,0 +1,17 @@
+fake supabase on 8787
+server before: 36
+  ✓ owner signs in
+  ✓ jobs and catalog uploaded by owner phone
+  ✓ no demo tasks or punches uploaded
+  ✓ catalog quantities start at zero
+  ✓ owner has no Punch tab
+  ✓ owner can pick anyone in the top menu
+  ✓ viewing as Carlos shows his screens and a red banner
+  ✓ Back to me returns to Baruch
+  ✓ worker signs in and sees all 426 jobs
+  ✓ worker cannot switch people
+  ✓ worker setRole ignored
+  ✓ no duplicate catalog after reload
+  ✓ owner reload does not upload again
+  ✓ no page errors
+14 passed 0 failed []

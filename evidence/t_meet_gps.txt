@@ -1,0 +1,35 @@
+  ✓ people found {'shia': 'o1', 'yossi': 'u2', 'shauly': 'u3', 'jon': 'u6', 'carlos': 'u7'}
+  ✓ Baruch preselected for Shia ['u1']
+  ✓ everyone listed to pick (23)
+  ✓ name search narrows (2)
+  ✓ saved with people ['u1', 'u6', 'u2']
+  ✓ notified everyone invited ['u2', 'u6', 'u1']
+  ✓ needs at least one person
+  ✓ Yossi has Home tab
+  ✓ Yossi home: Upcoming meetings shows it
+  ✓ Yossi home: New for you shows it
+  ✓ Yossi home: no receipts/money chip
+  ✓ Yossi can't open to edit
+  ✓ Yossi can't delete
+  ✓ Yossi can't move
+  ✓ Shauly (not invited) doesn't see it
+  ✓ Shauly's meetings list doesn't show it
+  ✓ maker can open to edit
+  ✓ added person notified only ['u3']
+  ✓ Baruch home shows it
+  ✓ Baruch can edit
+  ✓ workers have no Home tab
+  ✓ Spanish home words
+  ✓ GPS keeps the precise reading (15)
+  ✓ GPS blocked → clear error (1)
+  ✓ 380 ft away with ±130 ft GPS counts as on site [381, True]
+  ✓ 900 ft away with good GPS is blocked [902, False]
+  ✓ travel: 12 min=0, 25 min=0, 40 min paid, fixed overrides [0, 0, 20, 15]
+  ✓ local limit can be changed (11)
+  ✓ directions open Google Maps
+  ✓ no Apple Maps left
+  ✓ zoom locked in page settings
+  ✓ two-finger pinch is blocked
+  ✓ nothing wider than the screen [390, 390]
+  ✓ no page errors []
+34 passed, 0 failed

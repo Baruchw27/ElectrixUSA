@@ -1,0 +1,13 @@
+  ✓ abc → Password needs at least 8 characters
+  ✓ 1234 → Password needs at least 8 characters
+  ✓ password123 → That password is too easy to guess
+  ✓ onlyletters → Password needs letters and numbers
+  ✓ 12345678 → Password needs letters and numbers
+  ✓ Electrix99 → That password is too easy to guess
+  ✓ aaaaaaa1a → accepted
+  ✓ wire123456 → accepted
+  ✓ Brian2026x → accepted
+  ✓ fresh123 → accepted
+  ✓ 300 auto passwords all pass the rules, e.g. ['panel223925', 'spark134576', 'relay104522']
+  ✓ no page errors []
+12 passed, 0 failed

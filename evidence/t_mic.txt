@@ -1,0 +1,39 @@
+  ✓ False: hidden before typing
+  ✓ False: 🎤 shows in the task box
+  ✓ False: 🎤 sits inside the box
+  ✓ False: listening (red)
+  ✓ False: words typed into the task (Hang six recessed lights)
+  ✓ False: box still has focus
+  ✓ False: app is told about the new text
+  ✓ False: tap again stops
+  ✓ False: adds to existing text (Hang six recessed lights in the kitchen)
+  ✓ False: Spanish listening
+  ✓ False: 🎤 goes away when the window closes
+  ✓ False: 🎤 on job search
+  ✓ False: 🎤 on meeting title
+  ✓ False: meeting title filled
+  ✓ False: no 🎤 on password/date/number boxes ['none', 'none', 'none', 'none', 'none', 'none']
+  ✓ False: no page errors []
+  ✓ True: hidden before typing
+  ✓ True: 🎤 shows in the task box
+  ✓ True: 🎤 sits inside the box
+  ✓ True: listening (red)
+  ✓ True: words typed into the task (Hang six recessed lights)
+  ✓ True: box still has focus
+  ✓ True: app is told about the new text
+  ✓ True: tap again stops
+  ✓ True: adds to existing text (Hang six recessed lights in the kitchen)
+  ✓ True: Spanish listening
+  ✓ True: 🎤 goes away when the window closes
+  ✓ True: 🎤 on job search
+  ✓ True: 🎤 on meeting title
+  ✓ True: meeting title filled
+  ✓ True: no 🎤 on password/date/number boxes ['none', 'none', 'none', 'none', 'none', 'none']
+  ✓ True: no page errors []
+  ✓ hung mic: listening shown
+  ✓ hung mic: stops by itself after 7 s
+  ✓ hung mic: tells you what to do
+  ✓ hung mic: app still works
+  ✓ hung mic: task voice-note button also recovers
+  ✓ no speech support → tells you to use the keyboard 🎤
+38 passed, 0 failed

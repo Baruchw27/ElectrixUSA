@@ -1,0 +1,13 @@
+  ✓ server has the company
+  ✓ no job addresses in the page
+  ✓ before sign-in the phone holds no jobs
+  ✓ login screen shows
+  ✓ Carlos signs in
+  ✓ all jobs load from the server
+  ✓ team loads from the server
+  ✓ owner signs in on public page
+  ✓ owner sees all jobs
+  ✓ Material in the owner bottom bar ['Home', 'Jobs', 'Jobs', 'Schedule', 'Material', 'Code', 'More']
+  ✓ reopening keeps you signed in with data
+  ✓ no page errors
+12 passed, 0 failed

@@ -1,0 +1,7 @@
+  ✓ app knows its version
+  ✓ same version → no reload
+  ✓ waits while a window is open
+  ✓ reloads once the window closes
+  ✓ never reloads in a loop
+  ✓ opening the app again picks up the update
+6 passed, 0 failed

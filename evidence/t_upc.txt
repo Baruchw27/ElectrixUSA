@@ -1,0 +1,11 @@
+  ✓ shows 'Looking up…' right away
+  ✓ product name shows
+  ✓ then shows the store picture + asks how many
+  ✓ new item made from the online name, barcode saved
+  ✓ counted 1 and scanner continues
+  ✓ next scan of same barcode is instant (no lookup)
+  ✓ not found → asks to type
+  ✓ typed item saved
+  ✓ lookup down → still lets you type
+  ✓ no page errors []
+10 passed, 0 failed

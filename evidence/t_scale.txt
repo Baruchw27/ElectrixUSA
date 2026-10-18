@@ -1,0 +1,5 @@
+data: {'pruned': 37010, 'emps': 154, 'punches': 17407, 'jobs': 2367, 'inbox': 6480, 'size': '2.8 MB'}
+renderAll parts: {'markGot': 0, 'applyLang': 17, 'renderBell': 0, 'applyTabs': 55, 'renderRoleSel': 4, 'renderMyList': 1, 'renderTravel': 0, 'renderMsgBadge': 0, 'renderJobs': 105}
+slowest: [('o1/sched', 537), ('u1/sched', 519), ('u2/punch', 484), ('u1/punch', 453), ('u2/sched', 433), ('u1/home', 398), ('u2/home', 353), ('o1/home', 337), ('save', 228), ('renderAll', 199), ('u1/exp', 154), ('o1/exp', 152)]
+over 400ms: {'u1/sched': 519, 'u1/punch': 453, 'u2/sched': 433, 'u2/punch': 484, 'o1/sched': 537}
+errors: []

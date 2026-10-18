@@ -1,0 +1,2 @@
+fake supabase on 8787
+service worker active True | app opens with no signal True

@@ -1,0 +1,11 @@
+  ✓ only nearby jobs listed ['A Here St — here', 'B Close Rd — 0.8 mi', 'C Mile Ln — 1.7 mi', '🔎 Show all jobs…']
+  ✓ closest first
+  ✓ shows distance
+  ✓ far job not in the short list
+  ✓ nearest job picked automatically
+  ✓ 'Show all jobs' lists everything (426)
+  ✓ …and opens the search list
+  ✓ typing an address still finds far jobs
+  ✓ no jobs nearby → full list (426)
+  ✓ no page errors []
+10 passed, 0 failed

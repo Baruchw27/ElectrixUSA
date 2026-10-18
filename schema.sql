@@ -854,3 +854,6 @@ create or replace function public.can_see2(c text, d jsonb, me jsonb) returns bo
       or d->>'who' = me->>'id'
     else true end;
 $$;
+
+alter function public.emp_privileged(jsonb) set search_path = pg_catalog;
+revoke execute on function public.in_my_crew(text, text) from authenticated;

@@ -1,0 +1,19 @@
+  ✓ photo of pants is rejected
+  ✓ can't save it
+  ✓ no 'send anyway' after one try
+  ✓ after two tries: 'It IS a receipt — office checks' option
+  ✓ gas receipt accepted
+  ✓ total filled in automatically (42.90)
+  ✓ shows the amount to check
+  ✓ can't save without the amount
+  ✓ saved with amount {'amt': 42.9, 'type': 'gas', 'verified': True}
+  ✓ material receipt under Gas → flagged for the office
+  ✓ Home Depot total picked (not subtotal/tax) (130.32)
+  ✓ material receipt accepted
+  ✓ reader unavailable → office check, type amount
+  ✓ list shows the amount
+  ✓ 📄 opens the receipt
+  ✓ flagged receipt marked 'Check this receipt'
+  ✓ receipt picture opens to verify
+  ✓ no page errors []
+18 passed, 0 failed

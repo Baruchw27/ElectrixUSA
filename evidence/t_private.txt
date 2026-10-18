@@ -1,0 +1,10 @@
+  ✓ photo uploaded
+  ✓ link opened outside the app → blocked
+  ✓ helper is running
+  ✓ signed-in phone still opens the photo
+  ✓ photo shows in the page
+  ✓ it went through the signed-in door
+  ✓ signed-out phone cannot open the photo
+  ✓ after signing out it is blocked
+  ✓ no page errors
+9 passed, 0 failed

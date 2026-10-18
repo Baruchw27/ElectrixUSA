@@ -1,0 +1,30 @@
+OK owner creates job
+OK move job
+OK manager sees + marks done
+OK undo done
+OK priority toggle
+OK notification inbox
+OK worker punch in
+OK auto punch-out on leave
+OK auto punch back in
+OK punch out
+OK fix request
+OK payroll approves fix
+OK take tool to van
+OK return tool to garage
+OK stock pickup reduces count
+OK material request → ordered
+OK gas receipt saved
+OK estimate → priced → approved → job
+OK service call → assigned → fixed
+OK ready for inspection → office task
+OK office books inspection
+OK pass → site to finishing
+OK meeting booked
+OK message sent
+OK fill schedule range
+OK worker sees 2 days only
+OK spanish toggle
+OK add employee
+OK remove employee
+page errors: none

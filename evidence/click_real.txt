@@ -1,0 +1,4 @@
+fake supabase on 8787
+server 2290 records; upserts {'upserts': 38, 'rows': 2746, 'pulls': 1}
+clicks: 2730
+ALL OK — no errors on any click
