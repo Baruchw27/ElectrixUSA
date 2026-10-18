@@ -1,0 +1,55 @@
+# Runs the Electrix USA STAGING browser + API security tests automatically on GitHub's runners (which HAVE internet,
+# unlike Claude's sandbox). Put this file at .github/workflows/staging-security-tests.yml in the repo.
+# ONE-TIME SETUP (no coding): in the repo → Settings → Secrets and variables → Actions, add 8 secrets with the
+# staging-only passwords from STAGING_TEST_ACCOUNTS.txt:
+#   STG_OWNER STG_MANAGER STG_OFFICE STG_PAYROLL STG_BOOKKEEPER STG_LEADER STG_WORKERA STG_WORKERB
+# After that it runs on demand (Actions tab → Run workflow) and every night; results + screenshots appear as artifacts.
+name: staging-security-tests
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 8 * * *'   # 08:17 UTC daily
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Install
+        working-directory: tests
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+      - name: Write staging accounts (from repo secrets; staging-only, never production)
+        working-directory: tests
+        env:
+          STG_OWNER: ${{ secrets.STG_OWNER }}
+          STG_MANAGER: ${{ secrets.STG_MANAGER }}
+          STG_OFFICE: ${{ secrets.STG_OFFICE }}
+          STG_PAYROLL: ${{ secrets.STG_PAYROLL }}
+          STG_BOOKKEEPER: ${{ secrets.STG_BOOKKEEPER }}
+          STG_LEADER: ${{ secrets.STG_LEADER }}
+          STG_WORKERA: ${{ secrets.STG_WORKERA }}
+          STG_WORKERB: ${{ secrets.STG_WORKERB }}
+        run: |
+          node -e '
+            const a=require("./staging.accounts.example.json");
+            const m={owner:"STG_OWNER",manager:"STG_MANAGER",office:"STG_OFFICE",payroll:"STG_PAYROLL",bookkeeper:"STG_BOOKKEEPER",leader:"STG_LEADER",workerA:"STG_WORKERA",workerB:"STG_WORKERB"};
+            for(const k in m){ a.accounts[k].password = process.env[m[k]]; }
+            require("fs").writeFileSync("staging.accounts.json", JSON.stringify(a,null,1));
+            console.log("wrote staging.accounts.json for", Object.keys(a.accounts).length, "accounts");
+          '
+      - name: Run tests
+        working-directory: tests
+        run: npm test
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-test-results
+          path: |
+            tests/results.json
+            tests/playwright-report
+            tests/shots
+            tests/test-results

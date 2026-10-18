@@ -1,0 +1,16 @@
+{
+  "name": "electrix-staging-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "End-to-end security + functionality tests for Electrix USA STAGING (never run against production).",
+  "scripts": {
+    "test": "playwright test",
+    "test:api": "playwright test tests/api_security.spec.js",
+    "test:ui": "playwright test tests/ui_smoke.spec.js",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.47.2",
+    "@supabase/supabase-js": "2.45.4"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "_comment": "Copy to staging.accounts.json and fill in the staging-only passwords from STAGING_TEST_ACCOUNTS.txt. Do NOT commit the filled file.",
+  "supabaseUrl": "https://rkkxykdkjgdsgkujanau.supabase.co",
+  "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJra3h5a2Rramdkc2drdWphbmF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyOTcxODYsImV4cCI6MjEwNzg3MzE4Nn0._eToR_8K_eL6D6j65vkVzXea--L8OeqlYIJ-Gtt-YXw",
+  "accounts": {
+    "owner":      { "email": "owner@staging.electrix.test",      "password": "PASTE_FROM_NOTE", "emp": "u1" },
+    "manager":    { "email": "manager@staging.electrix.test",    "password": "PASTE_FROM_NOTE", "emp": "u2" },
+    "office":     { "email": "office@staging.electrix.test",     "password": "PASTE_FROM_NOTE", "emp": "u3" },
+    "payroll":    { "email": "payroll@staging.electrix.test",    "password": "PASTE_FROM_NOTE", "emp": "u4" },
+    "bookkeeper": { "email": "bookkeeper@staging.electrix.test", "password": "PASTE_FROM_NOTE", "emp": "u5" },
+    "leader":     { "email": "leader@staging.electrix.test",     "password": "PASTE_FROM_NOTE", "emp": "u6" },
+    "workerA":    { "email": "workera@staging.electrix.test",    "password": "PASTE_FROM_NOTE", "emp": "u7", "firstName": "Alex", "phone": "555-0107" },
+    "workerB":    { "email": "workerb@staging.electrix.test",    "password": "PASTE_FROM_NOTE", "emp": "u8", "firstName": "Bruno" }
+  }
+}
