@@ -113,9 +113,16 @@ async function pullAll(){const rows=[];let from=0;const PAGE=1000;
   const t0=Date.now();
   while(true){const r=await withTO(sb.from('records').select('coll,id,data,deleted').range(from,from+PAGE-1),20000,'download');if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<PAGE)break;from+=PAGE;}
   lastPull=t0;return rows;}
+// signed in but the server no longer lets this person in (turned off by the office): wipe this phone's copy and go to sign-in
+async function turnedOff(){let member=true;try{const r=await withTO(sb.rpc('is_member'),6000,'access check');if(r&&!r.error&&r.data===false){const t=await withTO(sb.rpc('no_team_yet'),6000,'team check');member=!!(t&&t.data===true);}}catch(e){return false;}
+  if(member)return false;
+  try{localStorage.removeItem(typeof KEY!=='undefined'?KEY:'electrix_v29');localStorage.removeItem('ex_queue');localStorage.setItem('ex_off','1');}catch(e){}
+  queue={};try{await window.EX_logout();}catch(e){}try{location.reload();}catch(e){}return true;}
+window.EX_turnedOff=turnedOff;
 // after the phone slept: fetch only what changed meanwhile, and reconnect the live feed
 async function catchUp(){if(!REAL||!ready||catching||!st.online)return;catching=true;
-  try{const since=new Date((lastPull||Date.now())-3*60000).toISOString();const t0=Date.now();const rows=[];let from=0;
+  try{if(await turnedOff())return;
+    const since=new Date((lastPull||Date.now())-3*60000).toISOString();const t0=Date.now();const rows=[];let from=0;
     while(true){const r=await withTO(sb.from('records').select('coll,id,data,deleted').gt('updated_at',since).range(from,from+999),20000,'catch-up');if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<1000)break;from+=1000;}
     lastPull=t0;const fresh=rows.filter(r=>!queue[r.coll+'\u0001'+r.id]);
     if(fresh.length){applyRows(fresh,{replace:false});fresh.forEach(r=>{const k=r.coll;if(r.deleted){if(snap[k])delete snap[k][r.id];}else{(snap[k]=snap[k]||{})[r.id]=canon(r.coll==='_'?(r.data||{}).v:r.data);}});localSave();bump();}
@@ -173,6 +180,7 @@ window.EX_boot=async function(){if(!REAL)return {real:false};
 const SEEDABLE=['sites','stock'];
 window.EX_start=async function(){if(!REAL||ready)return;const local={};SEEDABLE.forEach(k=>{if(D[k])local[k]=JSON.parse(JSON.stringify(D[k]));});
   const rows=await pullAll();
+  if(!rows.length&&await turnedOff())return;
   if(rows.length){applyRows(rows,{replace:true});}
   const present=new Set(rows.filter(r=>!r.deleted).map(r=>r.coll));const seeded=[];
   if(rows.length){try{const u=(await sb.auth.getUser()).data.user;const meRec=u&&(D.emps||[]).find(e=>e.authUid===u.id);

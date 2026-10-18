@@ -31,9 +31,18 @@ window.EX_pushOn=async function(ask){try{
 
 // ---------- in-app viewer ----------
 window.EX_view=function(src,name,kind){let o=document.getElementById('exViewer');if(!o){o=document.createElement('div');o.id='exViewer';o.style.cssText='position:fixed;inset:0;z-index:700;background:#111;display:flex;flex-direction:column';document.body.appendChild(o);}
+  // only real files get shown: no web pages or scripts (they could act as the app); everything is escaped
+  const e=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  src=String(src||'');const dl=(/^(blob:|https:|data:)/.test(src)&&!/["'<>\s]/.test(src))?src:'';   // download link: any real file
+  if(!/^(blob:|https:|data:(image|application\/pdf|audio|video)\/?)/.test(src)||/["'<>\s]/.test(src))src='';  // shown on screen: pictures and PDFs only
   const isImg=kind==='img'||/^image\//.test(kind||'')||/\.(jpe?g|png|gif|webp|heic)(\?|$)/i.test(name||src);
-  o.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;color:#fff"><button onclick="EX_closeView()" style="border:0;background:#333;color:#fff;border-radius:10px;padding:9px 14px;font-size:15px">‹ '+(typeof t==='function'?t('Back'):'Back')+'</button><div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px">'+(name?String(name).replace(/</g,'&lt;'):'')+'</div><a href="'+src+'" download="'+(name||'file')+'" style="color:#fff;text-decoration:none;background:#333;border-radius:10px;padding:9px 12px;font-size:14px">⬇</a></div>'
-   +(isImg?'<div style="flex:1;overflow:auto;display:flex;align-items:center;justify-content:center"><img src="'+src+'" style="max-width:100%;max-height:100%"></div>':'<iframe src="'+src+'" style="flex:1;border:0;background:#fff;width:100%"></iframe>');
+  const isPdf=/pdf/i.test(kind||'');   // by the file's real type, not its name
+  const fname=String(name||'file').replace(/[\\/:*?"<>|]/g,'_');
+  o.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;color:#fff"><button onclick="EX_closeView()" style="border:0;background:#333;color:#fff;border-radius:10px;padding:9px 14px;font-size:15px">‹ '+e(typeof t==='function'?t('Back'):'Back')+'</button><div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px">'+e(name||'')+'</div>'+(dl?'<a href="'+e(dl)+'" download="'+e(fname)+'" style="color:#fff;text-decoration:none;background:#333;border-radius:10px;padding:9px 12px;font-size:14px">⬇</a>':'')+'</div>'
+   +(!src?'<div style="color:#ccc;padding:20px;font-size:15px">'+e(typeof t==='function'?t('Tap ⬇ to download and open this file.'):'Tap ⬇ to download and open this file.')+'</div>'
+     :isImg?'<div style="flex:1;overflow:auto;display:flex;align-items:center;justify-content:center"><img src="'+e(src)+'" style="max-width:100%;max-height:100%"></div>'
+     :isPdf?'<iframe src="'+e(src)+'" style="flex:1;border:0;background:#fff;width:100%"></iframe>'
+     :'<div style="color:#ccc;padding:20px;font-size:15px">'+e(typeof t==='function'?t('Tap ⬇ to download and open this file.'):'Tap ⬇ to download and open this file.')+'</div>');
   o.style.display='flex';try{history.pushState({exv:1},'');}catch(e){}};
 window.EX_closeView=function(){const o=document.getElementById('exViewer');if(o){o.style.display='none';o.innerHTML='';}};
 window.addEventListener('popstate',()=>{const o=document.getElementById('exViewer');if(o&&o.style.display!=='none')EX_closeView();});

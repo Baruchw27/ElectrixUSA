@@ -116,8 +116,8 @@ rep(`<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist
 <script src="extras.js?${VER}"></script>`);
 
 // ---- files open inside the app (Trello files through the server)
-rep(`if(f.url&&!f.d){window.open(f.url,'_blank','noopener');return;}`,`if(f.url&&!f.d){if(window.EX_REAL&&/trello\\.com/.test(f.url)){EX_openTrello(f);return;}window.open(f.url,'_blank','noopener');return;}`);
-rep(`else{const w=window.open();if(w){w.document.write('<iframe src="'+f.d+'" style="width:100%;height:100%;border:0"></iframe>');}`,`else if(window.EX_REAL){EX_view(f.d,f.name,f.kind);}else{const w=window.open();if(w){w.document.write('<iframe src="'+f.d+'" style="width:100%;height:100%;border:0"></iframe>');}`);
+rep(`if(f.url&&!f.d){const u=safeHref(f.url);if(u!=='#')window.open(u,'_blank','noopener');return;}`,`if(f.url&&!f.d){const u=safeHref(f.url);if(u==='#')return;if(window.EX_REAL&&/^https:\\/\\/(www\\.)?trello\\.com\\//.test(u)){EX_openTrello(f);return;}window.open(u,'_blank','noopener');return;}`);
+rep(`  else{const src=safeSrc(f.d);const w=src?window.open():null;`,`  else if(window.EX_REAL){EX_view(f.d,f.name,f.kind);}else{const src=safeSrc(f.d);const w=src?window.open():null;`);
 
 // ---- phone notifications
 rep(`signIn(u.id);try{if('Notification'in window&&Notification.permission==='default')Notification.requestPermission();}catch(e){}return;}`,`window.EX_ME=u.id;signIn(u.id);try{EX_pushOn(true);}catch(e){}setTimeout(exOfferFaceId,900);return;}`);

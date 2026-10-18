@@ -22,3 +22,7 @@ create or replace function cron.schedule(n text, s text, c text) returns bigint 
 create or replace function cron.unschedule(id bigint) returns boolean language sql as $$ delete from cron.job where jobid=id returning true $$;
 create or replace function cron.unschedule(n text) returns boolean language sql as $$ delete from cron.job where jobname=n returning true $$;
 create or replace function net.http_post(url text, body jsonb, headers jsonb, timeout_milliseconds int) returns bigint language sql as $$ insert into net.calls(url,body,headers) values (url,body,headers) returning id::bigint $$;
+alter table storage.objects add column if not exists owner_id text;
+alter table storage.buckets add column if not exists file_size_limit bigint, add column if not exists allowed_mime_types text[];
+grant select, insert, update, delete on storage.objects to authenticated, anon; grant usage on sequence storage.objects_id_seq to authenticated, anon;
+insert into storage.buckets(id,name,public) values ('files','files',true) on conflict do nothing;

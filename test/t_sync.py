@@ -207,6 +207,13 @@ async def main():
             print('11. Sign out')
             await B.evaluate("signOut()"); await B.wait_for_timeout(1200)
             check('signed out shows login',await until(B,"!document.getElementById('m-login').classList.contains('hid')"))
+            print('11b. Office turns an employee off → his phone loses the data right away')
+            ename=await E.evaluate("me().name")
+            await A.evaluate(f"(()=>{{const e=D.emps.find(x=>x.name==='{ename}');e.inactive=true;save();}})()"); await A.wait_for_timeout(2500)
+            await E.evaluate("EX_catchUp&&EX_catchUp()")
+            check('turned-off phone goes back to sign-in',await until(E,"!document.getElementById('m-login').classList.contains('hid')",10000))
+            check("turned-off phone's saved company data is wiped",await E.evaluate("(()=>{const r=localStorage.getItem('electrix_v29');if(!r)return true;const d=JSON.parse(r);return !(d.sites||[]).some(x=>x.id==='snew')&&!(d.travel||[]).some(x=>x.site==='snew');})()"))
+            await A.evaluate(f"(()=>{{const e=D.emps.find(x=>x.name==='{ename}');delete e.inactive;save();}})()"); await A.wait_for_timeout(1500)
             allerr=ea+eb+ec+ee
             check('no page errors',not allerr,allerr[:5])
             await b.close()

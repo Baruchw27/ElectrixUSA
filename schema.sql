@@ -515,8 +515,7 @@ begin
   return new;
 end $$;
 
-create or replace trigger records_guard before insert or update on public.records
-  for each row when (new.coll in ('emps','punches','timeoff','exps','travel','goHomeLog')) execute function public.guard_record();
+
 -- save: existing records are updated, new ones inserted (no upsert: an upsert must also pass the read rule
 -- with only the changed fields, which made the privacy rule skip normal saves like a clock-out)
 -- anything the person isn't allowed to write is skipped instead of failing the whole save
@@ -561,7 +560,297 @@ begin
                deleted = del, updated_by = r->>'by', updated_at = now()
           where t.coll = c and t.id = i;
     end;
+    -- send back what is now saved (one exact lookup per record, so the read rule isn't checked against the whole table)
+    return query select t.coll, t.id, t.data, t.deleted from public.records t where t.coll = c and t.id = i;
   end loop;
-  return query select t.coll, t.id, t.data, t.deleted from public.records t
-    join (select x->>'coll' as c, x->>'id' as i from jsonb_array_elements(rows) x) k on t.coll = k.c and t.id = k.i;
 end $function$;
+-- ===== security hardening (Oct 2026 audit) =====
+
+-- 1) table permissions: the anonymous key gets nothing; signed-in users can read/insert/update through the rules,
+--    never delete rows directly (deleting is a flag, kept in history) or truncate
+revoke all on public.records from anon;
+revoke truncate, trigger, references, delete on public.records from authenticated;
+revoke all on public.server_config from anon, authenticated;
+
+-- 2) helper functions: not callable without signing in
+revoke execute on function public.in_my_crew(text, text) from public, anon;
+revoke execute on function public.my_emp_data() from public, anon;
+revoke execute on function public.can_see(text, jsonb) from public, anon;
+revoke execute on function public.can_see2(text, jsonb, jsonb) from public, anon;
+grant execute on function public.in_my_crew(text, text), public.my_emp_data(), public.can_see(text, jsonb), public.can_see2(text, jsonb, jsonb) to authenticated;
+
+-- 3) who is "privileged": owner, managers, everyone-access, Payroll, Bookkeeper
+create or replace function public.emp_privileged(d jsonb) returns boolean language sql immutable as $$
+  select coalesce(d->>'role','') in ('owner','manager') or coalesce((d->>'all')::boolean,false)
+      or (coalesce(d->>'role','') = 'office' and coalesce(d->>'title','') in ('Payroll','Bookkeeper'));
+$$;
+create or replace function public.emp_by_email(em text) returns jsonb language sql stable security definer set search_path = public as $$
+  select data from public.records where coll = 'emps' and not deleted
+    and (lower(data->>'authEmail') = lower(em) or data->>'authUid' = (select id::text from auth.users where lower(email) = lower(em) limit 1)) limit 1;
+$$;
+revoke execute on function public.emp_by_email(text) from public, anon, authenticated;
+create or replace function public.i_am_owner() returns boolean language sql stable security definer set search_path = public as $$
+  select coalesce(public.my_emp_data()->>'role','') = 'owner';
+$$;
+revoke execute on function public.i_am_owner() from public, anon;
+grant execute on function public.i_am_owner() to authenticated;
+
+-- 4) passwords: only the owner can set the password of a privileged person (so nobody can take over the owner's account)
+create or replace function public.admin_set_password(p_email text, p_pass text) returns uuid
+language plpgsql security definer set search_path = public, auth, extensions as $$
+declare uid uuid; target jsonb;
+begin
+  if not public.is_boss() then raise exception 'not allowed'; end if;
+  target := public.emp_by_email(p_email);
+  if not public.i_am_owner() and (target is null or public.emp_privileged(target)) then raise exception 'not allowed'; end if;
+  perform public._pw_check(p_pass);
+  update auth.users set encrypted_password = crypt(p_pass, gen_salt('bf')), updated_at = now()
+  where lower(email) = lower(p_email) returning id into uid;
+  return uid;
+end $$;
+create or replace function public._make_user(p_email text, p_pass text) returns uuid
+language plpgsql security definer set search_path = public, auth, extensions as $$
+declare uid uuid; em text := lower(trim(p_email)); target jsonb;
+begin
+  if not (public.is_boss() or public.no_team_yet()) then raise exception 'not allowed'; end if;
+  perform public._pw_check(p_pass);
+  select id into uid from auth.users where lower(email) = em;
+  if uid is not null then
+    -- an existing sign-in: same rule as resetting a password
+    target := public.emp_by_email(em);
+    if not public.no_team_yet() and not public.i_am_owner() and (target is null or public.emp_privileged(target)) then raise exception 'not allowed'; end if;
+    update auth.users set encrypted_password = crypt(p_pass, gen_salt('bf')), email_confirmed_at = coalesce(email_confirmed_at, now()), updated_at = now() where id = uid;
+    return uid;
+  end if;
+  uid := gen_random_uuid();
+  insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+                          created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change,
+                          email_change_token_current, reauthentication_token, phone_change, phone_change_token)
+  values ('00000000-0000-0000-0000-000000000000', uid, 'authenticated', 'authenticated', em, crypt(p_pass, gen_salt('bf')), now(),
+          '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb, now(), now(), '', '', '', '', '', '', '', '');
+  insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+  values (gen_random_uuid(), uid, uid::text, jsonb_build_object('sub', uid::text, 'email', em, 'email_verified', true), 'email', now(), now(), now());
+  return uid;
+end $$;
+
+-- 5) the change rules, checked by the database on every save (also for direct API requests)
+create or replace function public.guard_record() returns trigger language plpgsql security invoker set search_path = public as $$
+declare me jsonb; role text; owner_ boolean; boss boolean; office boolean; payroll boolean; money boolean; hours boolean; approver boolean;
+        o jsonb; n jsonb := new.data; f text;
+begin
+  if current_user not in ('authenticated','anon') or auth.uid() is null then return new; end if;   -- the server's own jobs
+  if tg_op = 'INSERT' and public._row_exists(new.coll, new.id) then return new; end if;               -- judged by the update that follows
+  me := public.my_emp_data();
+  if me = '{}'::jsonb then return new; end if;                                                          -- first-time setup
+  role := coalesce(me->>'role','');
+  owner_ := role = 'owner';
+  if owner_ then return new; end if;
+  boss := public.is_boss();                                   -- managers, everyone-access, Payroll
+  office := role = 'office';
+  payroll := office and me->>'title' = 'Payroll';
+  money := coalesce((me->>'all')::boolean,false) or (office and me->>'title' in ('Payroll','Bookkeeper'));
+  hours := coalesce((me->>'all')::boolean,false) or payroll;                      -- may edit anyone's clock times
+  approver := role in ('manager','office') or coalesce((me->>'all')::boolean,false);   -- may approve an out-of-fence clock-in
+  o := case when tg_op = 'UPDATE' then old.data else null end;
+
+  if new.coll = 'emps' then
+    -- only the owner adds or changes privileged people (owner, manager, everyone-access, Payroll, Bookkeeper)
+    if boss then
+      if public.emp_privileged(n) or (o is not null and public.emp_privileged(o)) then
+        if not (o is not null and old.id = me->>'id' and not new.deleted and (n - 'lang' - 'phone') = (o - 'lang' - 'phone')) then
+          raise exception 'only the owner can change this person' using errcode = '42501'; end if;
+      end if;
+      return new;
+    end if;
+    -- everyone else: only your own language and phone
+    if new.deleted or o is null or old.id <> me->>'id' or (n - 'lang' - 'phone') is distinct from (o - 'lang' - 'phone') then
+      raise exception 'not allowed' using errcode = '42501'; end if;
+    return new;
+  end if;
+
+  if new.coll = 'jobs' then
+    -- a task says who sent it, and chat messages say who wrote them: nobody can sign as someone else
+    if not boss and ((o is null and coalesce(n->>'from', me->>'id') <> me->>'id') or (o is not null and n->>'from' is distinct from o->>'from')) then
+      raise exception 'not allowed' using errcode = '42501'; end if;
+    for f in select k from jsonb_object_keys(n) k where k like 'm\_%' loop
+      if (o is null or o->f is distinct from n->f) and n->f->>'by' is distinct from me->>'id'
+         and not (o ? f and ((n->f) - 'seen' - 'got') = ((o->f) - 'seen' - 'got')) then
+        raise exception 'not allowed' using errcode = '42501'; end if;
+    end loop;
+    return new;
+  end if;
+  if new.coll = 'meets' then
+    -- only whoever made a meeting changes it (and makes it in his own name)
+    if (o is null and n->>'by' is distinct from me->>'id') or (o is not null and o->>'by' is distinct from me->>'id') then
+      raise exception 'not allowed' using errcode = '42501'; end if;
+    return new;
+  end if;
+  if new.coll not in ('punches','timeoff','exps','travel','goHomeLog') then return new; end if;
+
+  if new.coll = 'goHomeLog' then
+    if not (role = 'manager' or coalesce((me->>'all')::boolean,false)) then raise exception 'not allowed' using errcode = '42501'; end if;
+    return new;
+  end if;
+
+  if new.deleted then
+    -- removing hours, receipts or time off: only who may edit them
+    if new.coll = 'punches' and not hours then raise exception 'not allowed' using errcode = '42501'; end if;
+    if new.coll = 'exps' and not money and (o->>'who' is distinct from me->>'id' or coalesce((o->>'paid')::boolean,false)) then raise exception 'not allowed' using errcode = '42501'; end if;
+    if new.coll in ('timeoff','travel') and not boss and o->>'who' is distinct from me->>'id' then raise exception 'not allowed' using errcode = '42501'; end if;
+    return new;
+  end if;
+
+  -- records are made for yourself (Payroll / everyone-access may enter hours for others)
+  if (o is null or o->>'who' is distinct from n->>'who') and n->>'who' is distinct from me->>'id'
+     and not (new.coll = 'punches' and hours) and not (new.coll = 'exps' and money) then
+    raise exception 'not allowed' using errcode = '42501'; end if;
+
+  if new.coll = 'punches' and not hours then
+    -- approving an out-of-fence clock-in: managers / office only, and only that
+    if coalesce(n->>'approvedBy','') <> coalesce(o->>'approvedBy','')
+       or (coalesce((o->>'pending')::boolean,false) and not coalesce((n->>'pending')::boolean,false)) then
+      if not approver or o is null or n->>'approvedBy' is distinct from me->>'id' and coalesce(n->>'approvedBy','') <> '' then
+        raise exception 'not allowed' using errcode = '42501'; end if;
+    end if;
+    if o is not null then
+      if n->>'in' is distinct from o->>'in' or n->'edits' is distinct from o->'edits' then
+        raise exception 'clock times can only be changed by Payroll' using errcode = '42501'; end if;
+      -- a clock-out, once there, stays (except an approver rejecting the clock-in)
+      if o->'out' is not null and o->'out' <> 'null'::jsonb and n->'out' is distinct from o->'out' then
+        raise exception 'clock times can only be changed by Payroll' using errcode = '42501'; end if;
+      -- clocking out someone else: approvers only (sent home / rejected)
+      if (o->'out' is null or o->'out' = 'null'::jsonb) and n->'out' is not null and n->'out' <> 'null'::jsonb
+         and o->>'who' is distinct from me->>'id' and not approver then
+        raise exception 'not allowed' using errcode = '42501'; end if;
+    end if;
+  elsif new.coll = 'timeoff' then
+    if n->>'status' is distinct from coalesce(o->>'status', n->>'status') or (o is null and coalesce(n->>'status','pending') <> 'pending') then
+      -- approving / denying: owner, managers, everyone-access, Payroll; the person may cancel his own
+      if not (role = 'manager' or boss) and not (n->>'status' = 'cancelled' and o->>'who' = me->>'id') then
+        raise exception 'not allowed' using errcode = '42501'; end if;
+    end if;
+  elsif new.coll = 'exps' and not money then
+    -- paying back: Payroll / Bookkeeper / everyone-access; a paid receipt can't be changed afterwards
+    if coalesce((n->>'paid')::boolean,false) and not coalesce((o->>'paid')::boolean,false) then raise exception 'not allowed' using errcode = '42501'; end if;
+    if n->>'paidBy' is distinct from o->>'paidBy' or n->>'paidAt' is distinct from o->>'paidAt' then raise exception 'not allowed' using errcode = '42501'; end if;
+    if coalesce((o->>'paid')::boolean,false) and (n - 'seen' - 'read') is distinct from (o - 'seen' - 'read') then raise exception 'not allowed' using errcode = '42501'; end if;
+  elsif new.coll = 'travel' and not boss then
+    if o is not null and (n->>'status' is distinct from o->>'status' or n->>'minutes' is distinct from o->>'minutes' or n->>'amt' is distinct from o->>'amt') then
+      raise exception 'not allowed' using errcode = '42501'; end if;
+  end if;
+  return new;
+end $$;
+
+-- 6) every save is stamped with who really made it (not what the phone claims); ids and the fields that hold ids
+--    (who, site, to, crew, reply-to...) can't contain quotes or angle brackets, so they can't smuggle code into the screens
+create or replace function public.stamp_record() returns trigger language plpgsql security invoker set search_path = public as $$
+declare me jsonb; bad text := '[''"\\<>`]';
+begin
+  if new.id !~ '^[A-Za-z0-9_.:|@-]{1,100}$' or new.coll !~ '^[A-Za-z_]{1,40}$' then
+    raise exception 'bad record id' using errcode = '42501'; end if;
+  if jsonb_typeof(new.data) = 'object' and (
+       exists (select 1 from jsonb_each(new.data) e where e.key in ('id','site','who','by','to','from','crew','re','job','owner','manager','punch','approvedBy','doneBy','paidBy','ref','type')
+               and jsonb_typeof(e.value) = 'string' and (e.value #>> '{}') ~ bad)
+    or exists (select 1 from jsonb_each(new.data) e, jsonb_array_elements_text(case when jsonb_typeof(e.value) = 'array' then e.value else '[]'::jsonb end) a
+               where e.key in ('to','with','collab','share','managers') and a ~ bad)
+    or exists (select 1 from jsonb_each(new.data) e where e.key like 'm\_%' and jsonb_typeof(e.value) = 'object'
+               and (coalesce(e.value->>'re','') ~ bad or coalesce(e.value->>'by','') ~ bad or coalesce(e.value->>'kind','') ~ bad))) then
+    raise exception 'bad characters in a reference field' using errcode = '42501'; end if;
+  if current_user in ('authenticated','anon') and auth.uid() is not null then
+    me := public.my_emp_data();
+    new.updated_by := coalesce(me->>'id', 'uid:' || auth.uid()::text);
+    new.updated_at := now();
+  end if;
+  return new;
+end $$;
+create or replace trigger records_stamp before insert or update on public.records for each row execute function public.stamp_record();
+create or replace trigger records_guard before insert or update on public.records
+  for each row when (new.coll in ('emps','punches','timeoff','exps','travel','goHomeLog','jobs','meets')) execute function public.guard_record();
+
+-- 7) history: every change, who made it, before and after (only readable by the server / owner via the dashboard)
+create table if not exists public.records_history (
+  hid bigserial primary key, at timestamptz not null default now(), coll text not null, id text not null,
+  op text not null, by_who text, old_data jsonb, new_data jsonb, old_deleted boolean, new_deleted boolean);
+alter table public.records_history enable row level security;
+revoke all on public.records_history from anon, authenticated;
+create index if not exists records_history_rec on public.records_history (coll, id, at desc);
+create index if not exists records_history_at on public.records_history (at);
+create or replace function public.log_record() returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if tg_op = 'UPDATE' and new.data is not distinct from old.data and new.deleted = old.deleted then return null; end if;
+  insert into public.records_history (coll, id, op, by_who, old_data, new_data, old_deleted, new_deleted)
+  values (new.coll, new.id, lower(tg_op), new.updated_by,
+          case when tg_op = 'UPDATE' then old.data end, new.data,
+          case when tg_op = 'UPDATE' then old.deleted end, new.deleted);
+  return null;
+end $$;
+revoke execute on function public.log_record() from public, anon, authenticated;
+create or replace trigger records_log after insert or update on public.records for each row execute function public.log_record();
+
+-- 8) daily copy of everything: 14 rotating copies (today's overwrites the one from two weeks ago)
+create table if not exists public.records_backup (slot int not null, day date not null, coll text not null, id text not null, data jsonb, deleted boolean, updated_by text, updated_at timestamptz, primary key (slot, coll, id));
+alter table public.records_backup enable row level security;
+revoke all on public.records_backup from anon, authenticated;
+create or replace function public.backup_records() returns int language plpgsql security definer set search_path = public as $$
+declare n int; s int := (current_date - date '2026-01-01') % 14;
+begin
+  insert into public.records_backup (slot, day, coll, id, data, deleted, updated_by, updated_at)
+    select s, current_date, coll, id, data, deleted, updated_by, updated_at from public.records
+  on conflict (slot, coll, id) do update set day = excluded.day, data = excluded.data, deleted = excluded.deleted, updated_by = excluded.updated_by, updated_at = excluded.updated_at;
+  get diagnostics n = row_count;
+  return n;
+end $$;
+revoke execute on function public.backup_records() from public, anon, authenticated;
+select cron.schedule('daily-backup', '7 7 * * *', $$select public.backup_records()$$);
+
+-- 9) files: photos of receipts / hours / private notes open only for people who may see that record;
+--    nobody overwrites someone else's file; size and type limits
+create or replace function public.file_ok(path text) returns boolean language sql stable security definer set search_path = public as $$
+  select case
+    when split_part(path,'/',1) in ('exps','punches','timeoff','keep','travel','inbox') then
+      exists (select 1 from public.records r where r.coll = split_part(path,'/',1) and r.id = split_part(path,'/',2)
+              and coalesce(public.can_see2(r.coll, r.data, public.my_emp_data()), false))
+    else true end;
+$$;
+revoke execute on function public.file_ok(text) from public, anon;
+grant execute on function public.file_ok(text) to authenticated;
+drop policy if exists "files: only who may see the record" on storage.objects;
+create policy "files: only who may see the record" on storage.objects as restrictive for select to public
+  using (bucket_id <> 'files' or owner_id = auth.uid()::text or public.file_ok(name));
+drop policy if exists "files: only your own can be replaced" on storage.objects;
+create policy "files: only your own can be replaced" on storage.objects as restrictive for update to public
+  using (bucket_id <> 'files' or owner_id = auth.uid()::text or (select public.i_am_owner()));
+update storage.buckets set file_size_limit = 52428800,
+  allowed_mime_types = array['image/jpeg','image/png','image/webp','image/gif','image/heic','image/heif','video/*','audio/*','application/pdf',
+    'application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','image/vnd.dwg','application/acad','application/x-dwg','application/octet-stream','text/plain']
+  where id = 'files';
+
+-- ===== speed (load test): read rule inlined, crew leaders' crew looked up once per request =====
+-- the signed-in person, looked up once per request; crew leaders also get their crew's ids (so the read rule needs no per-row lookup)
+create or replace function public.my_emp_data() returns jsonb language sql stable security definer set search_path = public as $$
+  select coalesce((select jsonb_build_object('id', r.id, 'role', r.data->>'role', 'title', r.data->>'title', 'all', coalesce((r.data->>'all')::boolean,false),
+                   'lead', coalesce((r.data->>'lead')::boolean,false), 'crew', r.data->>'crew',
+                   'crew_ids', case when coalesce((r.data->>'lead')::boolean,false) and r.data->>'crew' is not null then
+                       (select coalesce(jsonb_agg(e.id), '[]'::jsonb) from public.records e where e.coll = 'emps' and not e.deleted and e.data->>'crew' = r.data->>'crew')
+                     else '[]'::jsonb end)
+                   from public.records r where r.coll = 'emps' and not r.deleted and r.data->>'authUid' = auth.uid()::text limit 1), '{}'::jsonb);
+$$;
+-- the read rule, written so the database can inline it (no per-row function call): same rules as before
+create or replace function public.can_see2(c text, d jsonb, me jsonb) returns boolean language sql stable as $$
+  select case
+    when c not in ('keep','inbox','push','meets','punches','timeoff','goHomeLog','travel','exps') then true
+    when c = 'keep' then d->>'owner' = me->>'id' or coalesce(d->'collab','[]'::jsonb) ? (me->>'id')
+    when c = 'inbox' then d->>'to' = me->>'id'
+    when c = 'push' then d->>'who' = me->>'id'
+    when c = 'meets' then me->>'role' = 'owner' or d->>'by' = me->>'id' or coalesce(d->'with','[]'::jsonb) ? (me->>'id')
+    when c in ('punches','timeoff','goHomeLog','travel') then
+         me->>'role' in ('owner','manager','office') or (me->>'all')::boolean
+      or d->>'who' = me->>'id'
+      or coalesce(me->'crew_ids','[]'::jsonb) ? (d->>'who')
+    when c = 'exps' then
+         me->>'role' in ('owner','manager') or (me->>'all')::boolean
+      or (me->>'role' = 'office' and me->>'title' in ('Payroll','Bookkeeper'))
+      or d->>'who' = me->>'id'
+    else true end;
+$$;

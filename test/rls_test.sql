@@ -147,3 +147,90 @@ select 'T12 manager result', (select data->>'status' from records where id='tw')
 select pg_temp.as_user('66666666-6666-6666-6666-666666666666','u10@electrixusa.app'); set role authenticated;
 select 'T12 office approves out-of-fence punch', count(*) from save_records('[{"coll":"punches","id":"pw","patch":{"pending":false,"approvedBy":"u10"},"by":"u10"}]'::jsonb);
 reset role;
+-- 13) hardening: owner-only privileges, stamped authorship, history, files, ids
+reset role;
+insert into records(coll,id,data) values ('emps','u11','{"name":"Shia","role":"office","title":"Payroll","authUid":"77777777-7777-7777-7777-777777777777","authEmail":"u11@electrixusa.app"}') on conflict (coll,id) do update set data=excluded.data;
+insert into auth.users(id,email) values ('77777777-7777-7777-7777-777777777777','u11@electrixusa.app') on conflict do nothing;
+update records set data = data || '{"authEmail":"u1@electrixusa.app"}' where coll='emps' and id='u1';
+-- manager (Yossi, u2) tries to take over
+select pg_temp.as_user('44444444-4444-4444-4444-444444444444','u2@electrixusa.app'); set role authenticated;
+select 'T13 manager makes himself owner', count(*) from save_records('[{"coll":"emps","id":"u2","patch":{"role":"owner"},"by":"u2"}]'::jsonb);
+select 'T13 manager makes a worker a manager', count(*) from save_records('[{"coll":"emps","id":"u7","patch":{"role":"manager"},"by":"u2"}]'::jsonb);
+select 'T13 manager gives a worker everyone-access', count(*) from save_records('[{"coll":"emps","id":"u7","patch":{"all":true},"by":"u2"}]'::jsonb);
+select 'T13 manager moves a worker to crew c2 (allowed)', count(*) from save_records('[{"coll":"emps","id":"u7","patch":{"crew":"c2"},"by":"u2"}]'::jsonb);
+select 'T13 manager deactivates the owner', count(*) from save_records('[{"coll":"emps","id":"u1","patch":{"inactive":true},"by":"u2"}]'::jsonb);
+select 'T13 manager resets owner password (must fail)'; select admin_set_password('u1@electrixusa.app','takeover99');
+select 'T13 manager re-creates owner sign-in (must fail)'; select admin_create_user('u1@electrixusa.app','takeover99');
+select 'T13 manager resets a worker password', admin_set_password('u7@electrixusa.app','worker2026x') is not null;
+select 'T13 manager adds a worker (allowed)', count(*) from save_records('[{"coll":"emps","id":"u12","full":{"name":"New Guy","role":"worker","crew":"c1"},"by":"u2"}]'::jsonb);
+select 'T13 manager adds a fake owner (must fail)', count(*) from save_records('[{"coll":"emps","id":"u13","full":{"name":"Fake","role":"owner"},"by":"u2"}]'::jsonb);
+select 'T13 manager edits Carlos clock-in (Payroll only)', count(*) from save_records('[{"coll":"punches","id":"pw","patch":{"in":7},"by":"u2"}]'::jsonb);
+reset role;
+select 'T13 result u2 role', data->>'role' from records where coll='emps' and id='u2';
+select 'T13 result u7', data->>'role', data->>'all', data->>'crew' from records where coll='emps' and id='u7';
+select 'T13 result owner active', coalesce(data->>'inactive','false') from records where coll='emps' and id='u1';
+select 'T13 result fake owner exists', count(*) from records where coll='emps' and id='u13';
+select 'T13 result punch in', data->>'in' from records where id='pw';
+-- Payroll (Shia) edits hours and pays a receipt; can't touch the owner
+select pg_temp.as_user('77777777-7777-7777-7777-777777777777','u11@electrixusa.app'); set role authenticated;
+select 'T13 payroll fixes a clock-in', count(*) from save_records('[{"coll":"punches","id":"pw","patch":{"in":900,"edits":[{"by":"u11","why":"forgot"}]},"by":"u11"}]'::jsonb);
+select 'T13 payroll pays a receipt', count(*) from save_records('[{"coll":"exps","id":"xw","patch":{"paid":true,"paidBy":"u11"},"by":"u11"}]'::jsonb);
+select 'T13 payroll makes herself owner', count(*) from save_records('[{"coll":"emps","id":"u11","patch":{"role":"owner"},"by":"u11"}]'::jsonb);
+select 'T13 payroll resets owner password (must fail)'; select admin_set_password('u1@electrixusa.app','takeover99');
+reset role;
+select 'T13 result punch after payroll', data->>'in' from records where id='pw';
+select 'T13 result receipt paid', data->>'paid' from records where id='xw';
+select 'T13 result u11 role', data->>'role' from records where coll='emps' and id='u11';
+-- worker: forged authorship, forged task sender, forged chat, edit paid receipt, bad id
+select pg_temp.as_user('22222222-2222-2222-2222-222222222222','u7@electrixusa.app'); set role authenticated;
+select 'T13 worker claims to be the owner in by', count(*) from save_records('[{"coll":"jobs","id":"j1","full":{"desc":"hi","from":"u7","to":["u2"]},"by":"u1"}]'::jsonb);
+select 'T13 worker sends a task as the owner', count(*) from save_records('[{"coll":"jobs","id":"j2","full":{"desc":"Give Carlos a raise","from":"u1","to":["u11"]},"by":"u7"}]'::jsonb);
+select 'T13 worker writes chat as the owner', count(*) from save_records('[{"coll":"jobs","id":"j1","patch":{"m_x1":{"by":"u1","text":"approved","ts":1}},"by":"u7"}]'::jsonb);
+select 'T13 worker writes own chat', count(*) from save_records('[{"coll":"jobs","id":"j1","patch":{"m_x2":{"by":"u7","text":"done","ts":2}},"by":"u7"}]'::jsonb);
+select 'T13 worker changes paid receipt amount', count(*) from save_records('[{"coll":"exps","id":"xw","patch":{"amt":999},"by":"u7"}]'::jsonb);
+select 'T13 worker bad id (must fail)'; select count(*) from save_records('[{"coll":"jobs","id":"x\"><img src=x onerror=alert(1)>","full":{"desc":"x"},"by":"u7"}]'::jsonb);
+select 'T13 worker deletes own punch', count(*) from save_records('[{"coll":"punches","id":"pw","deleted":true,"full":{},"by":"u7"}]'::jsonb);
+select 'T13 worker meeting as someone else', count(*) from save_records('[{"coll":"meets","id":"mz","full":{"by":"u1","with":["u7"],"title":"x"},"by":"u7"}]'::jsonb);
+select 'T13 direct delete'; delete from records where coll='jobs' and id='j1';
+select 'T13 direct truncate'; truncate records;
+select 'T13 read history'; select count(*) from records_history;
+select 'T13 read backups'; select count(*) from records_backup;
+select 'T13 read server secrets'; select count(*) from server_config;
+reset role;
+select 'T13 result j1 by', updated_by, data->>'from' from records where coll='jobs' and id='j1';
+select 'T13 result forged task exists', count(*) from records where coll='jobs' and id='j2';
+select 'T13 result chat', (data ? 'm_x1')::text, (data ? 'm_x2')::text from records where coll='jobs' and id='j1';
+select 'T13 result receipt amt', data->>'amt' from records where id='xw';
+select 'T13 result punch still there', deleted::text from records where id='pw';
+select 'T13 result fake meeting', count(*) from records where id='mz';
+select 'T13 history rows for pw', count(*) from records_history where id='pw';
+select 'T13 history shows payroll edit', count(*) from records_history where id='pw' and by_who='u11' and old_data->>'in'='1000' and new_data->>'in'='900';
+select 'T13 backup rows', public.backup_records() > 0;
+-- anon gets nothing
+set role anon;
+select 'T13 anon reads records'; select count(*) from records;
+select 'T13 anon my_emp_data'; select public.my_emp_data();
+reset role;
+-- files: receipt photo of Yossi is invisible to Carlos, other photos visible; Carlos can't replace Yossi's file
+insert into storage.objects(bucket_id,name,owner_id) values ('files','exps/e1/rec.jpg','44444444-4444-4444-4444-444444444444'),('files','stockLog/s9/p.jpg','44444444-4444-4444-4444-444444444444'),('files','exps/xw/rec.jpg','22222222-2222-2222-2222-222222222222'),('files','exps/notyet/rec.jpg','22222222-2222-2222-2222-222222222222'),('files','exps/notyet2/rec.jpg','44444444-4444-4444-4444-444444444444');
+select pg_temp.as_user('22222222-2222-2222-2222-222222222222','u7@electrixusa.app'); set role authenticated;
+select 'T13 worker sees files', string_agg(name, ',' order by name) from storage.objects;
+with u as (update storage.objects set name=name where name='stockLog/s9/p.jpg' returning 1) select 'T13 worker overwrites others file', count(*) from u;
+with u as (update storage.objects set name=name where name='exps/xw/rec.jpg' returning 1) select 'T13 worker replaces own file', count(*) from u;
+reset role;
+-- 14) restore after a mistake, from the daily copy
+reset role;
+select public.backup_records();
+update records set data = data || '{"name":"OOPS"}' where coll='sites';
+select 'T14 after mistake', count(*) from records where coll='sites' and data->>'name'='OOPS';
+update records r set data = b.data, deleted = b.deleted from records_backup b
+  where b.slot = (current_date - date '2026-01-01') % 14 and b.coll = r.coll and b.id = r.id and r.coll = 'sites';
+select 'T14 after restore', count(*) from records where coll='sites' and data->>'name'='OOPS';
+select 'T14 history kept the mistake and the fix', count(*) >= 2 from records_history where coll='sites';
+-- 15) ids and id-fields can't carry code
+select pg_temp.as_user('22222222-2222-2222-2222-222222222222','u7@electrixusa.app'); set role authenticated;
+select 'T15 site id with a quote', count(*) from save_records($j$[{"coll":"jobs","id":"zq1","full":{"desc":"x","site":"s1');alert(1);('","from":"u7"},"by":"u7"}]$j$::jsonb);
+select 'T15 reply-to with markup', count(*) from save_records($j$[{"coll":"jobs","id":"j1","patch":{"m_zz":{"by":"u7","re":"x\"><img src=x onerror=alert(1)>","text":"hi"}},"by":"u7"}]$j$::jsonb);
+select 'T15 normal text with quotes is fine', count(*) from save_records($j$[{"coll":"jobs","id":"zq2","full":{"desc":"Install 7\" can lights, Joe's job <rough>","from":"u7"},"by":"u7"}]$j$::jsonb);
+reset role;
+select 'T15 results', (select count(*) from records where id='zq1'), (select (data ? 'm_zz')::text from records where id='j1'), (select count(*) from records where id='zq2');
