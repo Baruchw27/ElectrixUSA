@@ -126,6 +126,17 @@ begin
 end $$;
 grant execute on function public.resolve_login(text) to anon, authenticated;
 
+-- strong passwords: 8+ characters, letters and numbers, not a common one (the app checks this too)
+create or replace function public._pw_check(p text) returns void language plpgsql immutable set search_path = public as $$
+declare l text := lower(coalesce(p,''));
+begin
+  if length(coalesce(p,'')) < 8 then raise exception 'password too short'; end if;
+  if p !~ '[A-Za-z]' or p !~ '[0-9]' then raise exception 'password needs letters and numbers'; end if;
+  if l = any(array['password1','password123','qwerty123','abc12345','abcd1234','iloveyou1','admin123','welcome1','letmein1','monkey123','passw0rd','electrix1','electrix123','electrix2026','monsey123','spring123'])
+     or l ~ 'electrix' or p ~ '^(.)\1+$' then raise exception 'password too common'; end if;
+end $$;
+revoke all on function public._pw_check(text) from public, anon, authenticated;
+
 -- the office can set / reset someone's password
 -- returns the sign-in's id so the employee record can be tied to it
 drop function if exists public.admin_set_password(text, text);
@@ -134,7 +145,7 @@ language plpgsql security definer set search_path = public, auth, extensions as 
 declare uid uuid;
 begin
   if not public.is_boss() then raise exception 'not allowed'; end if;
-  if length(p_pass) < 6 then raise exception 'password too short'; end if;
+  perform public._pw_check(p_pass);
   update auth.users set encrypted_password = crypt(p_pass, gen_salt('bf')), updated_at = now()
   where lower(email) = lower(p_email) returning id into uid;
   return uid;
@@ -146,7 +157,8 @@ create or replace function public._make_user(p_email text, p_pass text) returns 
 language plpgsql security definer set search_path = public, auth, extensions as $$
 declare uid uuid; em text := lower(trim(p_email));
 begin
-  if length(p_pass) < 6 then raise exception 'password too short'; end if;
+  if not (public.is_boss() or public.no_team_yet()) then raise exception 'not allowed'; end if;
+  perform public._pw_check(p_pass);
   select id into uid from auth.users where lower(email) = em;
   if uid is not null then
     update auth.users set encrypted_password = crypt(p_pass, gen_salt('bf')), email_confirmed_at = coalesce(email_confirmed_at, now()), updated_at = now() where id = uid;
