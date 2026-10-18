@@ -1,14 +1,13 @@
-# Runs the Electrix USA STAGING browser + API security tests automatically on GitHub's runners (which HAVE internet,
-# unlike Claude's sandbox). Put this file at .github/workflows/staging-security-tests.yml in the repo.
-# ONE-TIME SETUP (no coding): in the repo → Settings → Secrets and variables → Actions, add 8 secrets with the
-# staging-only passwords from STAGING_TEST_ACCOUNTS.txt:
+# Runs the Electrix USA STAGING browser + API security tests on GitHub's runners (which have internet).
+# ONE-TIME SETUP (browser only, no install): repo -> Settings -> Secrets and variables -> Actions -> add 8 secrets
+# with the staging-only passwords from STAGING_TEST_ACCOUNTS.txt:
 #   STG_OWNER STG_MANAGER STG_OFFICE STG_PAYROLL STG_BOOKKEEPER STG_LEADER STG_WORKERA STG_WORKERB
-# After that it runs on demand (Actions tab → Run workflow) and every night; results + screenshots appear as artifacts.
+# Until they are set, the run finishes GREEN with a "secrets not set yet" notice (it does not fail).
 name: staging-security-tests
 on:
   workflow_dispatch:
   schedule:
-    - cron: '17 8 * * *'   # 08:17 UTC daily
+    - cron: '17 8 * * *'
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -16,12 +15,21 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
+      - name: Check secrets are set
+        env: { STG_OWNER: '${{ secrets.STG_OWNER }}' }
+        run: |
+          if [ -z "$STG_OWNER" ]; then
+            echo "::notice::Staging test passwords are not set yet (add the 8 STG_* repo secrets). Skipping the run."
+            echo "SKIP=1" >> "$GITHUB_ENV"
+          fi
       - name: Install
+        if: env.SKIP != '1'
         working-directory: tests
         run: |
           npm install
           npx playwright install --with-deps chromium
-      - name: Write staging accounts (from repo secrets; staging-only, never production)
+      - name: Write staging accounts (staging-only; from repo secrets; never production)
+        if: env.SKIP != '1'
         working-directory: tests
         env:
           STG_OWNER: ${{ secrets.STG_OWNER }}
@@ -41,10 +49,11 @@ jobs:
             console.log("wrote staging.accounts.json for", Object.keys(a.accounts).length, "accounts");
           '
       - name: Run tests
+        if: env.SKIP != '1'
         working-directory: tests
         run: npm test
       - name: Upload results
-        if: always()
+        if: always() && env.SKIP != '1'
         uses: actions/upload-artifact@v4
         with:
           name: staging-test-results
