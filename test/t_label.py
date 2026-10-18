@@ -28,10 +28,10 @@ async def main():
     txt=await E("document.getElementById('scSheet').innerText")
     chk("shows the name from the label",'Bananya' in txt)
     await pg.screenshot(path=SC+"lbl_shot.png")
-    await pg.locator('#scAddLbl').click();await pg.wait_for_timeout(200)
+    await pg.locator('#scAddLbl').click();await pg.wait_for_timeout(200);await pg.locator('#scQok').click();await pg.wait_for_timeout(150)
     chk("item made with that name + barcode saved",await E("D.stock.some(s=>/Bananya/.test(s.name)&&(s.codes||[]).includes('4611000'))"))
     chk("counted",await E("puLines.some(l=>/Bananya/.test(l.name))"))
-    await pg.wait_for_timeout(1900);await E("_scan('4611000');0");await pg.wait_for_timeout(150)
+    await pg.wait_for_timeout(1900);await E("_scan('4611000');0");await pg.wait_for_timeout(150);await pg.locator('#scQok').click();await pg.wait_for_timeout(150)
     chk("next scan knows it right away",await E("puLines.find(l=>/Bananya/.test(l.name)).qty===2"))
     # OCR can't load → falls back to typing, never hangs
     await E("window.ocrText=async()=>{throw new Error('ocr-load')};0")

@@ -28,7 +28,8 @@ async def main():
     await walk(pg,'Take out','Scan barcode','/tmp/claude-0/-home-claude/bd7165b7-9d93-5fa3-a44f-208a1e1dae13/scratchpad/w');await pg.wait_for_timeout(1800)
     chk("Take out opens the camera",await E("!!document.getElementById('scanOv')&&typeof window._scan==='function'"))
     code=await E("(()=>{const s=D.stock.find(s=>/12\\/2/.test(s.name));s.codes=['0012345678905'];return 1})()")
-    await E("_scan('012345678905');0");await pg.wait_for_timeout(1900);await E("_scan('012345678905');0");await pg.wait_for_timeout(200)
+    await E("_scan('012345678905');0");await pg.wait_for_timeout(200);await pg.locator('#scQok').click();await pg.wait_for_timeout(150)
+    await pg.wait_for_timeout(1900);await E("_scan('012345678905');0");await pg.wait_for_timeout(200);await pg.locator('#scQok').click();await pg.wait_for_timeout(150)
     chk("2 counted",await E("puLines.length===1&&puLines[0].qty===2"))
     await pg.locator('.scX').click();await pg.wait_for_timeout(250)
     chk("Done asks 'For which job?'",await E("/For which job/.test(document.getElementById('scSheet').innerText)&&document.getElementById('scSheet').classList.contains('on')"))
@@ -45,7 +46,7 @@ async def main():
     chk("scanner + window closed",await E("!document.getElementById('scanOv')&&document.getElementById('m-pick2').classList.contains('hid')"))
     # Put back from a job
     await walk(pg,'Put back','Scan barcode');await pg.wait_for_timeout(1800)
-    await E("_scan('012345678905');0");await pg.wait_for_timeout(200)
+    await E("_scan('012345678905');0");await pg.wait_for_timeout(200);await pg.locator('#scQok').click();await pg.wait_for_timeout(150)
     await pg.locator('.scX').click();await pg.wait_for_timeout(250)
     chk("Put back asks where it's coming from",await E("/Coming from/.test(document.getElementById('scSheet').innerText)"))
     await pg.select_option('#scJob',site)
@@ -55,7 +56,7 @@ async def main():
     chk("count back up",await E("(D.stock.find(s=>/12\\/2/.test(s.name))||{}).qty")==max(0,q0-2)+1)
     # Put back = supplier delivery
     await walk(pg,'Put back','Scan barcode');await pg.wait_for_timeout(1800)
-    await pg.wait_for_timeout(100);await E("_scan('012345678905');0");await pg.wait_for_timeout(200)
+    await pg.wait_for_timeout(100);await E("_scan('012345678905');0");await pg.wait_for_timeout(200);await pg.locator('#scQok').click();await pg.wait_for_timeout(150)
     await pg.locator('.scX').click();await pg.wait_for_timeout(250)
     await pg.locator('#scSheet button',has_text='Supplier delivery').click()
     await pg.locator('#scSheet button',has_text='Complete put back').click();await pg.wait_for_timeout(200)
