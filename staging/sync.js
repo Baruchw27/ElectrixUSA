@@ -79,19 +79,32 @@ window.EX_uploadBlob=async function(blob,folder){if(!REAL||!sb||!st.online)retur
   const path=(folder||'media')+'/'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)+'.'+ext;const r=await withTO(sb.storage.from('files').upload(path,blob,{contentType:type.split(';')[0],upsert:false}),25000,'upload');if(r.error)throw r.error;
   return sb.storage.from('files').getPublicUrl(path).data.publicUrl;}catch(e){log('media upload failed',e);return null;}};
 // ---------- push ----------
-// did the server quietly drop a change we sent? compare each patched field to what came back; if it differs, the
-// save was refused (no permission) or someone else changed it first — either way the person should be told.
-function countRejected(sent,server){if(!Array.isArray(server))return 0;const by={};server.forEach(s=>{by[s.coll+'\u0001'+s.id]=s;});let n=0;
-  sent.forEach(row=>{if(row.coll==='emps')return;const s=by[row.coll+'\u0001'+row.id];if(!s||s.deleted)return;const d=s.data||{};
-    if(row.patch&&typeof row.patch==='object'){for(const f in row.patch){if(canon(d[f])!==canon(row.patch[f])){n++;break;}}}});
-  return n;}
+// did the server quietly drop a change we sent? save_records returns each sent row's CURRENT db state after a
+// per-row try/catch that silently swallows a permission denial. so a refused write shows up one of two ways:
+//   • a brand-new row (insert) that was denied → it is simply ABSENT from what came back;
+//   • an existing row whose patch was denied → it comes back with the old values (our fields not applied).
+// either way the person must be told and the local optimistic copy undone — never a false "saved".
+// returns the list of rejected {coll,id,absent} so the caller can revert and surface a clear error.
+function rejectedRows(sent,server){const out=[];if(!Array.isArray(server))return out;
+  const by={};server.forEach(s=>{by[s.coll+'\u0001'+s.id]=s;});
+  sent.forEach(row=>{if(row.coll==='emps')return; // emps are transformed server-side (stripEmp), so skip to avoid false alarms
+    const s=by[row.coll+'\u0001'+row.id];
+    // A denied INSERT comes back absent. We flag that only for 'sched' (the Schedule feature this fix targets), to
+    // keep every other feature's save behavior exactly as it is today — no new surprises outside scheduling.
+    if(!s||s.deleted){if(row.coll==='sched')out.push({coll:row.coll,id:row.id,absent:true});return;}
+    const d=s.data||{};
+    if(row.patch&&typeof row.patch==='object'){for(const f in row.patch){if(canon(d[f])!==canon(row.patch[f])){out.push({coll:row.coll,id:row.id});break;}}}});
+  return out;}
+let lastReject=[];          // rows rejected by the most recent flush (read by EX_saveNow)
+let lastFlushError=null;    // hard error (network/auth) from the most recent flush, else null
+let suppressRejectToast=false; // EX_saveNow shows its own message at the point of action, so mute the background toast
 // flush() hands back the save already running (if any) instead of starting a second one, so a caller such as
 // EX_logout can `await flush()` and be sure the in-flight save has fully finished before it stashes/clears the queue.
 let flushInFlight=null;
 function flush(){if(!REAL||!ready||!st.online)return Promise.resolve();if(flushInFlight)return flushInFlight;
   flushInFlight=_flush();const done=()=>{flushInFlight=null;};flushInFlight.then(done,done);return flushInFlight;}
-async function _flush(){const keys=Object.keys(queue);if(!keys.length)return;flushing=true;paint();
-  let skipped=0,rejected=0;
+async function _flush(){const keys=Object.keys(queue);if(!keys.length){lastReject=[];return;}flushing=true;paint();
+  let skipped=0;const myRej=[];lastFlushError=null;
   try{const ups=[],dels=[],refs=[];
     for(const k of keys){const o=queue[k];if(o.del)dels.push(o);else{
       // offload big blobs; the live object in D is the same reference for arrays, so update it too
@@ -103,12 +116,49 @@ async function _flush(){const keys=Object.keys(queue);if(!keys.length)return;flu
       else row={coll:o.coll,id:o.id,full:cur,by:st.user||null};
       ups.push(row);refs.push(o);}}
     const done=(k,o)=>{if(queue[k]===o)delete queue[k];};
-    for(let i=0;i<ups.length;i+=200){const part=ups.slice(i,i+200);const r=await withTO(sb.rpc('save_records',{rows:part}),20000,'save');if(r.error)throw r.error;part.forEach((x,n)=>done(x.coll+'\u0001'+x.id,refs[i+n]));saveQ();adopt(r.data);rejected+=countRejected(part,r.data);}
-    for(let i=0;i<dels.length;i+=200){const part=dels.slice(i,i+200);const r=await withTO(sb.rpc('save_records',{rows:part.map(o=>({coll:o.coll,id:o.id,deleted:true,full:o.meta||{},by:st.user||null}))}),20000,'save');if(r.error)throw r.error;part.forEach(o=>done(o.coll+'\u0001'+o.id,o));saveQ();}
+    for(let i=0;i<ups.length;i+=200){const part=ups.slice(i,i+200);const r=await withTO(sb.rpc('save_records',{rows:part}),20000,'save');
+      if(r.error){
+        // a simultaneous edit by another office user: the database rejects the stale write (errcode 40001). treat it
+        // like any other refusal — flag the rows, drop them from the queue so we don't retry a doomed write forever,
+        // and pull the winning version so the board shows what actually saved.
+        const e=r.error;if(e.code==='40001'||/40001|stale_sched|could not serialize/i.test((e.message||'')+(e.details||''))){
+          part.forEach((x,n)=>done(x.coll+'\u0001'+x.id,refs[i+n]));saveQ();
+          myRej.push(...part.map(x=>({coll:x.coll,id:x.id,stale:true})));
+          setTimeout(()=>{try{catchUp();}catch(_){}},0);continue;}
+        throw e;}
+      part.forEach((x,n)=>done(x.coll+'\u0001'+x.id,refs[i+n]));saveQ();adopt(r.data);
+      const rej=rejectedRows(part,r.data);
+      // undo the local optimistic copy of anything the server refused: a denied insert stayed only on this phone,
+      // so drop it (adopt() already reverted denied patches to the server's stored version).
+      rej.forEach(x=>{if(x.absent&&!queue[x.coll+'\u0001'+x.id]){try{delRecord(x.coll,x.id);}catch(e){}if(snap[x.coll])delete snap[x.coll][x.id];}});
+      if(rej.length){localSave();try{bump();}catch(e){}}
+      myRej.push(...rej);}
+    for(let i=0;i<dels.length;i+=200){const part=dels.slice(i,i+200);const r=await withTO(sb.rpc('save_records',{rows:part.map(o=>({coll:o.coll,id:o.id,deleted:true,full:o.meta||{},by:st.user||null}))}),20000,'save');if(r.error)throw r.error;part.forEach(o=>done(o.coll+'\u0001'+o.id,o));saveQ();adopt(r.data);
+      // a delete the server refused comes back still present and not deleted → restore it locally (adopt did) and flag
+      // (scoped to 'sched' so other features keep today's behavior)
+      const dby={};(Array.isArray(r.data)?r.data:[]).forEach(s=>{dby[s.coll+'\u0001'+s.id]=s;});
+      part.forEach(o=>{if(o.coll!=='sched')return;const s=dby[o.coll+'\u0001'+o.id];if(s&&!s.deleted)myRej.push({coll:o.coll,id:o.id,delRefused:true});});}
     st.err=skipped?((typeof t==='function'?t('Photo upload failed — will retry'):'Photo upload failed')):'';
-    if(rejected){try{if(typeof toast==='function')toast((typeof t==='function'?t('Some changes could not be saved — showing the saved version.'):'Some changes could not be saved — showing the saved version.'),'bad');}catch(e){}}}
-  catch(e){st.err=(e&&e.message)||'sync error';log('flush error',e);}
+    lastReject=myRej;
+    if(myRej.length){const msg=(typeof t==='function'?t('Some changes could not be saved — showing the saved version.'):'Some changes could not be saved — showing the saved version.');
+      try{window.dispatchEvent(new CustomEvent('ex-rejected',{detail:{rows:myRej.slice()}}));}catch(e){}
+      if(!suppressRejectToast){try{if(typeof toast==='function')toast(msg,'bad');}catch(e){}}}}
+  catch(e){lastReject=myRej;lastFlushError=(e&&e.message)||'sync error';st.err=lastFlushError;log('flush error',e);}
   finally{flushing=false;paint();if(Object.keys(queue).length){if(st.err)setTimeout(flush,5000);else schedule();}}}
+// Save right now and report the TRUE outcome, so a caller (e.g. the schedule editor) can show a real result
+// instead of an optimistic "saved". Resolves {ok, rejected:[{coll,id,absent?}]}: ok=false when the server
+// refused any row we just sent (no permission, or a concurrent edit / stale revision) or the save errored.
+window.EX_saveNow=async function(){if(!REAL)return {ok:true,rejected:[]};
+  try{if(window.EX_afterSave)window.EX_afterSave();}catch(e){}
+  // offline or not yet connected: the change is safely queued and will sync later; if it is then refused, the
+  // background 'ex-rejected' path tells the person at that point. so report "queued OK" rather than a false error.
+  if(!ready||!st.online)return {ok:true,rejected:[],queued:true};
+  const collected=[];let hadError=false;suppressRejectToast=true;
+  try{clearTimeout(timer);await flush();collected.push(...lastReject);if(lastFlushError)hadError=true;
+    let guard=0;while(Object.keys(queue).length&&guard++<3){await new Promise(r=>setTimeout(r,250));await flush();collected.push(...lastReject);if(lastFlushError)hadError=true;}
+  }catch(e){hadError=true;}finally{suppressRejectToast=false;}
+  const seen={},rejected=[];collected.forEach(x=>{const k=x.coll+'\u0001'+x.id;if(!seen[k]){seen[k]=1;rejected.push(x);}});
+  return {ok:!hadError&&rejected.length===0,rejected};};
 // take the server's merged version of what we just saved (it may include another phone's changes)
 function adopt(rows){if(!Array.isArray(rows))return;let changed=false;rows.forEach(r=>{const key=r.coll;if(queue[r.coll+'\u0001'+r.id])return;const j=r.deleted?null:canon(r.coll==='_'?(r.data||{}).v:r.data);
     if(r.deleted){if(snap[key]&&r.id in snap[key]){applyRows([r],{replace:false});delete snap[key][r.id];changed=true;}return;}

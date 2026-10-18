@@ -1156,6 +1156,13 @@ if(!D.emps.some(e=>e.role==='worker')){
 
 // ───────────── IN-APP POPUPS (browser alert/confirm/prompt are blocked in the hosted page) ─────────────
 function toast(msg,cls){const b=document.getElementById('toastBox');const d=document.createElement('div');d.className='toast '+(cls||'');d.textContent=msg;b.appendChild(d);setTimeout(()=>d.remove(),3500);}
+// Save a schedule change and confirm the REAL outcome before telling the person it saved. If the server refuses
+// the write (no permission, or a simultaneous edit by another office user), the local change is undone and a
+// clear error is shown instead of a false "✓ Saved". Falls back to the plain toast when the sync layer is absent.
+async function schedSaveConfirm(okMsg){renderSched();
+  let res={ok:true};try{if(window.EX_saveNow)res=await window.EX_saveNow();}catch(e){}
+  if(res&&res.ok===false){renderSched();toast('⚠ '+t('Not saved — you may not have permission, or someone else just changed it. Your change was undone.'),'bad');return false;}
+  toast('✓ '+(okMsg||t('Saved'))+(res&&res.queued?' · '+t('will sync when online'):''),'green');return true;}
 function ask(title,bodyHtml,onOk,okLabel){document.getElementById('askTitle').textContent=title;document.getElementById('askBody').innerHTML=bodyHtml||'';const ok=document.getElementById('askOk');ok.textContent=okLabel||'OK';ok.onclick=()=>{hide('m-ask');onOk&&onOk();};show('m-ask');}
 function askConfirm(msg,onYes,okLabel){ask(msg,'',onYes,okLabel);}
 function askPrompt(title,fields,onOk){
@@ -1761,9 +1768,9 @@ function commitDay(oneoffs){const key=schedCrew+'|'+slotDay;const base=rowRev(ke
   if(!oneoffs.length&&!patchActive){if(D.sched[key])delete D.sched[key];}
   else if(hasRule||patchActive){D.sched[key]={assignments:oneoffs,cancel:slotPatch.cancel,replace:slotPatch.replace,patch:true,rev:base+1,by:me().id,at:Date.now()};}
   else{D.sched[key]={site:oneoffs[0]?oneoffs[0].site:null,time:oneoffs[0]?fMin(oneoffs[0].start):'',assignments:oneoffs,note:oneoffs.map(a=>a.note).filter(Boolean).join('\n'),rev:base+1,by:me().id,at:Date.now()};}
-  save();hide('m-slot');renderSched();toast('✓ '+t('Saved'),'green');}
-function clearSlot(){const key=schedCrew+'|'+slotDay;delete D.sched[key];save();hide('m-slot');renderSched();toast(t('Day cleared (ongoing job, if any, still repeats)'),'green');}
-function slotCopyPrompt(){const asg=slotEffNow().filter(x=>x.start!=null).map(a=>({id:newAsgId(),site:a.site,start:a.start,end:a.end,note:''}));if(!asg.length)return;askPrompt(t('Copy this day to'),[{label:t('Date'),value:slotDay,type:'date'}],([dd])=>{if(!dd||dd===slotDay)return;const kk=schedCrew+'|'+dd;const put=()=>{writeSlotRow(kk,asg,rowRev(kk));save();hide('m-slot');renderSched();toast('⧉ '+t('Copied'),'green');};if(D.sched[kk])askConfirm(t('That day already has a booking. Overwrite?'),put,t('Overwrite'));else put();});}
+  save();hide('m-slot');schedSaveConfirm(t('Saved'));}
+function clearSlot(){const key=schedCrew+'|'+slotDay;delete D.sched[key];save();hide('m-slot');schedSaveConfirm(t('Day cleared (ongoing job, if any, still repeats)'));}
+function slotCopyPrompt(){const asg=slotEffNow().filter(x=>x.start!=null).map(a=>({id:newAsgId(),site:a.site,start:a.start,end:a.end,note:''}));if(!asg.length)return;askPrompt(t('Copy this day to'),[{label:t('Date'),value:slotDay,type:'date'}],([dd])=>{if(!dd||dd===slotDay)return;const kk=schedCrew+'|'+dd;const put=()=>{writeSlotRow(kk,asg,rowRev(kk));save();hide('m-slot');schedSaveConfirm(t('Copied'));};if(D.sched[kk])askConfirm(t('That day already has a booking. Overwrite?'),put,t('Overwrite'));else put();});}
 // change/move the ongoing job: one day / date range / permanent — never erases one-off jobs
 function slotChangeOngoing(){const rule=ruleOn(schedCrew,slotDay);if(!rule)return;
   askPrompt(t('Change the ongoing job'),[
@@ -1774,11 +1781,11 @@ function slotChangeOngoing(){const rule=ruleOn(schedCrew,slotDay);if(!rule)retur
       if(scope==='one'){applyOngExc(slotDay,rep);}
       else if(scope==='range'){let d=new Date(slotDay+'T12:00');const e=new Date((endDate||slotDay)+'T12:00');let g=0;while(d<=e&&g++<400){applyOngExc(dkey(d),rep);d.setDate(d.getDate()+1);}}
       else{const prev=new Date(slotDay+'T12:00');prev.setDate(prev.getDate()-1);const rk='ONG:'+schedCrew+':'+rule.ruleId;D.sched[rk]={...D.sched[rk],to:dkey(prev),rev:(rule.rev||0)+1,by:me().id,at:Date.now()};if(site!=='__off'){const rid=Date.now().toString(36);D.sched['ONG:'+schedCrew+':'+rid]={site,start:rule.start,end:rule.end,workdays:rule.workdays,from:slotDay,to:null,rev:1,by:me().id,at:Date.now()};}}
-      save();hide('m-slot');renderSched();toast('✓ '+t('Updated — other jobs kept'),'green');});}
+      save();hide('m-slot');schedSaveConfirm(t('Updated — other jobs kept'));});}
 function applyOngExc(date,rep){const key=schedCrew+'|'+date;const row=D.sched[key]||{};const cancel=(row.cancel||[]).slice(),replace=Object.assign({},row.replace||{});
   if(rep==='__off'){if(!cancel.includes('ONG'))cancel.push('ONG');delete replace['ONG'];}else{replace['ONG']=rep;const ci=cancel.indexOf('ONG');if(ci>=0)cancel.splice(ci,1);}
   D.sched[key]={assignments:(row.assignments||[]),cancel,replace,patch:true,rev:rowRev(key)+1,by:me().id,at:Date.now()};}
-function slotEndOngoing(){const rule=ruleOn(schedCrew,slotDay);if(!rule)return;askConfirm(t('End this ongoing job?')+' '+t('It stops repeating from today. Past days stay as they were.'),()=>{const prev=new Date(slotDay+'T12:00');prev.setDate(prev.getDate()-1);const rk='ONG:'+schedCrew+':'+rule.ruleId;if(dkey(prev)<(rule.from||''))delete D.sched[rk];else D.sched[rk]={...D.sched[rk],to:dkey(prev),rev:(rule.rev||0)+1,by:me().id,at:Date.now()};save();hide('m-slot');renderSched();toast(t('Ongoing job ended'),'green');},t('End'));}
+function slotEndOngoing(){const rule=ruleOn(schedCrew,slotDay);if(!rule)return;askConfirm(t('End this ongoing job?')+' '+t('It stops repeating from today. Past days stay as they were.'),()=>{const prev=new Date(slotDay+'T12:00');prev.setDate(prev.getDate()-1);const rk='ONG:'+schedCrew+':'+rule.ruleId;if(dkey(prev)<(rule.from||''))delete D.sched[rk];else D.sched[rk]={...D.sched[rk],to:dkey(prev),rev:(rule.rev||0)+1,by:me().id,at:Date.now()};save();hide('m-slot');schedSaveConfirm(t('Ongoing job ended'));},t('End'));}
 function fillRange(){openSlot(dkey(new Date(new Date().setHours(12,0,0,0))));}
 // ── individual move (loan) editor ──
 let loanDay=null,loanBaseRev=0;
@@ -1790,9 +1797,9 @@ function openLoan(k,empId){loanDay=k;const emps=D.emps.filter(e=>e.role==='worke
   document.getElementById('loanStart').value=min2hhmm(ex?ex.start:720);document.getElementById('loanEnd').value=min2hhmm(ex&&ex.end!=null?ex.end:960);document.getElementById('loanNote').value=ex?ex.note||'':'';show('m-loan');}
 function saveLoan(){const emp=document.getElementById('loanEmp').value;const site=document.getElementById('loanSite').value;const start=hhmm2min(document.getElementById('loanStart').value);const end=hhmm2min(document.getElementById('loanEnd').value);const note=document.getElementById('loanNote').value;
   if(start==null){toast(t('Enter a start time'));return;}const asg=[{id:newAsgId(),site,start,end:(end!=null&&end>start)?end:null,note}];const key=loanKey(emp,loanDay);
-  const go=()=>{const msgs=conflictsForLoan(emp,loanDay,asg);const commit=()=>{D.sched[key]={emp,assignments:asg,rev:rowRev(key)+1,by:me().id,at:Date.now()};save();hide('m-loan');renderSched();toast('✓ '+t('Person moved'),'green');};if(msgs.length)askConfirm('⚠ '+t('Scheduling conflict')+':\n\n'+msgs.join('\n')+'\n\n'+t('Save anyway?'),commit,t('Save anyway'));else commit();};
+  const go=()=>{const msgs=conflictsForLoan(emp,loanDay,asg);const commit=()=>{D.sched[key]={emp,assignments:asg,rev:rowRev(key)+1,by:me().id,at:Date.now()};save();hide('m-loan');schedSaveConfirm(t('Person moved'));};if(msgs.length)askConfirm('⚠ '+t('Scheduling conflict')+':\n\n'+msgs.join('\n')+'\n\n'+t('Save anyway?'),commit,t('Save anyway'));else commit();};
   if(rowRev(key)!==loanBaseRev){askConfirm(t('This was changed since you opened it. Overwrite?'),go,t('Overwrite'));}else go();}
-function clearLoanFor(empId,k){if(!empId)return;delete D.sched[loanKey(empId,k)];save();renderSched();toast(t('Move removed'),'green');}
+function clearLoanFor(empId,k){if(!empId)return;delete D.sched[loanKey(empId,k)];save();schedSaveConfirm(t('Move removed'));}
 // ── upgraded Day board ──
 function renderDayBoard(){const m=me();const el=document.getElementById('todayBoard');const ed=schedCanEdit();
   const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+boardDay);const k=dkey(d);const isT=boardDay===0;const today=new Date().toDateString();
