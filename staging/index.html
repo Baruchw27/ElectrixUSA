@@ -5,10 +5,10 @@
 <meta name="theme-color" content="#ffffff"><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Electrix Field</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
-<script>window.EX_VER='vstk1019';</script><script src="config.js"></script>
+<script>window.EX_VER='vstk1020';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vstk1019"></script>
-<script src="extras.js?vstk1019"></script>
+<script src="sync.js?vstk1020"></script>
+<script src="extras.js?vstk1020"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -3667,7 +3667,12 @@ function renderStock(){const m=me();const q=(document.getElementById('skSearch')
   const low=D.stock.filter(s=>(s.min>0&&s.qty<=s.min)).length;
   document.getElementById('skList').innerHTML=(low&&!q&&skFilter==='all'?'<div class="note">⚠ '+low+' '+t('items running low')+' — <span style="text-decoration:underline;cursor:pointer" onclick="skFilter=\'low\';renderStock()">'+t('see them')+'</span></div>':'')+(list.length?list.map(s=>'<div class="card" style="padding:8px 10px;display:flex;align-items:center;gap:10px">'+stockThumb(s)+'<div style="flex:1;min-width:0"><b style="font-size:14px">'+esc(s.name)+'</b><div style="font-size:11px;color:var(--g4)">'+t('min')+' '+esc(s.min)+' '+esc(s.unit)+'</div></div><div style="text-align:right"><b style="font-size:22px;color:'+(s.qty<=0?'#c0392b':(s.min>0&&s.qty<=s.min)?'var(--amber)':'var(--green)')+'">'+esc(s.qty)+'</b><div style="font-size:11px;color:var(--g4)">'+esc(s.unit)+'</div></div>'+(canStockIn(m)?'<span class="bs" style="padding:4px 8px" onclick="stockAdj(\''+jsq(s.id)+'\')">✎</span>':'')+'</div>').join(''):'<div class="empty">'+t('Nothing in stock.')+'</div>');
   document.getElementById('skLog').innerHTML=D.stockLog.slice().sort((a,b)=>b.ts-a.ts).slice(0,8).map(l=>'<div class="plog" style="flex-direction:column;align-items:stretch"><div style="display:flex;justify-content:space-between"><span>'+(l.kind==='in'?'📥 ':'📤 ')+esc(nameOf(l.by))+(l.kind==='out'?' → '+esc(siteName(l.site)):l.src?' · '+esc(l.src):'')+'</span><span style="color:var(--g4);font-size:12px">'+new Date(l.ts).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+'</span></div><div style="font-size:12px;color:var(--g4)">'+l.items.map(i=>i.qty+' × '+esc(i.name)).join(' · ')+'</div>'+(l.photo?'<img src="'+safeSrc(l.photo)+'" style="width:60px;height:60px;object-fit:cover;border-radius:6px;margin-top:4px">':'')+'</div>').join('')||'<div style="font-size:13px;color:var(--g3)">—</div>';}
-function stockAdj(id){const s=D.stock.find(x=>x.id===id);if(!s)return;askPrompt(s.name,[{label:t('Count in garage'),value:s.qty,type:'number'},{label:t('Warn when below'),value:s.min,type:'number'}],([q,mn])=>{const newQty=Math.max(0,parseInt(q)||0);s.min=Math.max(0,parseInt(mn)||0);if(newQty!==(+s.qty||0))commitStockTxn('set',[{id:s.id,name:s.name,unit:s.unit,qty:newQty}],null);save();renderStock();});}
+function stockAdj(id){const s=stockItem(id);if(!s)return;askPrompt(s.name,[{label:t('Count in garage'),value:s.qty,type:'number'},{label:t('Warn when below'),value:s.min,type:'number'}],async([q,mn])=>{const newQty=Math.max(0,parseInt(q)||0);s.min=Math.max(0,parseInt(mn)||0);save();
+  if(newQty===(+s.qty||0)){renderStock();return;}
+  const txn=commitStockTxn('set',[{id:s.id,name:s.name,unit:s.unit,qty:newQty}],null);renderStock();
+  const res=await confirmStockTxn(txn.id);renderStock();
+  if(res.status==='rejected')return;
+  toast('✓ '+t('Count updated')+(res.status==='queued'?' · '+t('will sync when online'):''),'green');});}
 // lines editor shared by pickup / stock-in
 function linesHtml(arr,fn){return arr.map((l,i)=>'<div class="plog" style="align-items:center;gap:8px"><span style="flex:1">'+esc(l.name)+'</span><input type="number" value="'+l.qty+'" style="width:70px;padding:6px 8px" onchange="'+fn+'[' +i+'].qty=parseInt(this.value)||0"><span style="font-size:12px;color:var(--g4);width:36px">'+esc(l.unit||'')+'</span><span class="x" style="color:var(--g3);cursor:pointer;font-size:18px" onclick="'+fn+'.splice('+i+',1);'+(fn==='puLines'?'puRender()':'siRender()')+'">×</span></div>').join('')||'<div style="font-size:13px;color:var(--g3);padding:6px 0">'+t('No lines yet — type an item below.')+'</div>';}
 function puRender(){document.getElementById('puLines').innerHTML=linesHtml(puLines,'puLines');}
@@ -3806,24 +3811,37 @@ function shrink(f,cb){const r=new FileReader();r.onload=()=>{const img=new Image
 function openPickup(){const m=me();puFile=null;puLines=[];document.getElementById('puPrev').innerHTML='';document.getElementById('puFind').value='';puMatch();puRender();
   document.getElementById('puSite').innerHTML=D.sites.map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');const ds=garDefaultSite();if(ds)document.getElementById('puSite').value=ds;show('m-pick2');}
 function puPhoto(inp){const f=inp.files&&inp.files[0];if(!f)return;shrink(f,d=>{puFile=d;document.getElementById('puPrev').innerHTML='<img src="'+safeSrc(d)+'" style="max-width:100%;max-height:180px;border-radius:8px">';aiReadMaterial(d,'out');});}
-/* ═══ RELIABLE STOCK TRANSACTIONS ═══
-   Every pick-up / put-back / manual adjust is ONE transaction with a unique id. Quantity changes are applied as
-   ATOMIC DELTAS on the server (apply_stock_txn), so simultaneous moves by different people all count and stock never
-   goes negative. The txn id is an idempotency key (server ledger), so a retry / duplicate / repeated sync never
-   double-applies. Works offline: the txn is queued and flushed on reconnect; qty shows optimistically meanwhile. */
+/* ═══ RELIABLE, TRACEABLE STOCK TRANSACTIONS ═══
+   Every pick-up / put-back / manual adjust is ONE atomic server transaction (apply_stock_txn):
+   • qty = row-locked server deltas (concurrent moves all count; a shortage is REJECTED, never silently floored);
+   • the txn id is a fingerprinted idempotency key (retry/duplicate never double-applies; reuse with different
+     content is rejected);
+   • an authoritative, tamper-proof movement record (item, before/after, employee, site, type, original + server
+     time, approver) is written in the SAME DB transaction as the qty change;
+   • offline: queued with the original action time, flushed on reconnect; a rejected move is UNDONE locally and
+     clearly reported — never a false "saved". */
 const STOCKQ_KEY=(typeof KEY!=='undefined'?KEY:'electrix_v29')+'__stockq';
+const stockOutcomes={};
 function stockQ(){try{return JSON.parse(localStorage.getItem(STOCKQ_KEY)||'[]');}catch(e){return [];}}
 function stockQSave(q){try{localStorage.setItem(STOCKQ_KEY,JSON.stringify(q));}catch(e){}}
-function stockApplyLocal(moves){moves.forEach(m=>{let s=D.stock.find(x=>x.id===m.id);if(!s){s={id:m.id,name:m.name||m.id,unit:m.unit||'pc',qty:0,min:0};D.stock.push(s);}if('set' in m)s.qty=Math.max(0,+m.set||0);else s.qty=Math.max(0,(+s.qty||0)+(+m.delta||0));});}
+function stockItem(id){return D.stock.find(x=>x.id===id);}
+function stockApplyLocal(moves){moves.forEach(m=>{let s=stockItem(m.id);if(!s){s={id:m.id,name:m.name||m.id,unit:m.unit||'pc',qty:0,min:0};D.stock.push(s);}m._pre=(+s.qty||0);if('set' in m)s.qty=Math.max(0,+m.set||0);else s.qty=Math.max(0,(+s.qty||0)+(+m.delta||0));});}
+function stockRevert(moves){moves.forEach(m=>{const s=stockItem(m.id);if(!s)return;if('_pre' in m)s.qty=Math.max(0,+m._pre||0);else if('delta' in m)s.qty=Math.max(0,(+s.qty||0)-(+m.delta||0));});}
 function commitStockTxn(kind,lines,site,extra){const by=me().id;
-  const moves=lines.map(l=>{const b={id:l.id,name:l.name,unit:l.unit||'pc'};if(kind==='set')b.set=Math.max(0,+l.qty||0);else b.delta=(kind==='out'?-1:1)*Math.abs(+l.qty||0);return b;}).filter(m=>('set' in m)||m.delta!==0);
+  const moves=lines.map(l=>{const b={id:l.id,name:l.name,unit:l.unit||'pc'};if(kind==='set'){b.set=Math.max(0,+l.qty||0);const cur=stockItem(l.id);b.expect=(cur?(+cur.qty||0):0);}else b.delta=(kind==='out'?-1:1)*Math.abs(+l.qty||0);return b;}).filter(m=>('set' in m)||m.delta!==0);
   if(!moves.length)return null;
-  const txn={id:nid('sl'),kind,by,site:site||undefined,items:lines.map(l=>({name:l.name,qty:Math.abs(+l.qty||0)})),moves,ts:Date.now()};
+  const txn={id:nid('sl'),kind,by,site:site||undefined,moves,ts:Date.now()};
   stockApplyLocal(moves);
-  D.stockLog.push({id:txn.id,kind,by,site:txn.site,items:txn.items,photo:(extra&&extra.photo)||'',src:(extra&&extra.src)||undefined,file:(extra&&extra.file)||undefined,ts:txn.ts});
-  const q=stockQ();q.push({id:txn.id,by,moves,ts:txn.ts});stockQSave(q);
+  D.stockLog.push({id:txn.id,kind,by,site:txn.site,items:lines.map(l=>({id:l.id,name:l.name,qty:Math.abs(+l.qty||0)})),photo:(extra&&extra.photo)||'',src:(extra&&extra.src)||undefined,ts:txn.ts,pending:true});
+  const q=stockQ();q.push(txn);stockQSave(q);
   try{save();}catch(e){}
   flushStockQ();return txn;}
+function stockErrMsg(err){const m=(err&&err.message)||'';
+  if(/insufficient_stock/.test(m)){const mm=m.match(/available (\d+)/);return t('Not enough in the garage')+(mm?' — '+t('only')+' '+mm[1]+' '+t('available'):'')+'. '+t('This pick-up was not saved.');}
+  if(/stock_changed_recount/.test(m))return t('Stock changed while you were counting — please recount.');
+  if(/txn_reuse_conflict/.test(m))return t('Could not save this change.');
+  if((err&&err.code==='42501')||/not allowed|permission/i.test(m))return t('You are not allowed to make this stock change.');
+  return '';}
 let stockFlushing=false;
 async function flushStockQ(){if(stockFlushing)return;
   if(!window.EX_REAL){if(stockQ().length)stockQSave([]);return;}
@@ -3831,32 +3849,48 @@ async function flushStockQ(){if(stockFlushing)return;
   stockFlushing=true;let changed=false;
   try{let q=stockQ();
     for(const txn of q.slice()){
-      let r;try{r=await sb.rpc('apply_stock_txn',{txn:{id:txn.id,by:txn.by,moves:txn.moves,ts:txn.ts}});}catch(e){break;}
-      if(r&&r.error){if((r.error.code==='42501')||/not allowed|permission/i.test(r.error.message||'')){q=stockQ().filter(t=>t.id!==txn.id);stockQSave(q);changed=true;try{toast('⚠ '+t('A stock change was not allowed and was undone.'),'bad');}catch(e){}continue;}break;}
-      const res=(r&&r.data)||{};(res.qtys||[]).forEach(x=>{const s=D.stock.find(y=>y.id===x.id);if(s){s.qty=Math.max(0,+x.qty||0);changed=true;}});
-      q=stockQ().filter(t=>t.id!==txn.id);stockQSave(q);
+      let r;try{r=await sb.rpc('apply_stock_txn',{txn:{id:txn.id,kind:txn.kind,by:txn.by,site:txn.site,ts:txn.ts,moves:txn.moves.map(m=>{const o={id:m.id,name:m.name,unit:m.unit};if('set'in m){o.set=m.set;if('expect'in m)o.expect=m.expect;}else o.delta=m.delta;return o;})}});}catch(e){break;}
+      if(r&&r.error){const perm=stockErrMsg(r.error);
+        if(perm){stockRevert(txn.moves);q=stockQ().filter(x=>x.id!==txn.id);stockQSave(q);changed=true;
+          const li=D.stockLog.find(x=>x.id===txn.id);if(li){li.pending=false;li.rejected=true;}
+          stockOutcomes[txn.id]={status:'rejected',reason:perm};try{toast('⚠ '+perm,'bad');}catch(e){}continue;}
+        break;} // transient (network/server): keep queued, retry later
+      const res=(r&&r.data)||{};(res.qtys||[]).forEach(x=>{const s=stockItem(x.id);if(s){s.qty=Math.max(0,+x.qty||0);changed=true;}});
+      const li=D.stockLog.find(x=>x.id===txn.id);if(li)li.pending=false;
+      stockOutcomes[txn.id]={status:'saved'};
+      q=stockQ().filter(x=>x.id!==txn.id);stockQSave(q);
     }
   }finally{stockFlushing=false;if(changed){try{save();}catch(e){}try{renderStock();}catch(e){}}}}
 window.EX_flushStockQ=flushStockQ;
+// await the TRUE outcome of a txn so the UI never reports a false success
+async function confirmStockTxn(id){if(!window.EX_REAL)return {status:'saved'};
+  if(!(window.EX_SYNC&&window.EX_SYNC.online))return {status:'queued'};
+  try{await flushStockQ();}catch(e){}
+  if(stockOutcomes[id])return stockOutcomes[id];
+  return stockQ().some(t=>t.id===id)?{status:'queued'}:{status:'saved'};}
 try{window.addEventListener('online',()=>setTimeout(flushStockQ,600));document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(flushStockQ,600);});setInterval(()=>{if(stockQ().length)flushStockQ();},15000);setTimeout(flushStockQ,2500);}catch(e){}
-function savePickup(){if(!puLines.length){toast(t('Add at least one item'));return;}
+async function savePickup(){if(!puLines.length){toast(t('Add at least one item'));return;}
   const site=document.getElementById('puSite').value;
-  const lines=puLines.map(l=>{const s=l.id?D.stock.find(x=>x.id===l.id):stockFind(l.name);return {id:s?s.id:nid('s_'),name:s?s.name:l.name,unit:s?s.unit:(l.unit||'pc'),qty:Math.abs(+l.qty||0)};}).filter(l=>l.qty>0);
+  const lines=puLines.map(l=>{const s=l.id?stockItem(l.id):stockFind(l.name);return {id:s?s.id:nid('s_'),name:s?s.name:l.name,unit:s?s.unit:(l.unit||'pc'),qty:Math.abs(+l.qty||0)};}).filter(l=>l.qty>0);
   if(!lines.length){toast(t('Add at least one item'));return;}
-  commitStockTxn('out',lines,site,{photo:puFile||''});
-  hide('m-pick2');renderStock();const queued=window.EX_REAL&&!(window.EX_SYNC&&window.EX_SYNC.online);
-  toast('📤 '+lines.map(l=>l.qty+'× '+l.name.split(' ')[0]).join(', ')+' → '+siteName(site)+(queued?' · '+t('will sync when online'):''),'green');
+  const txn=commitStockTxn('out',lines,site,{photo:puFile||''});
+  hide('m-pick2');renderStock();
+  const res=await confirmStockTxn(txn.id);renderStock();
+  if(res.status==='rejected')return;          // clear error already shown; optimistic change undone
+  if(res.status==='queued'){toast('📤 '+t('Saved — will sync when online'),'green');return;}
+  toast('📤 '+lines.map(l=>l.qty+'× '+l.name.split(' ')[0]).join(', ')+' → '+siteName(site),'green');
   const low=D.stock.filter(s=>(s.min>0&&s.qty<=s.min)&&lines.some(l=>l.id===s.id));if(low.length)pushTo(D.emps.filter(e=>e.role==='office'&&e.title==='Material').map(e=>e.id),'⚠ '+t('Running low')+': '+low.map(s=>s.name+' ('+s.qty+' '+s.unit+')').join(', '));}
 function openStockIn(){siFile=null;siLines=[];{const ss=document.getElementById('siSite');if(ss){ss.innerHTML='<option value="">'+t('Supplier / other')+'</option>'+visSites().map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');ss.value=garDefaultSite()||'';}}document.getElementById('siPrev').innerHTML='';document.getElementById('siSrc').value='';document.getElementById('siFind').value='';siMatch();siRender();show('m-stockin');}
 function siPhoto(inp){const f=inp.files&&inp.files[0];if(!f)return;if(!f.type.startsWith('image/')){siFile={d:'',name:f.name};document.getElementById('siPrev').innerHTML='<div class="note">📎 '+esc(f.name)+' — '+t('Live app reads the lines off the invoice')+'</div>';return;}shrink(f,d=>{siFile={d,name:f.name};document.getElementById('siPrev').innerHTML='<img src="'+safeSrc(d)+'" style="max-width:100%;max-height:180px;border-radius:8px">';aiReadMaterial(d,'in');});}
-function saveStockIn(){if(!siLines.length){toast(t('Add at least one line'));return;}
+async function saveStockIn(){if(!siLines.length){toast(t('Add at least one line'));return;}
   const site=siRetSite||((document.getElementById('siSite')||{}).value)||undefined;const src=(document.getElementById('siSrc').value||'').trim();
-  const lines=siLines.map(l=>{const s=l.id?D.stock.find(x=>x.id===l.id):stockFind(l.name);return {id:s?s.id:nid('s_'),name:s?s.name:l.name,unit:s?s.unit:(l.unit||'pc'),qty:Math.abs(+l.qty||0)};}).filter(l=>l.qty>0);
+  const lines=siLines.map(l=>{const s=l.id?stockItem(l.id):stockFind(l.name);return {id:s?s.id:nid('s_'),name:s?s.name:l.name,unit:s?s.unit:(l.unit||'pc'),qty:Math.abs(+l.qty||0)};}).filter(l=>l.qty>0);
   if(!lines.length){toast(t('Add at least one line'));return;}
-  commitStockTxn('in',lines,site,{photo:siFile&&siFile.d?siFile.d:'',src,file:siFile?siFile.name:undefined});
+  const txn=commitStockTxn('in',lines,site,{photo:siFile&&siFile.d?siFile.d:'',src});
   siRetSite=null;hide('m-stockin');renderStock();try{renderMat();}catch(e){}
-  const queued=window.EX_REAL&&!(window.EX_SYNC&&window.EX_SYNC.online);
-  toast('📥 '+t('Added to garage')+(queued?' · '+t('will sync when online'):''),'green');}
+  const res=await confirmStockTxn(txn.id);renderStock();
+  if(res.status==='rejected')return;
+  toast('📥 '+t('Added to garage')+(res.status==='queued'?' · '+t('will sync when online'):''),'green');}
 // ───────────── TOOLS — where is everything: garage / a van / a job site. Photo in, photo out. ─────────────
 let tkMode='take',tkFile=null,tkPick=null,ntFile=null,tlFilter='all';
 const vanOwners=()=>D.emps.filter(e=>e.role==='manager'||(e.role==='worker'&&e.lead));

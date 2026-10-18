@@ -9,7 +9,7 @@
 const CFG=window.EX_CFG||{};
 const REAL=!!(CFG.url&&CFG.anonKey&&window.supabase);
 window.EX_REAL=REAL;
-const SKIP=new Set(['role','nextId']);         // never shared
+const SKIP=new Set(['role','nextId','stockLog']); // never uploaded (stockLog = authoritative, server-written only)
 const EMP_STRIP=['pass'];                       // never leaves the phone
 const DOMAIN=CFG.domain||'electrixusa.app';
 const BLOB_MIN=60000;                           // data: URLs longer than this go to storage
