@@ -263,8 +263,8 @@ html[data-theme=dark] .sc-av.in{background:#173B2A;color:#7EE0AE}html[data-theme
 .sc-p{display:flex;align-items:center;gap:10px;padding:6px 0}
 .sc-pn{flex:1;font-size:14.5px}.sc-pn em{font-style:normal;font-size:11.5px;color:var(--sc-mut);margin-left:4px}
 .sc-ps{font-size:12.5px;color:var(--sc-mut);font-variant-numeric:tabular-nums}.sc-ps.in{color:#11643F}.sc-ps.away{color:#AE2A22}.sc-ps.wait{color:#8A5A00}
-.sc-acts{display:flex;gap:8px;margin:10px 0 2px}
-.sc-acts button,.sc-acts a{flex:1;min-width:0;font-size:13px!important;text-align:center;text-decoration:none;border:0;background:var(--sc-track);color:var(--sc-ink);font-weight:600;font-size:13.5px;line-height:1;padding:11px 6px;border-radius:11px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.sc-acts{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 2px}
+.sc-acts button,.sc-acts a{flex:1 1 auto;min-width:96px;font-size:13px!important;text-align:center;text-decoration:none;border:0;background:var(--sc-track);color:var(--sc-ink);font-weight:600;font-size:13.5px;line-height:1;padding:11px 6px;border-radius:11px;cursor:pointer;font-family:inherit;white-space:nowrap}
 .sc-acts button:first-child{background:var(--sc-ink);color:var(--sc-surf)}
 .sc-row.free{cursor:default;align-items:center}
 .sc-book{border:0;background:rgba(213,60,54,.1);color:var(--sc-red);font-weight:600;font-size:13.5px;line-height:1;padding:8px 16px;border-radius:99px;cursor:pointer;font-family:inherit}
@@ -1745,7 +1745,7 @@ function renderSlotEditor(){const wd=crewWorkday(schedCrew);const rule=ruleOn(sc
   html+='<div style="font-size:12.5px;color:'+(rem>0?'var(--amber)':'var(--green)')+';margin:4px 2px 8px">'+(rem>0?'⏳ '+remHrs(rem)+'h '+t('open in the workday'):'✓ '+t('Workday full'))+'</div>';
   if(slotAddMode==null){html+='<button class="btn sec2" onclick="slotPickMode(\'menu\')">+ '+t('Add a job')+'</button>';}
   else{html+=renderAddPanel();}
-  html+='<div id="slotConf"></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px"><button class="btn" style="flex:1 1 100%" onclick="saveSlot()">'+t('Save')+'</button><button class="btn sec2" style="flex:1" onclick="slotCopyPrompt()">⧉ '+t('Copy day')+'</button><button class="btn rd" style="flex:1" onclick="clearSlot()">'+t('Clear day')+'</button><button class="btn sec2" style="flex:1" onclick="hide(\'m-slot\')">'+t('Cancel')+'</button></div>';
+  html+='<div id="slotConf"></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px"><button class="btn" style="flex:1 1 100%" onclick="saveSlot()">'+t('Save')+'</button><button class="btn sec2" style="flex:1 1 46%" onclick="slotMovePrompt()">📅 '+t('Move to date')+'</button><button class="btn sec2" style="flex:1 1 46%" onclick="slotCopyPrompt()">⧉ '+t('Copy day')+'</button><button class="btn rd" style="flex:1 1 46%" onclick="clearSlot()">'+t('Clear day')+'</button><button class="btn sec2" style="flex:1 1 46%" onclick="hide(\'m-slot\')">'+t('Cancel')+'</button></div>';
   document.getElementById('slotBody').innerHTML=html;updateSlotConflicts();}
 function renderAddPanel(){const site='<select id="slotAddSite">'+D.sites.map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('')+'</select>';
   if(slotAddMode==='menu')return '<div class="card" style="padding:11px"><label style="font-size:12px;color:var(--g4)">'+t('Job site')+'</label>'+site+'<div style="font-size:12px;color:var(--g4);margin:10px 0 6px">'+t('How long?')+'</div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sec2" style="flex:1" onclick="slotAddMode=\'spec\';renderSlotEditor()">'+t('Specific hours')+'</button><button class="btn sec2" style="flex:1" onclick="slotAddFull()">'+t('Full day')+'</button><button class="btn sec2" style="flex:1 1 100%" onclick="slotAddMode=\'ong\';renderSlotEditor()">♾ '+t('Until reassigned')+'</button></div><button class="btn sec2" style="margin-top:8px" onclick="slotAddMode=null;renderSlotEditor()">'+t('Cancel')+'</button></div>';
@@ -1771,6 +1771,16 @@ function commitDay(oneoffs){const key=schedCrew+'|'+slotDay;const base=rowRev(ke
   save();hide('m-slot');schedSaveConfirm(t('Saved'));}
 function clearSlot(){const key=schedCrew+'|'+slotDay;delete D.sched[key];save();hide('m-slot');schedSaveConfirm(t('Day cleared (ongoing job, if any, still repeats)'));}
 function slotCopyPrompt(){const asg=slotEffNow().filter(x=>x.start!=null).map(a=>({id:newAsgId(),site:a.site,start:a.start,end:a.end,note:''}));if(!asg.length)return;askPrompt(t('Copy this day to'),[{label:t('Date'),value:slotDay,type:'date'}],([dd])=>{if(!dd||dd===slotDay)return;const kk=schedCrew+'|'+dd;const put=()=>{writeSlotRow(kk,asg,rowRev(kk));save();hide('m-slot');schedSaveConfirm(t('Copied'));};if(D.sched[kk])askConfirm(t('That day already has a booking. Overwrite?'),put,t('Overwrite'));else put();});}
+// Fix a wrong date fast: move this day's job(s) to another date and clear the original (keeps any ongoing job in place).
+function slotMovePrompt(){const asg=slotOneoffs.filter(a=>a.site&&a.start!=null).map(a=>({id:newAsgId(),site:a.site,start:a.start,end:a.end,note:a.note||''}));
+  if(!asg.length){toast(t('No one-off job on this day to move. To change an ongoing job, use “Change / move” above; to change the address, pick a different job site above.'));return;}
+  askPrompt(t('Move this booking to another date'),[{label:t('New date'),value:slotDay,type:'date'}],([dd])=>{if(!dd||dd===slotDay)return;const to=schedCrew+'|'+dd;
+    const doMove=()=>{writeSlotRow(to,asg,rowRev(to));
+      const key=schedCrew+'|'+slotDay;const hasRule=!!ruleOn(schedCrew,slotDay);const patchActive=slotPatch.cancel.length||Object.keys(slotPatch.replace).length;
+      if(hasRule||patchActive)D.sched[key]={assignments:[],cancel:slotPatch.cancel,replace:slotPatch.replace,patch:true,rev:rowRev(key)+1,by:me().id,at:Date.now()};
+      else delete D.sched[key];
+      save();hide('m-slot');renderSched();schedSaveConfirm(t('Moved to')+' '+new Date(dd+'T12:00').toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'}));};
+    if(slotHasAny(to))askConfirm(t('That date already has a booking for this crew. Replace it with this one?'),doMove,t('Replace'));else doMove();});}
 // change/move the ongoing job: one day / date range / permanent — never erases one-off jobs
 function slotChangeOngoing(){const rule=ruleOn(schedCrew,slotDay);if(!rule)return;
   askPrompt(t('Change the ongoing job'),[
