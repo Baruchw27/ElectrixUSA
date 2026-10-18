@@ -2724,7 +2724,7 @@ function delPunch(){askConfirm(t('Delete this punch?'),()=>{D.punches.splice(peI
 
 // ───────────── JOB HOURS DASHBOARD — owner + Payroll only (gated by canEditHours; data is RLS-limited) ─────────────
 // Reuses punchDur (breaks, off-site trips and manual corrections are already inside it) and weekStart (Sun–Sat).
-let dashRange='tw',dashFrom='',dashTo='',jhSiteRange='all',jhSiteFrom='',jhSiteTo='',jhOpen={};
+let dashRange='tw',dashFrom='',dashTo='',jhSiteRange='all',jhSiteFrom='',jhSiteTo='',jhOpen={},dashSiteQ='';
 function monthStartMs(ref){const x=new Date(ref||Date.now());return new Date(x.getFullYear(),x.getMonth(),1).getTime();}
 function rangeBounds(kind,fromStr,toStr){const now=Date.now();
   if(kind==='tw'){const f=weekStart(now).getTime();return [f,f+7*86400000,t('This week')];}
@@ -2739,7 +2739,7 @@ function hrPunches(from,to,filterFn){return D.punches.filter(p=>!p.rejected&&(p.
 function sumDur(ps){return ps.reduce((a,p)=>a+punchDur(p),0);}
 function rangeChips(cur,setter){return [['tw',t('This week')],['lw',t('Last week')],['tm',t('This month')],['custom',t('Custom')]].map(([k,l])=>'<div class="chip '+(cur===k?'on':'')+'" onclick="'+setter+'(\''+k+'\')">'+l+'</div>').join('');}
 function punchRowsHtml(ps){return ps.slice().sort((a,b)=>a.in-b.in).map(p=>{const end=p.out||p.away;const dur=end?punchDur(p):null;const open=!end;const idx=D.punches.indexOf(p);
-  return '<div class="plog" style="cursor:pointer" onclick="openPunchEdit('+idx+')"><span style="flex:1">'+new Date(p.in).toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'})+' · '+esc(siteName(p.site))+'<br><span style="font-size:12px;color:var(--g4)">'+fmtT(p.in)+'–'+(end?fmtT(end):t('still in'))+(p.edits&&p.edits.length?' · ✎ '+t('corrected'):'')+'</span></span><b>'+(open?'<span style="color:#c0392b">'+t('open')+'</span>':dur.toFixed(2)+' h')+'</b></div>';}).join('');}
+  return '<div class="plog" style="cursor:pointer" onclick="openPunchEdit('+idx+')"><span style="flex:1">'+new Date(p.in).toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'})+' · '+esc(siteName(p.site))+(p.edits&&p.edits.length?' <span style="background:#fff3cd;color:#8a6d0b;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600">✎ '+t('corrected')+'</span>':'')+'<br><span style="font-size:12px;color:var(--g4)">'+fmtT(p.in)+'–'+(end?fmtT(end):t('still in'))+'</span></span><b>'+(open?'<span style="color:#c0392b">'+t('open')+'</span>':dur.toFixed(2)+' h')+'</b></div>';}).join('');}
 // Company-wide overview (pg-hours)
 function dashSetRange(k){dashRange=k;jhOpen={};renderJobDash();}
 function dashEmp(id){jhOpen['dash:'+id]=!jhOpen['dash:'+id];renderJobDash();}
@@ -2757,7 +2757,14 @@ function renderJobDash(){const box=document.getElementById('jobDash');if(!box)re
     +'<div class="sec">'+t('By employee')+'</div>'
     +(emps.length?emps.map(id=>'<div class="card" style="padding:0"><div class="plog" style="cursor:pointer;margin:0;padding:10px 13px" onclick="dashEmp(\''+jsq(id)+'\')"><span style="flex:1">'+(jhOpen['dash:'+id]?'▾ ':'▸ ')+esc(nameOf(id))+'</span><b>'+byE[id].toFixed(2)+' h</b></div>'+(jhOpen['dash:'+id]?'<div style="padding:0 13px 8px">'+punchRowsHtml(ps.filter(p=>p.who===id))+'</div>':'')+'</div>').join(''):'<div class="empty">'+t('No hours in this range.')+'</div>')
     +'<div class="sec">'+t('By job site')+'</div>'
-    +(sites.length?sites.map(id=>'<div class="plog" style="cursor:pointer" onclick="openFolder(\''+jsq(id)+'\')"><span style="flex:1">'+esc(siteName(id)||'—')+'</span><b>'+byS[id].toFixed(2)+' h</b></div>').join(''):'<div class="empty">—</div>');}
+    +'<input id="dashSiteSearch" type="search" placeholder="'+t('Find a job site…')+'" value="'+esc(dashSiteQ)+'" oninput="renderDashSites()" autocomplete="off" style="margin-bottom:8px;font-size:16px">'
+    +'<div id="dashSiteList"></div>';
+  renderDashSites();}
+function renderDashSites(){const el=document.getElementById('dashSiteList');if(!el)return;
+  const se=document.getElementById('dashSiteSearch');dashSiteQ=se?se.value:dashSiteQ;const q=(dashSiteQ||'').trim().toLowerCase();
+  const [from,to]=rangeBounds(dashRange,dashFrom,dashTo);const ps=hrPunches(from,to);const byS={};ps.forEach(p=>byS[p.site]=(byS[p.site]||0)+punchDur(p));
+  const rows=Object.keys(byS).sort((a,b)=>byS[b]-byS[a]).filter(id=>!q||(siteName(id)||'').toLowerCase().includes(q));
+  el.innerHTML=rows.length?rows.map(id=>'<div class="plog" style="cursor:pointer" onclick="openFolder(\''+jsq(id)+'\')"><span style="flex:1">📍 '+esc(siteName(id)||'—')+'</span><b>'+byS[id].toFixed(2)+' h <span style="color:var(--g4)">›</span></b></div>').join(''):'<div class="empty">'+t('No job site matches.')+'</div>';}
 // Per-job labor history (inside the job folder)
 function jhSetRange(k){jhSiteRange=k;jhOpen={};renderJobHours(fdSite);}
 function jhTog(who){jhOpen[fdSite+'|'+who]=!jhOpen[fdSite+'|'+who];renderJobHours(fdSite);}
@@ -2774,7 +2781,7 @@ function renderJobHours(siteId){const box=document.getElementById('jobHoursBox')
     +'<div class="sec">'+t('Hours per employee')+'</div>'
     +(emps.length?emps.map(id=>'<div class="card" style="padding:0"><div class="plog" style="cursor:pointer;margin:0;padding:10px 13px" onclick="jhTog(\''+jsq(id)+'\')"><span style="flex:1">'+(jhOpen[siteId+'|'+id]?'▾ ':'▸ ')+esc(nameOf(id))+'</span><b>'+byE[id].toFixed(2)+' h</b></div>'+(jhOpen[siteId+'|'+id]?'<div style="padding:0 13px 8px">'+punchRowsHtml(ps.filter(p=>p.who===id))+'</div>':'')+'</div>').join(''):'<div class="empty">'+t('No hours yet for this job.')+'</div>')
     +'<div class="sec">'+t('By date')+'</div>'
-    +(days.length?days.map(k=>'<div class="plog"><span style="flex:1">'+new Date(k+'T12:00').toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'})+'</span><b>'+byD[k].toFixed(2)+' h</b></div>').join(''):'<div class="empty">—</div>');}
+    +(days.length?'<div class="note" style="margin-bottom:6px">'+t('Each shift is counted on the day it started — overnight shifts included.')+'</div>'+days.map(k=>'<div class="plog"><span style="flex:1">'+new Date(k+'T12:00').toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'})+'</span><b>'+byD[k].toFixed(2)+' h</b></div>').join('')+'<div class="plog" style="border-top:2px solid var(--g2,#ccc)"><span style="flex:1;font-weight:700">'+t('Total')+'</span><b>'+Object.values(byD).reduce((a,b)=>a+b,0).toFixed(2)+' h</b></div>':'<div class="empty">—</div>');}
 
 // ───────────── SWIPE LEFT/RIGHT BETWEEN TABS ─────────────
 (function(){let sx=0,sy=0,st=0;
