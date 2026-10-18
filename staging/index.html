@@ -2737,21 +2737,21 @@ function rangeBounds(kind,fromStr,toStr){const now=Date.now();
 // Punches that count toward hours — payroll-consistent with the Hours screen: has an end (out or break-start), not rejected, clock-in inside the range. Overnight shifts keep their full length (punchDur = out−in); each punch is bucketed by its clock-in day.
 function hrPunches(from,to,filterFn){return D.punches.filter(p=>!p.rejected&&(p.out||p.away)&&p.in>=from&&p.in<to&&(!filterFn||filterFn(p)));}
 function sumDur(ps){return ps.reduce((a,p)=>a+punchDur(p),0);}
-function rangeChips(cur,setter){return [['tw',t('This week')],['lw',t('Last week')],['tm',t('This month')],['custom',t('Custom')]].map(([k,l])=>'<div class="chip '+(cur===k?'on':'')+'" onclick="'+setter+'(\''+k+'\')">'+l+'</div>').join('');}
+function rangeChips(cur,setter){return [['tw',t('This week')],['lw',t('Last week')],['tm',t('This month')],['all',t('All time')],['custom',t('Custom')]].map(([k,l])=>'<div class="chip '+(cur===k?'on':'')+'" onclick="'+setter+'(\''+k+'\')">'+l+'</div>').join('');}
 function punchRowsHtml(ps){return ps.slice().sort((a,b)=>a.in-b.in).map(p=>{const end=p.out||p.away;const dur=end?punchDur(p):null;const open=!end;const idx=D.punches.indexOf(p);
-  return '<div class="plog" style="cursor:pointer" onclick="openPunchEdit('+idx+')"><span style="flex:1">'+new Date(p.in).toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'})+' · '+esc(siteName(p.site))+(p.edits&&p.edits.length?' <span style="background:#fff3cd;color:#8a6d0b;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600">✎ '+t('corrected')+'</span>':'')+'<br><span style="font-size:12px;color:var(--g4)">'+fmtT(p.in)+'–'+(end?fmtT(end):t('still in'))+'</span></span><b>'+(open?'<span style="color:#c0392b">'+t('open')+'</span>':dur.toFixed(2)+' h')+'</b></div>';}).join('');}
+  return '<div class="plog" style="cursor:pointer;gap:10px;align-items:flex-start" onclick="openPunchEdit('+idx+')"><span style="flex:1;min-width:0;word-break:break-word;line-height:1.35">'+new Date(p.in).toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'})+' · '+esc(siteName(p.site))+(p.edits&&p.edits.length?' <span style="display:inline-block;background:#fff3cd;color:#8a6d0b;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600;white-space:nowrap">✎ '+t('corrected')+'</span>':'')+'<br><span style="font-size:12px;color:var(--g4)">'+fmtT(p.in)+'–'+(end?fmtT(end):t('still in'))+'</span></span><b style="white-space:nowrap;flex-shrink:0;text-align:right">'+(open?'<span style="color:#c0392b">'+t('open')+'</span>':dur.toFixed(2)+' h')+'</b></div>';}).join('');}
 // Company-wide overview (pg-hours)
 function dashSetRange(k){dashRange=k;jhOpen={};renderJobDash();}
 function dashEmp(id){jhOpen['dash:'+id]=!jhOpen['dash:'+id];renderJobDash();}
 function renderJobDash(){const box=document.getElementById('jobDash');if(!box)return;
   const [from,to,label]=rangeBounds(dashRange,dashFrom,dashTo);
-  const custom=dashRange==='custom'?'<div style="display:flex;gap:8px;margin:8px 0"><input type="date" value="'+esc(dashFrom)+'" onchange="dashFrom=this.value;renderJobDash()" style="flex:1"><input type="date" value="'+esc(dashTo)+'" onchange="dashTo=this.value;renderJobDash()" style="flex:1"></div>':'';
+  const custom=dashRange==='custom'?'<div style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap"><input type="date" aria-label="From" value="'+esc(dashFrom)+'" onchange="dashFrom=this.value;renderJobDash()" style="flex:1 1 140px;min-width:130px;font-size:16px"><input type="date" aria-label="To" value="'+esc(dashTo)+'" onchange="dashTo=this.value;renderJobDash()" style="flex:1 1 140px;min-width:130px;font-size:16px"></div>':'';
   const ps=hrPunches(from,to);const total=sumDur(ps);
   const byE={};ps.forEach(p=>byE[p.who]=(byE[p.who]||0)+punchDur(p));const emps=Object.keys(byE).sort((a,b)=>byE[b]-byE[a]);
   const byS={};ps.forEach(p=>byS[p.site]=(byS[p.site]||0)+punchDur(p));const sites=Object.keys(byS).sort((a,b)=>byS[b]-byS[a]);
   const open=D.punches.filter(p=>!p.out&&!p.away&&!p.rejected&&!p.pending&&p.in>=from&&p.in<to).length;
   box.innerHTML='<div class="card" style="padding:12px 14px"><div class="row" style="align-items:baseline"><b style="font-size:15px">📊 '+t('Job hours')+'</b><span style="font-size:12px;color:var(--g4)">'+label+'</span></div>'
-    +'<div class="chips" style="margin-top:8px">'+rangeChips(dashRange,'dashSetRange')+'</div>'+custom
+    +'<div class="chips" style="margin-top:8px;flex-wrap:wrap;overflow:visible">'+rangeChips(dashRange,'dashSetRange')+'</div>'+custom
     +'<div style="margin-top:10px;display:flex;gap:16px;align-items:baseline"><span><b style="font-size:26px">'+total.toFixed(2)+'</b> '+t('hours')+'</span><span style="color:var(--g4);font-size:13px">'+emps.length+' '+t('employees')+' · '+sites.length+' '+t('jobs')+'</span></div>'
     +(open?'<div class="note" style="margin-top:6px">⏱ '+open+' '+t('currently on the clock — not counted above')+'</div>':'')+'</div>'
     +'<div class="sec">'+t('By employee')+'</div>'
@@ -2764,19 +2764,19 @@ function renderDashSites(){const el=document.getElementById('dashSiteList');if(!
   const se=document.getElementById('dashSiteSearch');dashSiteQ=se?se.value:dashSiteQ;const q=(dashSiteQ||'').trim().toLowerCase();
   const [from,to]=rangeBounds(dashRange,dashFrom,dashTo);const ps=hrPunches(from,to);const byS={};ps.forEach(p=>byS[p.site]=(byS[p.site]||0)+punchDur(p));
   const rows=Object.keys(byS).sort((a,b)=>byS[b]-byS[a]).filter(id=>!q||(siteName(id)||'').toLowerCase().includes(q));
-  el.innerHTML=rows.length?rows.map(id=>'<div class="plog" style="cursor:pointer" onclick="openFolder(\''+jsq(id)+'\')"><span style="flex:1">📍 '+esc(siteName(id)||'—')+'</span><b>'+byS[id].toFixed(2)+' h <span style="color:var(--g4)">›</span></b></div>').join(''):'<div class="empty">'+t('No job site matches.')+'</div>';}
+  el.innerHTML=rows.length?rows.map(id=>'<div class="plog" style="cursor:pointer;gap:10px;align-items:flex-start" onclick="openFolder(\''+jsq(id)+'\')"><span style="flex:1;min-width:0;word-break:break-word;line-height:1.35">📍 '+esc(siteName(id)||'—')+'</span><b style="white-space:nowrap;flex-shrink:0">'+byS[id].toFixed(2)+' h <span style="color:var(--g4)">›</span></b></div>').join(''):'<div class="empty">'+t('No job site matches.')+'</div>';}
 // Per-job labor history (inside the job folder)
 function jhSetRange(k){jhSiteRange=k;jhOpen={};renderJobHours(fdSite);}
 function jhTog(who){jhOpen[fdSite+'|'+who]=!jhOpen[fdSite+'|'+who];renderJobHours(fdSite);}
 function renderJobHours(siteId){const box=document.getElementById('jobHoursBox');if(!box)return;
   const chips=[['all',t('All')],['tw',t('This week')],['lw',t('Last week')],['tm',t('This month')],['custom',t('Custom')]].map(([k,l])=>'<div class="chip '+(jhSiteRange===k?'on':'')+'" onclick="jhSetRange(\''+k+'\')">'+l+'</div>').join('');
   const [from,to,label]=rangeBounds(jhSiteRange,jhSiteFrom,jhSiteTo);
-  const custom=jhSiteRange==='custom'?'<div style="display:flex;gap:8px;margin:8px 0"><input type="date" value="'+esc(jhSiteFrom)+'" onchange="jhSiteFrom=this.value;renderJobHours(fdSite)" style="flex:1"><input type="date" value="'+esc(jhSiteTo)+'" onchange="jhSiteTo=this.value;renderJobHours(fdSite)" style="flex:1"></div>':'';
+  const custom=jhSiteRange==='custom'?'<div style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap"><input type="date" aria-label="From" value="'+esc(jhSiteFrom)+'" onchange="jhSiteFrom=this.value;renderJobHours(fdSite)" style="flex:1 1 140px;min-width:130px;font-size:16px"><input type="date" aria-label="To" value="'+esc(jhSiteTo)+'" onchange="jhSiteTo=this.value;renderJobHours(fdSite)" style="flex:1 1 140px;min-width:130px;font-size:16px"></div>':'';
   const ps=hrPunches(from,to,p=>p.site===siteId);const total=sumDur(ps);
   const byE={};ps.forEach(p=>byE[p.who]=(byE[p.who]||0)+punchDur(p));const emps=Object.keys(byE).sort((a,b)=>byE[b]-byE[a]);
   const byD={};ps.forEach(p=>{const k=dkey(p.in);byD[k]=(byD[k]||0)+punchDur(p);});const days=Object.keys(byD).sort((a,b)=>b.localeCompare(a));
   box.innerHTML='<div class="sec">🕒 '+t('Labor hours')+'</div>'
-    +'<div class="card" style="padding:11px 13px"><div class="chips">'+chips+'</div>'+custom
+    +'<div class="card" style="padding:11px 13px"><div class="chips" style="flex-wrap:wrap;overflow:visible">'+chips+'</div>'+custom
     +'<div style="margin-top:8px"><b style="font-size:22px">'+total.toFixed(2)+'</b> '+t('hours')+' <span style="color:var(--g4);font-size:12px">· '+emps.length+' '+t('employees')+' · '+label+'</span></div></div>'
     +'<div class="sec">'+t('Hours per employee')+'</div>'
     +(emps.length?emps.map(id=>'<div class="card" style="padding:0"><div class="plog" style="cursor:pointer;margin:0;padding:10px 13px" onclick="jhTog(\''+jsq(id)+'\')"><span style="flex:1">'+(jhOpen[siteId+'|'+id]?'▾ ':'▸ ')+esc(nameOf(id))+'</span><b>'+byE[id].toFixed(2)+' h</b></div>'+(jhOpen[siteId+'|'+id]?'<div style="padding:0 13px 8px">'+punchRowsHtml(ps.filter(p=>p.who===id))+'</div>':'')+'</div>').join(''):'<div class="empty">'+t('No hours yet for this job.')+'</div>')
