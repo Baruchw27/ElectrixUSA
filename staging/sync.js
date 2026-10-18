@@ -174,11 +174,19 @@ window.EX_login=async function(q,pass){q=(q||'').trim();if(!q||!pass)return {err
     try{localStorage.setItem('ex_uid',ss.data.user.id);}catch(e){}
     return {ok:true,email:ss.data.user.email};
   }catch(e){return {err:'badpass',msg:(e&&e.message)||''};}};
-// signing out wipes this phone's copy of the company data and any unsent changes, so the next person to use the
-// phone (or the same person on another account) starts clean and can't see the previous account's cached data.
-window.EX_logout=async function(){try{if(sb)await withTO(sb.auth.signOut(),3000,'sign-out');}catch(e){}
-  try{localStorage.removeItem('ex_auth');localStorage.removeItem('ex_queue');localStorage.removeItem('ex_uid');localStorage.removeItem(typeof KEY!=='undefined'?KEY:'electrix_v29');}catch(e){}
-  queue={};saveQ();ready=false;localReady=false;};
+// signing out wipes this phone's copy of the company data, the saved session, and the biometric sign-in, so the next
+// person to use the phone (or the same person on another account) can't see the previous account's data.
+// Unsent work is protected: if we're online with queued changes, they're sent as the current user BEFORE signing out;
+// if we're offline, the queue is kept (not silently dropped) so the SAME person keeps their work on the next sign-in,
+// while a DIFFERENT person signing in triggers the account-switch wipe in EX_boot.
+window.EX_logout=async function(){
+  try{if(st&&st.online&&ready&&Object.keys(queue).length){await flush();}}catch(e){}
+  const stillPending=Object.keys(queue).length>0&&!(st&&st.online);
+  try{if(sb)await withTO(sb.auth.signOut(),3000,'sign-out');}catch(e){}
+  try{['ex_auth','ex_uid','electrix_bio','ex_faceid_asked'].forEach(k=>localStorage.removeItem(k));
+      localStorage.removeItem(typeof KEY!=='undefined'?KEY:'electrix_v29');}catch(e){}
+  if(!stillPending){queue={};try{localStorage.removeItem('ex_queue');}catch(e){}}
+  saveQ();ready=false;localReady=false;};
 function tie(e,uid){if(!uid)return;const live=liveRecord('emps',e.id)||e;if(live.authUid!==uid){live.authUid=uid;try{save();}catch(x){}}}
 window.EX_createUser=async function(e,pass){const r=await sb.rpc('admin_create_user',{p_email:emailFor(e),p_pass:pass});if(r.error)return {err:r.error.message};if(!r.data)return {err:'failed'};tie(e,r.data);return {ok:true,email:emailFor(e)};};
 window.EX_setPassword=async function(e,pass){const r=await sb.rpc('admin_set_password',{p_email:emailFor(e),p_pass:pass});if(r.error)return {err:r.error.message};if(!r.data)return {err:'nouser'};tie(e,r.data);return {ok:true};};
@@ -194,7 +202,7 @@ window.EX_boot=async function(){if(!REAL)return {real:false};
   window.EX_sb=sb;
   let email=null,uid=null;try{const s=await withTO(sb.auth.getSession(),6000,'sign-in');const u=s.data.session&&s.data.session.user;email=u?u.email:null;uid=u?u.id:null;}catch(e){email=cachedEmail();st.slow=true;}st.user=email;
   // account switch: if the person signed in now is not the one this phone's cached data belongs to, drop the old copy first
-  try{const prev=localStorage.getItem('ex_uid');if(uid){if(prev&&prev!==uid){localStorage.removeItem(typeof KEY!=='undefined'?KEY:'electrix_v29');localStorage.removeItem('ex_queue');queue={};}localStorage.setItem('ex_uid',uid);}}catch(e){}
+  try{const prev=localStorage.getItem('ex_uid');if(uid){if(prev&&prev!==uid){localStorage.removeItem(typeof KEY!=='undefined'?KEY:'electrix_v29');['ex_queue','electrix_bio','ex_faceid_asked'].forEach(k=>localStorage.removeItem(k));queue={};}localStorage.setItem('ex_uid',uid);}}catch(e){}
   sb.auth.onAuthStateChange((ev,sess)=>{st.user=sess&&sess.user?sess.user.email:null;if(ev==='SIGNED_OUT'){ready=false;}});
   return {real:true,email};};
 // the job list and the material catalog ship with the app; if the database doesn't have them yet, the owner's phone fills them in once
