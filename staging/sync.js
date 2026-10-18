@@ -85,7 +85,12 @@ function countRejected(sent,server){if(!Array.isArray(server))return 0;const by=
   sent.forEach(row=>{if(row.coll==='emps')return;const s=by[row.coll+'\u0001'+row.id];if(!s||s.deleted)return;const d=s.data||{};
     if(row.patch&&typeof row.patch==='object'){for(const f in row.patch){if(canon(d[f])!==canon(row.patch[f])){n++;break;}}}});
   return n;}
-async function flush(){if(!REAL||!ready||flushing||!st.online)return;const keys=Object.keys(queue);if(!keys.length)return;flushing=true;paint();
+// flush() hands back the save already running (if any) instead of starting a second one, so a caller such as
+// EX_logout can `await flush()` and be sure the in-flight save has fully finished before it stashes/clears the queue.
+let flushInFlight=null;
+function flush(){if(!REAL||!ready||!st.online)return Promise.resolve();if(flushInFlight)return flushInFlight;
+  flushInFlight=_flush();const done=()=>{flushInFlight=null;};flushInFlight.then(done,done);return flushInFlight;}
+async function _flush(){const keys=Object.keys(queue);if(!keys.length)return;flushing=true;paint();
   let skipped=0,rejected=0;
   try{const ups=[],dels=[],refs=[];
     for(const k of keys){const o=queue[k];if(o.del)dels.push(o);else{
@@ -164,6 +169,21 @@ function paint(){let el=document.getElementById('exSync');if(!el){el=document.cr
 window.addEventListener('online',()=>{st.online=true;paint();flush();catchUp();});window.addEventListener('offline',()=>{st.online=false;paint();});
 
 // ---------- auth ----------
+// Unsent-work stash is encrypted at rest with a key derived from the employee's password (held in memory for the
+// session only, never written down). Only the same employee re-entering their password can decrypt it, so the stash
+// is not readable from browser storage by another person on a shared phone. If encryption isn't possible (e.g. a
+// biometric-only sign-in, or no WebCrypto), logout falls back to a per-uid plaintext stash so work is never LOST —
+// encryption is added protection, data preservation is the guarantee.
+let sessionKey=null;
+async function deriveKey(password,uid){try{if(!(crypto&&crypto.subtle))return null;const enc=new TextEncoder();
+  const base=await crypto.subtle.importKey('raw',enc.encode(password),'PBKDF2',false,['deriveKey']);
+  return await crypto.subtle.deriveKey({name:'PBKDF2',salt:enc.encode('electrix:'+uid),iterations:120000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);}catch(e){return null;}}
+async function encWith(key,obj){const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(obj))));
+  let s='';iv.forEach(b=>s+=String.fromCharCode(b));ct.forEach(b=>s+=String.fromCharCode(b));return btoa(s);}
+async function decWith(key,b64){const bin=atob(b64);const iv=Uint8Array.from(bin.slice(0,12),c=>c.charCodeAt(0));
+  const ct=Uint8Array.from(bin.slice(12),c=>c.charCodeAt(0));
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,ct);return JSON.parse(new TextDecoder().decode(pt));}
 // sign in through the server-side "login" function: the name/phone -> email lookup happens on the server, so the
 // sign-in email is never handed back to someone who isn't signed in (closes the anonymous email-lookup leak).
 window.EX_login=async function(q,pass){q=(q||'').trim();if(!q||!pass)return {err:'badpass'};
@@ -171,7 +191,13 @@ window.EX_login=async function(q,pass){q=(q||'').trim();if(!q||!pass)return {err
     if(r.error||!r.data||!r.data.session)return {err:'badpass'};
     const s=r.data.session;const ss=await sb.auth.setSession({access_token:s.access_token,refresh_token:s.refresh_token});
     if(ss.error||!ss.data||!ss.data.user)return {err:'badpass'};
-    try{localStorage.setItem('ex_uid',ss.data.user.id);}catch(e){}
+    const uid=ss.data.user.id;try{localStorage.setItem('ex_uid',uid);}catch(e){}
+    sessionKey=await deriveKey(pass,uid);
+    // recover this employee's own stash from a previous logout: encrypted first (only their password unlocks it),
+    // then the plaintext fallback (used only when encryption wasn't available). Both are keyed to this uid, so no
+    // other employee's stash is ever loaded here.
+    try{const enc=localStorage.getItem('ex_qenc__'+uid);if(enc&&sessionKey){const rec=await decWith(sessionKey,enc);if(rec&&typeof rec==='object'){Object.keys(rec).forEach(k=>{if(!queue[k])queue[k]=rec[k];});localStorage.removeItem('ex_qenc__'+uid);saveQ();}}}catch(e){}
+    try{const pf=localStorage.getItem('ex_queue__'+uid);if(pf){const rec=JSON.parse(pf)||{};Object.keys(rec).forEach(k=>{if(!queue[k])queue[k]=rec[k];});localStorage.removeItem('ex_queue__'+uid);saveQ();}}catch(e){}
     return {ok:true,email:ss.data.user.email};
   }catch(e){return {err:'badpass',msg:(e&&e.message)||''};}};
 // signing out wipes this phone's copy of the company data, the saved session, and the biometric sign-in, so the next
@@ -181,13 +207,24 @@ window.EX_login=async function(q,pass){q=(q||'').trim();if(!q||!pass)return {err
 // while a DIFFERENT person signing in triggers the account-switch wipe in EX_boot.
 window.EX_logout=async function(){
   const uid=(function(){try{return localStorage.getItem('ex_uid');}catch(e){return null;}})();
-  // try to save queued work as the current user first
+  // Wait for any save already in progress to FULLY finish before we touch the queue — otherwise a change could be
+  // stashed/cleared while its save is still mid-request (the race ChatGPT flagged).
+  try{if(flushInFlight)await flushInFlight;}catch(e){}
+  // Then try (once) to send whatever is queued, as the current user.
   try{if(st&&st.online&&ready&&Object.keys(queue).length){await flush();}}catch(e){}
-  // Whatever is STILL queued for ANY reason — offline, a rejected save, a timeout, or an unreachable server — is never
-  // discarded. It is stashed under THIS employee's own uid, so only the same employee (once re-authenticated) can see
-  // or sync it; another employee on the same phone can neither load nor upload it.
+  try{if(flushInFlight)await flushInFlight;}catch(e){}
+  // Whatever is STILL queued for ANY reason — offline, a REJECTED save, a timeout, or an unreachable server — is never
+  // discarded (we do not decide by the online flag). Preferred: encrypt it with the session key and self-verify the
+  // round-trip before trusting it; only if that is not possible, fall back to a per-uid plaintext stash. Either way the
+  // stash is tied to THIS employee's uid, so another person can't load or sync it through the app.
   let stashed=0;
-  try{if(uid&&Object.keys(queue).length){localStorage.setItem('ex_queue__'+uid,JSON.stringify(queue));stashed=Object.keys(queue).length;}}catch(e){}
+  if(uid&&Object.keys(queue).length){const q=queue;
+    let ok=false;
+    try{if(sessionKey){const blob=await encWith(sessionKey,q);const back=await decWith(sessionKey,blob);
+      if(back&&JSON.stringify(back)===JSON.stringify(q)){localStorage.setItem('ex_qenc__'+uid,blob);localStorage.removeItem('ex_queue__'+uid);ok=true;}}}catch(e){ok=false;}
+    if(!ok){try{localStorage.setItem('ex_queue__'+uid,JSON.stringify(q));}catch(e){}}
+    stashed=Object.keys(q).length;}
+  sessionKey=null;
   try{if(sb)await withTO(sb.auth.signOut(),3000,'sign-out');}catch(e){}
   // privacy on a shared phone: clear the data cache, the live queue, the saved session and the biometric sign-in
   try{['ex_auth','ex_uid','ex_queue','electrix_bio','ex_faceid_asked'].forEach(k=>localStorage.removeItem(k));
