@@ -157,6 +157,8 @@ s=s.split(`t('Estimate building needs the installed app or the Claude page permi
 
 // ---- every phone updates itself when a new version is published
 rep(`<script src="config.js"></script>`,`<script>window.EX_VER='${VER}';</script><script src="config.js"></script>`);
+// the 40 KB inline tab icon becomes the icon file the site already has (smaller page, same icon)
+s=s.replace(/<link rel="icon" href="data:image\/png;base64,[^"]+">/,'<link rel="icon" href="icon-192.png">');
 fs.writeFileSync(__dirname+'/version.json',JSON.stringify({v:VER}));
 fs.writeFileSync(OUT,s);
 // ---- public copy for the web: no company data inside the page (everything loads from the server after sign-in)

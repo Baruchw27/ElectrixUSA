@@ -87,7 +87,8 @@ async function flush(){if(!REAL||!ready||flushing||!st.online)return;const keys=
       const live=o.coll==='_'?null:liveRecord(o.coll,o.id);const target=live||o.data;
       try{const ch=await offloadBlobs(o.coll,o.id,target);if(ch&&live){o.data=(o.coll==='emps')?stripEmp(live):live;snap[o.coll][o.id]=canon(o.data);localSave();}}catch(e){skipped++;continue;}
       const cur=JSON.parse(JSON.stringify(live?(o.coll==='emps'?stripEmp(live):live):o.data));let row;
-      if(o.base){const b=JSON.parse(o.base);const patch={},unset=[];Object.keys(cur).forEach(f=>{if(canon(cur[f])!==canon(b[f]))patch[f]=cur[f];});Object.keys(b).forEach(f=>{if(!(f in cur))unset.push(f);});row={coll:o.coll,id:o.id,patch,unset,by:st.user||null};}
+      const plain=v=>!!v&&typeof v==='object'&&!Array.isArray(v);let bb=null;try{bb=o.base?JSON.parse(o.base):null;}catch(e){}
+      if(bb&&plain(cur)&&plain(bb)){const b=bb;const patch={},unset=[];Object.keys(cur).forEach(f=>{if(canon(cur[f])!==canon(b[f]))patch[f]=cur[f];});Object.keys(b).forEach(f=>{if(!(f in cur))unset.push(f);});row={coll:o.coll,id:o.id,patch,unset,by:st.user||null};}
       else row={coll:o.coll,id:o.id,full:cur,by:st.user||null};
       ups.push(row);refs.push(o);}}
     const done=(k,o)=>{if(queue[k]===o)delete queue[k];};

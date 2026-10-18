@@ -309,3 +309,74 @@ create policy "members only read files" on storage.objects as restrictive for se
 create table if not exists public.upc_cache (code text primary key, data jsonb not null default '{}'::jsonb, ts timestamptz not null default now());
 alter table public.upc_cache enable row level security;
 revoke all on public.upc_cache from anon, authenticated;
+-- ===== speed-ups + plain-value fix (applied Oct 2026) =====
+-- save: never merge an object into a plain value (number / text / list) — that corrupted the office location
+create or replace function public.save_records(rows jsonb)
+ returns table(coll text, id text, data jsonb, deleted boolean)
+ language plpgsql set search_path to 'public'
+as $function$
+#variable_conflict use_column
+declare r jsonb; un text[];
+begin
+  for r in select * from jsonb_array_elements(rows) loop
+    if coalesce((r->>'deleted')::boolean, false) then
+      insert into public.records as t (coll, id, data, deleted, updated_by, updated_at)
+      values (r->>'coll', r->>'id', coalesce(r->'full', '{}'::jsonb), true, r->>'by', now())
+      on conflict (coll, id) do update set data = coalesce(r->'full', '{}'::jsonb), deleted = true, updated_by = r->>'by', updated_at = now();
+    elsif r ? 'full' then
+      insert into public.records as t (coll, id, data, deleted, updated_by, updated_at)
+      values (r->>'coll', r->>'id', r->'full', false, r->>'by', now())
+      on conflict (coll, id) do update set data = r->'full', deleted = false, updated_by = r->>'by', updated_at = now();
+    else
+      un := coalesce(array(select jsonb_array_elements_text(coalesce(r->'unset', '[]'::jsonb))), '{}'::text[]);
+      insert into public.records as t (coll, id, data, deleted, updated_by, updated_at)
+      values (r->>'coll', r->>'id', coalesce(r->'patch', '{}'::jsonb), false, r->>'by', now())
+      on conflict (coll, id) do update
+        set data = case
+              when t.deleted then coalesce(r->'patch', '{}'::jsonb)
+              when jsonb_typeof(t.data) <> 'object' then t.data
+              else (t.data || coalesce(r->'patch', '{}'::jsonb)) - un end,
+            deleted = false, updated_by = r->>'by', updated_at = now();
+    end if;
+  end loop;
+  return query select t.coll, t.id, t.data, t.deleted from public.records t
+    join (select x->>'coll' as c, x->>'id' as i from jsonb_array_elements(rows) x) k on t.coll = k.c and t.id = k.i;
+end $function$;
+
+-- the change trigger checks first whether there is anything to do
+create or replace function public.on_record_change()
+ returns trigger language plpgsql security definer set search_path to 'public', 'extensions'
+as $function$
+declare base text; secret text;
+begin
+  if new.deleted or new.coll not in ('inbox','sites') then return new; end if;
+  if new.coll = 'inbox' and tg_op <> 'INSERT' then return new; end if;
+  if new.coll = 'sites' and (tg_op <> 'UPDATE' or coalesce(new.data->>'stage','') = coalesce(old.data->>'stage','') or coalesce(new.data->>'trello','') = '') then return new; end if;
+  select v into base from public.server_config where k = 'functions_url';
+  select v into secret from public.server_config where k = 'secret';
+  if base is null or secret is null then return new; end if;
+  if new.coll = 'inbox' then
+    perform net.http_post(url := base || '/notify',
+      body := jsonb_build_object('to', new.data->>'to', 'msg', new.data->>'msg'),
+      headers := jsonb_build_object('Content-Type','application/json','x-push-secret', secret));
+  else
+    perform net.http_post(url := base || '/trello',
+      body := jsonb_build_object('card', new.data->>'trello', 'stage', new.data->>'stage', 'phase', new.data->>'phase'),
+      headers := jsonb_build_object('Content-Type','application/json','x-push-secret', secret));
+  end if;
+  return new;
+end $function$;
+
+-- the team check runs once per request instead of once per row (~10x faster downloads)
+alter policy "team can read" on public.records using ((select public.is_member()) and public.can_see(coll, data));
+alter policy "team can update" on public.records using ((select public.is_member()) and public.can_see(coll, data)) with check ((select public.is_member()));
+alter policy "team can write" on public.records with check ((select public.is_member()) and (coll <> 'keep' or data->>'owner' = (select public.my_emp()) or (select public.no_team_yet())));
+create index if not exists records_emp_auth_idx on public.records ((data->>'authUid')) where coll = 'emps';
+
+-- the map/drive-time job only calls the server when a job actually needs it
+select cron.schedule('geo-jobs', '*/3 * * * *', $$select net.http_post(url:=(select v from server_config where k='functions_url')||'/geo', body:='{"max":15}'::jsonb, headers:=jsonb_build_object('Content-Type','application/json','x-push-secret',(select v from server_config where k='secret')), timeout_milliseconds:=140000)
+ where exists (select 1 from records s where s.coll='sites' and not s.deleted and (
+   (s.data->>'lat' is null and not coalesce((s.data->>'geoServer')::boolean,false) and coalesce(s.data->>'stage','') <> 'done')
+   or (s.data->>'lat' is not null and exists (select 1 from records b where b.coll='base' and b.id='lat' and jsonb_typeof(b.data)='number')
+       and (s.data->'trip' is null or not coalesce((s.data->'trip'->>'road')::boolean,false)
+            or (s.data->'trip'->>'fromLat')::numeric is distinct from (select (b.data #>> '{}')::numeric from records b where b.coll='base' and b.id='lat')))))$$);
