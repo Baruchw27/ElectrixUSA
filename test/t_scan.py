@@ -43,8 +43,8 @@ async def main():
     await pg.wait_for_timeout(1900);await E("_scan('999');0");await pg.wait_for_timeout(100);await pg.locator('#scSheet button',has_text='Skip').click()
     chk("skip leaves list as is",await E("puLines.length===2&&!document.getElementById('scSheet').classList.contains('on')"))
     # done → lines in Take out, camera off
-    await pg.locator('.scX').click();await pg.wait_for_timeout(200)
-    chk("Done closes and stops the camera",await E("!document.getElementById('scanOv')&&window._scanStopped===1"))
+    await pg.locator('.scBack').click();await pg.wait_for_timeout(200)
+    chk("✕ closes and stops the camera",await E("!document.getElementById('scanOv')&&window._scanStopped===1"))
     chk("lines show in Take out",await E("/12\\/2/.test(document.getElementById('puLines').innerText)&&/Wago/.test(document.getElementById('puLines').innerText)"))
     # Put back knows the barcode now (another person)
     await E("hide('m-pick2');setRole(D.emps.find(e=>e.name==='Brian').id);openStockIn();0");await pg.wait_for_timeout(200)
