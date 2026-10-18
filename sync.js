@@ -14,7 +14,11 @@ const EMP_STRIP=['pass'];                       // never leaves the phone
 const DOMAIN=CFG.domain||'electrixusa.app';
 const BLOB_MIN=60000;                           // data: URLs longer than this go to storage
 const log=(...a)=>{if(CFG.debug)console.log('[sync]',...a);};
-let sb=null,sbAux=null,snap={},queue=loadQ(),flushing=false,timer=null,ready=false,applying=false,renderT=null;
+let sb=null,sbAux=null,snap={},queue=loadQ(),flushing=false,timer=null,ready=false,applying=false,renderT=null,localReady=false,lastPull=0,catching=false,hiddenSince=0;
+// never wait on the network forever: every server call has a time limit
+const withTO=(p,ms,what)=>Promise.race([p,new Promise((_,bad)=>setTimeout(()=>bad(new Error((what||'server')+' timeout')),ms))]);
+function cachedEmail(){try{const s=JSON.parse(localStorage.getItem('ex_auth')||'null');return (s&&s.user&&s.user.email)||(s&&s.currentSession&&s.currentSession.user&&s.currentSession.user.email)||null;}catch(e){return null;}}
+window.EX_cachedEmail=cachedEmail;
 const st={online:navigator.onLine!==false,pending:0,err:'',user:null};
 window.EX_SYNC=st;
 
@@ -51,7 +55,7 @@ function diff(){const ops=[];
   snap._=nowS;return ops;}
 function takeSnap(){snap={};colls().forEach(k=>{const cur=recordsOf(k);const now={};Object.keys(cur).forEach(id=>now[id]=canon(cur[id]));snap[k]=now;});const sc=scalars();const nowS={};Object.keys(sc).forEach(id=>nowS[id]=canon(sc[id]));snap._=nowS;}
 
-window.EX_afterSave=function(){if(!REAL||!ready||applying)return;const ops=diff();if(!ops.length)return;
+window.EX_afterSave=function(){if(!REAL||!(ready||localReady)||applying)return;const ops=diff();if(!ops.length)return;
   ops.forEach(o=>{const k=o.coll+'\u0001'+o.id;const prev=queue[k];
     if(o.del)queue[k]={coll:o.coll,id:o.id,del:true,meta:o.meta||{}};
     else{const base=prev?(prev.del?null:prev.base):(o.base&&o.coll!=='_'?(o.coll==='emps'?canon(stripEmp(JSON.parse(o.base))):o.base):null);queue[k]={coll:o.coll,id:o.id,data:o.data,base};}});
@@ -105,8 +109,19 @@ function localSave(){try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){}
 
 // ---------- pull ----------
 async function pullAll(){const rows=[];let from=0;const PAGE=1000;
-  while(true){const r=await sb.from('records').select('coll,id,data,deleted').range(from,from+PAGE-1);if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<PAGE)break;from+=PAGE;}
-  return rows;}
+  const t0=Date.now();
+  while(true){const r=await withTO(sb.from('records').select('coll,id,data,deleted').range(from,from+PAGE-1),20000,'download');if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<PAGE)break;from+=PAGE;}
+  lastPull=t0;return rows;}
+// after the phone slept: fetch only what changed meanwhile, and reconnect the live feed
+async function catchUp(){if(!REAL||!ready||catching||!st.online)return;catching=true;
+  try{const since=new Date((lastPull||Date.now())-3*60000).toISOString();const t0=Date.now();const rows=[];let from=0;
+    while(true){const r=await withTO(sb.from('records').select('coll,id,data,deleted').gt('updated_at',since).range(from,from+999),20000,'catch-up');if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<1000)break;from+=1000;}
+    lastPull=t0;const fresh=rows.filter(r=>!queue[r.coll+'\u0001'+r.id]);
+    if(fresh.length){applyRows(fresh,{replace:false});fresh.forEach(r=>{const k=r.coll;if(r.deleted){if(snap[k])delete snap[k][r.id];}else{(snap[k]=snap[k]||{})[r.id]=canon(r.coll==='_'?(r.data||{}).v:r.data);}});localSave();bump();}
+    try{if(sb.removeAllChannels)await withTO(sb.removeAllChannels(),3000,'reconnect');}catch(e){}subscribe();flush();st.err='';paint();}
+  catch(e){log('catch-up',e);}finally{catching=false;}}
+window.EX_catchUp=catchUp;
+document.addEventListener('visibilitychange',()=>{if(document.hidden){hiddenSince=Date.now();return;}if(hiddenSince&&Date.now()-hiddenSince>60000)catchUp();hiddenSince=0;});
 function applyRows(rows,{replace}){applying=true;try{
   if(replace){colls().forEach(k=>{if(k==='_')return;D[k]=Array.isArray(D[k])?[]:{};});}
   rows.forEach(r=>{if(r.deleted){if(r.coll==='_')delete D[r.id];else delRecord(r.coll,r.id);return;}
@@ -131,12 +146,12 @@ function bump(){clearTimeout(renderT);renderT=setTimeout(()=>{const a=document.a
 function paint(){let el=document.getElementById('exSync');if(!el){el=document.createElement('div');el.id='exSync';el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(64px + env(safe-area-inset-bottom));z-index:900;font-size:12px;padding:5px 11px;border-radius:99px;background:#1F1E2A;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.2);display:none;pointer-events:none';document.body.appendChild(el);}
   const n=Object.keys(queue).length;let txt='';if(!REAL)txt='';else if(!st.online)txt='📵 '+(typeof t==='function'?t('Offline — saved on this phone'):'Offline')+(n?' ('+n+')':'');else if(st.err)txt='⚠ '+st.err;else if(n&&flushing)txt='↑ '+(typeof t==='function'?t('Saving…'):'Saving…');
   el.textContent=txt;el.style.display=txt?'block':'none';}
-window.addEventListener('online',()=>{st.online=true;paint();flush();});window.addEventListener('offline',()=>{st.online=false;paint();});
+window.addEventListener('online',()=>{st.online=true;paint();flush();catchUp();});window.addEventListener('offline',()=>{st.online=false;paint();});
 
 // ---------- auth ----------
 async function resolveEmail(q){q=(q||'').trim();if(!q)return null;if(/@/.test(q))return q.toLowerCase();const r=await sb.rpc('resolve_login',{q});if(r.error){log(r.error);return null;}return r.data||null;}
 window.EX_login=async function(q,pass){const email=await resolveEmail(q);if(!email)return {err:'nouser'};const r=await sb.auth.signInWithPassword({email,password:pass});if(r.error)return {err:/confirm/i.test(r.error.message)?'confirm':'badpass',msg:r.error.message};return {ok:true,email};};
-window.EX_logout=async function(){try{await sb.auth.signOut();}catch(e){}queue={};saveQ();ready=false;};
+window.EX_logout=async function(){try{if(sb)await withTO(sb.auth.signOut(),3000,'sign-out');}catch(e){}try{localStorage.removeItem('ex_auth');}catch(e){}queue={};saveQ();ready=false;localReady=false;};
 function tie(e,uid){if(!uid)return;const live=liveRecord('emps',e.id)||e;if(live.authUid!==uid){live.authUid=uid;try{save();}catch(x){}}}
 window.EX_createUser=async function(e,pass){const r=await sb.rpc('admin_create_user',{p_email:emailFor(e),p_pass:pass});if(r.error)return {err:r.error.message};if(!r.data)return {err:'failed'};tie(e,r.data);return {ok:true,email:emailFor(e)};};
 window.EX_setPassword=async function(e,pass){const r=await sb.rpc('admin_set_password',{p_email:emailFor(e),p_pass:pass});if(r.error)return {err:r.error.message};if(!r.data)return {err:'nouser'};tie(e,r.data);return {ok:true};};
@@ -149,7 +164,7 @@ window.EX_boot=async function(){if(!REAL)return {real:false};
   sb=window.supabase.createClient(CFG.url,CFG.anonKey,{auth:{persistSession:true,storageKey:'ex_auth'}});
   sbAux=window.supabase.createClient(CFG.url,CFG.anonKey,{auth:{persistSession:false,autoRefreshToken:false,storageKey:'ex_aux'}});
   window.EX_sb=sb;
-  const s=await sb.auth.getSession();const email=s.data.session&&s.data.session.user?s.data.session.user.email:null;st.user=email;
+  let email=null;try{const s=await withTO(sb.auth.getSession(),6000,'sign-in');email=s.data.session&&s.data.session.user?s.data.session.user.email:null;}catch(e){email=cachedEmail();st.slow=true;}st.user=email;
   sb.auth.onAuthStateChange((ev,sess)=>{st.user=sess&&sess.user?sess.user.email:null;if(ev==='SIGNED_OUT'){ready=false;}});
   return {real:true,email};};
 // the job list and the material catalog ship with the app; if the database doesn't have them yet, the owner's phone fills them in once
@@ -164,6 +179,10 @@ window.EX_start=async function(){if(!REAL||ready)return;const local={};SEEDABLE.
   applyPendingQueue();takeSnap();
   seeded.forEach(k=>{const cur=recordsOf(k);Object.keys(cur).forEach(id=>{queue[k+'\u0001'+id]={coll:k,id,data:cur[id]};});});if(seeded.length)saveQ();
   if(!rows.length&&window.EX_allowSeed){Object.keys(queue).length||(function(){const ops=[];colls().forEach(k=>{const cur=recordsOf(k);Object.keys(cur).forEach(id=>ops.push({coll:k,id,data:cur[id]}));});const sc=scalars();Object.keys(sc).forEach(id=>ops.push({coll:'_',id,data:{v:sc[id]}}));ops.forEach(o=>queue[o.coll+'\u0001'+o.id]=o);saveQ();})();}
+  try{if(typeof pruneOld==='function'&&pruneOld())localSave();}catch(e){log('prune',e);}
   localSave();ready=true;subscribe();flush();paint();};
 window.EX_ready=()=>ready;
+// the phone keeps only recent history (the server keeps everything): forget old rows here without deleting them anywhere
+window.EX_forget=function(coll,ids){const m=snap[coll];if(!m)return;ids.forEach(id=>{delete m[id];});};
+window.EX_openLocal=function(){if(ready||localReady)return;takeSnap();localReady=true;paint();};
 })();

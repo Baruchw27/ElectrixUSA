@@ -5,7 +5,7 @@ const users={};      // email -> {id,pass}
 const tokens={};     // token -> email
 const records=new Map(); // coll\u0001id -> row
 const blobs={};      // path -> {type,buf}
-let clients=[];let PRIVATE=false;      // SSE {res,email}
+let clients=[];let PRIVATE=false;let NET='ok';      // SSE {res,email}
 const now=()=>new Date().toISOString();
 // store like Postgres jsonb does: keys re-ordered (shorter first, then alphabetical), so the app must not depend on key order
 function pg(v){if(v===null||typeof v!=='object')return v;if(Array.isArray(v))return v.map(pg);const o={};Object.keys(v).filter(k=>v[k]!==undefined).sort((a,b)=>a.length-b.length||(a<b?-1:a>b?1:0)).forEach(k=>o[k]=pg(v[k]));return o;}
@@ -21,6 +21,8 @@ function who(req){const a=req.headers.authorization||'';const t=a.replace(/^Bear
 const stats={upserts:0,rows:0,pulls:0};
 http.createServer(async (req,res)=>{
   const u=new URL(req.url,'http://x');const p=u.pathname;
+  if(p==='/__net'){NET=u.searchParams.get('mode')||'ok';return send(res,200,{NET});}
+  if(NET!=='ok'&&(p.startsWith('/auth')||p.startsWith('/rpc')||p.startsWith('/records')||p.startsWith('/realtime'))){if(NET==='down')return;await new Promise(r=>setTimeout(r,+NET||0));}
   if(req.method==='OPTIONS')return send(res,204,{});
   // ---- auth
   if(p==='/auth/signup'){const b=await body(req);const em=b.email.toLowerCase();if(users[em])return send(res,400,{error:'User already registered'});users[em]={id:crypto.randomUUID(),pass:b.password};const tk=crypto.randomUUID();tokens[tk]=em;return send(res,200,{user:{id:users[em].id,email:em,identities:[{}]},token:tk});}
@@ -41,7 +43,7 @@ http.createServer(async (req,res)=>{
       records.set(k,row);const msg='data: '+JSON.stringify({eventType:'UPDATE',new:row})+'\n\n';clients.forEach(c=>{if(isMember(c.email)&&canSee(c.email,row))c.res.write(msg);});}
     return send(res,200,rows.map(r=>records.get(r.coll+'\u0001'+r.id)).filter(Boolean).map(r=>({coll:r.coll,id:r.id,data:r.data,deleted:r.deleted})));}
   // ---- records
-  if(p==='/records'&&req.method==='GET'){const em=who(req);stats.pulls++;if(!isMember(em))return send(res,200,[]);const from=+u.searchParams.get('from')||0,to=+u.searchParams.get('to')||999;const all=[...records.values()].sort((a,b)=>a.coll<b.coll?-1:a.coll>b.coll?1:a.id<b.id?-1:1);return send(res,200,all.filter(r=>canSee(em,r)).slice(from,to+1));}
+  if(p==='/records'&&req.method==='GET'){const em=who(req);stats.pulls++;const after=u.searchParams.get('after');if(after)stats.catchups=(stats.catchups||0)+1;if(!isMember(em))return send(res,200,[]);const from=+u.searchParams.get('from')||0,to=+u.searchParams.get('to')||999;const all=[...records.values()].sort((a,b)=>a.coll<b.coll?-1:a.coll>b.coll?1:a.id<b.id?-1:1);return send(res,200,all.filter(r=>canSee(em,r)&&(!after||r.updated_at>after)).slice(from,to+1));}
   if(p==='/records'&&req.method==='POST'){const em=who(req);if(!em)return send(res,401,{error:'JWT expired'});if(!isMember(em))return send(res,403,{error:'new row violates row-level security policy'});const b=await body(req);const rows=Array.isArray(b)?b:[b];stats.upserts++;stats.rows+=rows.length;
     rows.forEach(r=>{const row={coll:r.coll,id:r.id,data:pg(r.data||{}),deleted:!!r.deleted,updated_by:r.updated_by||null,updated_at:now()};records.set(r.coll+'\u0001'+r.id,row);
       const msg='data: '+JSON.stringify({eventType:'UPDATE',new:row})+'\n\n';clients.forEach(c=>{if(isMember(c.email)&&canSee(c.email,row))c.res.write(msg);});});

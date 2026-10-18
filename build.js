@@ -14,8 +14,8 @@ rep(`<meta name="theme-color" content="#ffffff"><meta name="apple-mobile-web-app
 rep(`function nid(p){return p+(D.nextId++);}`,`function nid(p){D.nextId=(D.nextId||1)+1;return p+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}`);
 
 // ---- save(): push changes
-rep(`function save(){sortSites();try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){const old=Date.now()-14*86400000;D.jobs.forEach(j=>{if(j.status==='done'&&(j.doneAt||0)<old&&j.photos&&j.photos.length>1)j.photos=j.photos.slice(-1);});try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e2){throw e2;}}}`,
-`function save(){sortSites();try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){const old=Date.now()-14*86400000;D.jobs.forEach(j=>{if(j.status==='done'&&(j.doneAt||0)<old&&j.photos&&j.photos.length>1)j.photos=j.photos.slice(-1);});try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e2){}}try{if(window.EX_afterSave)window.EX_afterSave();}catch(e){console.warn(e);}}`);
+rep(`function save(){if(!save._p||Date.now()-save._p>3600000){save._p=Date.now();try{if(pruneOld()&&window.EX_forget){}}catch(e){}}sortSites();try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){try{if(pruneOld()){localStorage.setItem(KEY,JSON.stringify(D));return;}}catch(e3){}const old=Date.now()-14*86400000;D.jobs.forEach(j=>{if(j.status==='done'&&(j.doneAt||0)<old&&j.photos&&j.photos.length>1)j.photos=j.photos.slice(-1);});try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e2){throw e2;}}}`,
+`function save(){if(!save._p||Date.now()-save._p>3600000){save._p=Date.now();try{if(pruneOld()&&window.EX_forget){}}catch(e){}}sortSites();try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){try{if(pruneOld()){localStorage.setItem(KEY,JSON.stringify(D));return;}}catch(e3){}const old=Date.now()-14*86400000;D.jobs.forEach(j=>{if(j.status==='done'&&(j.doneAt||0)<old&&j.photos&&j.photos.length>1)j.photos=j.photos.slice(-1);});try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e2){}}try{if(window.EX_afterSave)window.EX_afterSave();}catch(e){console.warn(e);}}`);
 
 // ---- real-app switches
 rep(`const TRAVEL_ON=false;`,`const TRAVEL_ON=!!window.EX_REAL;`);
@@ -65,13 +65,25 @@ function exCleanStart(){['jobs','punches','mats','meets','ests','tickets','tools
 function exChangePw(){askPrompt(t('Change my password'),[{label:t('New password (6+ characters)'),value:'',type:'password'}],([p])=>{if(!p||p.length<6){toast(t('Password must be at least 6 characters'));return;}EX_changeMyPassword(p).then(r=>toast(r.ok?'🔑 '+t('Password changed'):'⚠ '+r.err));});}
 function exOverlay(msg){let o=document.getElementById('exBoot');if(!o){o=document.createElement('div');o.id='exBoot';o.style.cssText='position:fixed;inset:0;z-index:600;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-size:15px;color:#6b7590';document.body.appendChild(o);}if(msg===null){o.remove();return;}const lg=document.querySelector('.logo img');o.innerHTML=(lg?'<img src="'+lg.src+'" style="height:40px">':'')+'<div>'+esc(msg)+'</div>';}
 async function exBootstrap(){if(!window.EX_REAL){document.documentElement.classList.remove('exreal');return;}document.documentElement.classList.add('exreal');D.demo=false;
-  exOverlay(t('Loading…'));let b;try{b=await EX_boot();}catch(e){exOverlay(null);toast('⚠ '+t('Could not reach the server')+': '+(e.message||''));needLogin();return;}
+  // open right away from the copy on this phone; the server catches up in the background (never a frozen "Loading…")
+  const ce=window.EX_cachedEmail&&EX_cachedEmail();const lu=ce&&(D.emps||[]).length>1?D.emps.find(e=>!e.inactive&&EX_emailFor(e)===ce):null;
+  if(lu)exEnter(lu,true);else{exOverlay(t('Loading…'));setTimeout(()=>{if(document.getElementById('exBoot')&&!window.EX_ready())exOverlayRetry();},15000);}
+  let b;try{b=await EX_boot();}catch(e){if(lu){exRetry();return;}exOverlay(null);toast('⚠ '+t('Could not reach the server')+': '+(e.message||''));needLogin();return;}
   if(!b.email){exOverlay(null);needLogin();exSetupLink();return;}
-  try{await EX_start();}catch(e){exOverlay(null);toast('⚠ '+t('Could not load the company data')+': '+(e.message||''));if(/JWT|session|auth/i.test(e.message||'')){await EX_logout();}needLogin();return;}
-  const u=D.emps.find(e=>!e.inactive&&EX_emailFor(e)===b.email);if(u){window.EX_ME=u.id;try{if(EX_lockOn())EX_lock();else setTimeout(exOfferFaceId,1800);}catch(e){}}exOverlay(null);
-  if(!u){toast(t('You are not on the team list. Call the office.'));await EX_logout();needLogin();return;}
-  window.EX_ME=u.id;if(D.role!==u.id){D.role=u.id;try{localStorage.setItem(SESS,u.id);}catch(e){}}save();renderAll();(function(){const m=me();if(m.role==='owner'||m.all)goTab('home');else if(m.role==='worker')goTab('punch');})();navReset();
-  try{if('Notification'in window&&Notification.permission==='default')Notification.requestPermission();}catch(e){}}
+  try{await EX_start();}catch(e){if(/JWT|session|auth|refresh|401/i.test(e.message||'')){exOverlay(null);await EX_logout();needLogin();return;}if(lu){exRetry();return;}exOverlayRetry();return;}
+  const u=D.emps.find(e=>!e.inactive&&EX_emailFor(e)===b.email);
+  if(!u){exOverlay(null);toast(t('You are not on the team list. Call the office.'));await EX_logout();needLogin();return;}
+  exEnter(u,false);}
+function exEnter(u,fast){window.EX_ME=u.id;exOverlay(null);
+  if(!exEnter.lock){exEnter.lock=true;try{if(EX_lockOn())EX_lock();else setTimeout(exOfferFaceId,1800);}catch(e){}}
+  if(D.role!==u.id){D.role=u.id;try{localStorage.setItem(SESS,u.id);}catch(e){}}
+  if(fast)EX_openLocal();else save();
+  try{renderAll();}catch(e){console.warn(e);}
+  if(!exEnter.nav){exEnter.nav=true;(function(){const m=me();if(m.role==='owner'||m.all||m.role==='manager')goTab('home');else if(m.role==='worker')goTab('punch');})();try{navReset();}catch(e){}
+    try{EX_pushOn(false);}catch(e){}}}
+let exRetryN=0;
+function exRetry(){const wait=Math.min(60000,4000*Math.pow(2,exRetryN++));setTimeout(async()=>{try{await EX_boot().catch(()=>{});await EX_start();exRetryN=0;const u=D.emps.find(e=>e.id===window.EX_ME);if(u)exEnter(u,false);}catch(e){exRetry();}},wait);}
+function exOverlayRetry(){let o=document.getElementById('exBoot');if(!o)return;o.innerHTML='<div style="font-size:15px;color:#1F1E2A;font-weight:600">'+t('Can’t reach the server right now.')+'</div><div style="font-size:13px">'+t('Check your signal or Wi-Fi.')+'</div><button style="border:0;background:#1F1E2A;color:#fff;font-size:16px;font-weight:600;padding:12px 24px;border-radius:12px" onclick="location.reload()">'+t('Try again')+'</button><button style="border:0;background:none;color:#D53C36;text-decoration:underline;font-size:13px" onclick="exOverlay(null);needLogin()">'+t('Sign in again')+'</button>';}
 async function exSetupLink(){try{const r=await EX_sb.rpc('no_team_yet');if(!r||r.data!==true)return;}catch(e){return;}const el=document.getElementById('m-login');if(!el||document.getElementById('exSetupBtn'))return;const b=document.createElement('div');b.id='exSetupBtn';b.style.cssText='text-align:center;margin-top:18px;font-size:13px;color:var(--g4)';b.innerHTML='<span style="text-decoration:underline;cursor:pointer" onclick="exSetup()">'+t('First-time setup (owner only)')+'</span>';el.querySelector('.md').appendChild(b);}
 async function exSetup(){const owner=D.emps.find(e=>e.role==='owner');if(!owner)return;
   askPrompt(t('Owner setup')+' — '+owner.name,[{label:t('Choose your password (6+ characters)'),value:'',type:'password'},{label:t('Start with'),options:[{v:'clean',l:t('A clean slate — jobs, crews and catalog only')},{v:'file',l:t('A data file exported from the demo')}]}],async ([pw,mode])=>{if(!pw||pw.length<6){toast(t('Password must be at least 6 characters'));return;}
@@ -105,9 +117,6 @@ rep(`else{const w=window.open();if(w){w.document.write('<iframe src="'+f.d+'" st
 
 // ---- phone notifications
 rep(`signIn(u.id);try{if('Notification'in window&&Notification.permission==='default')Notification.requestPermission();}catch(e){}return;}`,`window.EX_ME=u.id;signIn(u.id);try{EX_pushOn(true);}catch(e){}setTimeout(exOfferFaceId,900);return;}`);
-rep(`  try{if('Notification'in window&&Notification.permission==='default')Notification.requestPermission();}catch(e){}}
-async function exSetupLink(){`,`  try{EX_pushOn(false);}catch(e){}}
-async function exSetupLink(){`);
 rep(`(window.EX_REAL?'<div class="mg" onclick="exChangePw()">'`,`(window.EX_REAL?'<div class="mg" onclick="exFaceIdToggle()">'+sv('<path d="M7 3H5a2 2 0 00-2 2v2M17 3h2a2 2 0 012 2v2M7 21H5a2 2 0 01-2-2v-2M17 21h2a2 2 0 002-2v-2M9 9v1M15 9v1M12 9v4h-1M9 16c1.5 1 4.5 1 6 0"/>')+t('Face ID lock')+'<div style="font-size:11px;color:var(--g4)">'+(EX_lockOn()?t('On'):t('Off'))+'</div></div><div class="mg" onclick="exNotif()">'+sv('<path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/>')+t('Phone notifications')+'</div><div class="mg" onclick="exChangePw()">'`);
 rep(`((m.role!=='owner'&&window.EX_REAL)?'<div class="mg" onclick="exChangePw()">'`,`((m.role!=='owner'&&window.EX_REAL)?'<div class="mg" onclick="exFaceIdToggle()">'+sv('<path d="M7 3H5a2 2 0 00-2 2v2M17 3h2a2 2 0 012 2v2M7 21H5a2 2 0 01-2-2v-2M17 21h2a2 2 0 002-2v-2M9 9v1M15 9v1M12 9v4h-1M9 16c1.5 1 4.5 1 6 0"/>')+t('Face ID lock')+'<div style="font-size:11px;color:var(--g4)">'+(EX_lockOn()?t('On'):t('Off'))+'</div></div><div class="mg" onclick="exNotif()">'+sv('<path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/>')+t('Phone notifications')+'</div><div class="mg" onclick="exChangePw()">'`);
 rep(`function exGenPw(){`,`async function exOfferFaceId(){try{if(localStorage.getItem('ex_faceid_asked')||EX_lockOn()||!(await EX_lockAvailable()))return;localStorage.setItem('ex_faceid_asked','1');}catch(e){return;}
