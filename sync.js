@@ -155,6 +155,7 @@ window.EX_logout=async function(){try{if(sb)await withTO(sb.auth.signOut(),3000,
 function tie(e,uid){if(!uid)return;const live=liveRecord('emps',e.id)||e;if(live.authUid!==uid){live.authUid=uid;try{save();}catch(x){}}}
 window.EX_createUser=async function(e,pass){const r=await sb.rpc('admin_create_user',{p_email:emailFor(e),p_pass:pass});if(r.error)return {err:r.error.message};if(!r.data)return {err:'failed'};tie(e,r.data);return {ok:true,email:emailFor(e)};};
 window.EX_setPassword=async function(e,pass){const r=await sb.rpc('admin_set_password',{p_email:emailFor(e),p_pass:pass});if(r.error)return {err:r.error.message};if(!r.data)return {err:'nouser'};tie(e,r.data);return {ok:true};};
+window.EX_upc=async function(code){if(!sb)return null;try{const r=await withTO(sb.functions.invoke('upc',{body:{code}}),9000,'barcode lookup');return r&&!r.error?r.data:null;}catch(e){return null;}};
 window.EX_changeMyPassword=async function(pass){const r=await sb.auth.updateUser({password:pass});return r.error?{err:r.error.message}:{ok:true};};
 window.EX_setupOwner=async function(e,pass){const email=emailFor(e);const r=await sb.rpc('setup_owner',{p_email:email,p_pass:pass});if(r.error)return {err:/already/.test(r.error.message)?'This app is already set up. Sign in instead.':r.error.message};const l=await sb.auth.signInWithPassword({email,password:pass});if(l.error)return {err:l.error.message};return {ok:true,uid:l.data.user.id};};
 window.EX_whoami=function(){return st.user;};

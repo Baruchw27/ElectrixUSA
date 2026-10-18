@@ -304,3 +304,8 @@ grant execute on function public.admin_create_user(text,text), public.admin_set_
 update storage.buckets set public = false where id = 'files';
 create policy "members only read files" on storage.objects as restrictive for select to public
   using (bucket_id <> 'files' or (auth.uid() is not null and public.is_member()));
+
+-- barcode → product lookups, saved so the same barcode is never looked up twice (only the "upc" function reads it)
+create table if not exists public.upc_cache (code text primary key, data jsonb not null default '{}'::jsonb, ts timestamptz not null default now());
+alter table public.upc_cache enable row level security;
+revoke all on public.upc_cache from anon, authenticated;
