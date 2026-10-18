@@ -5,10 +5,10 @@
 <meta name="theme-color" content="#ffffff"><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Electrix Field</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
-<script>window.EX_VER='vjh1018';</script><script src="config.js"></script>
+<script>window.EX_VER='vsch1018';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vjh1018"></script>
-<script src="extras.js?vjh1018"></script>
+<script src="sync.js?vsch1018"></script>
+<script src="extras.js?vsch1018"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -595,7 +595,7 @@ html[data-theme=dark] .sc-av.in{background:#173B2A;color:#7EE0AE}html[data-theme
 </div>
 <div class="ov hid" id="m-photo" style="align-items:center;background:rgba(0,0,0,.85)" onclick="hide('m-photo')"><div style="width:100%;padding:12px;text-align:center"><div id="photoWrap" style="display:flex;gap:8px;overflow-x:auto;padding:8px 0"></div><div style="color:#fff;font-size:13px;margin-top:8px" data-i18n="Tap to close">Tap to close</div></div></div>
 <div id="toastBox"></div>
-<div class="ov hid" id="m-ask" style="align-items:center;padding:20px"><div class="md" style="border-radius:16px;max-height:80vh"><div id="askTitle" style="font-size:16px;font-weight:700;margin-bottom:10px"></div><div id="askBody"></div><div style="display:flex;gap:8px;margin-top:14px"><button class="btn" id="askOk">OK</button><button class="btn sec2" style="width:auto;padding:12px 18px" onclick="hide('m-ask')" data-i18n="Cancel">Cancel</button></div></div></div>
+<div class="ov hid" id="m-ask" style="align-items:center;padding:20px;z-index:100000"><div class="md" style="border-radius:16px;max-height:80vh"><div id="askTitle" style="font-size:16px;font-weight:700;margin-bottom:10px"></div><div id="askBody"></div><div style="display:flex;gap:8px;margin-top:14px"><button class="btn" id="askOk">OK</button><button class="btn sec2" style="width:auto;padding:12px 18px" onclick="hide('m-ask')" data-i18n="Cancel">Cancel</button></div></div></div>
 <div class="ov hid" id="m-inbox"><div class="md"><div class="hd"></div><h2 data-i18n="Notifications">Notifications</h2><div id="inboxList"></div><button class="btn sec2" style="margin-top:12px" onclick="hide('m-inbox')" data-i18n="Cancel">Cancel</button></div></div>
 <!-- JOB MODAL -->
 <div class="ov hid" id="m-job"><div class="md"><div class="hd"></div>
@@ -1085,13 +1085,17 @@ html[data-theme=dark] .sc-av.in{background:#173B2A;color:#7EE0AE}html[data-theme
 <!-- SCHEDULE SLOT MODAL -->
 <div class="ov hid" id="m-slot"><div class="md"><div class="hd"></div>
   <h2 id="slotTitle">Schedule</h2>
-  <label>Job site</label><select id="slotSite"></select>
-  <label data-i18n="Start time">Start time</label>
-  <div class="chips" id="slotChips" style="margin-bottom:6px"></div>
-  <div style="display:flex;gap:8px;align-items:center"><input id="slotTime" value="7:00 AM" placeholder="7:00 AM" style="flex:1" oninput="slotChipsMark()"><input type="time" id="slotTimeT" style="width:auto" onchange="slotTimeFromPicker(this.value)"></div>
-  <div id="slotMove" style="display:none"><label data-i18n="Move to another day">Move to another day</label><input id="slotMoveTo" type="date"><div style="font-size:11px;color:var(--g4);margin-top:4px" data-i18n="Pick a date and Save — it leaves this day and lands there.">Pick a date and Save — it leaves this day and lands there.</div></div>
-  <label data-i18n="What to do that day (one per line)">What to do that day (one per line)</label><textarea id="slotNote" rows="4" placeholder="Bring the 200A panel&#10;Finish trim 2nd floor&#10;Call inspector"></textarea>
-  <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" onclick="saveSlot()" data-i18n="Save">Save</button><button class="btn sec2" style="width:auto;padding:12px 12px" onclick="moveSlot()">↔</button><button class="btn rd" style="width:auto;padding:12px 14px" onclick="clearSlot()" data-i18n="Clear">Clear</button><button class="btn sec2" style="width:auto;padding:12px 14px" onclick="hide('m-slot')" data-i18n="Cancel">Cancel</button></div>
+  <div id="slotBody"></div>
+</div></div>
+
+<div class="ov hid" id="m-loan"><div class="md"><div class="hd"></div>
+  <h2 id="loanTitle">Move a person</h2>
+  <div style="font-size:12.5px;color:var(--g4);margin-bottom:8px" data-i18n="Temporarily send one person to another job for part of the day. Their permanent crew doesn't change.">Temporarily send one person to another job for part of the day. Their permanent crew doesn't change.</div>
+  <label data-i18n="Employee">Employee</label><select id="loanEmp"></select>
+  <label data-i18n="To job site">To job site</label><select id="loanSite"></select>
+  <div style="display:flex;gap:8px"><label style="flex:1;font-size:12px;color:var(--g4)" data-i18n="Start">Start<input type="time" id="loanStart" value="12:00" style="font-size:16px"></label><label style="flex:1;font-size:12px;color:var(--g4)" data-i18n="End">End<input type="time" id="loanEnd" value="16:00" style="font-size:16px"></label></div>
+  <label data-i18n="Note (optional)">Note (optional)</label><input type="text" id="loanNote">
+  <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" onclick="saveLoan()" data-i18n="Save">Save</button><button class="btn rd" style="width:auto;padding:12px 14px" onclick="clearLoanFor(document.getElementById('loanEmp').value,loanDay);hide('m-loan')" data-i18n="Remove">Remove</button><button class="btn sec2" style="width:auto;padding:12px 14px" onclick="hide('m-loan')" data-i18n="Cancel">Cancel</button></div>
 </div></div>
 
 <script>
@@ -1152,6 +1156,13 @@ if(!D.emps.some(e=>e.role==='worker')){
 
 // ───────────── IN-APP POPUPS (browser alert/confirm/prompt are blocked in the hosted page) ─────────────
 function toast(msg,cls){const b=document.getElementById('toastBox');const d=document.createElement('div');d.className='toast '+(cls||'');d.textContent=msg;b.appendChild(d);setTimeout(()=>d.remove(),3500);}
+// Save a schedule change and confirm the REAL outcome before telling the person it saved. If the server refuses
+// the write (no permission, or a simultaneous edit by another office user), the local change is undone and a
+// clear error is shown instead of a false "✓ Saved". Falls back to the plain toast when the sync layer is absent.
+async function schedSaveConfirm(okMsg){renderSched();
+  let res={ok:true};try{if(window.EX_saveNow)res=await window.EX_saveNow();}catch(e){}
+  if(res&&res.ok===false){renderSched();toast('⚠ '+t('Not saved — you may not have permission, or someone else just changed it. Your change was undone.'),'bad');return false;}
+  toast('✓ '+(okMsg||t('Saved'))+(res&&res.queued?' · '+t('will sync when online'):''),'green');return true;}
 function ask(title,bodyHtml,onOk,okLabel){document.getElementById('askTitle').textContent=title;document.getElementById('askBody').innerHTML=bodyHtml||'';const ok=document.getElementById('askOk');ok.textContent=okLabel||'OK';ok.onclick=()=>{hide('m-ask');onOk&&onOk();};show('m-ask');}
 function askConfirm(msg,onYes,okLabel){ask(msg,'',onYes,okLabel);}
 function askPrompt(title,fields,onOk){
@@ -1636,6 +1647,198 @@ function fillRange(){
   datesFrom(start,Math.ceil(n*7/6)).slice(0,n).forEach(d=>D.sched[schedCrew+'|'+dkey(d)]={site:sid,time:tm||'7:00 AM',note:''});
   save();renderSched();toast('✓ '+n+' '+t('days scheduled'),'green');});
 }
+
+/* ═══════════ SCHEDULE ENGINE v2 (overrides the single-slot code above) ═══════════
+   • Multiple jobs per crew per day, each with start/end  • Multi-day repeat
+   • Temporary individual moves (loans)  • Conflict + concurrency guards
+   Legacy {site,time,note} rows are READ as one assignment and NEVER auto-rewritten;
+   a row is only upgraded to {assignments:[…]} when that day is actually saved.
+   This touches ONLY the sched collection — never punches, hours, or payroll. */
+const STD_DAY_MIN=480, WDAY_END=1020; // 8h = "full day"; 5pm fallback end for open rows
+function newAsgId(){return 'a'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function pMin(s){if(s==null||s==='')return null;if(typeof s==='number')return s;const m=String(s).trim().match(/^(\d{1,2}):?(\d{2})?\s*([ap]m)?$/i);if(!m)return null;let h=+m[1];const mi=+(m[2]||0),ap=(m[3]||'').toLowerCase();if(ap==='pm'&&h<12)h+=12;if(ap==='am'&&h===12)h=0;return h*60+mi;}
+function fMin(x){if(x==null)return '';const h=Math.floor(x/60),mi=x%60,ap=h>=12?'PM':'AM',hh=((h+11)%12)+1;return hh+':'+String(mi).padStart(2,'0')+' '+ap;}
+function min2hhmm(x){return x==null?'':String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0');}
+function hhmm2min(v){if(!v)return null;const p=String(v).split(':').map(Number);return p[0]*60+(p[1]||0);}
+// raw day row -> one-off/legacy assignments (no rules)
+function rawDayAsgs(key){const r=D.sched[key];if(!r)return [];if(Array.isArray(r.assignments))return r.assignments.filter(a=>a&&a.site).map(a=>({id:a.id||newAsgId(),site:a.site,start:a.start==null?null:a.start,end:a.end==null?null:a.end,note:a.note||''}));if(r.site)return [{id:'legacy',site:r.site,start:pMin(r.time),end:null,note:r.note||'',legacy:true}];return [];}
+// ── ongoing "until reassigned" rule: ONE per crew, key "ONG:<crewId>" ──
+function crewWorkday(crewId){const c=D.crews.find(x=>x.id===crewId);const d=c&&c.day;return {start:(d&&d.start!=null)?d.start:420,end:(d&&d.end!=null)?d.end:930,workdays:(d&&d.workdays)||[1,2,3,4,5]};}
+function rulesForCrew(crewId){const pre='ONG:'+crewId+':';return Object.keys(D.sched).filter(k=>k.slice(0,pre.length)===pre).map(k=>Object.assign({ruleId:k.slice(pre.length)},D.sched[k])).filter(r=>r&&r.site);}
+function ruleActiveOn(r,date){if(!r||!r.site)return false;if(r.from&&date<r.from)return false;if(r.to&&date>r.to)return false;return (r.workdays||[1,2,3,4,5]).includes(new Date(date+'T12:00').getDay());}
+// the ONE ongoing rule active for a crew on a given date (closed rules kept as history, non-overlapping ranges)
+function ruleOn(crewId,date){const act=rulesForCrew(crewId).filter(r=>ruleActiveOn(r,date));return act.length?act.sort((a,b)=>String(b.from||'').localeCompare(String(a.from||'')))[0]:null;}
+function activeRule(crewId){return rulesForCrew(crewId).filter(r=>!r.to).sort((a,b)=>String(b.from||'').localeCompare(String(a.from||'')))[0]||null;}
+// Compose a crew's effective assignments for a date: explicit whole-day booking overrides the rule;
+// otherwise the ongoing rule (unless cancelled/replaced that day) plus any one-off additions. Recurring
+// days are generated on the fly — future weeks need NO stored rows. Legacy/old bookings are preserved as-is.
+function effectiveAsgs(crewId,date){const key=crewId+'|'+date;const row=D.sched[key];const rule=ruleOn(crewId,date);
+  const isPatch=row&&(row.cancel||row.replace||row.patch);
+  if(row&&!isPatch&&(Array.isArray(row.assignments)||row.site))return rawDayAsgs(key); // explicit day overrides rule
+  let out=[];
+  if(ruleActiveOn(rule,date)&&!((row&&row.cancel)||[]).includes('ONG')){const rep=((row&&row.replace)||{})['ONG'];
+    out.push(rep?{id:'ong',site:rep.site,start:rep.start,end:rep.end,note:rep.note||'',exception:true}:{id:'ong',site:rule.site,start:rule.start,end:rule.end,note:rule.note||'',ongoing:true});}
+  if(row&&Array.isArray(row.assignments))row.assignments.filter(a=>a&&a.site).forEach(a=>out.push({id:a.id||newAsgId(),site:a.site,start:a.start==null?null:a.start,end:a.end==null?null:a.end,note:a.note||'',oneoff:true}));
+  return out.sort((a,b)=>(a.start==null?1e9:a.start)-(b.start==null?1e9:b.start));}
+// slotAsgs delegates crew|date keys to the composed view so every renderer/conflict check sees recurring days.
+function slotAsgs(key){const i=key.lastIndexOf('|');if(i>0){const crew=key.slice(0,i),date=key.slice(i+1);if(/^\d{4}-\d{2}-\d{2}$/.test(date)&&D.crews.some(c=>c.id===crew))return effectiveAsgs(crew,date);}return rawDayAsgs(key);}
+function slotHasAny(key){return slotAsgs(key).length>0;}
+// remaining minutes in a crew's configurable workday after its booked assignments for a date
+function remainingMin(crewId,date){const wd=crewWorkday(crewId);const a=slotAsgs(crewId+'|'+date).filter(x=>x.start!=null);let cov=0;if(a.length){const s=a.map(x=>[x.start,x.end==null?wd.end:x.end]).sort((p,q)=>p[0]-q[0]);let cs=s[0][0],ce=s[0][1];for(let i=1;i<s.length;i++){if(s[i][0]<=ce)ce=Math.max(ce,s[i][1]);else{cov+=ce-cs;cs=s[i][0];ce=s[i][1];}}cov+=ce-cs;}return Math.max(0,(wd.end-wd.start)-cov);}
+function slotAsgLabel(a){return fMin(a.start)+(a.end!=null?'–'+fMin(a.end):'');}
+function crewStatus(crewId,date){const a=slotAsgs(crewId+'|'+date);if(!a.length)return 'free';if(a.some(x=>x.start==null||x.end==null))return 'full';const wd=crewWorkday(crewId);const s=a.map(x=>[x.start,x.end]).sort((p,q)=>p[0]-q[0]);let cov=0,cs=s[0][0],ce=s[0][1];for(let i=1;i<s.length;i++){if(s[i][0]<=ce)ce=Math.max(ce,s[i][1]);else{cov+=ce-cs;cs=s[i][0];ce=s[i][1];}}cov+=ce-cs;return cov>=(wd.end-wd.start)?'full':'partial';}
+const STATUS_LABEL={free:'Available',partial:'Partially booked',full:'Fully booked'};
+// ── temporary individual moves (loans). key = "L:<empId>|<date>" ──
+function loanKey(empId,date){return 'L:'+empId+'|'+date;}
+function loansForDay(date){const out=[];Object.keys(D.sched).forEach(key=>{if(key.slice(0,2)!=='L:')return;const rest=key.slice(2);const i=rest.lastIndexOf('|');if(i<0||rest.slice(i+1)!==date)return;const empId=rest.slice(0,i);const r=D.sched[key];((r&&r.assignments)||[]).forEach(a=>{if(a&&a.site)out.push({emp:empId,a:{id:a.id||newAsgId(),site:a.site,start:a.start,end:a.end==null?null:a.end,note:a.note||''}});});});return out;}
+function loansFor(empId,date){return loansForDay(date).filter(x=>x.emp===empId).map(x=>x.a);}
+// ── conflict detection (time overlaps) ──
+function asgOverlap(a,b){const ae=a.end==null?WDAY_END:a.end,be=b.end==null?WDAY_END:b.end;return a.start!=null&&b.start!=null&&a.start<be&&b.start<ae;}
+function overlapsIn(list){const out=[];for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++)if(asgOverlap(list[i],list[j]))out.push([list[i],list[j]]);return out;}
+// Clean move: a loan REMOVES the person from their home crew for the overlapping hours (not a conflict).
+function empTimeline(empId,date,homeOverride){const loans=loansFor(empId,date).map(a=>({...a,src:'loan'}));const e=D.emps.find(x=>x.id===empId);const crew=e&&e.crew;let home=(homeOverride!=null?homeOverride:(crew?slotAsgs(crew+'|'+date):[])).map(a=>({...a,src:'crew'}));home=home.filter(h=>!loans.some(l=>asgOverlap(h,l)));return loans.concat(home);}
+function crewMembers(crewId){return D.emps.filter(e=>e.crew===crewId&&e.active!==false);}
+// A conflict is ONLY the SAME crew at two DIFFERENT sites at overlapping times, or the SAME person double-committed.
+// Multiple DIFFERENT crews at the SAME site (same hours) is fully allowed and never flagged.
+function conflictsForCrew(crewId,date,draft){const msgs=[];for(let i=0;i<draft.length;i++)for(let j=i+1;j<draft.length;j++)if(draft[i].site!==draft[j].site&&asgOverlap(draft[i],draft[j]))msgs.push(nameOf(crewId)+': '+siteName(draft[i].site)+' ('+slotAsgLabel(draft[i])+') ↔ '+siteName(draft[j].site)+' ('+slotAsgLabel(draft[j])+')');return [...new Set(msgs)];}
+// Moving a person is a clean move; a loan conflict is only two overlapping INDIVIDUAL assignments for the same person.
+function conflictsForLoan(empId,date,newLoanAsgs){const e=D.emps.find(x=>x.id===empId);const msgs=[];overlapsIn(newLoanAsgs).forEach(([a,b])=>msgs.push((e?e.name:empId)+': '+siteName(a.site)+' ('+slotAsgLabel(a)+') ↔ '+siteName(b.site)+' ('+slotAsgLabel(b)+')'));return [...new Set(msgs)];}
+// Persistent conflict detection (recomputed on every render, so an overridden conflict stays visible until fixed).
+function crewConflictMsgs(crewId,date){const a=slotAsgs(crewId+'|'+date);const out=[];for(let i=0;i<a.length;i++)for(let j=i+1;j<a.length;j++)if(a[i].site!==a[j].site&&asgOverlap(a[i],a[j]))out.push(siteName(a[i].site)+' '+slotAsgLabel(a[i])+' ↔ '+siteName(a[j].site)+' '+slotAsgLabel(a[j]));return out;}
+function crewHasConflict(crewId,date){return crewConflictMsgs(crewId,date).length>0;}
+function empConflictMsgs(empId,date){const e=D.emps.find(x=>x.id===empId);const out=[];overlapsIn(empTimeline(empId,date)).forEach(([a,b])=>{if(a.site!==b.site)out.push((e?e.name:empId)+': '+siteName(a.site)+' '+slotAsgLabel(a)+' ↔ '+siteName(b.site)+' '+slotAsgLabel(b));});return out;}
+function dayConflicts(date){const out=[];D.crews.forEach(c=>crewConflictMsgs(c.id,date).forEach(m=>out.push(nameOf(c.id)+': '+m)));[...new Set(loansForDay(date).map(x=>x.emp))].forEach(id=>empConflictMsgs(id,date).forEach(m=>out.push(m)));return [...new Set(out)];}
+// All crews (and moved individuals) scheduled at a given site on a day — uses your existing crew numbers/names.
+function crewsAtSite(siteId,date){const out=[];D.crews.forEach(c=>{slotAsgs(c.id+'|'+date).filter(a=>a.site===siteId).forEach(a=>out.push({crew:c,a}));});loansForDay(date).filter(x=>x.a.site===siteId).forEach(x=>out.push({emp:x.emp,a:x.a}));return out;}
+function crewsAtSiteHtml(siteId){const k=dkey(new Date());const list=crewsAtSite(siteId,k);return '<div class="sec" style="margin-top:14px">'+t('Crews scheduled here today')+'</div>'+(list.length?list.map(x=>'<div class="plog"><span style="flex:1">'+(x.crew?'<b>'+esc(x.crew.name)+'</b> <span style="font-size:11px;color:var(--g4)">'+t(x.crew.type==='finish'?'Finishing':'Rough')+'</span>':'👤 '+esc(nameOf(x.emp)))+(x.a.ongoing?' ♾':'')+'</span><b>'+esc(slotAsgLabel(x.a))+'</b></div>').join(''):'<div style="font-size:13px;color:var(--g3);padding:4px 0 8px">'+t('No crews scheduled here today.')+'</div>');}
+function setCrewHours(cid){const wd=crewWorkday(cid);askPrompt(t('Normal working hours')+' — '+nameOf(cid),[{label:t('Start'),value:min2hhmm(wd.start),type:'time'},{label:t('End'),value:min2hhmm(wd.end),type:'time'}],([s,e])=>{const st=hhmm2min(s),en=hhmm2min(e);if(st==null||en==null||en<=st){toast(t('Check the times'));return;}const c=D.crews.find(x=>x.id===cid);if(c){c.day={start:st,end:en,workdays:(c.day&&c.day.workdays)||[1,2,3,4,5]};save();renderSched();toast('✓ '+t('Hours saved'),'green');}});}
+// ── persist with optimistic concurrency (keeps top-level site/time for legacy readers) ──
+function rowRev(key){const r=D.sched[key];return (r&&r.rev)||0;}
+function writeSlotRow(key,assignments,baseRev){const prim=assignments[0];D.sched[key]={site:prim.site,time:fMin(prim.start),assignments:assignments.map(a=>({id:a.id||newAsgId(),site:a.site,start:a.start,end:a.end==null?null:a.end,note:a.note||''})),note:assignments.map(a=>a.note).filter(Boolean).join('\n'),rev:(baseRev||0)+1,by:me().id,at:Date.now()};}
+// ── booking editor: Specific Hours / Full Day / Until Reassigned + fill-the-day + ongoing rules ──
+let slotOneoffs=[],slotPatch={cancel:[],replace:{}},slotBaseRev=0,slotAddMode=null;
+function openSlot(k){slotDay=k;const key=schedCrew+'|'+k;slotBaseRev=rowRev(key);const row=D.sched[key]||{};slotAddMode=null;
+  slotPatch={cancel:(row.cancel||[]).slice(),replace:Object.assign({},row.replace||{})};
+  if(Array.isArray(row.assignments))slotOneoffs=row.assignments.map(a=>({id:a.id||newAsgId(),site:a.site,start:a.start,end:a.end,note:a.note||''}));
+  else if(row.site&&!(row.cancel||row.replace||row.patch))slotOneoffs=[{id:newAsgId(),site:row.site,start:pMin(row.time),end:null,note:row.note||''}];
+  else slotOneoffs=[];
+  const d=new Date(k+'T12:00');document.getElementById('slotTitle').textContent=nameOf(schedCrew)+' — '+DN[d.getDay()]+' '+d.toLocaleDateString(LOC(),{month:'short',day:'numeric'});
+  renderSlotEditor();show('m-slot');}
+function slotEffNow(){let out=[];const rule=ruleOn(schedCrew,slotDay);if(rule&&!slotPatch.cancel.includes('ONG')){const rep=slotPatch.replace['ONG'];out.push(rep?{site:rep.site,start:rep.start,end:rep.end,ongoing:true,exception:true}:{site:rule.site,start:rule.start,end:rule.end,ongoing:true});}slotOneoffs.forEach(a=>{if(a.site&&a.start!=null)out.push({site:a.site,start:a.start,end:a.end,oneoff:true});});return out.sort((a,b)=>(a.start==null?1e9:a.start)-(b.start==null?1e9:b.start));}
+function slotCover(){const wd=crewWorkday(schedCrew);const a=slotEffNow().filter(x=>x.start!=null);let cov=0;if(a.length){const s=a.map(x=>[x.start,x.end==null?wd.end:x.end]).sort((p,q)=>p[0]-q[0]);let cs=s[0][0],ce=s[0][1];for(let i=1;i<s.length;i++){if(s[i][0]<=ce)ce=Math.max(ce,s[i][1]);else{cov+=ce-cs;cs=s[i][0];ce=s[i][1];}}cov+=ce-cs;}return cov;}
+function slotRemainingNow(){const wd=crewWorkday(schedCrew);return Math.max(0,(wd.end-wd.start)-slotCover());}
+function slotNextStart(){const wd=crewWorkday(schedCrew);const a=slotEffNow().filter(x=>x.start!=null&&x.end!=null);return a.length?Math.max(wd.start,Math.max(...a.map(x=>x.end))):wd.start;}
+function remHrs(min){return (min/60).toFixed(min%60?1:0);}
+function renderSlotEditor(){const wd=crewWorkday(schedCrew);const rule=ruleOn(schedCrew,slotDay);const rem=slotRemainingNow();
+  const cancelled=slotPatch.cancel.includes('ONG');const rep=slotPatch.replace['ONG'];
+  let html='';
+  // ongoing banner
+  if(rule){const shown=cancelled?null:(rep||{site:rule.site,start:rule.start,end:rule.end});
+    html+='<div class="card" style="padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--blue)"><div style="font-weight:700;font-size:13px">♾ '+t('Ongoing job')+(rep?' · '+t('changed today'):cancelled?' · '+t('off today'):'')+'</div>'
+      +(shown?'<div style="font-size:13px;margin-top:2px">'+esc(siteName(shown.site))+' · '+fMin(shown.start)+'–'+fMin(shown.end)+' · '+t('every working day')+'</div>':'<div style="font-size:13px;color:var(--g4);margin-top:2px">'+t('Crew is off this job today')+'</div>')
+      +'<div class="sc-acts" style="margin-top:8px"><button onclick="slotChangeOngoing()">'+t('Change / move')+'</button><button onclick="slotEndOngoing()">'+t('End ongoing')+'</button></div></div>';}
+  // one-off assignments
+  html+=slotOneoffs.map((a,i)=>'<div class="card" style="padding:10px 11px;margin-bottom:8px"><div class="row" style="margin-bottom:6px;align-items:center"><b style="font-size:12px;color:var(--g4)">'+t('Job this day')+'</b><span style="cursor:pointer;color:#c0392b;font-weight:700" onclick="slotRemove('+i+')">✕</span></div>'
+    +'<select onchange="slotSet('+i+',\'site\',this.value)">'+D.sites.map(s=>'<option value="'+s.id+'"'+(s.id===a.site?' selected':'')+'>'+esc(s.name)+'</option>').join('')+'</select>'
+    +'<div style="display:flex;gap:8px;margin-top:8px"><label style="flex:1;font-size:12px;color:var(--g4)">'+t('Start')+'<input type="time" value="'+min2hhmm(a.start==null?wd.start:a.start)+'" onchange="slotSet('+i+',\'start\',this.value)" style="font-size:16px"></label><label style="flex:1;font-size:12px;color:var(--g4)">'+t('End')+'<input type="time" value="'+(a.end==null?'':min2hhmm(a.end))+'" onchange="slotSet('+i+',\'end\',this.value)" style="font-size:16px"></label></div></div>').join('');
+  // remaining + add
+  html+='<div style="font-size:12.5px;color:'+(rem>0?'var(--amber)':'var(--green)')+';margin:4px 2px 8px">'+(rem>0?'⏳ '+remHrs(rem)+'h '+t('open in the workday'):'✓ '+t('Workday full'))+'</div>';
+  if(slotAddMode==null){html+='<button class="btn sec2" onclick="slotPickMode(\'menu\')">+ '+t('Add a job')+'</button>';}
+  else{html+=renderAddPanel();}
+  html+='<div id="slotConf"></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px"><button class="btn" style="flex:1 1 100%" onclick="saveSlot()">'+t('Save')+'</button><button class="btn sec2" style="flex:1" onclick="slotCopyPrompt()">⧉ '+t('Copy day')+'</button><button class="btn rd" style="flex:1" onclick="clearSlot()">'+t('Clear day')+'</button><button class="btn sec2" style="flex:1" onclick="hide(\'m-slot\')">'+t('Cancel')+'</button></div>';
+  document.getElementById('slotBody').innerHTML=html;updateSlotConflicts();}
+function renderAddPanel(){const site='<select id="slotAddSite">'+D.sites.map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('')+'</select>';
+  if(slotAddMode==='menu')return '<div class="card" style="padding:11px"><label style="font-size:12px;color:var(--g4)">'+t('Job site')+'</label>'+site+'<div style="font-size:12px;color:var(--g4);margin:10px 0 6px">'+t('How long?')+'</div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sec2" style="flex:1" onclick="slotAddMode=\'spec\';renderSlotEditor()">'+t('Specific hours')+'</button><button class="btn sec2" style="flex:1" onclick="slotAddFull()">'+t('Full day')+'</button><button class="btn sec2" style="flex:1 1 100%" onclick="slotAddMode=\'ong\';renderSlotEditor()">♾ '+t('Until reassigned')+'</button></div><button class="btn sec2" style="margin-top:8px" onclick="slotAddMode=null;renderSlotEditor()">'+t('Cancel')+'</button></div>';
+  if(slotAddMode==='spec')return '<div class="card" style="padding:11px"><label style="font-size:12px;color:var(--g4)">'+t('Job site')+'</label>'+site+'<label style="font-size:12px;color:var(--g4);margin-top:8px;display:block">'+t('Hours needed')+'</label><input type="number" id="slotAddHours" value="'+Math.max(1,Math.round(slotRemainingNow()/60))+'" min="0.5" step="0.5" style="font-size:16px"><div style="font-size:11px;color:var(--g4);margin-top:4px">'+t('Starts at')+' '+fMin(slotNextStart())+'. '+remHrs(slotRemainingNow())+'h '+t('open')+'.</div><div style="display:flex;gap:6px;margin-top:10px"><button class="btn" style="flex:1" onclick="slotAddSpecific()">'+t('Add')+'</button><button class="btn sec2" style="flex:1" onclick="slotAddMode=\'menu\';renderSlotEditor()">'+t('Back')+'</button></div></div>';
+  if(slotAddMode==='ong')return '<div class="card" style="padding:11px"><div style="font-weight:700;font-size:13px">♾ '+t('Until reassigned')+'</div><div style="font-size:12px;color:var(--g4);margin:2px 0 8px">'+t('Repeats every working day from this date until you change or cancel it.')+'</div><label style="font-size:12px;color:var(--g4)">'+t('Job site')+'</label>'+site+'<label style="display:flex;align-items:center;margin-top:8px;font-weight:500"><input type="checkbox" id="slotOngFull" checked onchange="document.getElementById(\'ongHrsWrap\').style.display=this.checked?\'none\':\'block\'" style="width:auto;margin-right:8px">'+t('Full working day')+'</label><div id="ongHrsWrap" style="display:none;margin-top:8px"><label style="font-size:12px;color:var(--g4)">'+t('Hours per day')+'</label><input type="number" id="slotAddHours" value="4" min="0.5" step="0.5" style="font-size:16px"></div><div style="display:flex;gap:6px;margin-top:10px"><button class="btn" style="flex:1" onclick="slotAddOngoing()">'+t('Set ongoing')+'</button><button class="btn sec2" style="flex:1" onclick="slotAddMode=\'menu\';renderSlotEditor()">'+t('Back')+'</button></div></div>';
+  return '';}
+function slotPickMode(m){slotAddMode=m;renderSlotEditor();}
+function slotSet(i,f,v){if(f==='start'||f==='end')v=hhmm2min(v);slotOneoffs[i][f]=v;updateSlotConflicts();}
+function slotRemove(i){slotOneoffs.splice(i,1);renderSlotEditor();}
+function slotAddFull(){const wd=crewWorkday(schedCrew);const site=document.getElementById('slotAddSite').value;slotOneoffs.push({id:newAsgId(),site,start:wd.start,end:wd.end,note:''});slotAddMode=null;renderSlotEditor();}
+function slotAddSpecific(){const wd=crewWorkday(schedCrew);const site=document.getElementById('slotAddSite').value;const h=parseFloat(document.getElementById('slotAddHours').value)||0;if(h<=0){toast(t('Enter hours'));return;}const st=slotNextStart();slotOneoffs.push({id:newAsgId(),site,start:st,end:Math.min(wd.end,st+Math.round(h*60)),note:''});slotAddMode=slotRemainingNow()>0?'menu':null;renderSlotEditor();if(slotRemainingNow()>0)toast(remHrs(slotRemainingNow())+'h '+t('left — add the next job'),'blue');}
+function slotAddOngoing(){const wd=crewWorkday(schedCrew);const site=document.getElementById('slotAddSite').value;const full=document.getElementById('slotOngFull').checked;const h=parseFloat((document.getElementById('slotAddHours')||{}).value)||4;const st=full?wd.start:slotNextStart();const en=full?wd.end:Math.min(wd.end,st+Math.round(h*60));
+  const cur=activeRule(schedCrew);const write=()=>{if(cur){const prev=new Date(slotDay+'T12:00');prev.setDate(prev.getDate()-1);D.sched['ONG:'+schedCrew+':'+cur.ruleId]={...D.sched['ONG:'+schedCrew+':'+cur.ruleId],to:dkey(prev),rev:(cur.rev||0)+1,by:me().id,at:Date.now()};}const rid=Date.now().toString(36);D.sched['ONG:'+schedCrew+':'+rid]={site,start:st,end:en,workdays:wd.workdays,from:slotDay,to:null,rev:1,by:me().id,at:Date.now()};save();slotAddMode=null;renderSlotEditor();renderSched();toast('♾ '+t('Ongoing set — repeats every working day'),'green');};
+  if(cur)askConfirm(t('This crew already has an ongoing job')+' ('+siteName(cur.site)+'). '+t('Replace it from this date forward?'),write,t('Replace'));else write();}
+function updateSlotConflicts(){const el=document.getElementById('slotConf');if(!el)return;const msgs=conflictsForCrew(schedCrew,slotDay,slotEffNow().filter(x=>x.start!=null));el.innerHTML=msgs.length?'<div style="background:#fdecea;color:#8a1c12;border-radius:8px;padding:8px;margin-top:8px;font-size:13px">⚠ '+t('Scheduling conflict')+'<br>'+msgs.map(esc).join('<br>')+'</div>':'';}
+function saveSlot(){const key=schedCrew+'|'+slotDay;const oneoffs=slotOneoffs.filter(a=>a.site&&a.start!=null).map(a=>({id:a.id,site:a.site,start:a.start,end:(a.end!=null&&a.end>a.start)?a.end:null,note:a.note||''}));
+  const proceed=()=>{const msgs=conflictsForCrew(schedCrew,slotDay,slotEffNow().filter(x=>x.start!=null));const go=()=>commitDay(oneoffs);if(msgs.length)askConfirm('⚠ '+t('Scheduling conflict')+':\n\n'+msgs.join('\n')+'\n\n'+t('Save anyway? It stays flagged until fixed.'),go,t('Save anyway'));else go();};
+  if(rowRev(key)!==slotBaseRev){const by=D.sched[key]&&D.sched[key].by;askConfirm(t('This day was changed by')+' '+(by?nameOf(by):t('someone else'))+' '+t('since you opened it. Overwrite?'),proceed,t('Overwrite'));}else proceed();}
+function commitDay(oneoffs){const key=schedCrew+'|'+slotDay;const base=rowRev(key);const hasRule=!!ruleOn(schedCrew,slotDay);const patchActive=slotPatch.cancel.length||Object.keys(slotPatch.replace).length;
+  if(!oneoffs.length&&!patchActive){if(D.sched[key])delete D.sched[key];}
+  else if(hasRule||patchActive){D.sched[key]={assignments:oneoffs,cancel:slotPatch.cancel,replace:slotPatch.replace,patch:true,rev:base+1,by:me().id,at:Date.now()};}
+  else{D.sched[key]={site:oneoffs[0]?oneoffs[0].site:null,time:oneoffs[0]?fMin(oneoffs[0].start):'',assignments:oneoffs,note:oneoffs.map(a=>a.note).filter(Boolean).join('\n'),rev:base+1,by:me().id,at:Date.now()};}
+  save();hide('m-slot');schedSaveConfirm(t('Saved'));}
+function clearSlot(){const key=schedCrew+'|'+slotDay;delete D.sched[key];save();hide('m-slot');schedSaveConfirm(t('Day cleared (ongoing job, if any, still repeats)'));}
+function slotCopyPrompt(){const asg=slotEffNow().filter(x=>x.start!=null).map(a=>({id:newAsgId(),site:a.site,start:a.start,end:a.end,note:''}));if(!asg.length)return;askPrompt(t('Copy this day to'),[{label:t('Date'),value:slotDay,type:'date'}],([dd])=>{if(!dd||dd===slotDay)return;const kk=schedCrew+'|'+dd;const put=()=>{writeSlotRow(kk,asg,rowRev(kk));save();hide('m-slot');schedSaveConfirm(t('Copied'));};if(D.sched[kk])askConfirm(t('That day already has a booking. Overwrite?'),put,t('Overwrite'));else put();});}
+// change/move the ongoing job: one day / date range / permanent — never erases one-off jobs
+function slotChangeOngoing(){const rule=ruleOn(schedCrew,slotDay);if(!rule)return;
+  askPrompt(t('Change the ongoing job'),[
+    {label:t('Apply to'),options:[{v:'one',l:t('Just this day')},{v:'range',l:t('A date range')},{v:'perm',l:t('Permanently (reassign)')}]},
+    {label:t('Send to'),options:[{v:'__off',l:t('Off — no crew here')}].concat(D.sites.map(s=>({v:s.id,l:s.name})))},
+    {label:t('If a range: last date'),value:slotDay,type:'date'}],
+    ([scope,site,endDate])=>{const rep=site==='__off'?'__off':{site,start:rule.start,end:rule.end};
+      if(scope==='one'){applyOngExc(slotDay,rep);}
+      else if(scope==='range'){let d=new Date(slotDay+'T12:00');const e=new Date((endDate||slotDay)+'T12:00');let g=0;while(d<=e&&g++<400){applyOngExc(dkey(d),rep);d.setDate(d.getDate()+1);}}
+      else{const prev=new Date(slotDay+'T12:00');prev.setDate(prev.getDate()-1);const rk='ONG:'+schedCrew+':'+rule.ruleId;D.sched[rk]={...D.sched[rk],to:dkey(prev),rev:(rule.rev||0)+1,by:me().id,at:Date.now()};if(site!=='__off'){const rid=Date.now().toString(36);D.sched['ONG:'+schedCrew+':'+rid]={site,start:rule.start,end:rule.end,workdays:rule.workdays,from:slotDay,to:null,rev:1,by:me().id,at:Date.now()};}}
+      save();hide('m-slot');schedSaveConfirm(t('Updated — other jobs kept'));});}
+function applyOngExc(date,rep){const key=schedCrew+'|'+date;const row=D.sched[key]||{};const cancel=(row.cancel||[]).slice(),replace=Object.assign({},row.replace||{});
+  if(rep==='__off'){if(!cancel.includes('ONG'))cancel.push('ONG');delete replace['ONG'];}else{replace['ONG']=rep;const ci=cancel.indexOf('ONG');if(ci>=0)cancel.splice(ci,1);}
+  D.sched[key]={assignments:(row.assignments||[]),cancel,replace,patch:true,rev:rowRev(key)+1,by:me().id,at:Date.now()};}
+function slotEndOngoing(){const rule=ruleOn(schedCrew,slotDay);if(!rule)return;askConfirm(t('End this ongoing job?')+' '+t('It stops repeating from today. Past days stay as they were.'),()=>{const prev=new Date(slotDay+'T12:00');prev.setDate(prev.getDate()-1);const rk='ONG:'+schedCrew+':'+rule.ruleId;if(dkey(prev)<(rule.from||''))delete D.sched[rk];else D.sched[rk]={...D.sched[rk],to:dkey(prev),rev:(rule.rev||0)+1,by:me().id,at:Date.now()};save();hide('m-slot');schedSaveConfirm(t('Ongoing job ended'));},t('End'));}
+function fillRange(){openSlot(dkey(new Date(new Date().setHours(12,0,0,0))));}
+// ── individual move (loan) editor ──
+let loanDay=null,loanBaseRev=0;
+function openLoan(k,empId){loanDay=k;const emps=D.emps.filter(e=>e.role==='worker'&&e.active!==false);document.getElementById('loanTitle').textContent=t('Move a person')+' — '+new Date(k+'T12:00').toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'});
+  document.getElementById('loanEmp').innerHTML=emps.map(e=>'<option value="'+e.id+'">'+esc(e.name)+(e.crew?' · '+esc(nameOf(e.crew)):'')+'</option>').join('');if(empId)document.getElementById('loanEmp').value=empId;
+  document.getElementById('loanSite').innerHTML=D.sites.map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');
+  const who=empId||(emps[0]||{}).id;const ex=who?loansFor(who,k)[0]:null;loanBaseRev=who?rowRev(loanKey(who,k)):0;
+  if(ex)document.getElementById('loanSite').value=ex.site;
+  document.getElementById('loanStart').value=min2hhmm(ex?ex.start:720);document.getElementById('loanEnd').value=min2hhmm(ex&&ex.end!=null?ex.end:960);document.getElementById('loanNote').value=ex?ex.note||'':'';show('m-loan');}
+function saveLoan(){const emp=document.getElementById('loanEmp').value;const site=document.getElementById('loanSite').value;const start=hhmm2min(document.getElementById('loanStart').value);const end=hhmm2min(document.getElementById('loanEnd').value);const note=document.getElementById('loanNote').value;
+  if(start==null){toast(t('Enter a start time'));return;}const asg=[{id:newAsgId(),site,start,end:(end!=null&&end>start)?end:null,note}];const key=loanKey(emp,loanDay);
+  const go=()=>{const msgs=conflictsForLoan(emp,loanDay,asg);const commit=()=>{D.sched[key]={emp,assignments:asg,rev:rowRev(key)+1,by:me().id,at:Date.now()};save();hide('m-loan');schedSaveConfirm(t('Person moved'));};if(msgs.length)askConfirm('⚠ '+t('Scheduling conflict')+':\n\n'+msgs.join('\n')+'\n\n'+t('Save anyway?'),commit,t('Save anyway'));else commit();};
+  if(rowRev(key)!==loanBaseRev){askConfirm(t('This was changed since you opened it. Overwrite?'),go,t('Overwrite'));}else go();}
+function clearLoanFor(empId,k){if(!empId)return;delete D.sched[loanKey(empId,k)];save();schedSaveConfirm(t('Move removed'));}
+// ── upgraded Day board ──
+function renderDayBoard(){const m=me();const el=document.getElementById('todayBoard');const ed=schedCanEdit();
+  const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+boardDay);const k=dkey(d);const isT=boardDay===0;const today=new Date().toDateString();
+  const work=D.crews.filter(c=>slotHasAny(c.id+'|'+k)),free=D.crews.filter(c=>!slotHasAny(c.id+'|'+k));
+  const cg=c=>D.emps.filter(e=>e.crew===c.id&&e.active!==false).sort((a,b)=>(b.lead?1:0)-(a.lead?1:0));
+  const allGuys=work.flatMap(cg);const inNow=isT?allGuys.filter(g=>scDayState(g,true,today).k==='in').length:0;
+  const rel=isT?t('Today'):boardDay===1?t('Tomorrow'):boardDay===-1?t('Yesterday'):'';
+  const head='<div class="sc-head"><div><div class="sc-wd">'+d.toLocaleDateString(LOC(),{weekday:'long'})+'</div><div class="sc-md">'+d.toLocaleDateString(LOC(),{month:'long',day:'numeric'})+(rel?'<span class="sc-rel'+(isT?' td':'')+'">'+rel+'</span>':'')+'</div></div>'+(boardDay!==0?'<button class="sc-today" onclick="boardDay=0;renderSched()">'+t('Today')+'</button>':'')+'</div>';
+  const sum='<p class="sc-sum">'+(work.length?work.length+' '+t('of')+' '+D.crews.length+' '+t('crews booked')+(isT&&allGuys.length?'. '+inNow+' '+t('of')+' '+allGuys.length+' '+t('clocked in')+'.':'.'):t('No crews booked for this day.'))+'</p>';
+  const pill=stt=>{const col=stt==='full'?'var(--green)':stt==='partial'?'var(--amber)':'var(--g3)';return '<span style="font-size:10.5px;font-weight:700;color:#fff;background:'+col+';border-radius:10px;padding:2px 8px;white-space:nowrap">'+t(STATUS_LABEL[stt])+'</span>';};
+  const row=c=>{const key=c.id+'|'+k;const asgs=slotAsgs(key);const guys=cg(c);const st=guys.map(g=>scDayState(g,isT,today,k));const on=st.filter(x=>x.k==='in').length;const stt=crewStatus(c.id,k);const open=schExp.has(c.id);const site0=asgs[0]&&D.sites.find(x=>x.id===asgs[0].site);
+    const jobs=asgs.map(a=>{const ad=scAddr(a.site);return '<div class="sc-top"><span class="sc-addr">'+(a.ongoing?'<span title="'+t('Ongoing')+'">♾ </span>':a.exception?'<span title="'+t('Changed today')+'">✎ </span>':'')+ad.a+'</span><span class="sc-time">'+esc(slotAsgLabel(a))+'</span></div>'+(ad.b?'<div class="sc-sub" style="margin:0 0 2px">'+ad.b+'</div>':'');}).join('')+(crewHasConflict(c.id,k)?'<div style="background:#fdecea;color:#8a1c12;border-radius:6px;padding:4px 7px;font-size:11.5px;margin-top:4px">⚠ '+t('Conflict')+': '+crewConflictMsgs(c.id,k).map(esc).join('; ')+'</div>':'');
+    const avs=guys.map((g,i)=>'<span class="sc-av '+st[i].k+'" title="'+esc(g.name)+'">'+scInit(g.name)+(loansFor(g.id,k).length?'→':'')+'</span>').join('');
+    const outs=guys.filter(g=>loansFor(g.id,k).length).map(g=>{const a=loansFor(g.id,k)[0];return '<div class="sc-note">↪ '+esc(g.name)+' → '+esc(siteName(a.site))+' '+esc(slotAsgLabel(a))+'</div>';}).join('');
+    const det=open?'<div class="sc-more">'+outs+guys.map((g,i)=>'<div class="sc-p"><span class="sc-av '+st[i].k+'">'+scInit(g.name)+'</span><span class="sc-pn">'+esc(g.name)+(g.lead?' <em>'+t('Lead')+'</em>':'')+'</span><span class="sc-ps '+st[i].k+'">'+(isT?st[i].txt:'')+'</span></div>').join('')
+      +'<div class="sc-acts">'+(ed?'<button onclick="event.stopPropagation();editSlot(\''+jsq(c.id)+'\',\''+jsq(k)+'\')">'+t('Change jobs')+'</button>':'')+(ed?'<button onclick="event.stopPropagation();openLoan(\''+jsq(k)+'\')">'+t('Move a person')+'</button>':'')+(ed?'<button onclick="event.stopPropagation();setCrewHours(\''+jsq(c.id)+'\')">⚙ '+t('Hours')+'</button>':'')+(site0?'<button onclick="event.stopPropagation();openFolder(\''+jsq(site0.id)+'\')">'+t('Open job')+'</button>':'')+(site0&&site0.lat?'<a target="_blank" rel="noopener" onclick="event.stopPropagation()" href="'+esc(safeHref(gmapsDir(site0)))+'">'+t('Directions')+'</a>':'')+'</div></div>':'';
+    return '<div class="sc-row'+(open?' open':'')+'" onclick="scToggle(\''+jsq(c.id)+'\')">'+scRing(c,on,guys.length,isT)+'<div class="sc-body"><div class="row" style="justify-content:space-between;align-items:center;margin-bottom:3px"><span class="sc-type '+(c.type==='finish'?'f':'r')+'">'+t(c.type==='finish'?'Finishing':'Rough')+'</span>'+pill(stt)+'</div>'+jobs+'<div class="sc-avs">'+avs+'</div>'+(isT?'<div class="sc-sub"><span class="sc-cnt">'+on+'/'+guys.length+' '+t('in')+'</span></div>':'')+det+'</div></div>';};
+  const freeRows=free.map(c=>{const n=cg(c).length;return '<div class="sc-row free">'+scRing(c,0,0,false)+'<div class="sc-body"><div class="sc-top"><span class="sc-addr muted">'+esc(c.name)+'</span>'+(ed?'<button class="sc-book" onclick="editSlot(\''+jsq(c.id)+'\',\''+jsq(k)+'\')">'+t('Book')+'</button>':'')+'</div><div class="sc-sub">'+t(c.type==='finish'?'Finishing':'Rough')+', '+n+' '+t(n===1?'person':'people')+'</div></div></div>';}).join('');
+  const loans=loansForDay(k);const loanSec='<h4 class="sc-h4">'+t('Individual moves')+'</h4><div class="sc-group">'+(loans.length?loans.map(x=>{const he=D.emps.find(e=>e.id===x.emp);return '<div class="sc-row"'+(ed?' onclick="openLoan(\''+jsq(k)+'\',\''+jsq(x.emp)+'\')"':'')+'><div class="sc-body"><div class="sc-top"><span class="sc-addr">'+esc(nameOf(x.emp))+' → '+scAddr(x.a.site).a+'</span><span class="sc-time">'+esc(slotAsgLabel(x.a))+'</span></div><div class="sc-sub">'+(he&&he.crew?t('from')+' '+esc(nameOf(he.crew)):'')+(x.a.note?' · '+esc(x.a.note):'')+'</div></div></div>';}).join(''):'<div style="font-size:12px;color:var(--g3);padding:6px 2px">'+t('No individual moves today.')+'</div>')+(ed?'<button class="sc-book" style="margin:6px 2px" onclick="openLoan(\''+jsq(k)+'\')">+ '+t('Move a person')+'</button>':'')+'</div>';
+  el.innerHTML=timeOffQueue()+'<div class="sc">'+head+weekStrip(k,x=>"boardPick('"+x+"')")+sum+(work.length?'<div class="sc-group">'+work.map(row).join('')+'</div>':'')+(free.length?'<h4 class="sc-h4">'+t('Not booked')+'</h4><div class="sc-group">'+freeRows+'</div>':'')+loanSec+(isT&&m.role!=='worker'?'<div class="sc-legend"><span><i class="in"></i>'+t('In')+'</span><span><i class="wait"></i>'+t('Waiting')+'</span><span><i class="away"></i>'+t('Left site')+'</span><span><i></i>'+t('Not in')+'</span></div>':'')+'</div>';
+  const gb=document.getElementById('goHomeBox2');renderGoHomeIn('goHomeBox2');if(gb&&gb.innerHTML){if(!isT)gb.innerHTML='';else if(!ghOpen)gb.innerHTML='<button class="sc-home" onclick="ghOpen=true;renderSched()">'+t('Send crews home')+'</button>';}}
+// ── upgraded Week grid ──
+function renderWeekGrid(){const ed=schedCanEdit();const el=document.getElementById('schedList');
+  const d0=new Date();d0.setHours(0,0,0,0);d0.setDate(d0.getDate()+boardDay);const st=new Date(d0);st.setDate(d0.getDate()-d0.getDay());const tk=dkey(new Date());
+  const days=[0,1,2,3,4,5].map(i=>{const d=new Date(st);d.setDate(st.getDate()+i);return d;});
+  const head='<div class="sc-head"><div><div class="sc-wd">'+t('Week of')+'</div><div class="sc-md">'+days[0].toLocaleDateString(LOC(),{month:'long',day:'numeric'})+'</div></div><div class="sc-wknav"><button class="sc-nav" onclick="boardDay-=7;renderSched()">‹</button>'+(boardDay<0||boardDay>6?'<button class="sc-today" onclick="boardDay=0;renderSched()">'+t('This week')+'</button>':'')+'<button class="sc-nav" onclick="boardDay+=7;renderSched()">›</button></div></div>';
+  const dot=stt=>'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+(stt==='full'?'var(--green)':stt==='partial'?'var(--amber)':'var(--g2)')+';margin-right:6px;flex-shrink:0"></span>';
+  const day=d=>{const k=dkey(d);const isT=k===tk;const booked=D.crews.filter(c=>slotHasAny(c.id+'|'+k)).length;const loans=loansForDay(k).length;
+    return '<div class="sc-wday'+(isT?' td':'')+(k<tk?' past':'')+'"><div class="sc-wdh"><span><b>'+d.toLocaleDateString(LOC(),{weekday:'long'})+'</b> '+d.toLocaleDateString(LOC(),{month:'short',day:'numeric'})+(isT?' <span class="sc-rel td">'+t('Today')+'</span>':'')+'</span><span class="sc-wn'+(booked<D.crews.length?' gap':'')+'">'+booked+'/'+D.crews.length+'</span></div><div class="sc-group">'
+      +D.crews.map(c=>{const asgs=slotAsgs(c.id+'|'+k);const stt=crewStatus(c.id,k);const first=asgs[0];const extra=asgs.length>1?' +'+(asgs.length-1):'';return '<div class="sc-wr'+(asgs.length?'':' none')+'" '+(ed?'onclick="editSlot(\''+jsq(c.id)+'\',\''+jsq(k)+'\')"':'')+'><span class="sc-chip '+(c.type==='finish'?'f':'r')+'">'+esc(c.name.replace(/\D+/g,'')||c.name[0])+'</span><span class="sc-wa" style="display:flex;align-items:center;min-width:0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+dot(stt)+(asgs.length?esc(scAddr(first.site).a)+extra:(ed?t('Book'):t('Not booked')))+'</span></span><span class="sc-time">'+(asgs.length?esc(slotAsgLabel(first)):'')+'</span></div>';}).join('')
+      +(loans?'<div class="sc-wr" '+(ed?'onclick="boardDay='+Math.round((new Date(k+'T12:00')-new Date(new Date().setHours(12,0,0,0)))/864e5)+';schedView=\'today\';renderSched()"':'')+'><span class="sc-chip" style="background:var(--g3)">↪</span><span class="sc-wa">'+loans+' '+t('individual move(s)')+'</span><span class="sc-time"></span></div>':'')+'</div></div>';};
+  el.innerHTML='<div class="sc">'+head+days.map(day).join('')+'</div>';}
+// ── upgraded worker/lead view (own crew + own moves only — no other hours) ──
+function renderTodayBoard(){const m0=me();if(m0.role!=='worker'){renderDayBoard();return;}renderGoHomeIn('goHomeBox2');const el=document.getElementById('todayBoard');
+  const days=[0,1].map(off=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+off);const k=dkey(d);const loans=loansFor(m0.id,k);const asgs=m0.crew?slotAsgs(m0.crew+'|'+k).filter(a=>!loans.some(l=>asgOverlap(l,a))):[];
+    const jobs=loans.map(a=>({a,loan:true})).concat(asgs.map(a=>({a,loan:false}))).sort((x,y)=>(x.a.start||0)-(y.a.start||0));
+    const body=jobs.length?jobs.map(({a,loan})=>'<div style="margin-top:5px"><b style="font-size:16px;color:var(--blue)">📍 '+esc(siteName(a.site))+'</b>'+(loan?' <span class="badge b-prog" style="font-size:10px">'+t('Moved here')+'</span>':'')+'<div style="font-size:13px;color:var(--g4)">'+esc(slotAsgLabel(a))+(a.note?' · '+esc(a.note):'')+'</div></div>').join(''):'<span style="color:var(--g3)">'+t('No job scheduled')+'</span>';
+    return '<div class="card" style="padding:11px 13px;'+(jobs.length?'':'opacity:.65')+'"><div style="font-size:11px;color:var(--g4);text-transform:uppercase">'+(off?t('Tomorrow'):t('Today'))+' · '+t(DN[d.getDay()])+' '+d.toLocaleDateString(LOC(),{month:'short',day:'numeric'})+'</div>'+body+'</div>';}).join('');
+  el.innerHTML=days;}
 
 // ───────────── TEAM ─────────────
 function renderTeam(){
@@ -2976,7 +3179,7 @@ function openFolder(id){const _s=D.sites.find(x=>x.id===id);if(_s&&!siteVisible(
    +((isAdmin(me())||canEditHours(me())||me().role==='office')?'<div style="font-size:12.5px;margin-top:4px;cursor:pointer;color:'+(s.lat&&s.fenceOk?'var(--green)':'#c0392b')+'" onclick="openFence(\''+jsq(s.id)+'\')">📍 '+t('Geofence')+': '+(!s.lat?t('not set — nobody can punch in'):s.fenceOk?t('checked ✓')+(s.fenceOkBy?' ('+esc(nameOf(s.fenceOkBy))+')':''):t('found from address — not checked yet'))+(s.fenceReq?' · <b>'+esc(nameOf(s.fenceReq.who))+' '+t('can\'t punch in')+'</b>':'')+' · <u>'+t('edit')+'</u></div>':'')
    +mapHtml
    +'<div style="display:flex;gap:6px;margin:8px 0 2px"><button class="btn sec2" style="flex:1;padding:10px 4px;font-size:13px" onclick="fdJump(\'fdFilesHdr\')">📎 '+t('Files')+' <span style="color:var(--g4);font-weight:500">'+((s.files||[]).length||'')+'</span></button><button class="btn sec2" style="flex:1;padding:10px 4px;font-size:13px" onclick="fdJump(\'fdNotes\')">🗒 '+t('Notes')+' <span style="color:var(--g4);font-weight:500">'+((typeof kMine==='function'?kMine().filter(n=>n.site===s.id&&!n.trashed).length:0)||'')+'</span></button></div>';
-  {const sp=document.getElementById('fdSpeak');if(sp)sp.innerHTML=speakBtn('job:'+s.id,t('Read this job to me'));}document.getElementById('fdOverview').innerHTML=fdTasks(s)+plSummary(s.id)+sharedForSite(s.id)+(isBoss(m)?folderOverview(s):'')+(canEditHours(m)?'<div id="jobHoursBox"></div>':'');renderFdNotes(s);if(canEditHours(m))renderJobHours(s.id);fdNoteImg=null;document.getElementById('fdNotePrev').innerHTML='';
+  {const sp=document.getElementById('fdSpeak');if(sp)sp.innerHTML=speakBtn('job:'+s.id,t('Read this job to me'));}document.getElementById('fdOverview').innerHTML=fdTasks(s)+plSummary(s.id)+sharedForSite(s.id)+(isBoss(m)?folderOverview(s):'')+((isBoss(m)||m.role==='office')?crewsAtSiteHtml(s.id):'')+(canEditHours(m)?'<div id="jobHoursBox"></div>':'');renderFdNotes(s);if(canEditHours(m))renderJobHours(s.id);fdNoteImg=null;document.getElementById('fdNotePrev').innerHTML='';
   const insps=D.insp.filter(i=>i.site===id).sort((a,b)=>b.ts-a.ts);const openInsp=insps.find(i=>i.status==='requested'||i.status==='booked');
   document.getElementById('fdInsp').innerHTML='<div class="sec">'+t('Inspections')+'</div>'+(insps.length?insps.map(i=>inspCard(i,true)).join(''):'<div style="font-size:13px;color:var(--g3);padding:4px 0 8px">'+t('None yet.')+'</div>')+(canReqInsp(m)&&!openInsp?'<button class="btn" style="background:#6b3fa0;margin-bottom:6px" onclick="reqInsp(\''+jsq(id)+'\')">🏛 '+t('Ready for')+' '+inspKindLabel(s.phase==='finish'?'final':'rough').toLowerCase()+'</button>':'');
   document.getElementById('fdAssign').innerHTML='<div class="card" style="padding:10px 13px;background:var(--blue-light);border-color:#b8ccee"><div class="row"><div><div style="font-size:11px;color:var(--g4);text-transform:uppercase">'+t('Assigned crew')+'</div><b style="font-size:16px;color:var(--blue)">'+(s.crew?esc(nameOf(s.crew))+' <span style="font-size:12px;font-weight:400">· '+t((crewOf(s.crew)||{}).type==='finish'?'Finishing':'Rough')+'</span>':'<span style="color:#c0392b">❓ '+t('Crew not decided yet')+'</span>')+(s.manager?'':' <span style="font-size:12px;font-weight:400;color:#c0392b">· '+t('no site manager yet')+'</span>')+'</b></div><span class="badge '+(s.phase==='finish'?'b-done':'b-prog')+'">'+t(s.phase==='finish'?'Finishing':'Rough')+'</span></div>'+(ed?'<div style="display:flex;gap:6px;margin-top:8px"><select id="fdCrew" style="flex:1" onchange="fdSetCrew(this.value)"><option value="">— '+t('none')+' —</option>'+D.crews.map(c=>'<option value="'+c.id+'" '+(s.crew===c.id?'selected':'')+'>'+esc(crewLabel(c))+'</option>').join('')+'</select><select id="fdPhase" style="flex:1" onchange="fdSetPhase(this.value)"><option value="rough" '+(s.phase==='rough'?'selected':'')+'>'+t('Rough')+'</option><option value="finish" '+(s.phase==='finish'?'selected':'')+'>'+t('Finishing')+'</option></select></div><div style="font-size:11px;color:var(--g4);margin-top:6px">'+t('Change the crew and the whole folder moves with it — every guy in that crew sees these files.')+'</div>':'')+'</div>';
