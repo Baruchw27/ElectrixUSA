@@ -5,10 +5,10 @@
 <meta name="theme-color" content="#ffffff"><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Electrix Field</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
-<script>window.EX_VER='vsch1018';</script><script src="config.js"></script>
+<script>window.EX_VER='vui1019';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vsch1018"></script>
-<script src="extras.js?vsch1018"></script>
+<script src="sync.js?vui1019"></script>
+<script src="extras.js?vui1019"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -263,8 +263,8 @@ html[data-theme=dark] .sc-av.in{background:#173B2A;color:#7EE0AE}html[data-theme
 .sc-p{display:flex;align-items:center;gap:10px;padding:6px 0}
 .sc-pn{flex:1;font-size:14.5px}.sc-pn em{font-style:normal;font-size:11.5px;color:var(--sc-mut);margin-left:4px}
 .sc-ps{font-size:12.5px;color:var(--sc-mut);font-variant-numeric:tabular-nums}.sc-ps.in{color:#11643F}.sc-ps.away{color:#AE2A22}.sc-ps.wait{color:#8A5A00}
-.sc-acts{display:flex;gap:8px;margin:10px 0 2px}
-.sc-acts button,.sc-acts a{flex:1;min-width:0;font-size:13px!important;text-align:center;text-decoration:none;border:0;background:var(--sc-track);color:var(--sc-ink);font-weight:600;font-size:13.5px;line-height:1;padding:11px 6px;border-radius:11px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.sc-acts{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 2px}
+.sc-acts button,.sc-acts a{flex:1 1 auto;min-width:96px;font-size:13px!important;text-align:center;text-decoration:none;border:0;background:var(--sc-track);color:var(--sc-ink);font-weight:600;font-size:13.5px;line-height:1;padding:11px 6px;border-radius:11px;cursor:pointer;font-family:inherit;white-space:nowrap}
 .sc-acts button:first-child{background:var(--sc-ink);color:var(--sc-surf)}
 .sc-row.free{cursor:default;align-items:center}
 .sc-book{border:0;background:rgba(213,60,54,.1);color:var(--sc-red);font-weight:600;font-size:13.5px;line-height:1;padding:8px 16px;border-radius:99px;cursor:pointer;font-family:inherit}
@@ -565,7 +565,7 @@ html[data-theme=dark] .sc-av.in{background:#173B2A;color:#7EE0AE}html[data-theme
 
 <div class="tabs">
   <button class="tab" onclick="tab('home',this)" data-prim="1"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/></svg><span data-i18n="Home">Home</span></button>
-  <button class="tab" onclick="tab('sites',this)"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><span data-i18n="Jobs">Jobs</span></button><button class="tab on" onclick="tab('jobs',this)"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span data-i18n="Jobs">Jobs</span></button>
+  <button class="tab" onclick="tab('sites',this)"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><span data-i18n="Sites">Sites</span></button><button class="tab on" onclick="tab('jobs',this)"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span data-i18n="Jobs">Jobs</span></button>
   <button class="tab" onclick="tab('msg',this)" style="position:relative"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span data-i18n="Messages">Messages</span><span id="msgN" style="position:absolute;top:4px;right:14px;background:#c0392b;color:#fff;font-size:10px;border-radius:9px;padding:1px 5px;display:none"></span></button>
   <button class="tab" onclick="tab('cal',this)"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/><path d="M8 2h8"/></svg><span data-i18n="Meetings">Meetings</span></button>
   <button class="tab" onclick="tab('sched',this)"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span data-i18n="Schedule">Schedule</span></button>
@@ -1745,7 +1745,7 @@ function renderSlotEditor(){const wd=crewWorkday(schedCrew);const rule=ruleOn(sc
   html+='<div style="font-size:12.5px;color:'+(rem>0?'var(--amber)':'var(--green)')+';margin:4px 2px 8px">'+(rem>0?'⏳ '+remHrs(rem)+'h '+t('open in the workday'):'✓ '+t('Workday full'))+'</div>';
   if(slotAddMode==null){html+='<button class="btn sec2" onclick="slotPickMode(\'menu\')">+ '+t('Add a job')+'</button>';}
   else{html+=renderAddPanel();}
-  html+='<div id="slotConf"></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px"><button class="btn" style="flex:1 1 100%" onclick="saveSlot()">'+t('Save')+'</button><button class="btn sec2" style="flex:1" onclick="slotCopyPrompt()">⧉ '+t('Copy day')+'</button><button class="btn rd" style="flex:1" onclick="clearSlot()">'+t('Clear day')+'</button><button class="btn sec2" style="flex:1" onclick="hide(\'m-slot\')">'+t('Cancel')+'</button></div>';
+  html+='<div id="slotConf"></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px"><button class="btn" style="flex:1 1 100%" onclick="saveSlot()">'+t('Save')+'</button><button class="btn sec2" style="flex:1 1 46%" onclick="slotMovePrompt()">📅 '+t('Move to date')+'</button><button class="btn sec2" style="flex:1 1 46%" onclick="slotCopyPrompt()">⧉ '+t('Copy day')+'</button><button class="btn rd" style="flex:1 1 46%" onclick="clearSlot()">'+t('Clear day')+'</button><button class="btn sec2" style="flex:1 1 46%" onclick="hide(\'m-slot\')">'+t('Cancel')+'</button></div>';
   document.getElementById('slotBody').innerHTML=html;updateSlotConflicts();}
 function renderAddPanel(){const site='<select id="slotAddSite">'+D.sites.map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('')+'</select>';
   if(slotAddMode==='menu')return '<div class="card" style="padding:11px"><label style="font-size:12px;color:var(--g4)">'+t('Job site')+'</label>'+site+'<div style="font-size:12px;color:var(--g4);margin:10px 0 6px">'+t('How long?')+'</div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sec2" style="flex:1" onclick="slotAddMode=\'spec\';renderSlotEditor()">'+t('Specific hours')+'</button><button class="btn sec2" style="flex:1" onclick="slotAddFull()">'+t('Full day')+'</button><button class="btn sec2" style="flex:1 1 100%" onclick="slotAddMode=\'ong\';renderSlotEditor()">♾ '+t('Until reassigned')+'</button></div><button class="btn sec2" style="margin-top:8px" onclick="slotAddMode=null;renderSlotEditor()">'+t('Cancel')+'</button></div>';
@@ -1771,6 +1771,16 @@ function commitDay(oneoffs){const key=schedCrew+'|'+slotDay;const base=rowRev(ke
   save();hide('m-slot');schedSaveConfirm(t('Saved'));}
 function clearSlot(){const key=schedCrew+'|'+slotDay;delete D.sched[key];save();hide('m-slot');schedSaveConfirm(t('Day cleared (ongoing job, if any, still repeats)'));}
 function slotCopyPrompt(){const asg=slotEffNow().filter(x=>x.start!=null).map(a=>({id:newAsgId(),site:a.site,start:a.start,end:a.end,note:''}));if(!asg.length)return;askPrompt(t('Copy this day to'),[{label:t('Date'),value:slotDay,type:'date'}],([dd])=>{if(!dd||dd===slotDay)return;const kk=schedCrew+'|'+dd;const put=()=>{writeSlotRow(kk,asg,rowRev(kk));save();hide('m-slot');schedSaveConfirm(t('Copied'));};if(D.sched[kk])askConfirm(t('That day already has a booking. Overwrite?'),put,t('Overwrite'));else put();});}
+// Fix a wrong date fast: move this day's job(s) to another date and clear the original (keeps any ongoing job in place).
+function slotMovePrompt(){const asg=slotOneoffs.filter(a=>a.site&&a.start!=null).map(a=>({id:newAsgId(),site:a.site,start:a.start,end:a.end,note:a.note||''}));
+  if(!asg.length){toast(t('No one-off job on this day to move. To change an ongoing job, use “Change / move” above; to change the address, pick a different job site above.'));return;}
+  askPrompt(t('Move this booking to another date'),[{label:t('New date'),value:slotDay,type:'date'}],([dd])=>{if(!dd||dd===slotDay)return;const to=schedCrew+'|'+dd;
+    const doMove=()=>{writeSlotRow(to,asg,rowRev(to));
+      const key=schedCrew+'|'+slotDay;const hasRule=!!ruleOn(schedCrew,slotDay);const patchActive=slotPatch.cancel.length||Object.keys(slotPatch.replace).length;
+      if(hasRule||patchActive)D.sched[key]={assignments:[],cancel:slotPatch.cancel,replace:slotPatch.replace,patch:true,rev:rowRev(key)+1,by:me().id,at:Date.now()};
+      else delete D.sched[key];
+      save();hide('m-slot');renderSched();schedSaveConfirm(t('Moved to')+' '+new Date(dd+'T12:00').toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'}));};
+    if(slotHasAny(to))askConfirm(t('That date already has a booking for this crew. Replace it with this one?'),doMove,t('Replace'));else doMove();});}
 // change/move the ongoing job: one day / date range / permanent — never erases one-off jobs
 function slotChangeOngoing(){const rule=ruleOn(schedCrew,slotDay);if(!rule)return;
   askPrompt(t('Change the ongoing job'),[
