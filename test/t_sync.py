@@ -203,6 +203,7 @@ async def main():
             check('office name still text after 2 saves',any(r['id']=='name' and r['data']=='Office B' for r in bl),bl)
             check('other phone gets the number',await until(E,"D.base.lat===41.3",8000))
             await A.evaluate("D.base.lat=41.1246;save()"); await A.wait_for_timeout(1500)
+            st2=srv('/__state')['stats'];check('no normal save was refused by the server rules',not st2.get('blocked'),st2.get('blocked'))
             print('11. Sign out')
             await B.evaluate("signOut()"); await B.wait_for_timeout(1200)
             check('signed out shows login',await until(B,"!document.getElementById('m-login').classList.contains('hid')"))

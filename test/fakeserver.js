@@ -15,6 +15,20 @@ function isMember(email){if(!email)return false;const e=emps();if(!e.length)retu
 function myEmp(email){const uid=uidOf(email);const r=emps().find(r=>r.data.authUid===uid);return r?r.id:null;}
 // same rules as can_see2 in schema.sql
 function meData(email){const uid=uidOf(email);const r=emps().find(r=>r.data.authUid===uid);return r?Object.assign({id:r.id},r.data):{};}
+// same rules as guard_record in schema.sql
+function guardOk(email,c,o,n,del,exists){if(!emps().length)return true;if(isBoss(email))return true;const me=meData(email);if(!me.id)return true;const office=me.role==='office';const money=office&&['Payroll','Bookkeeper'].includes(me.title);
+  if(del)return c!=='emps';
+  if(c==='emps')return !!o&&exists&&ownEmp(email,o)&&canonEq(strip(n),strip(o));
+  if(!['punches','timeoff','exps','travel','goHomeLog'].includes(c))return true;
+  if(c==='goHomeLog'&&!office)return false;
+  if((!o||o.who!==n.who)&&n.who!==me.id&&!office)return false;
+  if(c==='punches'&&!office){if((n.approvedBy||'')!==((o&&o.approvedBy)||''))return false;if(o&&(n.in!==o.in||(o.pending&&!n.pending)||(o.out!=null&&n.out!==o.out)||JSON.stringify(n.edits)!==JSON.stringify(o.edits)))return false;}
+  if(c==='timeoff'&&!['pending','cancelled'].includes(n.status||'pending')&&n.status!==(o&&o.status))return false;
+  if(c==='exps'&&!money&&((!!n.paid!==!!(o&&o.paid)&&!!n.paid)||(n.paidBy!==(o&&o.paidBy))))return false;
+  return true;}
+function strip(x){const y=Object.assign({},x||{});delete y.lang;delete y.phone;return y;}
+function canonEq(a,b){const k=o=>JSON.stringify(Object.keys(o).sort().map(x=>[x,o[x]]));return k(a)===k(b);}
+function ownEmp(email,o){return o&&o.authUid===uidOf(email);}
 function canSee(email,row){const d=row.data||{};const me=meData(email);const c=row.coll;
   if(c==='keep')return d.owner===me.id||(d.collab||[]).includes(me.id);
   if(c==='inbox')return d.to===me.id;
@@ -49,6 +63,7 @@ http.createServer(async (req,res)=>{
       if(r.deleted)data=r.full||{};else if('full' in r)data=r.full;else if(old&&!old.deleted&&(old.data===null||typeof old.data!=='object'||Array.isArray(old.data)))data=old.data;else{data=old&&!old.deleted?Object.assign({},old.data,r.patch||{}):Object.assign({},r.patch||{});(r.unset||[]).forEach(f=>delete data[f]);}
       const row={coll:r.coll,id:r.id,data:pg(data),deleted:!!r.deleted,updated_by:r.by||null,updated_at:now()};
       if(old&&!canSee(em,old))continue; // existing row this person can't see: skipped (like the real server)
+      if(!guardOk(em,r.coll,old&&!old.deleted?old.data:null,data,!!r.deleted,!!old)){stats.blocked=(stats.blocked||0)+1;continue;}
       if(r.coll==='keep'&&!r.deleted&&!old){const me=myEmp(em);if(emps().length&&data.owner!==me)return send(res,403,{error:'new row violates row-level security policy'});}
       records.set(k,row);const msg='data: '+JSON.stringify({eventType:'UPDATE',new:row})+'\n\n';clients.forEach(c=>{if(isMember(c.email)&&canSee(c.email,row))c.res.write(msg);});}
     return send(res,200,rows.map(r=>records.get(r.coll+'\u0001'+r.id)).filter(Boolean).filter(r=>canSee(em,r)).map(r=>({coll:r.coll,id:r.id,data:r.data,deleted:r.deleted})));}

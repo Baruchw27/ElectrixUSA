@@ -466,3 +466,102 @@ begin
   return query select t.coll, t.id, t.data, t.deleted from public.records t
     join (select x->>'coll' as c, x->>'id' as i from jsonb_array_elements(rows) x) k on t.coll = k.c and t.id = k.i;
 end $function$;
+-- ===== nobody can promote themselves or approve their own stuff (checked by the database on every save) =====
+create or replace function public.guard_record() returns trigger language plpgsql security invoker set search_path = public as $$
+declare me jsonb; boss boolean; office boolean; money boolean; o jsonb; n jsonb := new.data;
+begin
+  if current_user not in ('authenticated','anon') or auth.uid() is null then return new; end if;   -- the server's own jobs
+  -- a save of an existing record first arrives as an insert attempt; the update check that follows judges it
+  if tg_op = 'INSERT' and public._row_exists(new.coll, new.id) then return new; end if;
+  me := public.my_emp_data();
+  if me = '{}'::jsonb then return new; end if;                   -- first-time setup (no team yet)
+  boss := public.is_boss();
+  if boss then return new; end if;
+  office := me->>'role' = 'office';
+  money := office and me->>'title' in ('Payroll','Bookkeeper');
+  o := case when tg_op = 'UPDATE' then old.data else null end;
+  if new.deleted then
+    if new.coll = 'emps' then raise exception 'not allowed' using errcode = '42501'; end if;
+    return new;
+  end if;
+  if new.coll = 'emps' then
+    -- only the bosses add people or change role, crew, leader, access or sign-in; you may change your own language and phone
+    if o is null or old.id <> me->>'id' or (n - 'lang' - 'phone') is distinct from (o - 'lang' - 'phone') then
+      raise exception 'not allowed' using errcode = '42501'; end if;
+  elsif new.coll in ('punches','timeoff','exps','travel','goHomeLog') then
+    if new.coll = 'goHomeLog' and not office then raise exception 'not allowed' using errcode = '42501'; end if;
+    -- you only make records for yourself
+    if (o is null or o->>'who' is distinct from n->>'who') and n->>'who' is distinct from me->>'id' and not office then
+      raise exception 'not allowed' using errcode = '42501'; end if;
+    if new.coll = 'punches' and not office then
+      -- you can't approve or move your own clock-in, or change a clock-out once it's there
+      if coalesce(n->>'approvedBy','') <> coalesce(o->>'approvedBy','')
+         or (o is not null and (n->>'in' is distinct from o->>'in'
+              or (coalesce((o->>'pending')::boolean,false) and not coalesce((n->>'pending')::boolean,false))
+              or (o->>'out' is not null and o->'out' <> 'null'::jsonb and n->'out' is distinct from o->'out')
+              or n->'edits' is distinct from o->'edits'))
+      then raise exception 'not allowed' using errcode = '42501'; end if;
+    elsif new.coll = 'timeoff' then
+      -- you can ask, not approve
+      if coalesce(n->>'status','pending') not in ('pending','cancelled') and n->>'status' is distinct from o->>'status' then
+        raise exception 'not allowed' using errcode = '42501'; end if;
+    elsif new.coll = 'exps' and not money then
+      -- only Payroll / Bookkeeper / bosses mark receipts paid
+      if coalesce(n->>'paid','false') <> coalesce(o->>'paid','false') and coalesce((n->>'paid')::boolean,false)
+         or n->>'paidBy' is distinct from o->>'paidBy' then
+        raise exception 'not allowed' using errcode = '42501'; end if;
+    end if;
+  end if;
+  return new;
+end $$;
+
+create or replace trigger records_guard before insert or update on public.records
+  for each row when (new.coll in ('emps','punches','timeoff','exps','travel','goHomeLog')) execute function public.guard_record();
+-- save: existing records are updated, new ones inserted (no upsert: an upsert must also pass the read rule
+-- with only the changed fields, which made the privacy rule skip normal saves like a clock-out)
+-- anything the person isn't allowed to write is skipped instead of failing the whole save
+create or replace function public.save_records(rows jsonb)
+ returns table(coll text, id text, data jsonb, deleted boolean)
+ language plpgsql set search_path to 'public'
+as $function$
+#variable_conflict use_column
+declare r jsonb; un text[]; ex boolean; c text; i text; del boolean; v jsonb;
+begin
+  for r in select * from jsonb_array_elements(rows) loop
+    c := r->>'coll'; i := r->>'id'; del := coalesce((r->>'deleted')::boolean, false);
+    begin
+      ex := public._row_exists(c, i);
+      if del or r ? 'full' then
+        v := coalesce(r->'full', '{}'::jsonb);
+        if ex then
+          update public.records as t set data = v, deleted = del, updated_by = r->>'by', updated_at = now() where t.coll = c and t.id = i;
+        else
+          insert into public.records (coll, id, data, deleted, updated_by, updated_at) values (c, i, v, del, r->>'by', now());
+        end if;
+      else
+        v := coalesce(r->'patch', '{}'::jsonb);
+        un := coalesce(array(select jsonb_array_elements_text(coalesce(r->'unset', '[]'::jsonb))), '{}'::text[]);
+        if ex then
+          update public.records as t
+            set data = case when t.deleted then v
+                            when jsonb_typeof(t.data) <> 'object' then t.data
+                            else (t.data || v) - un end,
+                deleted = false, updated_by = r->>'by', updated_at = now()
+            where t.coll = c and t.id = i;
+        else
+          insert into public.records (coll, id, data, deleted, updated_by, updated_at) values (c, i, v, false, r->>'by', now());
+        end if;
+      end if;
+    exception
+      when insufficient_privilege then null;   -- not allowed: skipped
+      when unique_violation then              -- two phones created it at the same moment: merge into it
+        update public.records as t set data = case when r ? 'full' or del then coalesce(r->'full','{}'::jsonb)
+                                                    when jsonb_typeof(t.data) <> 'object' then t.data
+                                                    else t.data || coalesce(r->'patch','{}'::jsonb) end,
+               deleted = del, updated_by = r->>'by', updated_at = now()
+          where t.coll = c and t.id = i;
+    end;
+  end loop;
+  return query select t.coll, t.id, t.data, t.deleted from public.records t
+    join (select x->>'coll' as c, x->>'id' as i from jsonb_array_elements(rows) x) k on t.coll = k.c and t.id = k.i;
+end $function$;
