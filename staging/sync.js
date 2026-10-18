@@ -169,15 +169,21 @@ function paint(){let el=document.getElementById('exSync');if(!el){el=document.cr
 window.addEventListener('online',()=>{st.online=true;paint();flush();catchUp();});window.addEventListener('offline',()=>{st.online=false;paint();});
 
 // ---------- auth ----------
-// Unsent-work stash is encrypted at rest with a key derived from the employee's password (held in memory for the
-// session only, never written down). Only the same employee re-entering their password can decrypt it, so the stash
-// is not readable from browser storage by another person on a shared phone. If encryption isn't possible (e.g. a
-// biometric-only sign-in, or no WebCrypto), logout falls back to a per-uid plaintext stash so work is never LOST —
-// encryption is added protection, data preservation is the guarantee.
-let sessionKey=null;
-async function deriveKey(password,uid){try{if(!(crypto&&crypto.subtle))return null;const enc=new TextEncoder();
-  const base=await crypto.subtle.importKey('raw',enc.encode(password),'PBKDF2',false,['deriveKey']);
-  return await crypto.subtle.deriveKey({name:'PBKDF2',salt:enc.encode('electrix:'+uid),iterations:120000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);}catch(e){return null;}}
+// Unsent-work stash is encrypted at rest with a DEVICE key: a random AES-256-GCM key generated once per device and
+// held NON-EXTRACTABLE in IndexedDB. It never leaves the device and cannot be read out as raw bytes from storage, so
+// the stash is not readable as plaintext by someone inspecting the browser. The key does not depend on the password,
+// so a password change or reset never orphans saved work, and it works for a biometric sign-in (no password needed).
+// Stash blobs are keyed per employee uid, and the app only ever decrypts the signed-in uid's own stash.
+function deviceKey(){return new Promise((res)=>{try{if(!(window.indexedDB&&crypto&&crypto.subtle))return res(null);
+  const r=indexedDB.open('ex_keys',1);
+  r.onupgradeneeded=()=>{try{r.result.createObjectStore('k');}catch(e){}};
+  r.onerror=()=>res(null);
+  r.onsuccess=()=>{try{const db=r.result;const g=db.transaction('k','readonly').objectStore('k').get('deviceKey');
+    g.onerror=()=>res(null);
+    g.onsuccess=async()=>{ if(g.result){return res(g.result);} try{const key=await crypto.subtle.generateKey({name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+      const tx=db.transaction('k','readwrite');tx.objectStore('k').put(key,'deviceKey');tx.oncomplete=()=>res(key);tx.onerror=()=>res(key);}catch(e){res(null);} };
+  }catch(e){res(null);}};
+}catch(e){res(null);}});}
 async function encWith(key,obj){const iv=crypto.getRandomValues(new Uint8Array(12));
   const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(obj))));
   let s='';iv.forEach(b=>s+=String.fromCharCode(b));ct.forEach(b=>s+=String.fromCharCode(b));return btoa(s);}
@@ -192,11 +198,9 @@ window.EX_login=async function(q,pass){q=(q||'').trim();if(!q||!pass)return {err
     const s=r.data.session;const ss=await sb.auth.setSession({access_token:s.access_token,refresh_token:s.refresh_token});
     if(ss.error||!ss.data||!ss.data.user)return {err:'badpass'};
     const uid=ss.data.user.id;try{localStorage.setItem('ex_uid',uid);}catch(e){}
-    sessionKey=await deriveKey(pass,uid);
-    // recover this employee's own stash from a previous logout: encrypted first (only their password unlocks it),
-    // then the plaintext fallback (used only when encryption wasn't available). Both are keyed to this uid, so no
-    // other employee's stash is ever loaded here.
-    try{const enc=localStorage.getItem('ex_qenc__'+uid);if(enc&&sessionKey){const rec=await decWith(sessionKey,enc);if(rec&&typeof rec==='object'){Object.keys(rec).forEach(k=>{if(!queue[k])queue[k]=rec[k];});localStorage.removeItem('ex_qenc__'+uid);saveQ();}}}catch(e){}
+    // recover this employee's own encrypted stash from a previous logout (device key unwraps it; not tied to password).
+    try{const enc=localStorage.getItem('ex_qenc__'+uid);if(enc){const dk=await deviceKey();if(dk){const rec=await decWith(dk,enc);if(rec&&typeof rec==='object'){Object.keys(rec).forEach(k=>{if(!queue[k])queue[k]=rec[k];});localStorage.removeItem('ex_qenc__'+uid);saveQ();}}}}catch(e){}
+    // migrate away any legacy plaintext stash left by an older build: load it, then delete it so no plaintext lingers.
     try{const pf=localStorage.getItem('ex_queue__'+uid);if(pf){const rec=JSON.parse(pf)||{};Object.keys(rec).forEach(k=>{if(!queue[k])queue[k]=rec[k];});localStorage.removeItem('ex_queue__'+uid);saveQ();}}catch(e){}
     return {ok:true,email:ss.data.user.email};
   }catch(e){return {err:'badpass',msg:(e&&e.message)||''};}};
@@ -214,24 +218,31 @@ window.EX_logout=async function(){
   try{if(st&&st.online&&ready&&Object.keys(queue).length){await flush();}}catch(e){}
   try{if(flushInFlight)await flushInFlight;}catch(e){}
   // Whatever is STILL queued for ANY reason — offline, a REJECTED save, a timeout, or an unreachable server — is never
-  // discarded (we do not decide by the online flag). Preferred: encrypt it with the session key and self-verify the
-  // round-trip before trusting it; only if that is not possible, fall back to a per-uid plaintext stash. Either way the
-  // stash is tied to THIS employee's uid, so another person can't load or sync it through the app.
-  let stashed=0;
-  if(uid&&Object.keys(queue).length){const q=queue;
-    let ok=false;
-    try{if(sessionKey){const blob=await encWith(sessionKey,q);const back=await decWith(sessionKey,blob);
-      if(back&&JSON.stringify(back)===JSON.stringify(q)){localStorage.setItem('ex_qenc__'+uid,blob);localStorage.removeItem('ex_queue__'+uid);ok=true;}}}catch(e){ok=false;}
-    if(!ok){try{localStorage.setItem('ex_queue__'+uid,JSON.stringify(q));}catch(e){}}
-    stashed=Object.keys(q).length;}
-  sessionKey=null;
+  // discarded (we do not decide by the online flag). It is encrypted with the device key and we VERIFY it actually
+  // persisted and decrypts back BEFORE we clear the live queue. If it cannot be securely stored (no WebCrypto/IndexedDB,
+  // or storage is full), we do NOT clear the live queue and we do NOT claim success — no plaintext stash, no silent loss.
+  let stashed=0, secured=null;
+  if(uid&&Object.keys(queue).length){const q=queue;const want=Object.keys(q).length;
+    try{const dk=await deviceKey();
+      if(dk){const blob=await encWith(dk,q);localStorage.setItem('ex_qenc__'+uid,blob);
+        const back=localStorage.getItem('ex_qenc__'+uid);const dec=back?await decWith(dk,back):null;
+        if(dec&&JSON.stringify(dec)===JSON.stringify(q)){secured=true;stashed=want;}
+        else{try{localStorage.removeItem('ex_qenc__'+uid);}catch(e){}secured=false;}
+      } else secured=false;
+    }catch(e){try{localStorage.removeItem('ex_qenc__'+uid);}catch(e2){}secured=false;}
+  }
+  const keepQueue = secured===false; // couldn't secure it -> keep the live queue so the work is not lost
   try{if(sb)await withTO(sb.auth.signOut(),3000,'sign-out');}catch(e){}
-  // privacy on a shared phone: clear the data cache, the live queue, the saved session and the biometric sign-in
-  try{['ex_auth','ex_uid','ex_queue','electrix_bio','ex_faceid_asked'].forEach(k=>localStorage.removeItem(k));
+  // privacy on a shared phone: clear the data cache, the saved session and the biometric sign-in.
+  try{['ex_auth','ex_uid','electrix_bio','ex_faceid_asked'].forEach(k=>localStorage.removeItem(k));
       localStorage.removeItem(typeof KEY!=='undefined'?KEY:'electrix_v29');}catch(e){}
-  queue={};ready=false;localReady=false;
-  if(stashed){try{if(typeof toast==='function')toast(typeof t==='function'?t('Some changes will finish saving next time you sign in.'):'Some changes will finish saving next time you sign in.');}catch(e){}}
-  return {stashed};};
+  if(!keepQueue){try{localStorage.removeItem('ex_queue');}catch(e){}queue={};}
+  ready=false;localReady=false;
+  try{if(typeof toast==='function'){
+    if(secured) toast(typeof t==='function'?t('Some changes will finish saving next time you sign in.'):'Some changes will finish saving next time you sign in.');
+    else if(secured===false) toast(typeof t==='function'?t('Could not safely save your unsent changes on this device — reconnect and let them sync before signing out.'):'Could not safely save your unsent changes — reconnect before signing out.','bad');
+  }}catch(e){}
+  return {stashed,secured};};
 function tie(e,uid){if(!uid)return;const live=liveRecord('emps',e.id)||e;if(live.authUid!==uid){live.authUid=uid;try{save();}catch(x){}}}
 window.EX_createUser=async function(e,pass){const r=await sb.rpc('admin_create_user',{p_email:emailFor(e),p_pass:pass});if(r.error)return {err:r.error.message};if(!r.data)return {err:'failed'};tie(e,r.data);return {ok:true,email:emailFor(e)};};
 window.EX_setPassword=async function(e,pass){const r=await sb.rpc('admin_set_password',{p_email:emailFor(e),p_pass:pass});if(r.error)return {err:r.error.message};if(!r.data)return {err:'nouser'};tie(e,r.data);return {ok:true};};
