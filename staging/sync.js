@@ -180,13 +180,21 @@ window.EX_login=async function(q,pass){q=(q||'').trim();if(!q||!pass)return {err
 // if we're offline, the queue is kept (not silently dropped) so the SAME person keeps their work on the next sign-in,
 // while a DIFFERENT person signing in triggers the account-switch wipe in EX_boot.
 window.EX_logout=async function(){
+  const uid=(function(){try{return localStorage.getItem('ex_uid');}catch(e){return null;}})();
+  // try to save queued work as the current user first
   try{if(st&&st.online&&ready&&Object.keys(queue).length){await flush();}}catch(e){}
-  const stillPending=Object.keys(queue).length>0&&!(st&&st.online);
+  // Whatever is STILL queued for ANY reason — offline, a rejected save, a timeout, or an unreachable server — is never
+  // discarded. It is stashed under THIS employee's own uid, so only the same employee (once re-authenticated) can see
+  // or sync it; another employee on the same phone can neither load nor upload it.
+  let stashed=0;
+  try{if(uid&&Object.keys(queue).length){localStorage.setItem('ex_queue__'+uid,JSON.stringify(queue));stashed=Object.keys(queue).length;}}catch(e){}
   try{if(sb)await withTO(sb.auth.signOut(),3000,'sign-out');}catch(e){}
-  try{['ex_auth','ex_uid','electrix_bio','ex_faceid_asked'].forEach(k=>localStorage.removeItem(k));
+  // privacy on a shared phone: clear the data cache, the live queue, the saved session and the biometric sign-in
+  try{['ex_auth','ex_uid','ex_queue','electrix_bio','ex_faceid_asked'].forEach(k=>localStorage.removeItem(k));
       localStorage.removeItem(typeof KEY!=='undefined'?KEY:'electrix_v29');}catch(e){}
-  if(!stillPending){queue={};try{localStorage.removeItem('ex_queue');}catch(e){}}
-  saveQ();ready=false;localReady=false;};
+  queue={};ready=false;localReady=false;
+  if(stashed){try{if(typeof toast==='function')toast(typeof t==='function'?t('Some changes will finish saving next time you sign in.'):'Some changes will finish saving next time you sign in.');}catch(e){}}
+  return {stashed};};
 function tie(e,uid){if(!uid)return;const live=liveRecord('emps',e.id)||e;if(live.authUid!==uid){live.authUid=uid;try{save();}catch(x){}}}
 window.EX_createUser=async function(e,pass){const r=await sb.rpc('admin_create_user',{p_email:emailFor(e),p_pass:pass});if(r.error)return {err:r.error.message};if(!r.data)return {err:'failed'};tie(e,r.data);return {ok:true,email:emailFor(e)};};
 window.EX_setPassword=async function(e,pass){const r=await sb.rpc('admin_set_password',{p_email:emailFor(e),p_pass:pass});if(r.error)return {err:r.error.message};if(!r.data)return {err:'nouser'};tie(e,r.data);return {ok:true};};
@@ -203,6 +211,8 @@ window.EX_boot=async function(){if(!REAL)return {real:false};
   let email=null,uid=null;try{const s=await withTO(sb.auth.getSession(),6000,'sign-in');const u=s.data.session&&s.data.session.user;email=u?u.email:null;uid=u?u.id:null;}catch(e){email=cachedEmail();st.slow=true;}st.user=email;
   // account switch: if the person signed in now is not the one this phone's cached data belongs to, drop the old copy first
   try{const prev=localStorage.getItem('ex_uid');if(uid){if(prev&&prev!==uid){localStorage.removeItem(typeof KEY!=='undefined'?KEY:'electrix_v29');['ex_queue','electrix_bio','ex_faceid_asked'].forEach(k=>localStorage.removeItem(k));queue={};}localStorage.setItem('ex_uid',uid);}}catch(e){}
+  // restore this employee's own stashed unsent changes (saved at their last logout); another employee's stash stays under its own uid and is never loaded here
+  try{if(uid){const sk='ex_queue__'+uid;const raw=localStorage.getItem(sk);if(raw){const q=JSON.parse(raw)||{};Object.keys(q).forEach(k=>{if(!queue[k])queue[k]=q[k];});localStorage.removeItem(sk);saveQ();}}}catch(e){}
   sb.auth.onAuthStateChange((ev,sess)=>{st.user=sess&&sess.user?sess.user.email:null;if(ev==='SIGNED_OUT'){ready=false;}});
   return {real:true,email};};
 // the job list and the material catalog ship with the app; if the database doesn't have them yet, the owner's phone fills them in once
