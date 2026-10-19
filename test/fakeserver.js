@@ -69,6 +69,7 @@ http.createServer(async (req,res)=>{
   if(p==='/rpc/save_records'){const em=who(req);if(!em)return send(res,401,{error:'JWT expired'});if(!isMember(em))return send(res,403,{error:'new row violates row-level security policy'});const b=await body(req);const rows=b.rows||[];stats.upserts++;stats.rows+=rows.length;
     for(const r of rows){const k=r.coll+'\u0001'+r.id;const old=records.get(k);let data;
       if(r.deleted)data=r.full||{};else if('full' in r)data=r.full;else if(old&&!old.deleted&&(old.data===null||typeof old.data!=='object'||Array.isArray(old.data)))data=old.data;else{data=old&&!old.deleted?Object.assign({},old.data,r.patch||{}):Object.assign({},r.patch||{});(r.unset||[]).forEach(f=>delete data[f]);}
+      if(r.coll==='stock'&&data&&typeof data==='object'){data=Object.assign({},data);delete data.qv;if(old&&old.data&&typeof old.data==='object'&&'qty' in old.data){data.qty=old.data.qty;if('qv' in old.data)data.qv=old.data.qv;}else data.qty=0;} // same rule as guard_stock_qty on the server
       const row={coll:r.coll,id:r.id,data:pg(data),deleted:!!r.deleted,updated_by:r.by||null,updated_at:now()};
       if(old&&!canSee(em,old))continue; // existing row this person can't see: skipped (like the real server)
       if(!guardOk(em,r.coll,old&&!old.deleted?old.data:null,data,!!r.deleted,!!old)){stats.blocked=(stats.blocked||0)+1;(stats.blockedList=stats.blockedList||[]).push(r.coll+"/"+r.id+" by "+em+" keys:"+Object.keys(r.patch||r.full||{}).join(","));continue;}
@@ -98,20 +99,22 @@ http.createServer(async (req,res)=>{
   // ---- stock transactions (stand-in for apply_stock_txn: atomic, idempotent by id, shortage refused)
   if(p==='/rpc/apply_stock_txn'){const em=who(req);if(!em||!isMember(em))return send(res,403,{error:'not allowed'});const b=await body(req);const txn=b.txn||{};
     global.__applied=global.__applied||{};const fp=JSON.stringify([txn.kind,txn.moves]);stats.stockTxn=(stats.stockTxn||0)+1;
-    const qtys=()=>[...new Set((txn.moves||[]).map(m=>m.id))].map(id=>{const r=records.get('stock\u0001'+id);return {id,qty:r&&!r.deleted?(+r.data.qty||0):0};});
+    const qtys=()=>[...new Set((txn.moves||[]).map(m=>m.id))].map(id=>{const r=records.get('stock\u0001'+id);return {id,qty:r&&!r.deleted?(+r.data.qty||0):0,qv:r&&!r.deleted?(+r.data.qv||0):0};});
     if(global.__applied[txn.id]){if(global.__applied[txn.id]!==fp)return send(res,400,{error:'txn_reuse_conflict'});stats.stockDup=(stats.stockDup||0)+1;return send(res,200,{duplicate:true,qtys:qtys()});}
     const plan=[];for(const m of txn.moves||[]){const k='stock\u0001'+m.id;const r=records.get(k);const cur=r&&!r.deleted?(+r.data.qty||0):0;const nq='set' in m?Math.max(0,+m.set):cur+(+m.delta||0);
       if(nq<0)return send(res,400,{error:'insufficient_stock: '+(m.name||m.id)+' available '+cur+', requested '+Math.abs(m.delta)});plan.push({k,m,r,nq,cur});}
     global.__applied[txn.id]=fp;const me=myEmp(em);
-    for(const x of plan){const data=x.r&&!x.r.deleted?Object.assign({},x.r.data,{qty:x.nq}):{id:x.m.id,name:x.m.name||x.m.id,unit:x.m.unit||'pc',min:0,qty:x.nq};const row={coll:'stock',id:x.m.id,data:pg(data),deleted:false,updated_by:me,updated_at:now()};records.set(x.k,row);
+    for(const x of plan){const data=x.r&&!x.r.deleted?Object.assign({},x.r.data,{qty:x.nq,qv:(+x.r.data.qv||0)+1}):{id:x.m.id,name:x.m.name||x.m.id,unit:x.m.unit||'pc',min:0,qty:x.nq,qv:1};const row={coll:'stock',id:x.m.id,data:pg(data),deleted:false,updated_by:me,updated_at:now()};records.set(x.k,row);
       const msg='data: '+JSON.stringify({eventType:'UPDATE',new:row})+'\n\n';clients.forEach(c=>{if(isMember(c.email))c.res.write(msg);});}
     const lg={coll:'stockLog',id:txn.id,data:pg({kind:txn.kind,by:me,site:txn.site,items:plan.map(x=>({id:x.m.id,name:x.m.name,before:x.cur,after:x.nq})),ts:txn.ts,applied:true,auth:true}),deleted:false,updated_at:now()};records.set('stockLog\u0001'+txn.id,lg);
+    if(global.__dropTxn>0){global.__dropTxn--;stats.droppedAnswers=(stats.droppedAnswers||0)+1;try{req.socket.destroy();}catch(e){}return;} // applied, but the phone never hears back
     return send(res,200,{duplicate:false,qtys:qtys()});}
   if(p==='/functions/v1/upc'){const em=who(req);if(!isMember(em))return send(res,401,{error:'not allowed'});stats.upc=(stats.upc||0)+1;return send(res,200,{found:false});}
   // ---- test hooks
   if(p==='/__state'){return send(res,200,{users:Object.keys(users),records:records.size,colls:[...new Set([...records.values()].map(r=>r.coll))],stats});}
   if(p==='/__records'){const c=u.searchParams.get('coll');return send(res,200,[...records.values()].filter(r=>!c||r.coll===c));}
   if(p==='/__seed'){const b=await body(req);(b.users||[]).forEach(u=>{users[u.email]={id:u.id,pass:u.pass};});(b.rows||[]).forEach(r=>records.set(r.coll+'\u0001'+r.id,{coll:r.coll,id:r.id,data:pg(r.data),deleted:false,updated_at:now()}));return send(res,200,{ok:1});}
+  if(p==='/__droptxn'){global.__dropTxn=+u.searchParams.get('n')||1;return send(res,200,{ok:1});}
   if(p==='/__reset'){Object.keys(users).forEach(k=>delete users[k]);records.clear();return send(res,200,{ok:1});}
   // ---- static app files
   let f=path.join(ROOT,p==='/'?'index.html':decodeURIComponent(p));if(!f.startsWith(ROOT)||!fs.existsSync(f)||fs.statSync(f).isDirectory())return send(res,404,{error:'nf'});

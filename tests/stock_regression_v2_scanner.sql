@@ -26,6 +26,12 @@ begin
   execute 'reset role';
   select (data->>'qty')::numeric into q from records where coll='stock' and id='s_bcV2REGTEST';
   if q <> 21 then raise exception 'FAIL qty changed after refused pickup: %', q; end if;
+  -- count version: goes up once per applied change, never on a duplicate, and a phone cannot write it
+  if (select (data->>'qv')::int from records where coll='stock' and id='s_bcV2REGTEST') <> 2 then raise exception 'FAIL qv expected 2'; end if;
+  perform set_config('request.jwt.claims',W1,true); execute 'set local role authenticated';
+  update records set data = data || '{"qty":500,"qv":999,"note":"x"}'::jsonb where coll='stock' and id='s_bcV2REGTEST';
+  execute 'reset role';
+  if (select (data->>'qty')::int*1000+(data->>'qv')::int from records where coll='stock' and id='s_bcV2REGTEST') <> 21002 then raise exception 'FAIL phone changed qty/qv directly'; end if;
   raise notice 'V2 SCANNER STOCK CHECKS PASSED';
 end $$;
 select 'V2 SCANNER STOCK CHECKS PASSED' as result;

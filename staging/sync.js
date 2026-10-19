@@ -35,9 +35,9 @@ function colls(){return Object.keys(D).filter(k=>!SKIP.has(k)&&D[k]!==null&&type
 // Stock quantity is owned by the server RPC apply_stock_txn (atomic deltas), never by the normal patch sync —
 // otherwise a device's absolute qty write would clobber another device's concurrent change. Strip qty from the
 // sync view everywhere snap is set; the live value still comes down from the server on pull/catch-up for display.
-function upStrip(coll,data){if(coll==='stock'&&data&&typeof data==='object'){const d=Object.assign({},data);delete d.qty;return d;}return data;}
+function upStrip(coll,data){if(coll==='stock'&&data&&typeof data==='object'){const d=Object.assign({},data);delete d.qty;delete d.qv;return d;}return data;}
 function recordsOf(k){const v=D[k];const out={};
-  if(Array.isArray(v)){v.forEach(x=>{if(!x||typeof x!=='object')return;if(!x.id)x.id=nid(k.slice(0,2));let r=x;if(k==='emps'){r=Object.assign({},x);EMP_STRIP.forEach(f=>delete r[f]);r.authEmail=emailFor(x);}else if(k==='stock'){r=Object.assign({},x);delete r.qty;}out[x.id]=r;});}
+  if(Array.isArray(v)){v.forEach(x=>{if(!x||typeof x!=='object')return;if(!x.id)x.id=nid(k.slice(0,2));let r=x;if(k==='emps'){r=Object.assign({},x);EMP_STRIP.forEach(f=>delete r[f]);r.authEmail=emailFor(x);}else if(k==='stock'){r=Object.assign({},x);delete r.qty;delete r.qv;}out[x.id]=r;});}
   else{Object.keys(v).forEach(id=>{out[id]=v[id];});}
   return out;}
 function scalars(){const out={};Object.keys(D).forEach(k=>{if(SKIP.has(k))return;const v=D[k];if(v===null||typeof v!=='object')out[k]=v;});return out;}
@@ -119,7 +119,7 @@ async function _flush(){const keys=Object.keys(queue);if(!keys.length){lastRejec
       const plain=v=>!!v&&typeof v==='object'&&!Array.isArray(v);let bb=null;try{bb=o.base?JSON.parse(o.base):null;}catch(e){}
       if(bb&&plain(cur)&&plain(bb)){const b=bb;const patch={},unset=[];Object.keys(cur).forEach(f=>{if(canon(cur[f])!==canon(b[f]))patch[f]=cur[f];});Object.keys(b).forEach(f=>{if(!(f in cur))unset.push(f);});row={coll:o.coll,id:o.id,patch,unset,by:st.user||null};}
       else if(o.coll==='stock')row={coll:o.coll,id:o.id,patch:cur,unset:[],by:st.user||null};
-      if(o.coll==='stock'&&row.patch){delete row.patch.qty;if(row.unset)row.unset=row.unset.filter(f=>f!=='qty');} // merge, never replace: keeps the server's count (another phone may have counted it already)
+      if(o.coll==='stock'&&row.patch){delete row.patch.qty;delete row.patch.qv;if(row.unset)row.unset=row.unset.filter(f=>f!=='qty'&&f!=='qv');} // merge, never replace: keeps the server's count (another phone may have counted it already)
       else row={coll:o.coll,id:o.id,full:cur,by:st.user||null};
       ups.push(row);refs.push(o);}}
     const done=(k,o)=>{if(queue[k]===o)delete queue[k];};
@@ -198,7 +198,7 @@ async function catchUp(){if(!REAL||!ready||catching||!st.online)return;catching=
   try{if(await turnedOff())return;
     const since=new Date((lastPull||Date.now())-3*60000).toISOString();const t0=Date.now();const rows=[];let from=0;
     while(true){const r=await withTO(sb.from('records').select('coll,id,data,deleted').gt('updated_at',since).range(from,from+999),20000,'catch-up');if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<1000)break;from+=1000;}
-    lastPull=t0;try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}const fresh=rows.filter(r=>!queue[r.coll+'\u0001'+r.id]);
+    lastPull=t0;try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}rows.forEach(r=>{if(r.coll==='stock'&&!r.deleted&&r.data&&queue[r.coll+'\u0001'+r.id]&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,r.data.qty,null,r.data.qv);});const fresh=rows.filter(r=>!queue[r.coll+'\u0001'+r.id]);
     if(fresh.length){applyRows(fresh,{replace:false});fresh.forEach(r=>{const k=r.coll;if(r.deleted){if(snap[k])delete snap[k][r.id];}else{(snap[k]=snap[k]||{})[r.id]=canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));}});localSave();bump();}
     try{if(sb.removeAllChannels)await withTO(sb.removeAllChannels(),3000,'reconnect');}catch(e){}subscribe();flush();st.err='';paint();}
   catch(e){log('catch-up',e);}finally{catching=false;}}
@@ -210,13 +210,15 @@ function applyRows(rows,{replace}){applying=true;try{
     if(r.coll==='_'){D[r.id]=r.data&&'v' in r.data?r.data.v:r.data;return;}
     if(!(r.coll in D))D[r.coll]=/^[a-z]+$/.test(r.coll)&&!['sched','mylist','punchlists','keepLabels','base'].includes(r.coll)?[]:{};
     const data=r.data;if(r.coll==='emps'){const old=liveRecord('emps',r.id);if(old&&old.pass)data.pass=old.pass;}
-    setRecord(r.coll,r.id,data);});
+    setRecord(r.coll,r.id,data);if(r.coll==='stock'&&data&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,data.qty,null,data.qv);});
   }finally{applying=false;}}
 function applyPendingQueue(){Object.values(queue).forEach(o=>{applying=true;try{if(o.coll==='_'){if(o.del)delete D[o.id];else D[o.id]=o.data.v;}else if(o.del)delRecord(o.coll,o.id);else setRecord(o.coll,o.id,o.data);}finally{applying=false;}});}
 
 // ---------- realtime ----------
 function subscribe(){sb.channel('records').on('postgres_changes',{event:'*',schema:'public',table:'records'},p=>{const r=p.new&&p.new.coll?p.new:null;if(!r)return;
-    const key=r.coll;const j=r.deleted?null:canon(r.coll==='_'?r.data.v:r.data);
+    const key=r.coll;const j=r.deleted?null:canon(r.coll==='_'?r.data.v:upStrip(r.coll,r.data));
+    // stock count belongs to the server: always take it (plus this phone's unsent moves), even when other fields are mid-edit
+    if(r.coll==='stock'&&!r.deleted&&r.data&&window.EX_stockFromServer&&window.EX_stockFromServer(r.id,r.data.qty,null,r.data.qv)){localSave();bump();}
     if(queue[r.coll+'\u0001'+r.id])return;                         // we have a newer local change in flight
     if(!r.deleted&&snap[key]&&snap[key][r.id]===j)return;          // already have it
     if(r.deleted&&!(snap[key]&&r.id in snap[key]))return;
