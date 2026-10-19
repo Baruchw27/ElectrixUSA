@@ -2373,8 +2373,8 @@ function pvSave(){const src=pvList[pvI];if(!src)return;if(typeof dlPhoto==='func
 })();
 
 // ───────────── TRELLO JOBS (General Overview board) ─────────────
-const STAGE={active:['In progress','b-prog'],ready:['Ready to start','b-wait'],inspection:['Inspection','b-done'],upcoming:['Upcoming','b-ov'],priced:['Priced — waiting on customer','b-ov'],done:['Done / invoiced','b-done']};
-const STAGE_ORDER=['active','ready','inspection','upcoming','priced','done'];const stageRank=_stRank;
+const STAGE={upcoming:['Upcoming','b-ov'],ready:['Confirmed jobs','b-wait'],active:['Roughing','b-prog'],inspection:['Finishing','b-prog'],done:['Complete','b-done'],priced:['Upcoming','b-ov']};
+const STAGE_ORDER=['upcoming','ready','active','inspection','done'];const stageRank=_stRank;
 const stOpen=new Set(['active']);function stToggle(k){if(stOpen.has(k))stOpen.delete(k);else{[...stOpen].forEach(x=>{if(x!=='active')stOpen.delete(x);});stOpen.add(k);}if(document.getElementById('pg-sites').classList.contains('on'))renderSites();else renderJobs();}
 const STAGE_ICON={active:'🚧',ready:'🟢',inspection:'🏛',upcoming:'🗓',priced:'💲',done:'✅'};
 function stSec(k,n){const open=stOpen.has(k);

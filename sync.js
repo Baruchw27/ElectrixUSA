@@ -120,7 +120,7 @@ async function _flush(){const keys=Object.keys(queue);if(!keys.length){lastRejec
       else row={coll:o.coll,id:o.id,full:cur,by:st.user||null};
       ups.push(row);refs.push(o);}}
     const done=(k,o)=>{if(queue[k]===o)delete queue[k];};
-    for(let i=0;i<ups.length;i+=200){const part=ups.slice(i,i+200);const r=await withTO(sb.rpc('save_records',{rows:part}),20000,'save');
+    for(let i=0;i<ups.length;i+=200){const part=ups.slice(i,i+200);const r=await withTO(sb.rpc('save_records',{rows:part}),45000,'save');
       if(r.error){
         // a simultaneous edit by another office user: the database rejects the stale write (errcode 40001). treat it
         // like any other refusal — flag the rows, drop them from the queue so we don't retry a doomed write forever,
@@ -137,18 +137,22 @@ async function _flush(){const keys=Object.keys(queue);if(!keys.length){lastRejec
       rej.forEach(x=>{if(x.absent&&!queue[x.coll+'\u0001'+x.id]){try{delRecord(x.coll,x.id);}catch(e){}if(snap[x.coll])delete snap[x.coll][x.id];}});
       if(rej.length){localSave();try{bump();}catch(e){}}
       myRej.push(...rej);}
-    for(let i=0;i<dels.length;i+=200){const part=dels.slice(i,i+200);const r=await withTO(sb.rpc('save_records',{rows:part.map(o=>({coll:o.coll,id:o.id,deleted:true,full:o.meta||{},by:st.user||null}))}),20000,'save');if(r.error)throw r.error;part.forEach(o=>done(o.coll+'\u0001'+o.id,o));saveQ();adopt(r.data);
+    for(let i=0;i<dels.length;i+=200){const part=dels.slice(i,i+200);const r=await withTO(sb.rpc('save_records',{rows:part.map(o=>({coll:o.coll,id:o.id,deleted:true,full:o.meta||{},by:st.user||null}))}),45000,'save');if(r.error)throw r.error;part.forEach(o=>done(o.coll+'\u0001'+o.id,o));saveQ();adopt(r.data);
       // a delete the server refused comes back still present and not deleted → restore it locally (adopt did) and flag
       // (scoped to 'sched' so other features keep today's behavior)
       const dby={};(Array.isArray(r.data)?r.data:[]).forEach(s=>{dby[s.coll+'\u0001'+s.id]=s;});
       part.forEach(o=>{if(o.coll!=='sched')return;const s=dby[o.coll+'\u0001'+o.id];if(s&&!s.deleted)myRej.push({coll:o.coll,id:o.id,delRefused:true});});}
-    st.err=skipped?((typeof t==='function'?t('Photo upload failed — will retry'):'Photo upload failed')):'';
+    st.err=skipped?((typeof t==='function'?t('Photo upload failed — will retry'):'Photo upload failed')):'';st.retrying=false;
     lastReject=myRej;
     if(myRej.length){const msg=(typeof t==='function'?t('Some changes could not be saved — showing the saved version.'):'Some changes could not be saved — showing the saved version.');
       try{window.dispatchEvent(new CustomEvent('ex-rejected',{detail:{rows:myRej.slice()}}));}catch(e){}
       if(!suppressRejectToast){try{if(typeof toast==='function')toast(msg,'bad');}catch(e){}}}}
-  catch(e){lastReject=myRej;lastFlushError=(e&&e.message)||'sync error';st.err=lastFlushError;log('flush error',e);}
-  finally{flushing=false;paint();if(Object.keys(queue).length){if(st.err)setTimeout(flush,5000);else schedule();}}}
+  catch(e){lastReject=myRej;lastFlushError=(e&&e.message)||'sync error';
+    // a slow/timed-out/offline save is transient: keep the change queued, retry quietly, and show a calm "Saving…" —
+    // never the alarming "save timeout" banner (the data is safe on the phone and the retry lands it).
+    const _transient=/timeout|failed to fetch|networkerror|network error|load failed|fetch|aborted/i.test(lastFlushError);
+    st.err=_transient?'':lastFlushError;st.retrying=_transient;log('flush error',e);}
+  finally{flushing=false;paint();if(Object.keys(queue).length){if(lastFlushError)setTimeout(flush,4000);else schedule();}}}
 // Save right now and report the TRUE outcome, so a caller (e.g. the schedule editor) can show a real result
 // instead of an optimistic "saved". Resolves {ok, rejected:[{coll,id,absent?}]}: ok=false when the server
 // refused any row we just sent (no permission, or a concurrent edit / stale revision) or the save errored.
@@ -219,7 +223,7 @@ function bump(){clearTimeout(renderT);renderT=setTimeout(()=>{const a=document.a
 
 // ---------- status pill ----------
 function paint(){let el=document.getElementById('exSync');if(!el){el=document.createElement('div');el.id='exSync';el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(64px + env(safe-area-inset-bottom));z-index:900;font-size:12px;padding:5px 11px;border-radius:99px;background:#1F1E2A;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.2);display:none;pointer-events:none';document.body.appendChild(el);}
-  const n=Object.keys(queue).length;let txt='';if(!REAL)txt='';else if(!st.online)txt='📵 '+(typeof t==='function'?t('Offline — saved on this phone'):'Offline')+(n?' ('+n+')':'');else if(st.err)txt='⚠ '+st.err;else if(n&&flushing)txt='↑ '+(typeof t==='function'?t('Saving…'):'Saving…');
+  const n=Object.keys(queue).length;let txt='';if(!REAL)txt='';else if(!st.online)txt='📵 '+(typeof t==='function'?t('Offline — saved on this phone'):'Offline')+(n?' ('+n+')':'');else if(st.err)txt='⚠ '+st.err;else if(n&&(flushing||st.retrying))txt='↑ '+(typeof t==='function'?t('Saving…'):'Saving…');
   el.textContent=txt;el.style.display=txt?'block':'none';}
 window.addEventListener('online',()=>{st.online=true;paint();flush();catchUp();});window.addEventListener('offline',()=>{st.online=false;paint();});
 
