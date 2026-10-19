@@ -1,15 +1,15 @@
 [
  {
   "photo": "leviton_5603P2W__as_taken",
-  "known": "asks",
-  "result": "asks",
-  "conf": "low",
-  "name": "",
-  "part": "8803-P2W",
+  "known": "right_item_first",
+  "result": "correct",
+  "conf": "medium",
+  "name": "Leviton 5603-P2W 3-Way Switch Grounding White",
+  "part": "5603-P2W",
   "maker": "Leviton",
   "box_qty_read": 10,
   "box_qty_true": 10,
-  "passes": 10,
+  "passes": 12,
   "barcode": "GTIN-14 box"
  },
  {
@@ -27,15 +27,15 @@
  },
  {
   "photo": "leviton_5603P2W__blurry",
-  "known": "right_item_in_list",
-  "result": "asks",
-  "conf": "low",
-  "name": "",
-  "part": "5603-PAWIR",
+  "known": "asks",
+  "result": "WRONG",
+  "conf": "medium",
+  "name": "Leviton 134-120",
+  "part": "134-120",
   "maker": "Leviton",
   "box_qty_read": null,
   "box_qty_true": 10,
-  "passes": 10,
+  "passes": 12,
   "barcode": "GTIN-14 box"
  },
  {
@@ -43,38 +43,38 @@
   "known": "right_item_first",
   "result": "correct",
   "conf": "high",
-  "name": "Leviton 5603-P2W 3-Way Switch Way White",
+  "name": "Leviton 5603-P2W 3-Way Switch Grounding White",
   "part": "5603-P2W",
   "maker": "Leviton",
   "box_qty_read": 10,
   "box_qty_true": 10,
-  "passes": 10,
+  "passes": 12,
   "barcode": "GTIN-14 box"
  },
  {
   "photo": "leviton_5603P2W__far_away",
-  "known": "right_item_first",
-  "result": "asks",
-  "conf": "low",
-  "name": "",
-  "part": "5603-P2W",
+  "known": "right_item_in_list",
+  "result": "WRONG",
+  "conf": "medium",
+  "name": "Leviton WYI078677 Switch Grounding Way White",
+  "part": "WYI078677",
   "maker": "Leviton",
   "box_qty_read": null,
   "box_qty_true": 10,
-  "passes": 10,
+  "passes": 12,
   "barcode": "GTIN-14 box"
  },
  {
   "photo": "leviton_5603P2W__tilted",
-  "known": "right_item_in_list",
-  "result": "WRONG",
-  "conf": "medium",
-  "name": "Leviton ISE0S-PAW 3-Way Switch Grounding White",
-  "part": "ISE0S-PAW",
+  "known": "right_item_first",
+  "result": "correct",
+  "conf": "high",
+  "name": "Leviton 5603-P2W 3-Way Switch Grounding Swit White",
+  "part": "5603-P2W",
   "maker": "Leviton",
-  "box_qty_read": 10,
+  "box_qty_read": null,
   "box_qty_true": 10,
-  "passes": 10,
+  "passes": 2,
   "barcode": "GTIN-14 box"
  },
  {
@@ -147,12 +147,12 @@
   "known": "right_item_first",
   "result": "correct",
   "conf": "high",
-  "name": "Leviton 80409-NW Wallplate",
+  "name": "Leviton 80409-NW Wallplate White",
   "part": "80409-NW",
   "maker": "Leviton",
   "box_qty_read": null,
   "box_qty_true": 25,
-  "passes": 9,
+  "passes": 11,
   "barcode": "GTIN-14 box"
  },
  {
@@ -165,7 +165,7 @@
   "maker": "Luxrite",
   "box_qty_read": null,
   "box_qty_true": null,
-  "passes": 3,
+  "passes": 5,
   "barcode": "UPC-A each"
  },
  {
@@ -191,7 +191,7 @@
   "maker": "Luxrite",
   "box_qty_read": null,
   "box_qty_true": null,
-  "passes": 10,
+  "passes": 12,
   "barcode": "UPC-A each"
  },
  {
@@ -217,7 +217,7 @@
   "maker": "Luxrite",
   "box_qty_read": null,
   "box_qty_true": null,
-  "passes": 10,
+  "passes": 12,
   "barcode": "UPC-A each"
  },
  {

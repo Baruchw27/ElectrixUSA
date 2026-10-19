@@ -189,11 +189,12 @@
   const BRAND_PART = {
     Leviton: [/^\d{3,5}-[A-Z0-9]{1,6}(-[A-Z0-9]{1,4})?$/, /^[A-Z]{1,5}\d{1,4}[A-Z]{0,3}-[A-Z0-9]{1,4}$/, /^[A-Z]{2,5}\d{2,4}-?[A-Z0-9]{0,6}$/],
     Luxrite: [/^LR\d{5}$/],
-    Lutron: [/^[A-Z]{2,5}-[A-Z0-9]{2,6}(-[A-Z0-9]{1,4})?$/],
+    Lutron: [/^[A-Z]{2,5}-[A-Z0-9]{2,6}(-[A-Z]{2,3})?$/],             // colour codes are 2–3 letters (-WH, -IV, -LA)
     Eaton: [/^(BR|CH|BRN|CHF|TR|BAB|BJ|EBH|CHFGF|BRGF|BRAF|CHFAF|BRCAF|CHFCAF|BRDF|CHFDF)\d{3,4}[A-Z0-9]*$/, /^\d{3,5}[A-Z]{0,3}-?[A-Z0-9]{0,4}$/],
     'Square D': [/^(HOM|QO|HOMT|QOT|HOMC|QOC|QO1|SQD)\d{2,5}[A-Z0-9]*$/],
     Siemens: [/^(Q|QP|QT|QAF|QPF|QF|B|EQ|PN|W|SN)\d{2,5}[A-Z0-9]*$/],
     Hubbell: [/^[A-Z]{2,6}\d{2,5}[A-Z0-9]{0,4}$/],
+    Kidde: [/^P?I\d{4,5}[A-Z0-9]{0,4}$/, /^\d{4}[A-Z]{0,2}$/, /^\d{8}$/],   // i12060, i4618AC, PI2010, 2040, 21026051
   };
   function fitsBrand(p, brand) { const pats = BRAND_PART[brand]; return !!(pats && pats.some(r => r.test(p))); }
   // fix look-alikes by context: a mostly-digit segment gets digits, a mostly-letter segment gets letters
@@ -201,6 +202,7 @@
   const TO_L = { '0': 'O', '1': 'I', '5': 'S', '8': 'B', '2': 'Z', '6': 'G' };
   function fixPart(p, brand) {
     p = normPart(p); if (!p) return p;
+    if (brand === 'Kidde' && /^[1Il|]\d{4,5}[A-Z]{0,3}$/.test(p)) return 'I' + p.slice(1); // Kidde "i12060": the small i reads as 1
     if (brand === 'Luxrite' && /^L[R8P]/.test(p)) { const t = 'LR' + p.slice(2).replace(/[OQDILSZBG|]/g, c => TO_D[c]); if (fitsBrand(t, brand)) return t; }
     const segs = p.split('-').map((sg, i) => {
       const dg = (sg.match(/\d/g) || []).length, lt = (sg.match(/[A-Z]/g) || []).length;
@@ -313,8 +315,12 @@
   function colorOf(U) { for (const [k, v] of COLORS) if (new RegExp('\\b' + k + '\\b').test(U)) return v; return ''; }
   function packOf(U) {
     U = U.replace(/\d[\d ]{7,}\d/g, ' '); // the barcode's printed digits are not a quantity
-    let m = U.match(/\b(?:QTY|QTE|QUANTITY|CANT|PCS?\s*\/\s*(?:BOX|CTN|CASE)|PER\s+(?:BOX|CASE|CTN))\s*[:.]?\s*(?:QTE|CANT|QTY|[:.\s])*\s*(\d{2,4}(?![-\w])|\d(?: [\dOQ]){1,2}(?![-\w])|\d[OQ]{1,2}(?![-\w])|\d(?![-\w]))/);
+    // the number must be on the same line as QTY/CANT (sparse reading puts other columns, like Leviton's line code, below it)
+    let m = U.match(/\b(?:QTY|QTE|QUANTITY|CANT|PCS?[ \t]*\/[ \t]*(?:BOX|CTN|CASE)|PER[ \t]+(?:BOX|CASE|CTN))[ \t]*[:.]?[ \t]*(?:QTE|CANT|QTY|[:. \t])*[ \t]*(\d{2,4}(?![-\w])|\d(?: [\dOQ]){1,2}(?![-\w])|\d[OQ]{1,2}(?![-\w])|\d(?![-\w]))/);
     if (m) { const n = +m[1].replace(/ /g, '').replace(/[OQ]/g, '0'); if (n > 1 && n <= 2000) return n; }
+    // …or alone on the very next line, and only a normal box size (≤ 100)
+    m = U.match(/\b(?:QTY|QTE|QUANTITY|CANT)[ \t]*[:.]?[ \t]*\n[ \t]*(?:(?:QTE|CANT|QTY)[ \t]*\n[ \t]*)*(\d{1,3})[ \t]*(?:\||\n|$)/);
+    if (m && +m[1] > 1 && +m[1] <= 100) return +m[1];
     m = U.match(/\b(?:BOX|CASE|PACK|PKG|CTN|CARTON)\s+OF\s+(\d{1,4})\b/) || U.match(/\b(\d{1,4})\s*(?:-|\s)?\s*(?:PACK|PK|PCS|PIECES|COUNT|CT)\b/) || U.match(/\bPK\s*\/?\s*(\d{1,4})\b/);
     if (m && +m[1] > 1 && +m[1] <= 2000) return +m[1];
     return null;
@@ -337,7 +343,7 @@
     if (fromCode) why.push('maker from barcode'); else if (fromText) why.push('maker read on label');
     const parts = partCandidates(T, brand);
     const top = parts[0] || null;
-    let part = '', partConf = 0, partSure = false;
+    let part = '', partConf = 0, partSure = false, nearPart = '';
     if (top) {
       part = top.p;
       const fit = !!(brand && fitsBrand(part, brand));
@@ -347,7 +353,20 @@
       // a look-alike character where letters meet digits (L|0, T|5, R|1 …) is where OCR goes wrong most: never "sure" there
       const amb = /[A-Z][0O1I5S]|[0O1I5S][A-Z]/.test(part.replace(/-/g, ' ').split(' ').filter(sg => /\d/.test(sg) && /[A-Z]/.test(sg)).join(' '));
       const digitsOnly = /^\d+$/.test(part.replace(/-/g, ''));
-      partSure = !rival && !amb && ((top.labeled && (fit || top.n >= 2 || (!BRAND_PART[brand] && !digitsOnly))) || (fit && top.n >= 2) || top.n >= 3);
+      // the maker has a known part-number shape and this reading does not have it → a misread or a cut-off label
+      const shapeWrong = !!(brand && BRAND_PART[brand] && !fit);
+      // Leviton breaker suffixes only exist on LB… parts: "18120-DF" is "LB120-DF" with L|B read as 1|8
+      const lbLike = brand === 'Leviton' && /^\d{4,6}-(AF|DF|GF|CAF|PAF|T)$/.test(part);
+      // a part number 1 character away from a real one of the same maker (product list / your items) but not equal
+      const known = Array.isArray(ctx.known) ? ctx.known : []; const pkTop = partKey(part);
+      let exactKnown = known.some(k => partKey(k.p) === pkTop);
+      // differs from a real part number only by look-alike characters (O/0, I/1, S/5, B/8 …): use the real spelling, never "sure"
+      const snap = exactKnown ? null : known.find(k => (!brand || !k.b || canonBrand(k.b) === brand) && skel(partKey(k.p)) === skel(pkTop));
+      if (snap) { part = normPart(snap.p); why.push('look-alike letters corrected to the real part number ' + part); }
+      const near = exactKnown ? null : known.find(k => (!brand || !k.b || canonBrand(k.b) === brand) && Math.abs(partKey(k.p).length - pkTop.length) <= 1 && levOCR(partKey(k.p), pkTop) <= 1.0);
+      partSure = !snap && !rival && !amb && !shapeWrong && !lbLike && !near && ((top.labeled && (fit || top.n >= 2 || (!BRAND_PART[brand] && !digitsOnly))) || (fit && top.n >= 2) || top.n >= 3 || (exactKnown && top.n >= 2));
+      if (near) { why.push('close to ' + near.p + ' — check'); nearPart = normPart(near.p); }
+      if (shapeWrong) why.push('unusual part number for ' + brand + ' — check');
       if (rival) why.push('also read ' + rival.p + ' — check');
       why.push('part ' + part + (top.n > 1 ? ' (read ' + top.n + '×)' : ''));
     }
@@ -368,7 +387,7 @@
       const pk2 = skel(part);
       for (const line of U.split(/\n+/)) {
         const m2 = line.match(/([A-Z0-9][A-Z0-9\-\/.]{3,22})[^A-Z0-9]{1,6}(\d{1,3})(?:\s|\||$)/);
-        if (m2 && skel(m2[1].split('/')[0]) === pk2 && +m2[2] > 1 && +m2[2] <= 500) { pack = +m2[2]; break; }
+        if (m2 && skel(m2[1].split('/')[0]) === pk2 && +m2[2] > 1 && +m2[2] <= 100) { pack = +m2[2]; break; } // the 3-digit column after QTY is a line code, not a count
       }
     }
     const unit = unitOf(U);
@@ -376,7 +395,7 @@
     const conf = part ? (partSure && (brand || voc >= 1) ? 'high' : partConf >= 0.35 ? 'medium' : 'low') : (voc >= 2 && brand ? 'medium' : 'low');
     let name = '';
     if (conf !== 'low') { name = [brand, part, desc].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim(); if (name.length > 80) name = name.slice(0, 80).replace(/\s\S*$/, ''); if (!part && !desc) name = ''; }
-    return { brand, part, parts: parts.slice(0, 4).map(x => x.p), desc, color, unit: unit.unit, perScan: unit.perScan || null, pack, conf, name, why, score: Math.round(score * 100) / 100 };
+    return { brand, part, parts: parts.slice(0, 4).map(x => x.p), desc, color, unit: unit.unit, perScan: unit.perScan || null, pack, conf, name, why, nearPart, score: Math.round(score * 100) / 100 };
   }
   // what an online product database said → same shape as parseLabel
   function parseOnline(r, code) {
@@ -496,7 +515,50 @@
     'Reply ONLY with JSON: {"brand":"","part":"","description":"","color":"","pack":0,"unit":"pc"}. "part" is the manufacturer catalog/model/item number exactly as printed. ' +
     '"pack" is how many items the box holds if printed (QTY/QTE/CANT/BOX OF), else 0. Use "" for anything you cannot read clearly. Never guess a part number.';
 
-  const SV2 = { ck, validGS1, upcEtoA, parseCode, prefix6, PREFIX_BRANDS, BRANDS, brandFromText, brandFromCode, learnPrefixes, lev, levOCR, ratio, skel,
+  // ───────────────────────── UPC-E reader ─────────────────────────
+  // The iPhone barcode library (ZXing-js 0.21.3) cannot read UPC-E at all (tested: 0 of 10 clean UPC-E codes), and
+  // small electrical parts often carry UPC-E. This reads it from black/white rows (1 = black) of the camera frame.
+  // Safety: every digit must match its pattern clearly, the parity must give a valid number system + check digit,
+  // and at least two different rows must read the very same code.
+  const UE_L = ['3211', '2221', '2122', '1411', '1132', '1231', '1114', '1312', '1213', '3112'].map(p => p.split('').map(Number));
+  const UE_G = UE_L.map(p => p.slice().reverse());
+  const UE_PAR = ['EEEOOO', 'EEOEOO', 'EEOOEO', 'EEOOOE', 'EOEEOO', 'EOOEEO', 'EOOOEE', 'EOEOEO', 'EOEOOE', 'EOOEOE'];
+  function ueDigit(w) { // 4 widths → {d, par} or null
+    const t = w[0] + w[1] + w[2] + w[3]; const n = w.map(x => x * 7 / t); let best = null, second = 9;
+    for (const [tab, par] of [[UE_L, 'O'], [UE_G, 'E']]) for (let d = 0; d < 10; d++) { let e = 0; for (let j = 0; j < 4; j++) e += Math.abs(n[j] - tab[d][j]);
+      if (!best || e < best.e) { if (best) second = Math.min(second, best.e); best = { d, par, e }; } else second = Math.min(second, e); }
+    return best && best.e <= 1.25 && second - best.e >= 0.35 ? best : null;
+  }
+  function ueWindow(r) { // 33 run widths in reading order: guard(3) 6×digit(4) guard(6)
+    const T = r.reduce((a, b) => a + b, 0), m = T / 51;
+    for (let i = 0; i < 3; i++) if (r[i] < m * 0.45 || r[i] > m * 1.8) return null;
+    for (let i = 27; i < 33; i++) if (r[i] < m * 0.45 || r[i] > m * 1.8) return null;
+    let digits = '', par = '';
+    for (let k = 0; k < 6; k++) { const g = ueDigit(r.slice(3 + k * 4, 7 + k * 4)); if (!g) return null; digits += g.d; par += g.par; }
+    let ns = -1, chk = -1; for (let c = 0; c < 10; c++) { if (UE_PAR[c] === par) { ns = 0; chk = c; } else if (UE_PAR[c].replace(/./g, x => x === 'E' ? 'O' : 'E') === par) { ns = 1; chk = c; } }
+    if (ns < 0) return null;
+    const code = String(ns) + digits + chk; return upcEtoA(code) ? code : null;
+  }
+  function upceFromRows(getRow, width, height) {
+    const ys = []; const mid = height >> 1; const step = Math.max(1, Math.floor(height / 24));
+    for (let k = 0; k < 24; k++) { const y = mid + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * step; if (y >= 0 && y < height) ys.push(y); }
+    const seen = {};
+    for (const y of ys) {
+      const row = getRow(y); if (!row) continue; const runs = []; const col = []; let cur = row[0], len = 0;
+      for (let x = 0; x < width; x++) { if (row[x] === cur) len++; else { runs.push(len); col.push(cur); cur = row[x]; len = 1; } } runs.push(len); col.push(cur);
+      for (let i = 1; i + 33 <= runs.length; i++) {
+        if (col[i] !== 1 || col[i + 32] !== 1) continue; const w = runs.slice(i, i + 33); const T = w.reduce((a, b) => a + b, 0); const m = T / 51;
+        const qL = runs[i - 1], qR = i + 33 < runs.length ? runs[i + 33] : 99999;
+        let code = null;
+        if (qL >= m * 3) code = ueWindow(w);                           // left to right
+        if (!code && qR >= m * 3) code = ueWindow(w.slice().reverse()); // upside down
+        if (code) { seen[code] = (seen[code] || 0) + 1; if (seen[code] >= 2) return code; }
+      }
+    }
+    return null;
+  }
+
+  const SV2 = { upceFromRows, ck, validGS1, upcEtoA, parseCode, prefix6, PREFIX_BRANDS, BRANDS, brandFromText, brandFromCode, learnPrefixes, lev, levOCR, ratio, skel,
     normPart, partKey, fixPart, fitsBrand, partCandidates, descLines, parseLabel, parseOnline, nameSim, matchInventory, allLinks, identify, linkId,
     newItemId, unitsFor, checkAI, AI_PROMPT, packOf, colorOf, canonBrand };
   if (typeof module !== 'undefined' && module.exports) module.exports = SV2; else root.SV2 = SV2;

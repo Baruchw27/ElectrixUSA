@@ -2,6 +2,7 @@
 const S = require('../../staging/scanner-v2.js'); const fs = require('fs'); const path = require('path');
 const M = JSON.parse(fs.readFileSync(path.join(__dirname, 'out', 'real_ocr.json'), 'utf8'));
 const RANK = { high: 3, medium: 2, low: 1 };
+const KNOWN = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'staging', 'catalog-real.json'), 'utf8')).map(x => ({ b: x.b, p: x.p }));
 const STEPS = [['m6', 'm11', 'm3'], ['a6', 'a11'], ['ar90'], ['ar270'], ['ar180'], ['ad-6'], ['ad6']];
 const P = JSON.parse(fs.readFileSync(path.join(__dirname, 'products.json'), 'utf8'));
 // the synthetic catalog already has these three parts — leave those copies out so the list holds each part once
@@ -12,7 +13,8 @@ const inv = P.filter(p => !['5603-P2W', '80409-NW', 'LR25022'].includes(p.part))
 const rows = [];
 for (const m of M) {
   let text = '', lp = null, used = 0;
-  for (const st of STEPS) { text += '\n' + st.map(k => m.texts[k] || '').join('\n'); used += st.length; const l2 = S.parseLabel(text, { code: m.scan }); if (!lp || l2.conf === 'high' || RANK[l2.conf] > RANK[lp.conf] || (RANK[l2.conf] === RANK[lp.conf] && l2.score > lp.score)) lp = l2; if (lp.conf === 'high') break; }
+  const steps = Math.abs(m.angle || 0) >= 1.5 ? [['ask', 'ask3']].concat(STEPS) : STEPS; // app order: straightened reading first when tilted
+  for (const st of steps) { text += '\n' + st.map(k => m.texts[k] || '').join('\n'); used += st.length; const l2 = S.parseLabel(text, { code: m.scan, known: KNOWN }); if (!lp || l2.conf === 'high' || RANK[l2.conf] > RANK[lp.conf] || (RANK[l2.conf] === RANK[lp.conf] && l2.score > lp.score)) lp = l2; if (lp.conf === 'high') break; }
   const t = m.truth; const okPart = S.partKey(lp.part) === S.partKey(t.part);
   const res = lp.conf === 'low' ? 'asks' : okPart && lp.brand === t.brand ? 'correct' : 'WRONG';
   const pc = S.parseCode(m.scan);

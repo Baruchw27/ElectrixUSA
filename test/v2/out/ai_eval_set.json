@@ -1,0 +1,782 @@
+[
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/eat-chfgf__dark.png",
+"id": "eat-chfgf__dark",
+"product": "Eaton CHFGF120",
+"pack_true": 1,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "CHFGF120",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/sqd-qo120__noise_jpeg.png",
+"id": "sqd-qo120__noise_jpeg",
+"product": "Square D QO120",
+"pack_true": 1,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "QO120",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/eat-tr270__clean.png",
+"id": "eat-tr270__clean",
+"product": "Eaton TR270W",
+"pack_true": 10,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "TR270W",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/sqd-hom120__noise_jpeg.png",
+"id": "sqd-hom120__noise_jpeg",
+"product": "Square D HOM120",
+"pack_true": 1,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "HOM120",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/hub-5262__partial.png",
+"id": "hub-5262__partial",
+"product": "Hubbell HBL5262",
+"pack_true": 10,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "HBL5262",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-dsl06i__small_pack.png",
+"id": "lev-dsl06i__small_pack",
+"product": "Leviton DSL06-10Z",
+"pack_true": 1,
+"ocr_NEW": "wrong_part_checkit",
+"ocr_part": "DSLO6-10Z",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-dsl06i__noise_jpeg.png",
+"id": "lev-dsl06i__noise_jpeg",
+"product": "Leviton DSL06-10Z",
+"pack_true": 1,
+"ocr_NEW": "wrong_part_checkit",
+"ocr_part": "DSLO6-102",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/sqd-hom120__lowres.png",
+"id": "sqd-hom120__lowres",
+"product": "Square D HOM120",
+"pack_true": 1,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "HOM120",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/eat-tr270__rot180.png",
+"id": "eat-tr270__rot180",
+"product": "Eaton TR270W",
+"pack_true": 10,
+"ocr_NEW": "wrong_part_checkit",
+"ocr_part": "LV43",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/sw-122__partial.png",
+"id": "sw-122__partial",
+"product": "Southwire Romex SIMpull 12/2 NM-B W/G 250 FT",
+"pack_true": 1,
+"ocr_NEW": "asks",
+"ocr_part": "",
+"ocr_conf": "low",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/sw-122__blur_heavy.png",
+"id": "sw-122__blur_heavy",
+"product": "Southwire Romex SIMpull 12/2 NM-B W/G 250 FT",
+"pack_true": 1,
+"ocr_NEW": "asks",
+"ocr_part": "G00V",
+"ocr_conf": "low",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-dsl06i__partial.png",
+"id": "lev-dsl06i__partial",
+"product": "Leviton DSL06-10Z",
+"pack_true": 1,
+"ocr_NEW": "wrong_part_checkit",
+"ocr_part": "DSLO6-10Z",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-t5325__blur_heavy.png",
+"id": "lev-t5325__blur_heavy",
+"product": "Leviton T5325-W",
+"pack_true": 10,
+"ocr_NEW": "wrong_part_checkit",
+"ocr_part": "TS325-W",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/eat-chfgf__tilt.png",
+"id": "eat-chfgf__tilt",
+"product": "Eaton CHFGF120",
+"pack_true": 1,
+"ocr_NEW": "wrong_part_checkit",
+"ocr_part": "LLY3",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-lb120df__partial.png",
+"id": "lev-lb120df__partial",
+"product": "Leviton LB120-DF",
+"pack_true": 1,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "LB120-DF",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-dsl06__clean.png",
+"id": "lev-dsl06__clean",
+"product": "Leviton DSL06-1LZ",
+"pack_true": 1,
+"ocr_NEW": "wrong_part_checkit",
+"ocr_part": "DSLO6-1LZ",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-t5325__clean.png",
+"id": "lev-t5325__clean",
+"product": "Leviton T5325-W",
+"pack_true": 10,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "T5325-W",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/sqd-hom230__lowres.png",
+"id": "sqd-hom230__lowres",
+"product": "Square D HOM230",
+"pack_true": 1,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "HOM230",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/carlon-b114__rot90.png",
+"id": "carlon-b114__rot90",
+"product": "Carlon B114R",
+"pack_true": 25,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "B114R",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/sw-122__small_pack.png",
+"id": "sw-122__small_pack",
+"product": "Southwire Romex SIMpull 12/2 NM-B W/G 250 FT",
+"pack_true": 1,
+"ocr_NEW": "asks",
+"ocr_part": "",
+"ocr_conf": "low",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-80409__rot90.png",
+"id": "lev-80409__rot90",
+"product": "Leviton 80409-NW",
+"pack_true": 25,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "80409-NW",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/raco-8195__rot90.png",
+"id": "raco-8195__rot90",
+"product": "Raco 8195",
+"pack_true": 25,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "8195",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/eat-br115__shadow.png",
+"id": "eat-br115__shadow",
+"product": "Eaton BR115",
+"pack_true": 1,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "BR115",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/sw-142__noise_jpeg.png",
+"id": "sw-142__noise_jpeg",
+"product": "Southwire Romex SIMpull 14/2 NM-B W/G 250 FT",
+"pack_true": 1,
+"ocr_NEW": "asks",
+"ocr_part": "",
+"ocr_conf": "low",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/kidde-i12__blur_light.png",
+"id": "kidde-i12__blur_light",
+"product": "Kidde i12060",
+"pack_true": 1,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "I12060",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/sw-122__tilt.png",
+"id": "sw-122__tilt",
+"product": "Southwire Romex SIMpull 12/2 NM-B W/G 250 FT",
+"pack_true": 1,
+"ocr_NEW": "asks",
+"ocr_part": "G00V",
+"ocr_conf": "low",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/sw-142__overexposed.png",
+"id": "sw-142__overexposed",
+"product": "Southwire Romex SIMpull 14/2 NM-B W/G 250 FT",
+"pack_true": 1,
+"ocr_NEW": "asks",
+"ocr_part": "PEISI11N",
+"ocr_conf": "low",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-dsl06__shadow.png",
+"id": "lev-dsl06__shadow",
+"product": "Leviton DSL06-1LZ",
+"pack_true": 1,
+"ocr_NEW": "wrong_part_checkit",
+"ocr_part": "DSLO6-1LZ",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/sw-122__overexposed.png",
+"id": "sw-122__overexposed",
+"product": "Southwire Romex SIMpull 12/2 NM-B W/G 250 FT",
+"pack_true": 1,
+"ocr_NEW": "asks",
+"ocr_part": "PEISI11N",
+"ocr_conf": "low",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-5603__rot90.png",
+"id": "lev-5603__rot90",
+"product": "Leviton 5603-2W",
+"pack_true": 10,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "5603-2W",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/sqd-hom230__dark.png",
+"id": "sqd-hom230__dark",
+"product": "Square D HOM230",
+"pack_true": 1,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "HOM230",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-gfnt1__blur_light.png",
+"id": "lev-gfnt1__blur_light",
+"product": "Leviton GFNT1-W",
+"pack_true": 1,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "GFNT1-W",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-80412__noise_jpeg.png",
+"id": "lev-80412__noise_jpeg",
+"product": "Leviton 80412-NW",
+"pack_true": 25,
+"ocr_NEW": "wrong_part_checkit",
+"ocr_part": "80412-N",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-5603p__rot180.png",
+"id": "lev-5603p__rot180",
+"product": "Leviton 5603-P2W",
+"pack_true": 10,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "5603-P2W",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-lb115__small_pack.png",
+"id": "lev-lb115__small_pack",
+"product": "Leviton LB115-T",
+"pack_true": 5,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "LB115-T",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/raco-232__rot90.png",
+"id": "raco-232__rot90",
+"product": "Raco 232",
+"pack_true": 50,
+"ocr_NEW": "correct_checkit",
+"ocr_part": "232",
+"ocr_conf": "medium",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-5603__small_pack.png",
+"id": "lev-5603__small_pack",
+"product": "Leviton 5603-2W",
+"pack_true": 10,
+"ocr_NEW": "correct_sure",
+"ocr_part": "5603-2W",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/wago-221__blur_heavy.png",
+"id": "wago-221__blur_heavy",
+"product": "Wago 221-412",
+"pack_true": 50,
+"ocr_NEW": "correct_sure",
+"ocr_part": "221-412",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lut-dvcl__rot90.png",
+"id": "lut-dvcl__rot90",
+"product": "Lutron DVCL-153P-WH",
+"pack_true": 1,
+"ocr_NEW": "correct_sure",
+"ocr_part": "DVCL-153P-WH",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/raco-8195__lowres.png",
+"id": "raco-8195__lowres",
+"product": "Raco 8195",
+"pack_true": 25,
+"ocr_NEW": "correct_sure",
+"ocr_part": "8195",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lux-25022__clean.png",
+"id": "lux-25022__clean",
+"product": "Luxrite LR25022",
+"pack_true": 1,
+"ocr_NEW": "correct_sure",
+"ocr_part": "LR25022",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lux-23777__overexposed.png",
+"id": "lux-23777__overexposed",
+"product": "Luxrite LR23777",
+"pack_true": 12,
+"ocr_NEW": "correct_sure",
+"ocr_part": "LR23777",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-80412__small_pack.png",
+"id": "lev-80412__small_pack",
+"product": "Leviton 80412-NW",
+"pack_true": 25,
+"ocr_NEW": "correct_sure",
+"ocr_part": "80412-NW",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lut-dvcl__clean.png",
+"id": "lut-dvcl__clean",
+"product": "Lutron DVCL-153P-WH",
+"pack_true": 1,
+"ocr_NEW": "correct_sure",
+"ocr_part": "DVCL-153P-WH",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-lb230__overexposed.png",
+"id": "lev-lb230__overexposed",
+"product": "Leviton 210-LB230-T",
+"pack_true": 5,
+"ocr_NEW": "correct_sure",
+"ocr_part": "210-LB230-T",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lux-23777__blur_heavy.png",
+"id": "lux-23777__blur_heavy",
+"product": "Luxrite LR23777",
+"pack_true": 12,
+"ocr_NEW": "correct_sure",
+"ocr_part": "LR23777",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-5601__blur_light.png",
+"id": "lev-5601__blur_light",
+"product": "Leviton 5601-2W",
+"pack_true": 10,
+"ocr_NEW": "correct_sure",
+"ocr_part": "5601-2W",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lut-dvcl__dark.png",
+"id": "lut-dvcl__dark",
+"product": "Lutron DVCL-153P-WH",
+"pack_true": 1,
+"ocr_NEW": "correct_sure",
+"ocr_part": "DVCL-153P-WH",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-5604__shadow.png",
+"id": "lev-5604__shadow",
+"product": "Leviton 5604-2W",
+"pack_true": 10,
+"ocr_NEW": "correct_sure",
+"ocr_part": "5604-2W",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lux-25023__rot180.png",
+"id": "lux-25023__rot180",
+"product": "Luxrite LR25023",
+"pack_true": 1,
+"ocr_NEW": "correct_sure",
+"ocr_part": "LR25023",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/wago-221-413__partial.png",
+"id": "wago-221-413__partial",
+"product": "Wago 221-413",
+"pack_true": 50,
+"ocr_NEW": "correct_sure",
+"ocr_part": "221-413",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-lb230__clean.png",
+"id": "lev-lb230__clean",
+"product": "Leviton 210-LB230-T",
+"pack_true": 5,
+"ocr_NEW": "correct_sure",
+"ocr_part": "210-LB230-T",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lux-25022__rot180.png",
+"id": "lux-25022__rot180",
+"product": "Luxrite LR25022",
+"pack_true": 1,
+"ocr_NEW": "correct_sure",
+"ocr_part": "LR25022",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lux-23772__rot90.png",
+"id": "lux-23772__rot90",
+"product": "Luxrite LR23772",
+"pack_true": 12,
+"ocr_NEW": "correct_sure",
+"ocr_part": "LR23772",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/wago-221__tilt.png",
+"id": "wago-221__tilt",
+"product": "Wago 221-412",
+"pack_true": 50,
+"ocr_NEW": "correct_sure",
+"ocr_part": "221-412",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/eat-br230__lowres.png",
+"id": "eat-br230__lowres",
+"product": "Eaton BR230",
+"pack_true": 1,
+"ocr_NEW": "correct_sure",
+"ocr_part": "BR230",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/wago-221__small_pack.png",
+"id": "wago-221__small_pack",
+"product": "Wago 221-412",
+"pack_true": 50,
+"ocr_NEW": "correct_sure",
+"ocr_part": "221-412",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lut-dvcl-ia__overexposed.png",
+"id": "lut-dvcl-ia__overexposed",
+"product": "Lutron DVCL-153P-IV",
+"pack_true": 1,
+"ocr_NEW": "correct_sure",
+"ocr_part": "DVCL-153P-IV",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-gfnt2__dark.png",
+"id": "lev-gfnt2__dark",
+"product": "Leviton GFNT2-W",
+"pack_true": 1,
+"ocr_NEW": "correct_sure",
+"ocr_part": "GFNT2-W",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/img/lev-lb220__clean.png",
+"id": "lev-lb220__clean",
+"product": "Leviton 210-LB220-T",
+"pack_true": 5,
+"ocr_NEW": "correct_sure",
+"ocr_part": "210-LB220-T",
+"ocr_conf": "high",
+"set": "synthetic"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/real/leviton_5603P2W__as_taken.png",
+"id": "leviton_5603P2W__as_taken",
+"product": "Leviton 5603-P2W",
+"pack_true": 10,
+"ocr_NEW": "asks",
+"ocr_part": "8803-P2W",
+"ocr_conf": "low",
+"set": "real"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/real/leviton_5603P2W__turned_90.png",
+"id": "leviton_5603P2W__turned_90",
+"product": "Leviton 5603-P2W",
+"pack_true": 10,
+"ocr_NEW": "WRONG",
+"ocr_part": "5603-PAY",
+"ocr_conf": "medium",
+"set": "real"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/real/leviton_5603P2W__blurry.png",
+"id": "leviton_5603P2W__blurry",
+"product": "Leviton 5603-P2W",
+"pack_true": 10,
+"ocr_NEW": "asks",
+"ocr_part": "5603-PAWIR",
+"ocr_conf": "low",
+"set": "real"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/real/leviton_5603P2W__dark.png",
+"id": "leviton_5603P2W__dark",
+"product": "Leviton 5603-P2W",
+"pack_true": 10,
+"ocr_NEW": "correct",
+"ocr_part": "5603-P2W",
+"ocr_conf": "high",
+"set": "real"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/real/leviton_5603P2W__far_away.png",
+"id": "leviton_5603P2W__far_away",
+"product": "Leviton 5603-P2W",
+"pack_true": 10,
+"ocr_NEW": "asks",
+"ocr_part": "5603-P2W",
+"ocr_conf": "low",
+"set": "real"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/real/leviton_5603P2W__tilted.png",
+"id": "leviton_5603P2W__tilted",
+"product": "Leviton 5603-P2W",
+"pack_true": 10,
+"ocr_NEW": "WRONG",
+"ocr_part": "ISE0S-PAW",
+"ocr_conf": "medium",
+"set": "real"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/real/leviton_80409NW__as_taken.png",
+"id": "leviton_80409NW__as_taken",
+"product": "Leviton 80409-NW",
+"pack_true": 25,
+"ocr_NEW": "correct",
+"ocr_part": "80409-NW",
+"ocr_conf": "high",
+"set": "real"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/real/leviton_80409NW__turned_90.png",
+"id": "leviton_80409NW__turned_90",
+"product": "Leviton 80409-NW",
+"pack_true": 25,
+"ocr_NEW": "asks",
+"ocr_part": "G0409-NW",
+"ocr_conf": "low",
+"set": "real"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/real/leviton_80409NW__blurry.png",
+"id": "leviton_80409NW__blurry",
+"product": "Leviton 80409-NW",
+"pack_true": 25,
+"ocr_NEW": "correct",
+"ocr_part": "80409-NW",
+"ocr_conf": "medium",
+"set": "real"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/real/leviton_80409NW__dark.png",
+"id": "leviton_80409NW__dark",
+"product": "Leviton 80409-NW",
+"pack_true": 25,
+"ocr_NEW": "correct",
+"ocr_part": "80409-NW",
+"ocr_conf": "high",
+"set": "real"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/real/leviton_80409NW__far_away.png",
+"id": "leviton_80409NW__far_away",
+"product": "Leviton 80409-NW",
+"pack_true": 25,
+"ocr_NEW": "correct",
+"ocr_part": "80409-NW",
+"ocr_conf": "high",
+"set": "real"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/real/leviton_80409NW__tilted.png",
+"id": "leviton_80409NW__tilted",
+"product": "Leviton 80409-NW",
+"pack_true": 25,
+"ocr_NEW": "correct",
+"ocr_part": "80409-NW",
+"ocr_conf": "high",
+"set": "real"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/real/luxrite_LR25022__as_taken.png",
+"id": "luxrite_LR25022__as_taken",
+"product": "Luxrite LR25022",
+"pack_true": null,
+"ocr_NEW": "correct",
+"ocr_part": "LR25022",
+"ocr_conf": "high",
+"set": "real"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/real/luxrite_LR25022__turned_90.png",
+"id": "luxrite_LR25022__turned_90",
+"product": "Luxrite LR25022",
+"pack_true": null,
+"ocr_NEW": "asks",
+"ocr_part": "WA30",
+"ocr_conf": "low",
+"set": "real"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/real/luxrite_LR25022__blurry.png",
+"id": "luxrite_LR25022__blurry",
+"product": "Luxrite LR25022",
+"pack_true": null,
+"ocr_NEW": "correct",
+"ocr_part": "LR25022",
+"ocr_conf": "medium",
+"set": "real"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/real/luxrite_LR25022__dark.png",
+"id": "luxrite_LR25022__dark",
+"product": "Luxrite LR25022",
+"pack_true": null,
+"ocr_NEW": "correct",
+"ocr_part": "LR25022",
+"ocr_conf": "high",
+"set": "real"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/real/luxrite_LR25022__far_away.png",
+"id": "luxrite_LR25022__far_away",
+"product": "Luxrite LR25022",
+"pack_true": null,
+"ocr_NEW": "asks",
+"ocr_part": "",
+"ocr_conf": "low",
+"set": "real"
+},
+{
+"img": "/home/claude/electrixusa/test/v2/out/real/luxrite_LR25022__tilted.png",
+"id": "luxrite_LR25022__tilted",
+"product": "Luxrite LR25022",
+"pack_true": null,
+"ocr_NEW": "WRONG",
+"ocr_part": "LR28022",
+"ocr_conf": "medium",
+"set": "real"
+}
+]

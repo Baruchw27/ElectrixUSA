@@ -23,20 +23,50 @@
     '.v2c b{display:block;font-size:14px}.v2c small{color:#666;font-size:12px}.v2c.top{border-color:#2e9e5b;background:#ecfdf3}' +
     '.v2f{display:grid;grid-template-columns:92px 1fr;gap:5px 8px;align-items:center;margin:6px 0}.v2f label{margin:0;font-size:12px;color:#555}.v2f input{margin:0;padding:8px}' +
     '.v2st{font-size:12px;color:#555;margin:2px 0 6px}.v2warn{background:#fff6e5;border:1px solid #f0c36d;border-radius:10px;padding:8px 10px;font-size:13px;margin:6px 0}' +
+    '.v2nocode{position:absolute;right:10px;bottom:10px;z-index:3;border:0;border-radius:18px;background:rgba(0,0,0,.6);color:#fff;font-size:13px;padding:8px 12px}.v2ft{position:absolute;left:10px;top:10px;z-index:3;background:#6a1b9a;color:#fff;font-size:11px;padding:2px 8px;border-radius:8px}' +
     '.v2tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:8px;background:#eef;color:#334;margin-left:4px}.v2tag.lo{background:#fde8e8;color:#922}.v2tag.hi{background:#e3f6ea;color:#185c34}';
   document.head.appendChild(css);
+
+  // ── FIELD TEST (staging only, EX_CFG.fieldtest): log what real phone cameras read, how fast, and what the person
+  //    confirmed, to the staging table scan_field_log. Never on the live app.
+  const FT = !!(window.EX_CFG && window.EX_CFG.fieldtest);
+  const ftQ = []; let ftBusy = false; const ftSess = Math.random().toString(36).slice(2, 10);
+  function ftLog(ev, o) {
+    if (!FT) return; try {
+      const pc = (scM && scM.pc) || {}; const m = (typeof me === 'function' && me()) || {};
+      ftQ.push(Object.assign({ ev, session: ftSess, emp: m.id || null, device: String(navigator.userAgent || '').slice(0, 180), format: pc.type || null, raw: pc.raw ? String(pc.raw).slice(0, 80) : null, ok: pc.ok == null ? null : !!pc.ok, code_key: pc.key || null, level: pc.level || null, via: scM && scM.via || null }, o || {}));
+      ftFlush();
+    } catch (e) { }
+  }
+  async function ftFlush() {
+    if (ftBusy || !ftQ.length || !window.EX_sb || (window.EX_SYNC && window.EX_SYNC.online === false)) return; ftBusy = true;
+    try { const rows = ftQ.splice(0, 20); const r = await window.EX_sb.from('scan_field_log').insert(rows); if (r && r.error) { if (ftQ.length < 200) ftQ.unshift(...rows); } } catch (e) { } finally { ftBusy = false; if (ftQ.length) setTimeout(ftFlush, 4000); }
+  }
+  window.EX_ftLog = ftLog;
+  { const _res = window.scResume; window.scResume = function () { const r = _res.apply(this, arguments); if (scM) scM.readyAt = Date.now(); return r; }; }
+  { const _sk = window.scSkip; window.scSkip = function () { ftLog('outcome', { status: 'skipped' }); return _sk.apply(this, arguments); }; }
 
   // ── barcode reader: also pass along what kind of barcode it was (UPC-A / UPC-E / EAN / ITF-14 / Code 128)
   const _bcEngine = window.bcEngine;
   window.bcEngine = async function (video, onCode) {
     if (window.EX_fakeScan) return window.EX_fakeScan(video, onCode);
+    if (scM) scM.readyAt = scM.readyAt || Date.now();
+    const t0 = () => (scM && scM.readyAt) || Date.now();
+    // EAN-8, UPC-E and ITF have weak protection against misreads (in the camera test a damaged Code 128 once came out
+    // as a valid EAN-8): those only count when the same number is read twice in a row.
+    let prev = { k: '', t: 0 };
+    const weak = (f) => /ean[_-]?8|upc[_-]?e|itf/i.test(String(f || ''));
+    const report = (eng) => (raw, fmt) => {
+      if (weak(fmt)) { const now = Date.now(); if (!(prev.k === raw && now - prev.t < 1500)) { prev = { k: raw, t: now }; return; } }
+      prev = { k: '', t: 0 };
+      if (scM && !scM.pausedCode) { scM.engine = eng; scM.decodeMs = Date.now() - t0(); } onCode(raw, fmt); };
     if ('BarcodeDetector' in window) {
       try {
         const fm = await BarcodeDetector.getSupportedFormats();
         const want = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf', 'qr_code', 'data_matrix'].filter(f => fm.includes(f));
         if (want.length) {
           const det = new BarcodeDetector({ formats: want }); let on = true;
-          const tick = async () => { if (!on) return; try { if (video.readyState >= 2) { const r = await det.detect(video); if (r && r[0] && r[0].rawValue) onCode(r[0].rawValue, r[0].format); } } catch (e) { } setTimeout(tick, 200); };
+          const tick = async () => { if (!on) return; try { if (video.readyState >= 2) { const r = await det.detect(video); if (r && r[0] && r[0].rawValue) report('native')(r[0].rawValue, r[0].format); } } catch (e) { } setTimeout(tick, 200); };
           tick(); return () => { on = false; };
         }
       } catch (e) { }
@@ -49,16 +79,20 @@
     const rd = new ZX.MultiFormatReader(); rd.setHints(hints);
     const cv = document.createElement('canvas'); const cx = cv.getContext('2d', { willReadFrequently: true }); let on = true, n = 0;
     const read = (sx, sy, sw, sh, rot) => {
-      const sc = Math.min(1, (rot ? 720 : 1000) / Math.max(sw, sh)); const w = Math.max(1, Math.round(sw * sc)), hh = Math.max(1, Math.round(sh * sc));
+      const sc = Math.min(1, (rot ? 720 : 1280) / Math.max(sw, sh)); // full camera detail (1280) for small / far barcodes const w = Math.max(1, Math.round(sw * sc)), hh = Math.max(1, Math.round(sh * sc));
       if (rot) { cv.width = hh; cv.height = w; cx.save(); cx.translate(hh, 0); cx.rotate(Math.PI / 2); cx.drawImage(video, sx, sy, sw, sh, 0, 0, w, hh); cx.restore(); } else { cv.width = w; cv.height = hh; cx.drawImage(video, sx, sy, sw, sh, 0, 0, w, hh); }
       const src = new ZX.HTMLCanvasElementLuminanceSource(cv);
       for (const B of [ZX.HybridBinarizer, ZX.GlobalHistogramBinarizer]) { try { const r = rd.decodeWithState(new ZX.BinaryBitmap(new B(src))); if (r && r.getText()) return [r.getText(), fmtName(r)]; } catch (e) { } finally { try { rd.reset(); } catch (e) { } } }
+      // UPC-E (small parts): this ZXing version has no UPC-E reader, so read it from the same black/white rows
+      try { const bm = new ZX.BinaryBitmap(new ZX.HybridBinarizer(src)); const W = bm.getWidth(), H = bm.getHeight();
+        const u = S.upceFromRows(y => { const ba = bm.getBlackRow(y, null); const a = new Uint8Array(W); for (let i = 0; i < W; i++) a[i] = ba.get(i) ? 1 : 0; return a; }, W, H);
+        if (u) return [u, 'UPC_E']; } catch (e) { }
       return null;
     };
     const tick = () => {
       if (!on) return; let got = null;
       try { const vw = video.videoWidth, vh = video.videoHeight; if (video.readyState >= 2 && vw && vh) { const k = n++ % 3; if (k === 0) { const sw = vw * 0.9, sh = vh * 0.5; got = read((vw - sw) / 2, (vh - sh) / 2, sw, sh, false); } else if (k === 1) got = read(0, 0, vw, vh, false); else got = read(0, 0, vw, vh, true); } } catch (e) { }
-      if (got) try { onCode(got[0], got[1]); } catch (e) { }
+      if (got) try { report('zxing')(got[0], got[1]); } catch (e) { }
       setTimeout(tick, got ? 400 : 90);
     };
     tick(); return () => { on = false; };
@@ -66,14 +100,15 @@
   void _bcEngine;
 
   // ── 1. every scan starts here
-  window.scHit = function (raw, format) {
+  window.scHit = function (raw, format, via) {
     if (!scM || scM.pausedCode) return;
     const pc = S.parseCode(raw, format); const now = Date.now();
+    scM.via = via || 'camera';
     const sig = pc.key || String(raw);
     if (sig === scM.last && now - scM.lastT < 1800) return;
     scM.last = sig; scM.lastT = now;
     if (!pc.ok) { // failed check digit / unreadable: never guess
-      scM.bad = (scM.bad || 0) + 1;
+      scM.bad = (scM.bad || 0) + 1; ftLog('decode', { raw: String(raw).slice(0, 80), format: format || null, ok: false, status: 'bad read (' + (pc.reason || '?') + ')', engine: scM.engine || null, ms: scM.decodeMs || null });
       const h = $('scHint'); if (h) h.innerHTML = '⚠️ ' + T('That barcode did not read cleanly — hold steady and scan again');
       try { navigator.vibrate && navigator.vibrate([30, 60, 30]); } catch (e) { }
       return;
@@ -81,6 +116,7 @@
     scBeep(); scM.pausedCode = pc.key; scM.pc = pc; scM.thumb = scThumb(); scM.snap = null; scM.part = '';
     const r = S.identify(pc, ctx());
     scM.idr = r;
+    ftLog('decode', { status: r.status, engine: scM.engine || null, ms: scM.decodeMs || null, item: r.item ? r.item.id : null, item_name: r.item ? r.item.name : null, pack: r.pack || null, thumb: r.status === 'known' ? null : scM.thumb || null });
     if (r.status === 'known') { v2Qty(r.item, r.pack); return; }
     scM.snap = scSnap();
     if (r.status === 'conflict') { v2Conflict(r); return; }
@@ -91,6 +127,7 @@
   // ── saving a confirmed barcode → item link (one record per barcode, same id on every phone)
   function v2Link(itemId, pack) {
     const pc = scM && scM.pc; const it = stockById(itemId); if (!pc || !it) return null;
+    if (pc.label) return null; // found from the label words (no barcode): nothing to remember
     const id = S.linkId(pc); const M = maps();
     M[id] = { id, code: pc.key, raw: pc.raw, type: pc.type, item: itemId, pack: pack == null ? (pc.level === 'box' ? null : 1) : Math.max(1, Math.floor(+pack)), level: pc.level, by: (me() || {}).id, ts: Date.now(), verified: true };
     // the old list on the item: drop this barcode from any OTHER item (it was wrong there); never touch names
@@ -108,7 +145,12 @@
     scM.qItem = it.id; scM.pack = pack; scM.q = 1;
     const L = scLines(); const ex = L.find(l => l.id === it.id);
     const unit = E(it.unit || 'pc');
-    sheet('<div class="scItem">' + scPic(it.img || scM.thumb) + '<div><b>' + E(it.name) + '</b><small>' + T('In the garage') + ': ' + (+it.qty || 0) + ' ' + unit + (pack > 1 ? ' · 📦 ' + T('box of') + ' ' + pack : '') + '</small></div></div>' +
+    const pc = scM.pc || {}; const canChange = pc.ok && !pc.label;
+    const nm = String(it.name || '').match(/\b(\d{1,3})\s*-?\s*(?:pk|pack|pcs|pc\b|ct|count|per box|\/box|bx)\b/i); const namePack = nm ? +nm[1] : 0;
+    sheet('<div class="scItem">' + scPic(it.img || scM.thumb) + '<div><b>' + E(it.name) + '</b><small>' + T('In the garage') + ': ' + (+it.qty || 0) + ' ' + unit + '</small></div></div>' +
+      (scM.via === 'ocr' ? '<div class="v2warn">' + T('The barcode number was read from the print on the label — check this is the right item.') + '</div>' : '') +
+      (canChange ? '<div class="v2st">' + (pack > 1 ? '📦 ' + T('One scan = a box of') + ' <b>' + pack + '</b>' : T('One scan = 1 piece')) + ' · <a href="#" onclick="v2ChangePack();return false">' + T('change') + '</a></div>' : '') +
+      (canChange && pack === 1 && namePack > 1 ? '<div class="v2warn">' + T('The name says') + ' ' + namePack + '-' + T('pack') + '. ' + T('If this barcode is on the box, tap change.') + '</div>' : '') +
       (ex ? '<div class="v2st">' + T('Already in this list') + ': ' + ex.qty + ' ' + unit + '</div>' : '') +
       '<div style="font-weight:700;margin:12px 0 6px">' + (pack > 1 ? (out ? T('How many boxes are you taking?') : T('How many boxes are you putting back?')) : (out ? T('How many are you taking out?') : T('How many are you putting back?'))) + '</div>' +
       '<div class="scStep"><button type="button" aria-label="less" onclick="scQ(-1)">−</button><input id="scQn" type="number" inputmode="numeric" pattern="[0-9]*" min="1" value="1" onfocus="this.select()" oninput="scQ(0,parseInt(this.value)||0,1)"><button type="button" aria-label="more" onclick="scQ(1)">+</button></div>' +
@@ -132,23 +174,30 @@
     const units = S.unitsFor(scM.q, scM.pack || 1);
     const L = scLines(); const ex = L.find(l => l.id === s.id);
     if (ex) ex.qty += units; else L.push({ id: s.id, name: s.name, unit: s.unit || 'pc', qty: units, code: true });
+    ftLog('outcome', { status: 'counted', item: s.id, item_name: s.name, pack: scM.pack || 1, units });
     scList(s.name); scResume(); const h = $('scHint'); if (h) h.innerHTML = '✓ ' + units + '× ' + E(s.name);
   };
 
   // ── a box barcode the first time: how many are inside?
-  function v2AskPack(it, guess) {
-    scM.packFor = it.id;
-    sheet(head(T('Box barcode'), codeLabel(scM.pc)) +
+  // allowOne: the barcode could be on a single piece OR on a box (UPC/EAN); a GTIN-14 / ITF-14 carton code is always a box
+  function v2AskPack(it, guess, allowOne) {
+    scM.packFor = it.id; guess = guess > 1 ? guess : null;
+    sheet(head(allowOne ? T('What does one scan count?') : T('Box barcode'), codeLabel(scM.pc)) +
       '<div style="margin:6px 0"><b>' + E(it.name) + '</b></div>' +
-      '<div style="font-weight:700;margin:8px 0 6px">' + T('How many are in ONE box?') + '</div>' +
+      (allowOne ? '<div style="font-size:13px;margin:2px 0 8px">' + T('Look where this barcode is printed. You answer this once — it is remembered for this barcode.') + '</div>' +
+        '<button type="button" class="v2c' + (guess ? '' : ' top') + '" onclick="v2PackOne()"><b>1 — ' + T('a single piece') + '</b><small>' + T('the barcode is on one item') + '</small></button>' +
+        '<div style="font-weight:700;margin:10px 0 6px">' + T('…or it is on a BOX of:') + '</div>'
+        : '<div style="font-weight:700;margin:8px 0 6px">' + T('How many are in ONE box?') + '</div>') +
       '<div class="scStep"><button type="button" onclick="v2PackStep(-1)">−</button><input id="v2pack" type="number" inputmode="numeric" min="1" value="' + (guess || '') + '" placeholder="' + T('e.g. 10') + '"><button type="button" onclick="v2PackStep(1)">+</button></div>' +
       '<div class="scChips">' + [5, 10, 20, 25, 50, 100].map(n => '<button type="button" class="chip" onclick="document.getElementById(\'v2pack\').value=' + n + '">' + n + '</button>').join('') + '</div>' +
       (guess ? '<div class="v2st">📷 ' + T('Read on the box') + ': ' + guess + '</div>' : '') +
       '<button type="button" class="btn gr" style="margin-top:10px;padding:13px" onclick="v2PackOk()">✓ ' + T('Save box size') + '</button>' +
       '<button type="button" class="btn sec2" style="margin-top:6px;padding:9px" onclick="scSkip()">' + T('Cancel') + '</button>');
   }
+  window.v2PackOne = function () { const it = stockById(scM && scM.packFor); if (!it) return; v2Link(it.id, 1); ftLog('outcome', { status: 'pack confirmed', item: it.id, pack: 1 }); v2Qty(it, 1); };
+  window.v2ChangePack = function () { const it = stockById(scM && scM.qItem); if (!it || !scM.pc) return; v2AskPack(it, scM.pack, scM.pc.level !== 'box'); };
   window.v2PackStep = function (d) { const i = $('v2pack'); i.value = Math.max(1, (parseInt(i.value) || 0) + d); };
-  window.v2PackOk = function () { const n = parseInt(($('v2pack') || {}).value) || 0; if (n < 1) { toast(T('Type how many are in the box')); return; } const it = stockById(scM.packFor); if (!it) return; v2Link(it.id, n); toast('📦 ' + T('Box of') + ' ' + n + ' — ' + it.name, 'green'); v2Qty(it, n); };
+  window.v2PackOk = function () { const n = parseInt(($('v2pack') || {}).value) || 0; if (n < 1) { toast(T('Type how many are in the box')); return; } const it = stockById(scM.packFor); if (!it) return; v2Link(it.id, n); ftLog('outcome', { status: 'pack confirmed', item: it.id, pack: n }); toast('📦 ' + T('Box of') + ' ' + n + ' — ' + it.name, 'green'); v2Qty(it, n); };
 
   // ── same barcode confirmed on two items (two phones, or a past mistake): the person picks
   function v2Conflict(r) {
@@ -184,8 +233,8 @@
   window.v2New = function () {
     if (!scM) return; const pc = scM.pc; if (!pc) return;
     scM.lp = null; scM.online = null; scM.ai = null; scM.ocrText = '';
-    sheet(head(pc.level === 'box' ? T('New box barcode') : T('New barcode'), codeLabel(pc)) +
-      '<div style="font-size:13px;margin:2px 0 6px">' + T('Which item is this? You only do this once — next time it knows.') + '</div>' +
+    sheet(head(pc.label ? T('Item without a barcode') : pc.level === 'box' ? T('New box barcode') : T('New barcode'), pc.label ? '' : codeLabel(pc)) +
+      '<div style="font-size:13px;margin:2px 0 6px">' + (pc.label ? T('Which item is this? Pick it from your items or save it as new.') : T('Which item is this? You only do this once — next time it knows.')) + '</div>' +
       '<div id="v2steps" class="v2st"></div><div id="scLook"></div><div id="v2cands"></div>' +
       '<input id="scFind" type="search" placeholder="🔍 ' + T('Search your items or type a new one…') + '" oninput="scMatch()" autocomplete="off"><div id="scRes"></div>' +
       '<div style="display:flex;gap:8px;margin-top:6px"><button type="button" class="btn sec2" style="flex:1;padding:9px" onclick="scSkip()">' + T('Skip') + '</button></div>');
@@ -200,8 +249,11 @@
     let best = null; const props = [];
     // a) Code 128 text that IS a part number
     if (pc.text) { const pcs = S.partCandidates(pc.text); if (pcs[0]) props.push({ brand: S.brandFromText(pc.text), part: pcs[0].p, desc: '', name: '', conf: 'medium', why: ['part number in the barcode'], src: 'code' }); }
+    // a2) the product list built from supplier pages (catalog-real.json): exact barcode match
+    if (pc.gtin) { const cat = await catalog(); if (!still(key)) return; const x = cat.byG[pc.gtin] || (pc.level === 'box' ? cat.byG[pc.family] : null);
+      if (x) props.push({ brand: x.b, part: x.p, desc: String(x.d || '').split(',')[0].trim(), color: x.c || '', pack: pc.level === 'box' ? (pc.count || null) : (x.n > 1 ? x.n : null), name: '', conf: 'high', why: [pc.level === 'box' ? 'the single-item barcode inside this box is in the product list' : 'barcode found in the product list'], src: 'catalog' }); }
     // b) online product databases (numeric barcodes)
-    if (pc.gtin && typeof window.EX_upc === 'function' && !(window.EX_SYNC && window.EX_SYNC.online === false)) {
+    if (pc.gtin && !props.some(p => p.src === 'catalog') && typeof window.EX_upc === 'function' && !(window.EX_SYNC && window.EX_SYNC.online === false)) {
       step('🔎 ' + T('Looking up this barcode online…'));
       let r = null; try { r = await window.EX_upc(pc.level === 'box' ? pc.family.slice(1) : pc.gtin.slice(1)); } catch (e) { }
       if (!still(key)) return;
@@ -232,6 +284,9 @@
     v2Show(best, props);
   }
   window.v2Find = v2Find;
+  let _cat = null;
+  async function catalog() { if (_cat) return _cat; try { const r = await fetch('catalog-real.json', { cache: 'force-cache' }); const a = await r.json(); const by = {}; (a || []).forEach(x => { if (x && x.g) by[x.g] = x; }); _cat = { list: a || [], byG: by }; } catch (e) { _cat = { list: [], byG: {} }; } return _cat; }
+  window.v2Catalog = catalog;
 
   // label reading, stopping as soon as it is sure:
   //  1) contrast-boosted photo, 3 text layouts  2) "clean label" (local threshold, box lines removed), 2 layouts
@@ -239,8 +294,13 @@
   // (test/v2/eval_labels.js scores this exact order on 650 label photos)
   async function v2ReadLabel(snap, pc, onStep) {
     const lt = learned(); let text = ''; let lp = null;
-    const go = async (img, modes) => { const tx = await ocrMulti(img, modes); text += '\n' + tx; const l2 = S.parseLabel(text, { code: pc, learned: lt }); if (!lp || l2.conf === 'high' || rankOf(l2) > rankOf(lp) || (rankOf(l2) === rankOf(lp) && l2.score > lp.score)) lp = l2; return lp.conf === 'high'; };
+    // real part numbers we know (product list + your items): a reading 1 character away from one of them is never "sure"
+    const cat = await catalog(); const known = cat.list.map(x => ({ b: x.b, p: x.p })).concat(D.stock.filter(x => x && x.model).map(x => ({ b: x.brand || '', p: x.model })));
+    const go = async (img, modes) => { const tx = await ocrMulti(img, modes); text += '\n' + tx; const l2 = S.parseLabel(text, { code: pc, learned: lt, known }); if (!lp || l2.conf === 'high' || rankOf(l2) > rankOf(lp) || (rankOf(l2) === rankOf(lp) && l2.score > lp.score)) lp = l2; return lp.conf === 'high'; };
     const say = (m) => onStep && onStep('📷 ' + T('Reading the label…') + (m ? ' (' + T(m) + ')' : ''));
+    // a tilted photo is straightened first (in the label test this took tilted photos from 11 to 40 right out of 50)
+    let ang = 0; try { ang = await labelAngle(snap); } catch (e) { }
+    if (Math.abs(ang) >= 1.5) { say('straightening the photo'); if (await go(await labelClean(snap, ang, true), ['11', '3'])) return done(); }
     const prep = await ocrPrep(snap);
     if (await go(prep, ['6', '11', '3'])) return done();
     say('cleaning up the photo'); const clean = await labelClean(snap);
@@ -288,6 +348,38 @@
     return out;
   }
   window.labelClean = labelClean;
+  // how much the label is tilted: on a small black/white copy, try −15°…15° (½° steps) and keep the angle where the
+  // text rows line up best (sharpest row profile). Same steps as test/v2/add_deskew.py. Returns the counter-clockwise turn to apply.
+  function labelAngle(dataUrl) {
+    return new Promise(ok => {
+      const im = new Image();
+      im.onload = () => {
+        try {
+          const s = 400 / Math.max(im.width, im.height); const W = Math.max(1, Math.round(im.width * s)), H = Math.max(1, Math.round(im.height * s));
+          const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0, W, H);
+          const p = g.getImageData(0, 0, W, H).data, n = W * H; const a = new Float64Array(n); for (let i = 0; i < n; i++) a[i] = 0.299 * p[i * 4] + 0.587 * p[i * 4 + 1] + 0.114 * p[i * 4 + 2];
+          const ii = new Float64Array((W + 1) * (H + 1)); for (let y = 0; y < H; y++) { let row = 0; for (let x = 0; x < W; x++) { row += a[y * W + x]; ii[(y + 1) * (W + 1) + x + 1] = ii[y * (W + 1) + x + 1] + row; } }
+          const r = 12, k = 0.12; const ink = new Uint8Array(n);
+          for (let y = 0; y < H; y++) { const y0 = Math.max(0, y - r), y1 = Math.min(H, y + r + 1); for (let x = 0; x < W; x++) { const x0 = Math.max(0, x - r), x1 = Math.min(W, x + r + 1);
+            const S2 = ii[y1 * (W + 1) + x1] - ii[y0 * (W + 1) + x1] - ii[y1 * (W + 1) + x0] + ii[y0 * (W + 1) + x0]; ink[y * W + x] = a[y * W + x] < S2 / ((y1 - y0) * (x1 - x0)) * (1 - k) ? 1 : 0; } }
+          // long box/table lines out (they would dominate the profile)
+          for (let y = 0; y < H; y++) { let run = 0; for (let x = 0; x <= W; x++) { if (x < W && ink[y * W + x]) run++; else { if (run > W * 0.25) for (let xx = x - run; xx < x; xx++) ink[y * W + xx] = 0; run = 0; } } }
+          for (let x = 0; x < W; x++) { let run = 0; for (let y = 0; y <= H; y++) { if (y < H && ink[y * W + x]) run++; else { if (run > H * 0.12) for (let yy = y - run; yy < y; yy++) ink[yy * W + x] = 0; run = 0; } } }
+          const pts = []; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (ink[y * W + x]) pts.push(x - W / 2, y - H / 2);
+          let best = -1, ba = 0; const prof = new Float64Array(H + 2);
+          for (let a10 = -150; a10 <= 150; a10 += 5) {
+            const t = a10 / 10 * Math.PI / 180, cs = Math.cos(t), sn = Math.sin(t); prof.fill(0);
+            for (let i = 0; i < pts.length; i += 2) { const yy = Math.round(-pts[i] * sn + pts[i + 1] * cs + H / 2); if (yy >= 0 && yy < H) prof[yy]++; }
+            let v = 0; for (let y = 1; y < H; y++) { const d = prof[y] - prof[y - 1]; v += d * d; }
+            if (v > best) { best = v; ba = a10 / 10; }
+          }
+          ok(ba);
+        } catch (e) { ok(0); }
+      };
+      im.onerror = () => ok(0); im.src = dataUrl;
+    });
+  }
+  window.labelAngle = labelAngle;
   function rotate(dataUrl, deg) {
     return new Promise(ok => { const im = new Image(); im.onload = () => { const c = document.createElement('canvas'); const q = deg % 180 !== 0; c.width = q ? im.height : im.width; c.height = q ? im.width : im.height; const g = c.getContext('2d'); g.translate(c.width / 2, c.height / 2); g.rotate(deg * Math.PI / 180); g.drawImage(im, -im.width / 2, -im.height / 2); ok(c.toDataURL('image/jpeg', 0.9)); }; im.onerror = () => ok(dataUrl); im.src = dataUrl; });
   }
@@ -313,9 +405,9 @@
     cb.innerHTML = cands.length ? '<div style="font-size:12px;color:#555;margin:6px 0 2px">' + (strong.length ? T('Is it one of these? (already in your items)') : T('Possible matches — check before tapping:')) + '</div>' +
       cands.slice(0, 4).map((c, i) => '<button type="button" class="v2c' + (c.score >= 0.85 && i === 0 ? ' top' : '') + '" onclick="v2Pick(\'' + J(c.item.id) + '\')"><b>' + E(c.item.name) + '</b><small>' + E(T(c.why)) + ' · ' + Math.round(c.score * 100) + '%</small></button>').join('') : '';
     if (best) {
-      const src = { label: '📷 ' + T('read on the label'), online: '🔎 ' + T('online product database'), upcitemdb: '🔎 ' + T('online product database'), ai: '🤖 AI', code: '▦ ' + T('barcode') };
+      const src = { catalog: '📗 ' + T('product list'), label: '📷 ' + T('read on the label'), online: '🔎 ' + T('online product database'), upcitemdb: '🔎 ' + T('online product database'), ai: '🤖 AI', code: '▦ ' + T('barcode') };
       const tag = best.conf === 'high' ? '<span class="v2tag hi">' + T('sure') + '</span>' : '<span class="v2tag">' + T('check it') + '</span>';
-      const pack = scM.pc.level === 'box' ? (scM.pc.count || best.pack || '') : '';
+      const pack = scM.pc.level === 'box' ? (scM.pc.count || best.pack || '') : (best.pack > 1 ? best.pack : 1);
       box.innerHTML = '<div class="scLk on" style="display:block">' + (best.img ? '<img src="' + E(best.img) + '" alt="" referrerpolicy="no-referrer" onerror="this.remove()" style="float:right">' : '') +
         '<small>' + (src[best.src] || src.label) + tag + '</small>' +
         '<div class="v2f"><label>' + T('Maker') + '</label><input id="v2b" value="' + E(best.brand || '') + '">' +
@@ -323,8 +415,10 @@
         '<label>' + T('Description') + '</label><input id="v2d" value="' + E(best.desc || '') + '">' +
         '<label>' + T('Color') + '</label><input id="v2c" value="' + E(best.color || '') + '">' +
         '<label>' + T('Unit') + '</label><input id="v2u" value="' + E(best.unit || 'pc') + '">' +
-        (scM.pc.level === 'box' ? '<label>📦 ' + T('In one box') + '</label><input id="v2n" type="number" inputmode="numeric" min="1" value="' + E(pack) + '" placeholder="' + T('how many') + '">' : '') +
-        '</div>' + (best.why && best.why.length ? '<small>' + E(best.why.join(' · ')) + '</small>' : '') + '</div>' +
+        (scM.pc.label ? '' : '<label>📦 ' + (scM.pc.level === 'box' ? T('In one box') : T('One scan counts')) + '</label><input id="v2n" type="number" inputmode="numeric" min="1" value="' + E(pack) + '" placeholder="' + T('how many') + '">' +
+          (scM.pc.level === 'box' ? '' : '<small style="grid-column:1/-1">' + T('1 = the barcode is on one piece. If it is on a box, type how many are in the box.') + '</small>')) +
+        '</div>' + (best.nearPart && best.nearPart !== best.part ? '<button type="button" class="chip" style="margin:4px 0" onclick="document.getElementById(\'v2p\').value=\'' + J(best.nearPart) + '\';this.remove()">' + T('Did you mean') + ' <b>' + E(best.nearPart) + '</b>?</button>' : '') +
+        (best.why && best.why.length ? '<small>' + E(best.why.join(' · ')) + '</small>' : '') + '</div>' +
         (best.src === 'ai' && !best.verified ? '<div class="v2warn">' + T('AI could not find this part number printed on the label. Check it before saving.') + '</div>' : '') +
         '<button type="button" class="btn gr" style="margin:6px 0 4px;padding:12px" onclick="v2SaveNew()">✓ ' + (strong.length ? T('No, save as a NEW item') : T('Save as new item')) + '</button>';
       const f = $('scFind'); if (f && !f.value) { f.value = [best.brand, best.part].filter(Boolean).join(' ') || (best.desc || ''); }
@@ -357,16 +451,18 @@
   // tapping an existing item = the person confirms it
   window.v2Pick = function (id) {
     const it = stockById(id); if (!it || !scM) return;
-    if (scM.pc.level === 'box') { const n = parseInt(($('v2n') || {}).value) || scM.pc.count || (scM.best && scM.best.pack) || null; if (n) { v2Link(id, n); toast('🔗 ' + T('Barcode saved for') + ' ' + it.name, 'green'); v2Qty(it, n); return; } v2AskPack(it, null); return; }
-    v2Link(id, 1);
+    ftLog('outcome', { status: 'picked existing item', item: id, item_name: it.name });
     // fill in a missing part number / maker on the item (only empty fields; staff only, like the server rule)
     const b = scM.best; if (b && staff()) { let ch = false; if (b.part && !it.model) { it.model = b.part; ch = true; } if (b.brand && !it.brand) { it.brand = b.brand; ch = true; } if (ch) try { save(); } catch (e) { } }
-    toast('🔗 ' + T('Barcode saved for') + ' ' + it.name, 'green'); v2Qty(it, 1);
+    if (scM.pc.label) { v2Qty(it, 1); return; }
+    const guess = parseInt(($('v2n') || {}).value) || scM.pc.count || (b && b.pack) || (scM.lp && scM.lp.pack) || null;
+    if (scM.pc.level === 'box') { if (guess && $('v2n')) { v2Link(id, guess); toast('🔗 ' + T('Barcode saved for') + ' ' + it.name, 'green'); v2Qty(it, guess); return; } v2AskPack(it, guess, false); return; }
+    v2AskPack(it, guess, true); // single piece or a box? asked once per barcode, before anything is counted
   };
   window.scLink = window.v2Pick;
 
   function createItem(fields) {
-    const pc = scM.pc; let id = S.newItemId(pc);
+    const pc = scM.pc; let id = pc.label ? (typeof nid === 'function' ? nid('s') : 's_' + Date.now().toString(36)) : S.newItemId(pc);
     const ex = stockById(id);
     if (ex) return ex; // another phone already made it from this barcode
     const s = { id, name: fields.name, unit: fields.unit || 'pc', qty: 0, min: 0 };
@@ -386,26 +482,75 @@
     // still catch duplicates by part number before making a new item
     if (f.part) { const dup = S.matchInventory({ part: f.part, brand: f.brand }, D.stock).find(c => c.score >= 0.97); if (dup && !scM.dupOk) { scM.dupOk = true; const cb = $('v2cands'); if (cb) cb.innerHTML = '<div class="v2warn">' + T('You already have an item with this part number:') + '</div><button type="button" class="v2c top" onclick="v2Pick(\'' + J(dup.item.id) + '\')"><b>' + E(dup.item.name) + '</b><small>' + T('Tap to use it') + '</small></button><div style="font-size:12px;color:#666">' + T('Tap Save again only if it really is a different item.') + '</div>'; return; } }
     const s = createItem(f); const n = parseInt(($('v2n') || {}).value) || null;
-    if (scM.pc.level === 'box') { if (n) { v2Link(s.id, n); v2Qty(s, n); } else v2AskPack(s, scM.pc.count || b.pack || null); }
-    else { v2Link(s.id, 1); toast('✓ ' + s.name, 'green'); v2Qty(s, 1); }
+    ftLog('outcome', { status: 'new item saved', item: s.id, item_name: s.name, pack: n || null, note: b.src || null });
+    if (scM.pc.label) { toast('✓ ' + s.name, 'green'); v2Qty(s, 1); return; }
+    if (scM.pc.level === 'box') { if (n) { v2Link(s.id, n); v2Qty(s, n); } else v2AskPack(s, scM.pc.count || b.pack || null, false); }
+    else { v2Link(s.id, n || 1); toast('✓ ' + s.name, 'green'); v2Qty(s, n || 1); }
   };
   window.v2SaveTyped = function () {
     const q = (($('scFind') || {}).value || '').trim(); if (!q || !scM) return;
     const pcs = S.partCandidates(q); const f = { name: q, unit: 'pc', brand: S.brandFromText(q) || '', part: pcs[0] ? pcs[0].p : '', src: 'typed' };
     const s = createItem(f);
-    if (scM.pc.level === 'box') v2AskPack(s, scM.pc.count || null); else { v2Link(s.id, 1); v2Qty(s, 1); }
+    ftLog('outcome', { status: 'new item typed', item: s.id, item_name: s.name });
+    if (scM.pc.label) { v2Qty(s, 1); return; }
+    v2AskPack(s, scM.pc.count || (scM.lp && scM.lp.pack) || null, scM.pc.level !== 'box');
   };
   window.scNew = window.v2SaveTyped;
   window.scUseLook = window.v2SaveNew;
 
   // wrong item: take this barcode off it and identify again
   window.scWrong = function () {
-    if (!scM || !scM.pc) return; const pc = scM.pc;
+    if (!scM || !scM.pc) return; const pc = scM.pc; ftLog('outcome', { status: 'wrong item', item: scM.qItem || null });
     Object.keys(maps()).forEach(k => { const m = maps()[k]; if (m && S.parseCode(m.code || '').key === pc.key) delete maps()[k]; });
     D.stock.forEach(x => { if (x && (x.codes || []).some(c => S.parseCode(c).key === pc.key)) x.codes = x.codes.filter(c => S.parseCode(c).key !== pc.key); });
     try { save(); } catch (e) { }
     scM.snap = scM.snap || scSnap(); window.v2New();
   };
+
+  // ── barcode won't scan (torn, wrinkled, no barcode at all): read the label instead.
+  // 1) the numbers printed under the barcode, accepted only with a valid check digit and seen in BOTH reading passes
+  //    (one pass only → the person compares the number with the label first)  2) otherwise the words on the label.
+  function digitRuns(txt) {
+    const out = []; const re = /\d(?:[ \-]?\d){7,15}/g; let m;
+    // a whole printed number only (12–14 digits, spaces allowed) — never a piece cut out of a longer number
+    while ((m = re.exec(String(txt || '')))) { const d = m[0].replace(/\D/g, ''); if (d.length >= 12 && d.length <= 14 && S.parseCode(d).ok) out.push(d); }
+    const g = /\(\s*01\s*\)\s*(\d{14})/g; while ((m = g.exec(String(txt || '')))) if (S.parseCode(m[1]).ok) out.push(m[1]);
+    return [...new Set(out)];
+  }
+  window.v2NoCode = async function () {
+    if (!scM || scM.pausedCode) return; const snap = scSnap(); if (!snap) { toast(T('Point the camera at the label first')); return; }
+    scM.pausedCode = 'label?'; scM.snap = snap; scM.thumb = scThumb();
+    sheet(head(T('Reading the label…'), '') + '<div id="v2steps" class="v2st">📷 ' + T('Looking for the barcode number printed on the label…') + '</div>' +
+      '<button type="button" class="btn sec2" style="margin-top:6px;padding:9px" onclick="scSkip()">' + T('Cancel') + '</button>');
+    let a = '', b = '';
+    try { const prep = await ocrPrep(snap); a = await ocrMulti(prep, ['6']); if (!scM || scM.pausedCode !== 'label?') return; b = await ocrMulti(prep, ['11']); } catch (e) { }
+    if (!scM || scM.pausedCode !== 'label?') return;
+    const ra = digitRuns(a), rb = digitRuns(b); const both = ra.filter(x => rb.some(y => S.parseCode(y).key === S.parseCode(x).key)); const one = [...new Set(ra.concat(rb))];
+    scM.ocrText = a + '\n' + b;
+    if (both.length === 1) { ftLog('decode', { raw: both[0], status: 'number read from label (both passes)', via: 'ocr' }); scM.pausedCode = null; scM.last = ''; window.scHit(both[0], null, 'ocr'); return; }
+    if (one.length >= 1 && one.length <= 3) {
+      sheet(head(T('Is this the barcode number?'), '') + '<div style="font-size:13px;margin:2px 0 8px">' + T('Compare with the numbers printed under the barcode:') + '</div>' +
+        one.map(c => '<button type="button" class="v2c" onclick="v2OcrCode(\'' + J(c) + '\')"><b style="font-family:monospace;font-size:18px;letter-spacing:1px">' + E(c) + '</b></button>').join('') +
+        '<button type="button" class="btn sec2" style="margin-top:6px;padding:10px" onclick="v2LabelOnly()">' + T('None of these — read the words') + '</button>');
+      return;
+    }
+    window.v2LabelOnly();
+  };
+  window.v2OcrCode = function (c) { if (!scM) return; ftLog('decode', { raw: c, status: 'number read from label (person confirmed)', via: 'ocr' }); scM.pausedCode = null; scM.last = ''; window.scHit(c, null, 'ocr'); };
+  window.v2LabelOnly = function () {
+    if (!scM) return; const pc = { ok: true, raw: '', type: T('label'), key: 'L:' + Date.now(), gtin: '', level: 'each', family: '', count: null, label: true };
+    scM.pc = pc; scM.pausedCode = pc.key; scM.via = 'label'; scM.idr = { status: 'new', pc }; ftLog('decode', { status: 'no barcode — reading the words', via: 'label' });
+    window.v2New();
+  };
+  // the button on the camera screen
+  { const _open = window.scanOpen; window.scanOpen = async function () { const r = await _open.apply(this, arguments);
+      try { const cam = document.querySelector('#scanOv .scCam'); if (cam && !$('v2nocode')) { const bt = document.createElement('button'); bt.type = 'button'; bt.id = 'v2nocode'; bt.className = 'v2nocode'; bt.textContent = '🏷 ' + T("Won't scan? Read the label"); bt.onclick = () => window.v2NoCode(); cam.appendChild(bt); } } catch (e) { }
+      // no barcode read for a while → tell the person what helps (most misses in the camera test were "too far" or "out of focus")
+      try { const iv = setInterval(() => { if (!scM) { clearInterval(iv); return; } const h = $('scHint'); if (!h || scM.pausedCode) return;
+          const idle = Date.now() - (scM.readyAt || Date.now());
+          if (idle > 9000) h.innerHTML = '🏷 ' + T("Still nothing? Tap “Won't scan? Read the label”"); else if (idle > 4500) h.innerHTML = '🔍 ' + T('Hold the phone closer — the barcode should fill the box, and keep it still'); }, 1000); } catch (e) { }
+      if (FT) { try { const cam = document.querySelector('#scanOv .scCam'); if (cam) { const tg = document.createElement('div'); tg.className = 'v2ft'; tg.textContent = '🧪 ' + T('Field test: scans are logged'); cam.appendChild(tg); } } catch (e) { } }
+      return r; }; }
 
   // the old lookup/label steps are replaced
   window.scLookup = function () { };
@@ -426,6 +571,13 @@
       'Maker': 'Marca', 'Part #': 'Nº de parte', 'Description': 'Descripción', 'Color': 'Color', 'Unit': 'Unidad', 'In one box': 'En una caja', 'how many': 'cuántos', 'AI could not find this part number printed on the label. Check it before saving.': 'La IA no encontró este número de parte en la etiqueta. Revísalo antes de guardar.',
       'No, save as a NEW item': 'No, guardar como artículo NUEVO', 'Save as new item': 'Guardar como artículo nuevo', 'Could not identify this item for sure. Search your items, or type the name.': 'No se pudo identificar con seguridad. Busca en tus artículos o escribe el nombre.',
       'Words seen on the label (tap to use):': 'Palabras en la etiqueta (toca para usar):', 'You already have an item with this part number:': 'Ya tienes un artículo con este número de parte:', 'Tap to use it': 'Toca para usarlo', 'Tap Save again only if it really is a different item.': 'Toca Guardar otra vez solo si de verdad es otro artículo.',
+      'What does one scan count?': '¿Cuánto cuenta un escaneo?', 'Look where this barcode is printed. You answer this once — it is remembered for this barcode.': 'Mira dónde está impreso este código. Solo respondes una vez — se recuerda para este código.',
+      'a single piece': 'una pieza', 'the barcode is on one item': 'el código está en una pieza', '…or it is on a BOX of:': '…o está en una CAJA de:', 'One scan = a box of': 'Un escaneo = una caja de', 'One scan = 1 piece': 'Un escaneo = 1 pieza', 'change': 'cambiar',
+      'The name says': 'El nombre dice', 'pack': 'paquete', 'If this barcode is on the box, tap change.': 'Si este código está en la caja, toca cambiar.', 'The barcode number was read from the print on the label — check this is the right item.': 'El número se leyó de la etiqueta impresa — revisa que sea el artículo correcto.',
+      'product list': 'lista de productos', 'One scan counts': 'Un escaneo cuenta', '1 = the barcode is on one piece. If it is on a box, type how many are in the box.': '1 = el código está en una pieza. Si está en una caja, escribe cuántos hay en la caja.',
+      'Item without a barcode': 'Artículo sin código', 'Which item is this? Pick it from your items or save it as new.': '¿Qué artículo es? Elígelo de tus artículos o guárdalo como nuevo.', 'Point the camera at the label first': 'Primero apunta la cámara a la etiqueta',
+      'Reading the label…': 'Leyendo la etiqueta…', 'Looking for the barcode number printed on the label…': 'Buscando el número del código impreso en la etiqueta…', 'Is this the barcode number?': '¿Es este el número del código?', 'Compare with the numbers printed under the barcode:': 'Compara con los números impresos bajo el código:',
+      'None of these — read the words': 'Ninguno — leer las palabras', 'Did you mean': '¿Quisiste decir', "Still nothing? Tap “Won't scan? Read the label”": '¿Nada todavía? Toca “¿No escanea? Leer la etiqueta”', 'Hold the phone closer — the barcode should fill the box, and keep it still': 'Acerca el teléfono — el código debe llenar el cuadro, y no lo muevas', "Won't scan? Read the label": '¿No escanea? Leer la etiqueta', 'Field test: scans are logged': 'Prueba de campo: se registran los escaneos', 'label': 'etiqueta',
       'same part number': 'mismo número de parte', 'same part number (OCR look-alike letters)': 'mismo número de parte (letras parecidas)', 'part number 1 character apart': 'número de parte con 1 carácter distinto', 'part number 2 characters apart': 'número de parte con 2 caracteres distintos', 'matches another part number on the label': 'coincide con otro número de la etiqueta' };
     if (typeof ES === 'object' && ES) Object.assign(ES, ES2);
   } catch (e) { }

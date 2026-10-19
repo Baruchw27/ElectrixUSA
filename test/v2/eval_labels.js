@@ -13,15 +13,19 @@ const items = P.map((p, i) => {
   if (i % 2 === 0) { it.brand = p.brand; it.model = p.part; }
   return it;
 });
+// the real product list the app ships with (staging/catalog-real.json, from supplier pages) — independent of products.json
+const KNOWN = process.env.NO_CATALOG ? [] : JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'staging', 'catalog-real.json'), 'utf8')).map(x => ({ b: x.b, p: x.p }));
 // exactly the app's order (scanner-v2-ui.js v2ReadLabel): stop as soon as the reading is sure
 const RANK = { high: 3, medium: 2, low: 1 };
-const STEPS = process.env.V1_PIPELINE ? [['m6', 'm11', 'm3'], ['r90'], ['r270'], ['r180']] : [['m6', 'm11', 'm3'], ['a6', 'a11'], ['ar90'], ['ar270'], ['ar180'], ['ad-6'], ['ad6']];
+const STEPS = process.env.V1_PIPELINE ? [['m6', 'm11', 'm3'], ['r90'], ['r270'], ['r180']] : [['m6', 'm11', 'm3'], ['a6', 'a11'], ['ask', 'ask3'], ['ar90'], ['ar270'], ['ar180'], ['ad-6'], ['ad6']];
 function pipeline(m) {
   const tx = m.texts || {}; let text = ''; let lp = null; let passes = 0;
-  for (const st of STEPS) {
+  // app order: when the photo is tilted (angle found ≥ 1.5°), the straightened reading goes first
+  const steps = !process.env.V1_PIPELINE && Math.abs(m.angle || 0) >= 1.5 ? [['ask', 'ask3']].concat(STEPS.filter(st => st[0] !== 'ask')) : STEPS;
+  for (const st of steps) {
     if (st.some(k => tx[k] == null)) continue;
     text += '\n' + st.map(k => tx[k]).join('\n'); passes += st.length;
-    const l2 = S.parseLabel(text, { code: m.scan });
+    const l2 = S.parseLabel(text, { code: m.scan, known: KNOWN });
     if (!lp || l2.conf === 'high' || RANK[l2.conf] > RANK[lp.conf] || (RANK[l2.conf] === RANK[lp.conf] && l2.score > lp.score)) lp = l2;
     if (lp.conf === 'high') break;
   }

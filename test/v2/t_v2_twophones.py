@@ -93,6 +93,7 @@ async def main():
             fam = await A.evaluate("document.getElementById('scSheet').innerText")
             chk('single switch barcode → asks "single item of a box you have"', 'SINGLE item of a box' in fam, fam[:200])
             await asyncio.gather(A.evaluate(f"v2FamilyYes('{iid}');0"), B.evaluate(f"v2Pick('{iid}');0")); await A.wait_for_timeout(300)
+            await B.evaluate("v2PackOne();0"); await B.wait_for_timeout(200)  # V2.1: the person confirms what one scan counts
             await asyncio.gather(A.evaluate("scSkip();scanClose();0"), B.evaluate("scSkip();scanClose();0"))
             ok3 = await until(A, f"fetch('/__records?coll=bc').then(r=>r.json()).then(a=>a.filter(r=>!r.deleted&&r.data.item==='{iid}').length===3)", 8000)
             chk('all 3 barcodes of the item kept (box, single, bin label)', ok3, [r['data'] for r in srv('/__records?coll=bc')])

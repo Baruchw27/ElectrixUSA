@@ -3,31 +3,30 @@
  "summary": {
   "NEW": {
    "correct_sure": 260,
-   "correct_checkit": 228,
-   "asks": 56,
+   "correct_checkit": 276,
    "no_part": 14,
-   "wrong_part_checkit": 79,
-   "wrong_part_SURE": 9,
+   "asks": 41,
+   "wrong_part_checkit": 55,
    "correct_no_maker_sure": 4
   },
   "KNOWN": {
-   "right_item_first": 529,
-   "asks": 51,
-   "right_item_in_list": 58,
-   "not_offered": 12
+   "right_item_first": 561,
+   "right_item_in_list": 48,
+   "not_offered": 7,
+   "asks": 34
   },
   "SIB": {
-   "shown_as_possible_only": 434,
-   "none": 216
+   "shown_as_possible_only": 450,
+   "none": 200
   }
  },
  "byCond": {
   "clean": {
    "n": 50,
    "NEW": {
-    "correct_sure": 25,
-    "correct_checkit": 19,
-    "wrong_part_checkit": 2,
+    "correct_sure": 24,
+    "correct_checkit": 21,
+    "wrong_part_checkit": 1,
     "asks": 4
    },
    "KNOWN": {
@@ -42,9 +41,9 @@
   "blur_light": {
    "n": 50,
    "NEW": {
-    "correct_sure": 25,
-    "correct_checkit": 19,
-    "wrong_part_checkit": 3,
+    "correct_sure": 24,
+    "correct_checkit": 21,
+    "wrong_part_checkit": 2,
     "no_part": 1,
     "asks": 2
    },
@@ -61,10 +60,9 @@
   "blur_heavy": {
    "n": 50,
    "NEW": {
-    "correct_checkit": 16,
-    "correct_sure": 22,
-    "wrong_part_checkit": 5,
-    "wrong_part_SURE": 3,
+    "correct_checkit": 23,
+    "correct_sure": 21,
+    "wrong_part_checkit": 2,
     "no_part": 1,
     "asks": 3
    },
@@ -81,31 +79,29 @@
   "tilt": {
    "n": 50,
    "NEW": {
-    "asks": 20,
-    "wrong_part_checkit": 15,
-    "wrong_part_SURE": 3,
-    "correct_sure": 7,
-    "no_part": 2,
-    "correct_checkit": 3
+    "correct_sure": 17,
+    "correct_checkit": 23,
+    "asks": 5,
+    "wrong_part_checkit": 3,
+    "no_part": 2
    },
    "KNOWN": {
-    "asks": 20,
-    "not_offered": 4,
-    "right_item_in_list": 14,
-    "right_item_first": 12
+    "right_item_first": 42,
+    "right_item_in_list": 5,
+    "asks": 3
    },
    "SIB": {
-    "none": 33,
-    "shown_as_possible_only": 17
+    "shown_as_possible_only": 33,
+    "none": 17
    }
   },
   "rot90": {
    "n": 50,
    "NEW": {
-    "correct_checkit": 20,
-    "correct_sure": 13,
+    "correct_checkit": 22,
+    "correct_sure": 12,
     "asks": 6,
-    "wrong_part_checkit": 11
+    "wrong_part_checkit": 10
    },
    "KNOWN": {
     "right_item_first": 37,
@@ -121,15 +117,14 @@
   "rot180": {
    "n": 50,
    "NEW": {
-    "correct_checkit": 22,
+    "correct_checkit": 24,
     "correct_sure": 12,
     "asks": 2,
-    "wrong_part_checkit": 13,
-    "wrong_part_SURE": 1
+    "wrong_part_checkit": 12
    },
    "KNOWN": {
-    "right_item_first": 38,
-    "not_offered": 5,
+    "right_item_first": 39,
+    "not_offered": 4,
     "right_item_in_list": 7
    },
    "SIB": {
@@ -140,9 +135,9 @@
   "dark": {
    "n": 50,
    "NEW": {
-    "correct_sure": 25,
-    "correct_checkit": 19,
-    "wrong_part_checkit": 3,
+    "correct_sure": 24,
+    "correct_checkit": 21,
+    "wrong_part_checkit": 2,
     "no_part": 1,
     "asks": 2
    },
@@ -159,9 +154,9 @@
   "overexposed": {
    "n": 50,
    "NEW": {
-    "correct_sure": 25,
-    "correct_checkit": 19,
-    "wrong_part_checkit": 2,
+    "correct_sure": 24,
+    "correct_checkit": 21,
+    "wrong_part_checkit": 1,
     "no_part": 1,
     "asks": 3
    },
@@ -178,9 +173,9 @@
   "shadow": {
    "n": 50,
    "NEW": {
-    "correct_sure": 21,
-    "correct_checkit": 19,
-    "wrong_part_checkit": 2,
+    "correct_sure": 20,
+    "correct_checkit": 21,
+    "wrong_part_checkit": 1,
     "correct_no_maker_sure": 4,
     "no_part": 1,
     "asks": 3
@@ -198,10 +193,10 @@
   "noise_jpeg": {
    "n": 50,
    "NEW": {
-    "correct_sure": 19,
+    "correct_sure": 18,
     "wrong_part_checkit": 10,
     "no_part": 2,
-    "correct_checkit": 14,
+    "correct_checkit": 15,
     "asks": 5
    },
    "KNOWN": {
@@ -217,16 +212,15 @@
   "partial": {
    "n": 50,
    "NEW": {
-    "correct_checkit": 23,
+    "correct_checkit": 25,
     "correct_sure": 19,
     "wrong_part_checkit": 3,
-    "wrong_part_SURE": 2,
     "no_part": 1,
     "asks": 2
    },
    "KNOWN": {
-    "right_item_first": 45,
-    "right_item_in_list": 2,
+    "right_item_first": 46,
+    "right_item_in_list": 1,
     "not_offered": 1,
     "asks": 2
    },
@@ -238,9 +232,9 @@
   "lowres": {
    "n": 50,
    "NEW": {
-    "correct_sure": 25,
-    "correct_checkit": 18,
-    "wrong_part_checkit": 4,
+    "correct_sure": 24,
+    "correct_checkit": 20,
+    "wrong_part_checkit": 3,
     "no_part": 1,
     "asks": 2
    },
@@ -258,9 +252,9 @@
    "n": 50,
    "NEW": {
     "no_part": 3,
-    "correct_sure": 22,
-    "correct_checkit": 17,
-    "wrong_part_checkit": 6,
+    "correct_sure": 21,
+    "correct_checkit": 19,
+    "wrong_part_checkit": 5,
     "asks": 2
    },
    "KNOWN": {
@@ -276,8 +270,8 @@
  },
  "packs": {
   "total": 299,
-  "right": 170,
-  "wrong": 18
+  "right": 146,
+  "wrong": 14
  },
  "rows": [
   {
@@ -316,7 +310,7 @@
   },
   {
    "photo": "lev-5601__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 5601-2W",
    "cond": "blur_heavy",
    "read_maker": "Leviton",
@@ -329,28 +323,28 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-5601",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-5601__tilt",
-   "passes_used": 10,
+   "passes_used": 2,
    "product": "Leviton 5601-2W",
    "cond": "tilt",
    "read_maker": "Leviton",
-   "read_part": "",
-   "conf": "low",
-   "name": "",
+   "read_part": "5601-2W",
+   "conf": "high",
+   "name": "Leviton 5601-2W Single-Pole Switch Grounding",
    "pack_read": null,
    "pack_true": 10,
-   "NEW": "asks",
-   "KNOWN": "asks",
-   "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "NEW": "correct_sure",
+   "KNOWN": "right_item_first",
+   "SIB": "shown_as_possible_only",
+   "top_known": "lev-5601",
+   "passes": 2
   },
   {
    "photo": "lev-5601__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 5601-2W",
    "cond": "rot90",
    "read_maker": "Leviton",
@@ -363,11 +357,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-5601",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-5601__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 5601-2W",
    "cond": "rot180",
    "read_maker": "Leviton",
@@ -380,7 +374,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-5601",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-5601__dark",
@@ -452,7 +446,7 @@
   },
   {
    "photo": "lev-5601__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 5601-2W",
    "cond": "partial",
    "read_maker": "Leviton",
@@ -465,7 +459,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-5601",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-5601__lowres",
@@ -486,7 +480,7 @@
   },
   {
    "photo": "lev-5601__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 5601-2W",
    "cond": "small_pack",
    "read_maker": "Leviton",
@@ -499,7 +493,7 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-5603__clean",
@@ -554,24 +548,24 @@
   },
   {
    "photo": "lev-5603__tilt",
-   "passes_used": 10,
+   "passes_used": 2,
    "product": "Leviton 5603-2W",
    "cond": "tilt",
    "read_maker": "Leviton",
-   "read_part": "",
-   "conf": "low",
-   "name": "",
+   "read_part": "5603-2W",
+   "conf": "high",
+   "name": "Leviton 5603-2W",
    "pack_read": null,
    "pack_true": 10,
-   "NEW": "asks",
-   "KNOWN": "asks",
-   "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "NEW": "correct_sure",
+   "KNOWN": "right_item_first",
+   "SIB": "shown_as_possible_only",
+   "top_known": "lev-5603",
+   "passes": 2
   },
   {
    "photo": "lev-5603__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 5603-2W",
    "cond": "rot90",
    "read_maker": "Leviton",
@@ -584,11 +578,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-5603",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-5603__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 5603-2W",
    "cond": "rot180",
    "read_maker": "Leviton",
@@ -601,7 +595,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-5603",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-5603__dark",
@@ -673,7 +667,7 @@
   },
   {
    "photo": "lev-5603__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 5603-2W",
    "cond": "partial",
    "read_maker": "Leviton",
@@ -686,7 +680,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-5603",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-5603__lowres",
@@ -775,24 +769,24 @@
   },
   {
    "photo": "lev-5604__tilt",
-   "passes_used": 10,
+   "passes_used": 2,
    "product": "Leviton 5604-2W",
    "cond": "tilt",
    "read_maker": "Leviton",
-   "read_part": "",
-   "conf": "low",
-   "name": "",
-   "pack_read": null,
+   "read_part": "5604-2W",
+   "conf": "high",
+   "name": "Leviton 5604-2W 4-Way Switch Grounding White",
+   "pack_read": 40,
    "pack_true": 10,
-   "NEW": "asks",
-   "KNOWN": "asks",
-   "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "NEW": "correct_sure",
+   "KNOWN": "right_item_first",
+   "SIB": "shown_as_possible_only",
+   "top_known": "lev-5604",
+   "passes": 2
   },
   {
    "photo": "lev-5604__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 5604-2W",
    "cond": "rot90",
    "read_maker": "Leviton",
@@ -805,11 +799,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-5604",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-5604__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 5604-2W",
    "cond": "rot180",
    "read_maker": "Leviton",
@@ -822,7 +816,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-5604",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-5604__dark",
@@ -894,7 +888,7 @@
   },
   {
    "photo": "lev-5604__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 5604-2W",
    "cond": "partial",
    "read_maker": "Leviton",
@@ -907,7 +901,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-5604",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-5604__lowres",
@@ -928,7 +922,7 @@
   },
   {
    "photo": "lev-5604__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 5604-2W",
    "cond": "small_pack",
    "read_maker": "Leviton",
@@ -941,7 +935,7 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-5603p__clean",
@@ -969,7 +963,7 @@
    "read_part": "5603-P2W",
    "conf": "high",
    "name": "Leviton 5603-P2W 3-Way Switch Grounding White",
-   "pack_read": 109,
+   "pack_read": null,
    "pack_true": 10,
    "NEW": "correct_sure",
    "KNOWN": "right_item_first",
@@ -979,7 +973,7 @@
   },
   {
    "photo": "lev-5603p__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 5603-P2W",
    "cond": "blur_heavy",
    "read_maker": "Leviton",
@@ -992,28 +986,28 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-5603p",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-5603p__tilt",
-   "passes_used": 10,
+   "passes_used": 2,
    "product": "Leviton 5603-P2W",
    "cond": "tilt",
    "read_maker": "Leviton",
-   "read_part": "S508",
-   "conf": "low",
-   "name": "",
+   "read_part": "5603-P2W",
+   "conf": "high",
+   "name": "Leviton 5603-P2W 3-Way Switch Grounding White",
    "pack_read": null,
    "pack_true": 10,
-   "NEW": "asks",
-   "KNOWN": "asks",
-   "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "NEW": "correct_sure",
+   "KNOWN": "right_item_first",
+   "SIB": "shown_as_possible_only",
+   "top_known": "lev-5603p",
+   "passes": 2
   },
   {
    "photo": "lev-5603p__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 5603-P2W",
    "cond": "rot90",
    "read_maker": "Leviton",
@@ -1026,11 +1020,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-5603p",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-5603p__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 5603-P2W",
    "cond": "rot180",
    "read_maker": "Leviton",
@@ -1043,7 +1037,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-5603p",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-5603p__dark",
@@ -1115,7 +1109,7 @@
   },
   {
    "photo": "lev-5603p__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 5603-P2W",
    "cond": "partial",
    "read_maker": "Leviton",
@@ -1128,7 +1122,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-5603p",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-5603p__lowres",
@@ -1173,7 +1167,7 @@
    "read_part": "80409-NW",
    "conf": "high",
    "name": "Leviton 80409-NW 2G Std Decora Wallplate Thermoplastic White",
-   "pack_read": 25,
+   "pack_read": null,
    "pack_true": 25,
    "NEW": "correct_sure",
    "KNOWN": "right_item_first",
@@ -1217,54 +1211,54 @@
   },
   {
    "photo": "lev-80409__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 80409-NW",
    "cond": "tilt",
    "read_maker": "Leviton",
-   "read_part": "",
-   "conf": "low",
-   "name": "",
+   "read_part": "80409-NW",
+   "conf": "medium",
+   "name": "Leviton 80409-NW",
    "pack_read": null,
    "pack_true": 25,
-   "NEW": "asks",
-   "KNOWN": "asks",
-   "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "NEW": "correct_checkit",
+   "KNOWN": "right_item_first",
+   "SIB": "shown_as_possible_only",
+   "top_known": "lev-80409",
+   "passes": 12
   },
   {
    "photo": "lev-80409__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 80409-NW",
    "cond": "rot90",
    "read_maker": "Leviton",
    "read_part": "80409-NW",
    "conf": "medium",
    "name": "Leviton 80409-NW 2G Std Decora Wallplate Thermoplastic White",
-   "pack_read": 25,
+   "pack_read": null,
    "pack_true": 25,
    "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-80409",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-80409__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 80409-NW",
    "cond": "rot180",
    "read_maker": "Leviton",
    "read_part": "80409-NW",
    "conf": "medium",
    "name": "Leviton 80409-NW 2G Std Decora Wallplate Thermoplastic White",
-   "pack_read": 25,
+   "pack_read": null,
    "pack_true": 25,
    "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-80409",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-80409__dark",
@@ -1275,7 +1269,7 @@
    "read_part": "80409-NW",
    "conf": "high",
    "name": "Leviton 80409-NW 2G Std Decora Wallplate Thermoplastic White",
-   "pack_read": 25,
+   "pack_read": null,
    "pack_true": 25,
    "NEW": "correct_sure",
    "KNOWN": "right_item_first",
@@ -1292,7 +1286,7 @@
    "read_part": "80409-NW",
    "conf": "high",
    "name": "Leviton 80409-NW 2G Std Decora Wallplate Thermoplastic White",
-   "pack_read": 25,
+   "pack_read": null,
    "pack_true": 25,
    "NEW": "correct_sure",
    "KNOWN": "right_item_first",
@@ -1394,7 +1388,7 @@
    "read_part": "80401-NW",
    "conf": "high",
    "name": "Leviton 80401-NW 1G Std Decora Wallplate Thermoplasfft White",
-   "pack_read": 25,
+   "pack_read": null,
    "pack_true": 25,
    "NEW": "correct_sure",
    "KNOWN": "right_item_first",
@@ -1438,54 +1432,54 @@
   },
   {
    "photo": "lev-80401__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 80401-NW",
    "cond": "tilt",
    "read_maker": "Leviton",
-   "read_part": "",
+   "read_part": "80401-NW",
    "conf": "low",
    "name": "",
    "pack_read": null,
    "pack_true": 25,
    "NEW": "asks",
-   "KNOWN": "asks",
-   "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "KNOWN": "right_item_first",
+   "SIB": "shown_as_possible_only",
+   "top_known": "lev-80401",
+   "passes": 12
   },
   {
    "photo": "lev-80401__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 80401-NW",
    "cond": "rot90",
    "read_maker": "Leviton",
    "read_part": "80401-NW",
    "conf": "medium",
    "name": "Leviton 80401-NW 1G Std Decora Wallplate White",
-   "pack_read": 25,
+   "pack_read": null,
    "pack_true": 25,
    "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-80401",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-80401__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 80401-NW",
    "cond": "rot180",
    "read_maker": "Leviton",
    "read_part": "80401-NW",
    "conf": "medium",
    "name": "Leviton 80401-NW 1G Std Decora Wallplate White",
-   "pack_read": 25,
+   "pack_read": null,
    "pack_true": 25,
    "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-80401",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-80401__dark",
@@ -1496,7 +1490,7 @@
    "read_part": "80401-NW",
    "conf": "high",
    "name": "Leviton 80401-NW 1G Std Decora Wallplate Thermoplasfft White",
-   "pack_read": 25,
+   "pack_read": null,
    "pack_true": 25,
    "NEW": "correct_sure",
    "KNOWN": "right_item_first",
@@ -1513,7 +1507,7 @@
    "read_part": "80401-NW",
    "conf": "high",
    "name": "Leviton 80401-NW 1G Std Decora Wallplate Thermoplasfft White",
-   "pack_read": 25,
+   "pack_read": null,
    "pack_true": 25,
    "NEW": "correct_sure",
    "KNOWN": "right_item_first",
@@ -1615,7 +1609,7 @@
    "read_part": "80412-NW",
    "conf": "high",
    "name": "Leviton 80412-NW 3G Std Decora Wallplate Thermoplastic White",
-   "pack_read": 25,
+   "pack_read": null,
    "pack_true": 25,
    "NEW": "correct_sure",
    "KNOWN": "right_item_first",
@@ -1642,7 +1636,7 @@
   },
   {
    "photo": "lev-80412__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 80412-NW",
    "cond": "blur_heavy",
    "read_maker": "Leviton",
@@ -1655,58 +1649,58 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-80412",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-80412__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 80412-NW",
    "cond": "tilt",
    "read_maker": "Leviton",
-   "read_part": "0412-NY",
+   "read_part": "80412-NW",
    "conf": "medium",
-   "name": "Leviton 0412-NY Box",
+   "name": "Leviton 80412-NW Plastic",
    "pack_read": null,
    "pack_true": 25,
-   "NEW": "wrong_part_checkit",
-   "KNOWN": "not_offered",
-   "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "NEW": "correct_checkit",
+   "KNOWN": "right_item_first",
+   "SIB": "shown_as_possible_only",
+   "top_known": "lev-80412",
+   "passes": 12
   },
   {
    "photo": "lev-80412__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 80412-NW",
    "cond": "rot90",
    "read_maker": "Leviton",
    "read_part": "80412-NW",
    "conf": "medium",
    "name": "Leviton 80412-NW 3G Std Decora Wallplate Thermoplastic White",
-   "pack_read": 25,
+   "pack_read": null,
    "pack_true": 25,
    "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-80412",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-80412__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 80412-NW",
    "cond": "rot180",
    "read_maker": "Leviton",
    "read_part": "80412-NW",
    "conf": "medium",
    "name": "Leviton 80412-NW 3G Std Decora Wallplate Thermoplastic White",
-   "pack_read": 25,
+   "pack_read": null,
    "pack_true": 25,
    "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-80412",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-80412__dark",
@@ -1717,7 +1711,7 @@
    "read_part": "80412-NW",
    "conf": "high",
    "name": "Leviton 80412-NW 3G Std Decora Wallplate Thermoplastic White",
-   "pack_read": 25,
+   "pack_read": null,
    "pack_true": 25,
    "NEW": "correct_sure",
    "KNOWN": "right_item_first",
@@ -1734,7 +1728,7 @@
    "read_part": "80412-NW",
    "conf": "high",
    "name": "Leviton 80412-NW 3G Std Decora Wallplate Thermoplastic White",
-   "pack_read": 25,
+   "pack_read": null,
    "pack_true": 25,
    "NEW": "correct_sure",
    "KNOWN": "right_item_first",
@@ -1751,7 +1745,7 @@
    "read_part": "80412-NW",
    "conf": "high",
    "name": "Leviton 80412-NW 3G Std Decora Wallplate Thermoplastic White",
-   "pack_read": 25,
+   "pack_read": null,
    "pack_true": 25,
    "NEW": "correct_sure",
    "KNOWN": "right_item_first",
@@ -1761,7 +1755,7 @@
   },
   {
    "photo": "lev-80412__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 80412-NW",
    "cond": "noise_jpeg",
    "read_maker": "Leviton",
@@ -1774,7 +1768,7 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-80412__partial",
@@ -1829,7 +1823,7 @@
   },
   {
    "photo": "lev-gfnt1__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton GFNT1-W",
    "cond": "clean",
    "read_maker": "Leviton",
@@ -1842,11 +1836,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-gfnt1",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-gfnt1__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton GFNT1-W",
    "cond": "blur_light",
    "read_maker": "Leviton",
@@ -1859,11 +1853,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-gfnt1",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-gfnt1__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton GFNT1-W",
    "cond": "blur_heavy",
    "read_maker": "Leviton",
@@ -1876,28 +1870,28 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-gfnt1",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-gfnt1__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton GFNT1-W",
    "cond": "tilt",
    "read_maker": "Leviton",
-   "read_part": "GFNT1-Y",
+   "read_part": "GFNT1-W",
    "conf": "medium",
-   "name": "Leviton GFNT1-Y 154A Self-Test Receptacle Tamp White",
+   "name": "Leviton GFNT1-W 15A GFCI Ceptacle Tamp White",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
-   "KNOWN": "right_item_in_list",
+   "NEW": "correct_checkit",
+   "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
-   "top_known": "",
-   "passes": 10
+   "top_known": "lev-gfnt1",
+   "passes": 12
   },
   {
    "photo": "lev-gfnt1__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton GFNT1-W",
    "cond": "rot90",
    "read_maker": "Leviton",
@@ -1910,11 +1904,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-gfnt1",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-gfnt1__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton GFNT1-W",
    "cond": "rot180",
    "read_maker": "Leviton",
@@ -1927,11 +1921,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-gfnt1",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-gfnt1__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton GFNT1-W",
    "cond": "dark",
    "read_maker": "Leviton",
@@ -1944,11 +1938,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-gfnt1",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-gfnt1__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton GFNT1-W",
    "cond": "overexposed",
    "read_maker": "Leviton",
@@ -1961,11 +1955,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-gfnt1",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-gfnt1__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton GFNT1-W",
    "cond": "shadow",
    "read_maker": "Leviton",
@@ -1978,11 +1972,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-gfnt1",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-gfnt1__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton GFNT1-W",
    "cond": "noise_jpeg",
    "read_maker": "Leviton",
@@ -1995,11 +1989,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-gfnt1__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton GFNT1-W",
    "cond": "partial",
    "read_maker": "Leviton",
@@ -2012,11 +2006,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-gfnt1",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-gfnt1__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton GFNT1-W",
    "cond": "lowres",
    "read_maker": "Leviton",
@@ -2029,11 +2023,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-gfnt1",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-gfnt1__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton GFNT1-W",
    "cond": "small_pack",
    "read_maker": "Leviton",
@@ -2046,7 +2040,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-gfnt1",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-gfnt2__clean",
@@ -2101,24 +2095,24 @@
   },
   {
    "photo": "lev-gfnt2__tilt",
-   "passes_used": 10,
+   "passes_used": 2,
    "product": "Leviton GFNT2-W",
    "cond": "tilt",
    "read_maker": "Leviton",
-   "read_part": "",
-   "conf": "low",
-   "name": "",
+   "read_part": "GFNT2-W",
+   "conf": "high",
+   "name": "Leviton GFNT2-W 20A Self-Test GFCI Receptacle Tamp White",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "asks",
-   "KNOWN": "asks",
-   "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "NEW": "correct_sure",
+   "KNOWN": "right_item_first",
+   "SIB": "shown_as_possible_only",
+   "top_known": "lev-gfnt2",
+   "passes": 2
   },
   {
    "photo": "lev-gfnt2__rot90",
-   "passes_used": 7,
+   "passes_used": 9,
    "product": "Leviton GFNT2-W",
    "cond": "rot90",
    "read_maker": "Leviton",
@@ -2131,11 +2125,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-gfnt2",
-   "passes": 7
+   "passes": 9
   },
   {
    "photo": "lev-gfnt2__rot180",
-   "passes_used": 8,
+   "passes_used": 10,
    "product": "Leviton GFNT2-W",
    "cond": "rot180",
    "read_maker": "Leviton",
@@ -2148,7 +2142,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-gfnt2",
-   "passes": 8
+   "passes": 10
   },
   {
    "photo": "lev-gfnt2__dark",
@@ -2203,7 +2197,7 @@
   },
   {
    "photo": "lev-gfnt2__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton GFNT2-W",
    "cond": "noise_jpeg",
    "read_maker": "Leviton",
@@ -2216,7 +2210,7 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-gfnt2__partial",
@@ -2271,24 +2265,24 @@
   },
   {
    "photo": "lev-t5325__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5325-W",
    "cond": "clean",
    "read_maker": "Leviton",
    "read_part": "T5325-W",
    "conf": "medium",
    "name": "Leviton T5325-W 15A Duplex Receptacle Tamper Resistant White",
-   "pack_read": 10,
+   "pack_read": null,
    "pack_true": 10,
    "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5325",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5325__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5325-W",
    "cond": "blur_light",
    "read_maker": "Leviton",
@@ -2301,130 +2295,130 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5325",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5325__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5325-W",
    "cond": "blur_heavy",
    "read_maker": "Leviton",
-   "read_part": "TS325-W",
+   "read_part": "T5325-W",
    "conf": "medium",
-   "name": "Leviton TS325-W 15A Duplex Receptacle Tamper Reststany White",
+   "name": "Leviton T5325-W 15A Duplex Receptacle Tamper Reststany White",
    "pack_read": 10,
    "pack_true": 10,
-   "NEW": "wrong_part_checkit",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5325",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5325__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5325-W",
    "cond": "tilt",
    "read_maker": "Leviton",
-   "read_part": "",
-   "conf": "low",
-   "name": "",
+   "read_part": "75325-W",
+   "conf": "medium",
+   "name": "Leviton 75325-W Pole",
    "pack_read": null,
    "pack_true": 10,
-   "NEW": "asks",
-   "KNOWN": "asks",
+   "NEW": "wrong_part_checkit",
+   "KNOWN": "right_item_in_list",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5325__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5325-W",
    "cond": "rot90",
    "read_maker": "Leviton",
    "read_part": "T5325-W",
    "conf": "low",
    "name": "",
-   "pack_read": 10,
+   "pack_read": null,
    "pack_true": 10,
    "NEW": "asks",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5325",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5325__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5325-W",
    "cond": "rot180",
    "read_maker": "Leviton",
    "read_part": "T5325-W",
    "conf": "low",
    "name": "",
-   "pack_read": 10,
+   "pack_read": null,
    "pack_true": 10,
    "NEW": "asks",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5325",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5325__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5325-W",
    "cond": "dark",
    "read_maker": "Leviton",
    "read_part": "T5325-W",
    "conf": "medium",
    "name": "Leviton T5325-W 15A Duplex Receptacle Tamper Resistant White",
-   "pack_read": 10,
+   "pack_read": null,
    "pack_true": 10,
    "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5325",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5325__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5325-W",
    "cond": "overexposed",
    "read_maker": "Leviton",
    "read_part": "T5325-W",
    "conf": "medium",
    "name": "Leviton T5325-W 15A Duplex Receptacle Tamper Resistant White",
-   "pack_read": 10,
+   "pack_read": null,
    "pack_true": 10,
    "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5325",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5325__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5325-W",
    "cond": "shadow",
    "read_maker": "Leviton",
    "read_part": "T5325-W",
    "conf": "medium",
    "name": "Leviton T5325-W 15A Duplex Receptacle Tamper Resistant White",
-   "pack_read": 10,
+   "pack_read": null,
    "pack_true": 10,
    "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5325",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5325__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5325-W",
    "cond": "noise_jpeg",
    "read_maker": "Leviton",
@@ -2437,11 +2431,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5325",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5325__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5325-W",
    "cond": "partial",
    "read_maker": "Leviton",
@@ -2454,11 +2448,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5325",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5325__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5325-W",
    "cond": "lowres",
    "read_maker": "Leviton",
@@ -2471,11 +2465,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5325",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5325__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5325-W",
    "cond": "small_pack",
    "read_maker": "Leviton",
@@ -2488,28 +2482,28 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5320__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5320-W",
    "cond": "clean",
    "read_maker": "Leviton",
    "read_part": "T5320-W",
    "conf": "medium",
    "name": "Leviton T5320-W 15A Duplex Receptacle Tamper Resistant White",
-   "pack_read": 10,
+   "pack_read": null,
    "pack_true": 10,
    "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5320",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5320__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5320-W",
    "cond": "blur_light",
    "read_maker": "Leviton",
@@ -2522,113 +2516,113 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5320",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5320__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5320-W",
    "cond": "blur_heavy",
    "read_maker": "Leviton",
-   "read_part": "TS320-W",
+   "read_part": "T5320-W",
    "conf": "medium",
-   "name": "Leviton TS320-W 15A Duplex Receptacle Tamper Reststany White",
+   "name": "Leviton T5320-W 15A Duplex Receptacle Tamper Reststany White",
    "pack_read": 10,
    "pack_true": 10,
-   "NEW": "wrong_part_checkit",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5320",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5320__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5320-W",
    "cond": "tilt",
    "read_maker": "Leviton",
-   "read_part": "",
-   "conf": "low",
-   "name": "",
+   "read_part": "T5320-W",
+   "conf": "medium",
+   "name": "Leviton T5320-W Tamper",
    "pack_read": null,
    "pack_true": 10,
-   "NEW": "asks",
-   "KNOWN": "asks",
-   "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "NEW": "correct_checkit",
+   "KNOWN": "right_item_first",
+   "SIB": "shown_as_possible_only",
+   "top_known": "lev-t5320",
+   "passes": 12
   },
   {
    "photo": "lev-t5320__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5320-W",
    "cond": "rot90",
    "read_maker": "Leviton",
    "read_part": "T5320-W",
    "conf": "low",
    "name": "",
-   "pack_read": 10,
+   "pack_read": null,
    "pack_true": 10,
    "NEW": "asks",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5320",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5320__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5320-W",
    "cond": "rot180",
    "read_maker": "Leviton",
    "read_part": "T5320-W",
    "conf": "low",
    "name": "",
-   "pack_read": 10,
+   "pack_read": null,
    "pack_true": 10,
    "NEW": "asks",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5320",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5320__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5320-W",
    "cond": "dark",
    "read_maker": "Leviton",
    "read_part": "T5320-W",
    "conf": "medium",
    "name": "Leviton T5320-W 15A Duplex Receptacle Tamper Resistant White",
-   "pack_read": 10,
+   "pack_read": null,
    "pack_true": 10,
    "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5320",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5320__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5320-W",
    "cond": "overexposed",
    "read_maker": "Leviton",
    "read_part": "T5320-W",
    "conf": "medium",
    "name": "Leviton T5320-W 15A Duplex Receptacle Tamper Resistant White",
-   "pack_read": 10,
+   "pack_read": null,
    "pack_true": 10,
    "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5320",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5320__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5320-W",
    "cond": "shadow",
    "read_maker": "Leviton",
@@ -2641,11 +2635,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5320",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5320__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5320-W",
    "cond": "noise_jpeg",
    "read_maker": "Leviton",
@@ -2658,11 +2652,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5320",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5320__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5320-W",
    "cond": "partial",
    "read_maker": "Leviton",
@@ -2675,11 +2669,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5320",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5320__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5320-W",
    "cond": "lowres",
    "read_maker": "Leviton",
@@ -2692,11 +2686,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-t5320",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-t5320__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton T5320-W",
    "cond": "small_pack",
    "read_maker": "Leviton",
@@ -2709,164 +2703,164 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-1LZ",
    "cond": "clean",
    "read_maker": "Leviton",
-   "read_part": "DSLO6-1LZ",
+   "read_part": "DSL06-1LZ",
    "conf": "medium",
-   "name": "Leviton DSLO6-1LZ Decora LED Slide Dimmer White",
+   "name": "Leviton DSL06-1LZ Decora LED Slide Dimmer White",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-1LZ",
    "cond": "blur_light",
    "read_maker": "Leviton",
-   "read_part": "DSLO6-1LZ",
+   "read_part": "DSL06-1LZ",
    "conf": "medium",
-   "name": "Leviton DSLO6-1LZ Decora LED Slide Dimmer White",
+   "name": "Leviton DSL06-1LZ Decora LED Slide Dimmer White",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-1LZ",
    "cond": "blur_heavy",
    "read_maker": "Leviton",
-   "read_part": "DSLO6-11Z",
+   "read_part": "DSL06-1LZ",
    "conf": "medium",
-   "name": "Leviton DSLO6-11Z Decora LED Slide Dimmer",
+   "name": "Leviton DSL06-1LZ Decora LED Slide Dimmer",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-1LZ",
    "cond": "tilt",
    "read_maker": "Leviton",
-   "read_part": "DSLO6-11",
+   "read_part": "DSL06-1LZ",
    "conf": "medium",
-   "name": "Leviton DSLO6-11 Decora LED Slide Dimmer White",
-   "pack_read": 7,
+   "name": "Leviton DSL06-1LZ Decora LED Slide Dimmer White",
+   "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
-   "KNOWN": "right_item_in_list",
+   "NEW": "correct_checkit",
+   "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
-   "top_known": "",
-   "passes": 10
+   "top_known": "lev-dsl06",
+   "passes": 12
   },
   {
    "photo": "lev-dsl06__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-1LZ",
    "cond": "rot90",
    "read_maker": "Leviton",
-   "read_part": "DSLO6-1LZ",
+   "read_part": "DSL06-1LZ",
    "conf": "medium",
-   "name": "Leviton DSLO6-1LZ Decora LED Dimmer White",
+   "name": "Leviton DSL06-1LZ Decora LED Dimmer White",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-1LZ",
    "cond": "rot180",
    "read_maker": "Leviton",
-   "read_part": "DSLO6-1LZ",
+   "read_part": "DSL06-1LZ",
    "conf": "medium",
-   "name": "Leviton DSLO6-1LZ Decora LED Dimmer White",
+   "name": "Leviton DSL06-1LZ Decora LED Dimmer White",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-1LZ",
    "cond": "dark",
    "read_maker": "Leviton",
-   "read_part": "DSLO6-1LZ",
+   "read_part": "DSL06-1LZ",
    "conf": "medium",
-   "name": "Leviton DSLO6-1LZ Decora LED Slide Dimmer White",
+   "name": "Leviton DSL06-1LZ Decora LED Slide Dimmer White",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-1LZ",
    "cond": "overexposed",
    "read_maker": "Leviton",
-   "read_part": "DSLO6-1LZ",
+   "read_part": "DSL06-1LZ",
    "conf": "medium",
-   "name": "Leviton DSLO6-1LZ Decora LED Slide Dimmer White",
+   "name": "Leviton DSL06-1LZ Decora LED Slide Dimmer White",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-1LZ",
    "cond": "shadow",
    "read_maker": "Leviton",
-   "read_part": "DSLO6-1LZ",
+   "read_part": "DSL06-1LZ",
    "conf": "medium",
-   "name": "Leviton DSLO6-1LZ Decora LED Slide Dimmer White",
+   "name": "Leviton DSL06-1LZ Decora LED Slide Dimmer White",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-1LZ",
    "cond": "noise_jpeg",
    "read_maker": "Leviton",
@@ -2879,62 +2873,62 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-1LZ",
    "cond": "partial",
    "read_maker": "Leviton",
-   "read_part": "DSLO6-1LZ",
+   "read_part": "DSL06-1LZ",
    "conf": "medium",
-   "name": "Leviton DSLO6-1LZ Decora LED Slide Dimmer White",
+   "name": "Leviton DSL06-1LZ Decora LED Slide Dimmer White",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-1LZ",
    "cond": "lowres",
    "read_maker": "Leviton",
-   "read_part": "DSLO6-1LZ",
+   "read_part": "DSL06-1LZ",
    "conf": "medium",
-   "name": "Leviton DSLO6-1LZ Decora LED Slide Dimmer White",
+   "name": "Leviton DSL06-1LZ Decora LED Slide Dimmer White",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-1LZ",
    "cond": "small_pack",
    "read_maker": "Leviton",
-   "read_part": "DSLO6-1LZ",
+   "read_part": "DSL06-1LZ",
    "conf": "medium",
-   "name": "Leviton DSLO6-1LZ Decora LED Slide Dimmer White",
+   "name": "Leviton DSL06-1LZ Decora LED Slide Dimmer White",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06i__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-10Z",
    "cond": "clean",
    "read_maker": "Leviton",
@@ -2947,11 +2941,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06i",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06i__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-10Z",
    "cond": "blur_light",
    "read_maker": "Leviton",
@@ -2964,11 +2958,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06i",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06i__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-10Z",
    "cond": "blur_heavy",
    "read_maker": "Leviton",
@@ -2981,28 +2975,28 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06i",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06i__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-10Z",
    "cond": "tilt",
    "read_maker": "Leviton",
-   "read_part": "DSLO6-1927",
+   "read_part": "DSLO06-10Z",
    "conf": "medium",
-   "name": "Leviton DSLO6-1927 Decora LED Slide Dimmer Ivory",
+   "name": "Leviton DSLO06-10Z Decora LED Slide Dimmer Ivory",
    "pack_read": null,
    "pack_true": 1,
    "NEW": "wrong_part_checkit",
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06i__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-10Z",
    "cond": "rot90",
    "read_maker": "Leviton",
@@ -3015,11 +3009,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06i",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06i__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-10Z",
    "cond": "rot180",
    "read_maker": "Leviton",
@@ -3032,11 +3026,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06i",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06i__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-10Z",
    "cond": "dark",
    "read_maker": "Leviton",
@@ -3049,11 +3043,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06i",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06i__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-10Z",
    "cond": "overexposed",
    "read_maker": "Leviton",
@@ -3066,11 +3060,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06i",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06i__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-10Z",
    "cond": "shadow",
    "read_maker": "Leviton",
@@ -3083,11 +3077,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06i",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06i__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-10Z",
    "cond": "noise_jpeg",
    "read_maker": "Leviton",
@@ -3100,11 +3094,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06i",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06i__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-10Z",
    "cond": "partial",
    "read_maker": "Leviton",
@@ -3117,11 +3111,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06i",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06i__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-10Z",
    "cond": "lowres",
    "read_maker": "Leviton",
@@ -3134,11 +3128,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06i",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-dsl06i__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton DSL06-10Z",
    "cond": "small_pack",
    "read_maker": "Leviton",
@@ -3151,11 +3145,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-dsl06i",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-T",
    "cond": "clean",
    "read_maker": "Leviton",
@@ -3168,11 +3162,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-T",
    "cond": "blur_light",
    "read_maker": "Leviton",
@@ -3185,11 +3179,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-T",
    "cond": "blur_heavy",
    "read_maker": "Leviton",
@@ -3202,28 +3196,28 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-T",
    "cond": "tilt",
    "read_maker": "Leviton",
-   "read_part": "",
-   "conf": "low",
-   "name": "",
+   "read_part": "LB120-T",
+   "conf": "medium",
+   "name": "Leviton LB120-T Pole 20A Plug-In Circuit Breaker",
    "pack_read": null,
    "pack_true": 5,
-   "NEW": "asks",
-   "KNOWN": "asks",
-   "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "NEW": "correct_checkit",
+   "KNOWN": "right_item_first",
+   "SIB": "shown_as_possible_only",
+   "top_known": "lev-lb120",
+   "passes": 12
   },
   {
    "photo": "lev-lb120__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-T",
    "cond": "rot90",
    "read_maker": "Leviton",
@@ -3236,11 +3230,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-T",
    "cond": "rot180",
    "read_maker": "Leviton",
@@ -3253,11 +3247,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-T",
    "cond": "dark",
    "read_maker": "Leviton",
@@ -3270,11 +3264,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-T",
    "cond": "overexposed",
    "read_maker": "Leviton",
@@ -3287,11 +3281,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-T",
    "cond": "shadow",
    "read_maker": "Leviton",
@@ -3304,11 +3298,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-T",
    "cond": "noise_jpeg",
    "read_maker": "Leviton",
@@ -3321,11 +3315,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-T",
    "cond": "partial",
    "read_maker": "Leviton",
@@ -3338,11 +3332,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-T",
    "cond": "lowres",
    "read_maker": "Leviton",
@@ -3355,11 +3349,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-T",
    "cond": "small_pack",
    "read_maker": "Leviton",
@@ -3372,11 +3366,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb115__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB115-T",
    "cond": "clean",
    "read_maker": "Leviton",
@@ -3389,11 +3383,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb115__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB115-T",
    "cond": "blur_light",
    "read_maker": "Leviton",
@@ -3406,11 +3400,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb115__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB115-T",
    "cond": "blur_heavy",
    "read_maker": "Leviton",
@@ -3423,28 +3417,28 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb115__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB115-T",
    "cond": "tilt",
    "read_maker": "Leviton",
-   "read_part": "",
-   "conf": "low",
-   "name": "",
+   "read_part": "LB115-T",
+   "conf": "medium",
+   "name": "Leviton LB115-T Pole 15A Plug-In Circuit Breaker",
    "pack_read": null,
    "pack_true": 5,
-   "NEW": "asks",
-   "KNOWN": "asks",
-   "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "NEW": "correct_checkit",
+   "KNOWN": "right_item_first",
+   "SIB": "shown_as_possible_only",
+   "top_known": "lev-lb115",
+   "passes": 12
   },
   {
    "photo": "lev-lb115__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB115-T",
    "cond": "rot90",
    "read_maker": "Leviton",
@@ -3457,11 +3451,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb115__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB115-T",
    "cond": "rot180",
    "read_maker": "Leviton",
@@ -3474,11 +3468,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb115__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB115-T",
    "cond": "dark",
    "read_maker": "Leviton",
@@ -3491,11 +3485,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb115__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB115-T",
    "cond": "overexposed",
    "read_maker": "Leviton",
@@ -3508,11 +3502,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb115__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB115-T",
    "cond": "shadow",
    "read_maker": "Leviton",
@@ -3525,11 +3519,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb115__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB115-T",
    "cond": "noise_jpeg",
    "read_maker": "Leviton",
@@ -3542,11 +3536,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "lev-lb115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb115__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB115-T",
    "cond": "partial",
    "read_maker": "Leviton",
@@ -3559,11 +3553,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb115__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB115-T",
    "cond": "lowres",
    "read_maker": "Leviton",
@@ -3576,11 +3570,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb115__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB115-T",
    "cond": "small_pack",
    "read_maker": "Leviton",
@@ -3593,7 +3587,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb230__clean",
@@ -3604,7 +3598,7 @@
    "read_part": "210-LB230-T",
    "conf": "high",
    "name": "Leviton 210-LB230-T Pole 30A Plug-In Circuit Breaker",
-   "pack_read": 2,
+   "pack_read": null,
    "pack_true": 5,
    "NEW": "correct_sure",
    "KNOWN": "right_item_first",
@@ -3648,24 +3642,24 @@
   },
   {
    "photo": "lev-lb230__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 210-LB230-T",
    "cond": "tilt",
    "read_maker": "Leviton",
    "read_part": "",
-   "conf": "low",
-   "name": "",
+   "conf": "medium",
+   "name": "Leviton Pole 30A Plug-In Circuit Breaker",
    "pack_read": null,
    "pack_true": 5,
-   "NEW": "asks",
-   "KNOWN": "asks",
-   "SIB": "none",
+   "NEW": "no_part",
+   "KNOWN": "right_item_in_list",
+   "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb230__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 210-LB230-T",
    "cond": "rot90",
    "read_maker": "Leviton",
@@ -3678,11 +3672,11 @@
    "KNOWN": "not_offered",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb230__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 210-LB230-T",
    "cond": "rot180",
    "read_maker": "Leviton",
@@ -3695,7 +3689,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb230",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb230__dark",
@@ -3706,7 +3700,7 @@
    "read_part": "210-LB230-T",
    "conf": "high",
    "name": "Leviton 210-LB230-T Pole 30A Plug-In Circuit Breaker",
-   "pack_read": 2,
+   "pack_read": null,
    "pack_true": 5,
    "NEW": "correct_sure",
    "KNOWN": "right_item_first",
@@ -3740,7 +3734,7 @@
    "read_part": "210-LB230-T",
    "conf": "high",
    "name": "Leviton 210-LB230-T Pole 30A Plug-In Circuit Breaker",
-   "pack_read": 5,
+   "pack_read": null,
    "pack_true": 5,
    "NEW": "correct_sure",
    "KNOWN": "right_item_first",
@@ -3801,7 +3795,7 @@
   },
   {
    "photo": "lev-lb230__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 210-LB230-T",
    "cond": "small_pack",
    "read_maker": "Leviton",
@@ -3814,7 +3808,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb230",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb220__clean",
@@ -3825,7 +3819,7 @@
    "read_part": "210-LB220-T",
    "conf": "high",
    "name": "Leviton 210-LB220-T Pole 20A Plug-In Circuit Breaker",
-   "pack_read": 2,
+   "pack_read": null,
    "pack_true": 5,
    "NEW": "correct_sure",
    "KNOWN": "right_item_first",
@@ -3869,24 +3863,24 @@
   },
   {
    "photo": "lev-lb220__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 210-LB220-T",
    "cond": "tilt",
    "read_maker": "Leviton",
-   "read_part": "02291-ORZ",
-   "conf": "medium",
-   "name": "Leviton 02291-ORZ",
+   "read_part": "210-LB220-T",
+   "conf": "low",
+   "name": "",
    "pack_read": null,
    "pack_true": 5,
-   "NEW": "wrong_part_checkit",
-   "KNOWN": "not_offered",
-   "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "NEW": "asks",
+   "KNOWN": "right_item_first",
+   "SIB": "shown_as_possible_only",
+   "top_known": "lev-lb220",
+   "passes": 12
   },
   {
    "photo": "lev-lb220__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 210-LB220-T",
    "cond": "rot90",
    "read_maker": "Leviton",
@@ -3899,11 +3893,11 @@
    "KNOWN": "not_offered",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb220__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 210-LB220-T",
    "cond": "rot180",
    "read_maker": "Leviton",
@@ -3916,7 +3910,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb220",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb220__dark",
@@ -3927,7 +3921,7 @@
    "read_part": "210-LB220-T",
    "conf": "high",
    "name": "Leviton 210-LB220-T Pole 20A Plug-In Circuit Breaker",
-   "pack_read": 2,
+   "pack_read": null,
    "pack_true": 5,
    "NEW": "correct_sure",
    "KNOWN": "right_item_first",
@@ -3961,7 +3955,7 @@
    "read_part": "210-LB220-T",
    "conf": "high",
    "name": "Leviton 210-LB220-T Pole 20A Plug-In Circuit Breaker",
-   "pack_read": 5,
+   "pack_read": null,
    "pack_true": 5,
    "NEW": "correct_sure",
    "KNOWN": "right_item_first",
@@ -3971,7 +3965,7 @@
   },
   {
    "photo": "lev-lb220__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton 210-LB220-T",
    "cond": "noise_jpeg",
    "read_maker": "Leviton",
@@ -3984,7 +3978,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb220",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb220__partial",
@@ -4039,7 +4033,7 @@
   },
   {
    "photo": "lev-lb120af__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-AF",
    "cond": "clean",
    "read_maker": "Leviton",
@@ -4052,11 +4046,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120af",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120af__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-AF",
    "cond": "blur_light",
    "read_maker": "Leviton",
@@ -4069,45 +4063,45 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120af",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120af__blur_heavy",
-   "passes_used": 3,
+   "passes_used": 12,
    "product": "Leviton LB120-AF",
    "cond": "blur_heavy",
    "read_maker": "Leviton",
    "read_part": "188120-AF",
-   "conf": "high",
-   "name": "Leviton 188120-AF Pole 20A AFCI Circuit Breaker",
-   "pack_read": null,
-   "pack_true": 1,
-   "NEW": "wrong_part_SURE",
-   "KNOWN": "right_item_in_list",
-   "SIB": "shown_as_possible_only",
-   "top_known": "",
-   "passes": 3
-  },
-  {
-   "photo": "lev-lb120af__tilt",
-   "passes_used": 10,
-   "product": "Leviton LB120-AF",
-   "cond": "tilt",
-   "read_maker": "Leviton",
-   "read_part": "LB120",
    "conf": "medium",
-   "name": "Leviton LB120 Pole AFCI Breaker",
+   "name": "Leviton 188120-AF Pole 20A AFCI Circuit Breaker",
    "pack_read": null,
    "pack_true": 1,
    "NEW": "wrong_part_checkit",
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
+  },
+  {
+   "photo": "lev-lb120af__tilt",
+   "passes_used": 12,
+   "product": "Leviton LB120-AF",
+   "cond": "tilt",
+   "read_maker": "Leviton",
+   "read_part": "LB120-AF",
+   "conf": "medium",
+   "name": "Leviton LB120-AF Pole 20A AFCI Circuit",
+   "pack_read": null,
+   "pack_true": 1,
+   "NEW": "correct_checkit",
+   "KNOWN": "right_item_first",
+   "SIB": "shown_as_possible_only",
+   "top_known": "lev-lb120af",
+   "passes": 12
   },
   {
    "photo": "lev-lb120af__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-AF",
    "cond": "rot90",
    "read_maker": "Leviton",
@@ -4120,11 +4114,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120af",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120af__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-AF",
    "cond": "rot180",
    "read_maker": "Leviton",
@@ -4137,11 +4131,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120af",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120af__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-AF",
    "cond": "dark",
    "read_maker": "Leviton",
@@ -4154,11 +4148,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120af",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120af__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-AF",
    "cond": "overexposed",
    "read_maker": "Leviton",
@@ -4171,11 +4165,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120af",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120af__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-AF",
    "cond": "shadow",
    "read_maker": "Leviton",
@@ -4188,11 +4182,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120af",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120af__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-AF",
    "cond": "noise_jpeg",
    "read_maker": "Leviton",
@@ -4205,11 +4199,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120af",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120af__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-AF",
    "cond": "partial",
    "read_maker": "Leviton",
@@ -4222,11 +4216,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120af",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120af__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-AF",
    "cond": "lowres",
    "read_maker": "Leviton",
@@ -4239,11 +4233,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120af",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120af__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-AF",
    "cond": "small_pack",
    "read_maker": "Leviton",
@@ -4256,11 +4250,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120af",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120df__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-DF",
    "cond": "clean",
    "read_maker": "Leviton",
@@ -4273,11 +4267,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120df",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120df__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-DF",
    "cond": "blur_light",
    "read_maker": "Leviton",
@@ -4290,45 +4284,45 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120df",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120df__blur_heavy",
-   "passes_used": 3,
+   "passes_used": 12,
    "product": "Leviton LB120-DF",
    "cond": "blur_heavy",
    "read_maker": "Leviton",
-   "read_part": "18120-DF",
-   "conf": "high",
-   "name": "Leviton 18120-DF Pole 20A Dual Function AFCI GFCI",
+   "read_part": "LB120-DF",
+   "conf": "medium",
+   "name": "Leviton LB120-DF Pole 20A Dual Function AFCI GFCI",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_SURE",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120df",
-   "passes": 3
+   "passes": 12
   },
   {
    "photo": "lev-lb120df__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-DF",
    "cond": "tilt",
    "read_maker": "Leviton",
-   "read_part": "LB120.P",
+   "read_part": "LB120-DF",
    "conf": "medium",
-   "name": "Leviton LB120.P Pole 20A Dual Function",
+   "name": "Leviton LB120-DF Pole 20A Dual Function GFCI",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
-   "KNOWN": "right_item_in_list",
+   "NEW": "correct_checkit",
+   "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
-   "top_known": "",
-   "passes": 10
+   "top_known": "lev-lb120df",
+   "passes": 12
   },
   {
    "photo": "lev-lb120df__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-DF",
    "cond": "rot90",
    "read_maker": "Leviton",
@@ -4341,11 +4335,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120df",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120df__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-DF",
    "cond": "rot180",
    "read_maker": "Leviton",
@@ -4358,11 +4352,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120df",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120df__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-DF",
    "cond": "dark",
    "read_maker": "Leviton",
@@ -4375,11 +4369,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120df",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120df__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-DF",
    "cond": "overexposed",
    "read_maker": "Leviton",
@@ -4392,11 +4386,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120df",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120df__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-DF",
    "cond": "shadow",
    "read_maker": "Leviton",
@@ -4409,11 +4403,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120df",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120df__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-DF",
    "cond": "noise_jpeg",
    "read_maker": "Leviton",
@@ -4426,11 +4420,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120df",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120df__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-DF",
    "cond": "partial",
    "read_maker": "Leviton",
@@ -4443,11 +4437,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120df",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120df__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-DF",
    "cond": "lowres",
    "read_maker": "Leviton",
@@ -4460,11 +4454,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120df",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lb120df__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Leviton LB120-DF",
    "cond": "small_pack",
    "read_maker": "Leviton",
@@ -4477,7 +4471,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lev-lb120df",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lev-lp220__clean",
@@ -4532,24 +4526,24 @@
   },
   {
    "photo": "lev-lp220__tilt",
-   "passes_used": 3,
+   "passes_used": 2,
    "product": "Leviton LP220-BAP",
    "cond": "tilt",
    "read_maker": "Leviton",
-   "read_part": "LP220-PAP",
+   "read_part": "LP220-BAP",
    "conf": "high",
-   "name": "Leviton LP220-PAP Space Load Center Plug-In",
+   "name": "Leviton LP220-BAP Load Center Plug-In",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_SURE",
-   "KNOWN": "right_item_in_list",
+   "NEW": "correct_sure",
+   "KNOWN": "right_item_first",
    "SIB": "none",
-   "top_known": "",
-   "passes": 3
+   "top_known": "lev-lp220",
+   "passes": 2
   },
   {
    "photo": "lev-lp220__rot90",
-   "passes_used": 7,
+   "passes_used": 9,
    "product": "Leviton LP220-BAP",
    "cond": "rot90",
    "read_maker": "Leviton",
@@ -4562,24 +4556,24 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "lev-lp220",
-   "passes": 7
+   "passes": 9
   },
   {
    "photo": "lev-lp220__rot180",
-   "passes_used": 5,
+   "passes_used": 10,
    "product": "Leviton LP220-BAP",
    "cond": "rot180",
    "read_maker": "Leviton",
-   "read_part": "DVD-02201",
+   "read_part": "LP220-BAP",
    "conf": "high",
-   "name": "Leviton DVD-02201",
+   "name": "Leviton LP220-BAP Load Center Plug-In",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_SURE",
-   "KNOWN": "not_offered",
+   "NEW": "correct_sure",
+   "KNOWN": "right_item_first",
    "SIB": "none",
-   "top_known": "",
-   "passes": 5
+   "top_known": "lev-lp220",
+   "passes": 10
   },
   {
    "photo": "lev-lp220__dark",
@@ -4753,24 +4747,24 @@
   },
   {
    "photo": "lux-25022__tilt",
-   "passes_used": 3,
+   "passes_used": 2,
    "product": "Luxrite LR25022",
    "cond": "tilt",
    "read_maker": "Luxrite",
-   "read_part": "LR2502",
+   "read_part": "LR25022",
    "conf": "high",
-   "name": "Luxrite LR2502 2\" Round White Trim Replac",
+   "name": "Luxrite LR25022 2\" Round White Trim Replac",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_SURE",
-   "KNOWN": "right_item_in_list",
+   "NEW": "correct_sure",
+   "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
-   "top_known": "",
-   "passes": 3
+   "top_known": "lux-25022",
+   "passes": 2
   },
   {
    "photo": "lux-25022__rot90",
-   "passes_used": 7,
+   "passes_used": 9,
    "product": "Luxrite LR25022",
    "cond": "rot90",
    "read_maker": "Luxrite",
@@ -4783,11 +4777,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lux-25022",
-   "passes": 7
+   "passes": 9
   },
   {
    "photo": "lux-25022__rot180",
-   "passes_used": 8,
+   "passes_used": 10,
    "product": "Luxrite LR25022",
    "cond": "rot180",
    "read_maker": "Luxrite",
@@ -4800,7 +4794,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lux-25022",
-   "passes": 8
+   "passes": 10
   },
   {
    "photo": "lux-25022__dark",
@@ -4974,7 +4968,7 @@
   },
   {
    "photo": "lux-25023__tilt",
-   "passes_used": 10,
+   "passes_used": 2,
    "product": "Luxrite LR25023",
    "cond": "tilt",
    "read_maker": "Luxrite",
@@ -4987,11 +4981,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lux-25023",
-   "passes": 10
+   "passes": 2
   },
   {
    "photo": "lux-25023__rot90",
-   "passes_used": 7,
+   "passes_used": 9,
    "product": "Luxrite LR25023",
    "cond": "rot90",
    "read_maker": "Luxrite",
@@ -5004,11 +4998,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lux-25023",
-   "passes": 7
+   "passes": 9
   },
   {
    "photo": "lux-25023__rot180",
-   "passes_used": 8,
+   "passes_used": 10,
    "product": "Luxrite LR25023",
    "cond": "rot180",
    "read_maker": "Luxrite",
@@ -5021,7 +5015,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lux-25023",
-   "passes": 8
+   "passes": 10
   },
   {
    "photo": "lux-25023__dark",
@@ -5195,24 +5189,24 @@
   },
   {
    "photo": "lux-23777__tilt",
-   "passes_used": 3,
+   "passes_used": 2,
    "product": "Luxrite LR23777",
    "cond": "tilt",
    "read_maker": "Luxrite",
    "read_part": "LR23777",
    "conf": "high",
-   "name": "Luxrite LR23777 LED Recessed",
-   "pack_read": 12,
+   "name": "Luxrite LR23777 LED Recessed Downlight",
+   "pack_read": null,
    "pack_true": 12,
    "NEW": "correct_sure",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lux-23777",
-   "passes": 3
+   "passes": 2
   },
   {
    "photo": "lux-23777__rot90",
-   "passes_used": 7,
+   "passes_used": 9,
    "product": "Luxrite LR23777",
    "cond": "rot90",
    "read_maker": "Luxrite",
@@ -5225,11 +5219,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lux-23777",
-   "passes": 7
+   "passes": 9
   },
   {
    "photo": "lux-23777__rot180",
-   "passes_used": 8,
+   "passes_used": 10,
    "product": "Luxrite LR23777",
    "cond": "rot180",
    "read_maker": "Luxrite",
@@ -5242,7 +5236,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lux-23777",
-   "passes": 8
+   "passes": 10
   },
   {
    "photo": "lux-23777__dark",
@@ -5297,7 +5291,7 @@
   },
   {
    "photo": "lux-23777__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Luxrite LR23777",
    "cond": "noise_jpeg",
    "read_maker": "Luxrite",
@@ -5310,7 +5304,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lux-23777",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lux-23777__partial",
@@ -5416,7 +5410,7 @@
   },
   {
    "photo": "lux-23772__tilt",
-   "passes_used": 3,
+   "passes_used": 2,
    "product": "Luxrite LR23772",
    "cond": "tilt",
    "read_maker": "Luxrite",
@@ -5429,11 +5423,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lux-23772",
-   "passes": 3
+   "passes": 2
   },
   {
    "photo": "lux-23772__rot90",
-   "passes_used": 7,
+   "passes_used": 9,
    "product": "Luxrite LR23772",
    "cond": "rot90",
    "read_maker": "Luxrite",
@@ -5446,11 +5440,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lux-23772",
-   "passes": 7
+   "passes": 9
   },
   {
    "photo": "lux-23772__rot180",
-   "passes_used": 8,
+   "passes_used": 10,
    "product": "Luxrite LR23772",
    "cond": "rot180",
    "read_maker": "Luxrite",
@@ -5463,7 +5457,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lux-23772",
-   "passes": 8
+   "passes": 10
   },
   {
    "photo": "lux-23772__dark",
@@ -5637,24 +5631,24 @@
   },
   {
    "photo": "lux-21310__tilt",
-   "passes_used": 3,
+   "passes_used": 2,
    "product": "Luxrite LR21310",
    "cond": "tilt",
    "read_maker": "Luxrite",
    "read_part": "LR21310",
    "conf": "high",
-   "name": "Luxrite LR21310",
-   "pack_read": null,
+   "name": "Luxrite LR21310 A19 LED Bulb Dimmable 9W",
+   "pack_read": 6,
    "pack_true": 6,
    "NEW": "correct_sure",
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "lux-21310",
-   "passes": 3
+   "passes": 2
   },
   {
    "photo": "lux-21310__rot90",
-   "passes_used": 7,
+   "passes_used": 9,
    "product": "Luxrite LR21310",
    "cond": "rot90",
    "read_maker": "Luxrite",
@@ -5667,11 +5661,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "lux-21310",
-   "passes": 7
+   "passes": 9
   },
   {
    "photo": "lux-21310__rot180",
-   "passes_used": 8,
+   "passes_used": 10,
    "product": "Luxrite LR21310",
    "cond": "rot180",
    "read_maker": "Luxrite",
@@ -5684,7 +5678,7 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "lux-21310",
-   "passes": 8
+   "passes": 10
   },
   {
    "photo": "lux-21310__dark",
@@ -5858,9 +5852,26 @@
   },
   {
    "photo": "lut-dvcl__tilt",
-   "passes_used": 9,
+   "passes_used": 2,
    "product": "Lutron DVCL-153P-WH",
    "cond": "tilt",
+   "read_maker": "Lutron",
+   "read_part": "DVCL-153P-WH",
+   "conf": "high",
+   "name": "Lutron DVCL-153P-WH Diva Dimmer Single Pole 3-Way White",
+   "pack_read": null,
+   "pack_true": 1,
+   "NEW": "correct_sure",
+   "KNOWN": "right_item_first",
+   "SIB": "shown_as_possible_only",
+   "top_known": "lut-dvcl",
+   "passes": 2
+  },
+  {
+   "photo": "lut-dvcl__rot90",
+   "passes_used": 9,
+   "product": "Lutron DVCL-153P-WH",
+   "cond": "rot90",
    "read_maker": "Lutron",
    "read_part": "DVCL-153P-WH",
    "conf": "high",
@@ -5874,25 +5885,8 @@
    "passes": 9
   },
   {
-   "photo": "lut-dvcl__rot90",
-   "passes_used": 7,
-   "product": "Lutron DVCL-153P-WH",
-   "cond": "rot90",
-   "read_maker": "Lutron",
-   "read_part": "DVCL-153P-WH",
-   "conf": "high",
-   "name": "Lutron DVCL-153P-WH Dimmer Single Pole 3-Way White",
-   "pack_read": null,
-   "pack_true": 1,
-   "NEW": "correct_sure",
-   "KNOWN": "right_item_first",
-   "SIB": "shown_as_possible_only",
-   "top_known": "lut-dvcl",
-   "passes": 7
-  },
-  {
    "photo": "lut-dvcl__rot180",
-   "passes_used": 8,
+   "passes_used": 10,
    "product": "Lutron DVCL-153P-WH",
    "cond": "rot180",
    "read_maker": "Lutron",
@@ -5905,7 +5899,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lut-dvcl",
-   "passes": 8
+   "passes": 10
   },
   {
    "photo": "lut-dvcl__dark",
@@ -5977,20 +5971,20 @@
   },
   {
    "photo": "lut-dvcl__partial",
-   "passes_used": 3,
+   "passes_used": 5,
    "product": "Lutron DVCL-153P-WH",
    "cond": "partial",
    "read_maker": "Lutron",
-   "read_part": "DVCL-153P-W",
+   "read_part": "DVCL-153P-WH",
    "conf": "high",
-   "name": "Lutron DVCL-153P-W Diva Dimmer Sing White",
+   "name": "Lutron DVCL-153P-WH Diva Dimmer Sing White",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_SURE",
-   "KNOWN": "right_item_in_list",
+   "NEW": "correct_sure",
+   "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
-   "top_known": "",
-   "passes": 3
+   "top_known": "lut-dvcl",
+   "passes": 5
   },
   {
    "photo": "lut-dvcl__lowres",
@@ -6079,9 +6073,26 @@
   },
   {
    "photo": "lut-dvcl-ia__tilt",
-   "passes_used": 9,
+   "passes_used": 2,
    "product": "Lutron DVCL-153P-IV",
    "cond": "tilt",
+   "read_maker": "Lutron",
+   "read_part": "DVCL-153P-IV",
+   "conf": "high",
+   "name": "Lutron DVCL-153P-IV Diva Dimmer Single Pole 3-Way Ivory",
+   "pack_read": null,
+   "pack_true": 1,
+   "NEW": "correct_sure",
+   "KNOWN": "right_item_first",
+   "SIB": "shown_as_possible_only",
+   "top_known": "lut-dvcl-ia",
+   "passes": 2
+  },
+  {
+   "photo": "lut-dvcl-ia__rot90",
+   "passes_used": 9,
+   "product": "Lutron DVCL-153P-IV",
+   "cond": "rot90",
    "read_maker": "Lutron",
    "read_part": "DVCL-153P-IV",
    "conf": "high",
@@ -6095,25 +6106,8 @@
    "passes": 9
   },
   {
-   "photo": "lut-dvcl-ia__rot90",
-   "passes_used": 7,
-   "product": "Lutron DVCL-153P-IV",
-   "cond": "rot90",
-   "read_maker": "Lutron",
-   "read_part": "DVCL-153P-IV",
-   "conf": "high",
-   "name": "Lutron DVCL-153P-IV Dimmer Single Pole 3-Way Ivory",
-   "pack_read": null,
-   "pack_true": 1,
-   "NEW": "correct_sure",
-   "KNOWN": "right_item_first",
-   "SIB": "shown_as_possible_only",
-   "top_known": "lut-dvcl-ia",
-   "passes": 7
-  },
-  {
    "photo": "lut-dvcl-ia__rot180",
-   "passes_used": 8,
+   "passes_used": 10,
    "product": "Lutron DVCL-153P-IV",
    "cond": "rot180",
    "read_maker": "Lutron",
@@ -6126,7 +6120,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "lut-dvcl-ia",
-   "passes": 8
+   "passes": 10
   },
   {
    "photo": "lut-dvcl-ia__dark",
@@ -6300,24 +6294,24 @@
   },
   {
    "photo": "lut-macl__tilt",
-   "passes_used": 10,
+   "passes_used": 2,
    "product": "Lutron MACL-153M-WH",
    "cond": "tilt",
    "read_maker": "Lutron",
-   "read_part": "ACL-153M-WH",
-   "conf": "medium",
-   "name": "Lutron ACL-153M-WH LED",
+   "read_part": "MACL-153M-WH",
+   "conf": "high",
+   "name": "Lutron MACL-153M-WH",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
-   "KNOWN": "right_item_in_list",
+   "NEW": "correct_sure",
+   "KNOWN": "right_item_first",
    "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "top_known": "lut-macl",
+   "passes": 2
   },
   {
    "photo": "lut-macl__rot90",
-   "passes_used": 7,
+   "passes_used": 9,
    "product": "Lutron MACL-153M-WH",
    "cond": "rot90",
    "read_maker": "Lutron",
@@ -6330,11 +6324,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "lut-macl",
-   "passes": 7
+   "passes": 9
   },
   {
    "photo": "lut-macl__rot180",
-   "passes_used": 8,
+   "passes_used": 10,
    "product": "Lutron MACL-153M-WH",
    "cond": "rot180",
    "read_maker": "Lutron",
@@ -6347,7 +6341,7 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "lut-macl",
-   "passes": 8
+   "passes": 10
   },
   {
    "photo": "lut-macl__dark",
@@ -6419,20 +6413,20 @@
   },
   {
    "photo": "lut-macl__partial",
-   "passes_used": 3,
+   "passes_used": 12,
    "product": "Lutron MACL-153M-WH",
    "cond": "partial",
    "read_maker": "Lutron",
    "read_part": "MACL-153M-W",
-   "conf": "high",
+   "conf": "medium",
    "name": "Lutron MACL-153M-W Maestro Dimmer White",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_SURE",
+   "NEW": "wrong_part_checkit",
    "KNOWN": "right_item_in_list",
    "SIB": "none",
    "top_known": "",
-   "passes": 3
+   "passes": 12
   },
   {
    "photo": "lut-macl__lowres",
@@ -6470,7 +6464,7 @@
   },
   {
    "photo": "lut-mapro__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Lutron MA-PRO-WH",
    "cond": "clean",
    "read_maker": "Lutron",
@@ -6483,11 +6477,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lut-mapro__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Lutron MA-PRO-WH",
    "cond": "blur_light",
    "read_maker": "Lutron",
@@ -6500,11 +6494,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lut-mapro__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Lutron MA-PRO-WH",
    "cond": "blur_heavy",
    "read_maker": "Lutron",
@@ -6517,28 +6511,28 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lut-mapro__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Lutron MA-PRO-WH",
    "cond": "tilt",
    "read_maker": "Lutron",
    "read_part": "",
    "conf": "medium",
-   "name": "Lutron Dimmer LED",
+   "name": "Lutron Maestro LED",
    "pack_read": null,
    "pack_true": 1,
    "NEW": "no_part",
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lut-mapro__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Lutron MA-PRO-WH",
    "cond": "rot90",
    "read_maker": "Lutron",
@@ -6551,11 +6545,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lut-mapro__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Lutron MA-PRO-WH",
    "cond": "rot180",
    "read_maker": "Lutron",
@@ -6568,11 +6562,11 @@
    "KNOWN": "not_offered",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lut-mapro__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Lutron MA-PRO-WH",
    "cond": "dark",
    "read_maker": "Lutron",
@@ -6585,11 +6579,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lut-mapro__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Lutron MA-PRO-WH",
    "cond": "overexposed",
    "read_maker": "Lutron",
@@ -6602,11 +6596,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lut-mapro__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Lutron MA-PRO-WH",
    "cond": "shadow",
    "read_maker": "Lutron",
@@ -6619,11 +6613,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lut-mapro__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Lutron MA-PRO-WH",
    "cond": "noise_jpeg",
    "read_maker": "Lutron",
@@ -6636,11 +6630,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lut-mapro__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Lutron MA-PRO-WH",
    "cond": "partial",
    "read_maker": "Lutron",
@@ -6653,11 +6647,11 @@
    "KNOWN": "not_offered",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lut-mapro__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Lutron MA-PRO-WH",
    "cond": "lowres",
    "read_maker": "Lutron",
@@ -6670,11 +6664,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lut-mapro__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Lutron MA-PRO-WH",
    "cond": "small_pack",
    "read_maker": "Lutron",
@@ -6687,7 +6681,7 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lut-pd6__clean",
@@ -6742,10 +6736,10 @@
   },
   {
    "photo": "lut-pd6__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Lutron PD-6WCL-WH",
    "cond": "tilt",
-   "read_maker": "",
+   "read_maker": "Lutron",
    "read_part": "GG09131",
    "conf": "low",
    "name": "",
@@ -6755,11 +6749,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "lut-pd6__rot90",
-   "passes_used": 7,
+   "passes_used": 9,
    "product": "Lutron PD-6WCL-WH",
    "cond": "rot90",
    "read_maker": "Lutron",
@@ -6772,11 +6766,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "lut-pd6",
-   "passes": 7
+   "passes": 9
   },
   {
    "photo": "lut-pd6__rot180",
-   "passes_used": 8,
+   "passes_used": 10,
    "product": "Lutron PD-6WCL-WH",
    "cond": "rot180",
    "read_maker": "Lutron",
@@ -6789,7 +6783,7 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "lut-pd6",
-   "passes": 8
+   "passes": 10
   },
   {
    "photo": "lut-pd6__dark",
@@ -6912,7 +6906,7 @@
   },
   {
    "photo": "eat-br120__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR120",
    "cond": "clean",
    "read_maker": "Eaton",
@@ -6925,11 +6919,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-br120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br120__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR120",
    "cond": "blur_light",
    "read_maker": "Eaton",
@@ -6942,11 +6936,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-br120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br120__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR120",
    "cond": "blur_heavy",
    "read_maker": "Eaton",
@@ -6959,28 +6953,28 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-br120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br120__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR120",
    "cond": "tilt",
    "read_maker": "Eaton",
-   "read_part": "R120",
+   "read_part": "BR120",
    "conf": "medium",
-   "name": "Eaton R120 Breaker Pole",
+   "name": "Eaton BR120 Breaker Pole 20A",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
-   "KNOWN": "right_item_in_list",
+   "NEW": "correct_checkit",
+   "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
-   "top_known": "",
-   "passes": 10
+   "top_known": "eat-br120",
+   "passes": 12
   },
   {
    "photo": "eat-br120__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR120",
    "cond": "rot90",
    "read_maker": "Eaton",
@@ -6993,11 +6987,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br120__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR120",
    "cond": "rot180",
    "read_maker": "Eaton",
@@ -7010,11 +7004,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br120__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR120",
    "cond": "dark",
    "read_maker": "Eaton",
@@ -7027,11 +7021,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-br120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br120__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR120",
    "cond": "overexposed",
    "read_maker": "Eaton",
@@ -7044,11 +7038,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-br120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br120__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR120",
    "cond": "shadow",
    "read_maker": "Eaton",
@@ -7061,11 +7055,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-br120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br120__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR120",
    "cond": "noise_jpeg",
    "read_maker": "Eaton",
@@ -7078,11 +7072,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "eat-br120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br120__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR120",
    "cond": "partial",
    "read_maker": "Eaton",
@@ -7095,11 +7089,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "eat-br120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br120__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR120",
    "cond": "lowres",
    "read_maker": "Eaton",
@@ -7112,11 +7106,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-br120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br120__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR120",
    "cond": "small_pack",
    "read_maker": "Eaton",
@@ -7129,11 +7123,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-br120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br115__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR115",
    "cond": "clean",
    "read_maker": "Eaton",
@@ -7146,11 +7140,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-br115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br115__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR115",
    "cond": "blur_light",
    "read_maker": "Eaton",
@@ -7163,11 +7157,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-br115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br115__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR115",
    "cond": "blur_heavy",
    "read_maker": "Eaton",
@@ -7180,28 +7174,28 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-br115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br115__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR115",
    "cond": "tilt",
    "read_maker": "Eaton",
-   "read_part": "",
-   "conf": "low",
-   "name": "",
+   "read_part": "BR115",
+   "conf": "medium",
+   "name": "Eaton BR115 Breaker Pole 15A",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "asks",
-   "KNOWN": "asks",
+   "NEW": "correct_checkit",
+   "KNOWN": "right_item_first",
    "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "top_known": "eat-br115",
+   "passes": 12
   },
   {
    "photo": "eat-br115__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR115",
    "cond": "rot90",
    "read_maker": "Eaton",
@@ -7214,11 +7208,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br115__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR115",
    "cond": "rot180",
    "read_maker": "Eaton",
@@ -7231,11 +7225,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br115__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR115",
    "cond": "dark",
    "read_maker": "Eaton",
@@ -7248,11 +7242,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-br115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br115__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR115",
    "cond": "overexposed",
    "read_maker": "Eaton",
@@ -7265,11 +7259,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-br115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br115__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR115",
    "cond": "shadow",
    "read_maker": "Eaton",
@@ -7282,11 +7276,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-br115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br115__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR115",
    "cond": "noise_jpeg",
    "read_maker": "Eaton",
@@ -7299,11 +7293,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br115__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR115",
    "cond": "partial",
    "read_maker": "Eaton",
@@ -7316,11 +7310,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "eat-br115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br115__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR115",
    "cond": "lowres",
    "read_maker": "Eaton",
@@ -7333,11 +7327,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-br115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br115__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR115",
    "cond": "small_pack",
    "read_maker": "Eaton",
@@ -7350,7 +7344,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-br115",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br230__clean",
@@ -7405,24 +7399,24 @@
   },
   {
    "photo": "eat-br230__tilt",
-   "passes_used": 10,
+   "passes_used": 2,
    "product": "Eaton BR230",
    "cond": "tilt",
    "read_maker": "Eaton",
-   "read_part": "",
-   "conf": "medium",
-   "name": "Eaton Breaker Pole 30A",
+   "read_part": "BR230",
+   "conf": "high",
+   "name": "Eaton BR230 Breaker Pole 30A",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "no_part",
-   "KNOWN": "right_item_in_list",
-   "SIB": "shown_as_possible_only",
-   "top_known": "",
-   "passes": 10
+   "NEW": "correct_sure",
+   "KNOWN": "right_item_first",
+   "SIB": "none",
+   "top_known": "eat-br230",
+   "passes": 2
   },
   {
    "photo": "eat-br230__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR230",
    "cond": "rot90",
    "read_maker": "Eaton",
@@ -7435,11 +7429,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br230__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR230",
    "cond": "rot180",
    "read_maker": "Eaton",
@@ -7452,7 +7446,7 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br230__dark",
@@ -7507,7 +7501,7 @@
   },
   {
    "photo": "eat-br230__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton BR230",
    "cond": "noise_jpeg",
    "read_maker": "Eaton",
@@ -7520,7 +7514,7 @@
    "KNOWN": "right_item_in_list",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-br230__partial",
@@ -7575,7 +7569,7 @@
   },
   {
    "photo": "eat-ch120__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CH120",
    "cond": "clean",
    "read_maker": "Eaton",
@@ -7588,11 +7582,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-ch120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-ch120__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CH120",
    "cond": "blur_light",
    "read_maker": "Eaton",
@@ -7605,11 +7599,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-ch120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-ch120__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CH120",
    "cond": "blur_heavy",
    "read_maker": "Eaton",
@@ -7622,28 +7616,28 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-ch120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-ch120__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CH120",
    "cond": "tilt",
    "read_maker": "Eaton",
    "read_part": "CH120",
    "conf": "medium",
-   "name": "Eaton CH120",
+   "name": "Eaton CH120 Breaker Pole 20A",
    "pack_read": null,
    "pack_true": 1,
    "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
-   "SIB": "none",
+   "SIB": "shown_as_possible_only",
    "top_known": "eat-ch120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-ch120__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CH120",
    "cond": "rot90",
    "read_maker": "Eaton",
@@ -7656,11 +7650,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-ch120__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CH120",
    "cond": "rot180",
    "read_maker": "Eaton",
@@ -7673,11 +7667,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-ch120__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CH120",
    "cond": "dark",
    "read_maker": "Eaton",
@@ -7690,11 +7684,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-ch120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-ch120__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CH120",
    "cond": "overexposed",
    "read_maker": "Eaton",
@@ -7707,11 +7701,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-ch120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-ch120__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CH120",
    "cond": "shadow",
    "read_maker": "Eaton",
@@ -7724,11 +7718,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-ch120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-ch120__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CH120",
    "cond": "noise_jpeg",
    "read_maker": "Eaton",
@@ -7741,11 +7735,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-ch120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-ch120__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CH120",
    "cond": "partial",
    "read_maker": "Eaton",
@@ -7758,11 +7752,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "eat-ch120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-ch120__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CH120",
    "cond": "lowres",
    "read_maker": "Eaton",
@@ -7775,11 +7769,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-ch120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-ch120__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CH120",
    "cond": "small_pack",
    "read_maker": "Eaton",
@@ -7792,11 +7786,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-ch120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-chfgf__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CHFGF120",
    "cond": "clean",
    "read_maker": "Eaton",
@@ -7809,11 +7803,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-chfgf",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-chfgf__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CHFGF120",
    "cond": "blur_light",
    "read_maker": "Eaton",
@@ -7826,11 +7820,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-chfgf",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-chfgf__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CHFGF120",
    "cond": "blur_heavy",
    "read_maker": "Eaton",
@@ -7843,28 +7837,28 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-chfgf",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-chfgf__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CHFGF120",
    "cond": "tilt",
    "read_maker": "Eaton",
-   "read_part": "LLY3",
+   "read_part": "CHFGF120",
    "conf": "medium",
-   "name": "Eaton LLY3",
+   "name": "Eaton CHFGF120 Type GFCI Circuit Breaker Pole 20A",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
-   "KNOWN": "not_offered",
-   "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "NEW": "correct_checkit",
+   "KNOWN": "right_item_first",
+   "SIB": "shown_as_possible_only",
+   "top_known": "eat-chfgf",
+   "passes": 12
   },
   {
    "photo": "eat-chfgf__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CHFGF120",
    "cond": "rot90",
    "read_maker": "Eaton",
@@ -7877,11 +7871,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-chfgf__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CHFGF120",
    "cond": "rot180",
    "read_maker": "Eaton",
@@ -7894,11 +7888,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-chfgf__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CHFGF120",
    "cond": "dark",
    "read_maker": "Eaton",
@@ -7911,11 +7905,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-chfgf",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-chfgf__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CHFGF120",
    "cond": "overexposed",
    "read_maker": "Eaton",
@@ -7928,11 +7922,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-chfgf",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-chfgf__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CHFGF120",
    "cond": "shadow",
    "read_maker": "Eaton",
@@ -7945,11 +7939,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-chfgf",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-chfgf__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CHFGF120",
    "cond": "noise_jpeg",
    "read_maker": "Eaton",
@@ -7962,11 +7956,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-chfgf__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CHFGF120",
    "cond": "partial",
    "read_maker": "Eaton",
@@ -7979,11 +7973,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-chfgf",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-chfgf__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CHFGF120",
    "cond": "lowres",
    "read_maker": "Eaton",
@@ -7996,11 +7990,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-chfgf",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-chfgf__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton CHFGF120",
    "cond": "small_pack",
    "read_maker": "Eaton",
@@ -8013,11 +8007,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "eat-chfgf",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-tr270__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton TR270W",
    "cond": "clean",
    "read_maker": "Eaton",
@@ -8030,11 +8024,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "eat-tr270",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-tr270__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton TR270W",
    "cond": "blur_light",
    "read_maker": "Eaton",
@@ -8047,11 +8041,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "eat-tr270",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-tr270__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton TR270W",
    "cond": "blur_heavy",
    "read_maker": "Eaton",
@@ -8064,28 +8058,28 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "eat-tr270",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-tr270__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton TR270W",
    "cond": "tilt",
    "read_maker": "Eaton",
-   "read_part": "",
-   "conf": "low",
-   "name": "",
-   "pack_read": null,
+   "read_part": "TR270W",
+   "conf": "medium",
+   "name": "Eaton TR270W Tamper Resistant Duplex Receptacle 15A",
+   "pack_read": 10,
    "pack_true": 10,
-   "NEW": "asks",
-   "KNOWN": "asks",
+   "NEW": "correct_checkit",
+   "KNOWN": "right_item_first",
    "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "top_known": "eat-tr270",
+   "passes": 12
   },
   {
    "photo": "eat-tr270__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton TR270W",
    "cond": "rot90",
    "read_maker": "Eaton",
@@ -8098,11 +8092,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-tr270__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton TR270W",
    "cond": "rot180",
    "read_maker": "Eaton",
@@ -8115,11 +8109,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-tr270__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton TR270W",
    "cond": "dark",
    "read_maker": "Eaton",
@@ -8132,11 +8126,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "eat-tr270",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-tr270__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton TR270W",
    "cond": "overexposed",
    "read_maker": "Eaton",
@@ -8149,11 +8143,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "eat-tr270",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-tr270__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton TR270W",
    "cond": "shadow",
    "read_maker": "Eaton",
@@ -8166,11 +8160,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "eat-tr270",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-tr270__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton TR270W",
    "cond": "noise_jpeg",
    "read_maker": "Eaton",
@@ -8183,11 +8177,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-tr270__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton TR270W",
    "cond": "partial",
    "read_maker": "Eaton",
@@ -8200,11 +8194,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "eat-tr270",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-tr270__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton TR270W",
    "cond": "lowres",
    "read_maker": "Eaton",
@@ -8217,11 +8211,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "eat-tr270",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "eat-tr270__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Eaton TR270W",
    "cond": "small_pack",
    "read_maker": "Eaton",
@@ -8234,11 +8228,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "eat-tr270",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom120__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM120",
    "cond": "clean",
    "read_maker": "Square D",
@@ -8251,11 +8245,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom120__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM120",
    "cond": "blur_light",
    "read_maker": "Square D",
@@ -8268,11 +8262,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom120__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM120",
    "cond": "blur_heavy",
    "read_maker": "Square D",
@@ -8285,28 +8279,28 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom120__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM120",
    "cond": "tilt",
    "read_maker": "Square D",
-   "read_part": "NTT20",
+   "read_part": "HOM120",
    "conf": "medium",
-   "name": "Square D NTT20 Square",
+   "name": "Square D HOM120 Circuit Breaker Pole 20A",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
-   "KNOWN": "not_offered",
-   "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "NEW": "correct_checkit",
+   "KNOWN": "right_item_first",
+   "SIB": "shown_as_possible_only",
+   "top_known": "sqd-hom120",
+   "passes": 12
   },
   {
    "photo": "sqd-hom120__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM120",
    "cond": "rot90",
    "read_maker": "Square D",
@@ -8319,11 +8313,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom120__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM120",
    "cond": "rot180",
    "read_maker": "Square D",
@@ -8336,11 +8330,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom120__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM120",
    "cond": "dark",
    "read_maker": "Square D",
@@ -8353,11 +8347,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom120__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM120",
    "cond": "overexposed",
    "read_maker": "Square D",
@@ -8370,11 +8364,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom120__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM120",
    "cond": "shadow",
    "read_maker": "Square D",
@@ -8387,11 +8381,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom120__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM120",
    "cond": "noise_jpeg",
    "read_maker": "Square D",
@@ -8404,11 +8398,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom120__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM120",
    "cond": "partial",
    "read_maker": "Square D",
@@ -8421,11 +8415,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom120__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM120",
    "cond": "lowres",
    "read_maker": "Square D",
@@ -8438,11 +8432,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom120__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM120",
    "cond": "small_pack",
    "read_maker": "Square D",
@@ -8455,11 +8449,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom230__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM230",
    "cond": "clean",
    "read_maker": "Square D",
@@ -8472,11 +8466,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom230",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom230__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM230",
    "cond": "blur_light",
    "read_maker": "Square D",
@@ -8489,11 +8483,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom230",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom230__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM230",
    "cond": "blur_heavy",
    "read_maker": "Square D",
@@ -8506,28 +8500,28 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom230",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom230__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM230",
    "cond": "tilt",
    "read_maker": "Square D",
-   "read_part": "",
-   "conf": "low",
-   "name": "",
+   "read_part": "HOM230",
+   "conf": "medium",
+   "name": "Square D HOM230 Circuit Breaker Pole 30A",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "asks",
-   "KNOWN": "asks",
-   "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "NEW": "correct_checkit",
+   "KNOWN": "right_item_first",
+   "SIB": "shown_as_possible_only",
+   "top_known": "sqd-hom230",
+   "passes": 12
   },
   {
    "photo": "sqd-hom230__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM230",
    "cond": "rot90",
    "read_maker": "Square D",
@@ -8540,11 +8534,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom230",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom230__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM230",
    "cond": "rot180",
    "read_maker": "Square D",
@@ -8557,11 +8551,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom230",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom230__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM230",
    "cond": "dark",
    "read_maker": "Square D",
@@ -8574,11 +8568,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom230",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom230__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM230",
    "cond": "overexposed",
    "read_maker": "Square D",
@@ -8591,11 +8585,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom230",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom230__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM230",
    "cond": "shadow",
    "read_maker": "Square D",
@@ -8608,11 +8602,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom230",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom230__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM230",
    "cond": "noise_jpeg",
    "read_maker": "Square D",
@@ -8625,11 +8619,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "shown_as_possible_only",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom230__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM230",
    "cond": "partial",
    "read_maker": "Square D",
@@ -8642,11 +8636,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom230",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom230__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM230",
    "cond": "lowres",
    "read_maker": "Square D",
@@ -8659,11 +8653,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom230",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-hom230__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D HOM230",
    "cond": "small_pack",
    "read_maker": "Square D",
@@ -8676,11 +8670,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-hom230",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-qo120__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D QO120",
    "cond": "clean",
    "read_maker": "Square D",
@@ -8693,11 +8687,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-qo120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-qo120__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D QO120",
    "cond": "blur_light",
    "read_maker": "Square D",
@@ -8710,11 +8704,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-qo120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-qo120__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D QO120",
    "cond": "blur_heavy",
    "read_maker": "Square D",
@@ -8727,11 +8721,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-qo120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-qo120__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D QO120",
    "cond": "tilt",
    "read_maker": "Square D",
@@ -8744,11 +8738,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-qo120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-qo120__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D QO120",
    "cond": "rot90",
    "read_maker": "Square D",
@@ -8761,11 +8755,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-qo120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-qo120__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D QO120",
    "cond": "rot180",
    "read_maker": "Square D",
@@ -8778,11 +8772,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-qo120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-qo120__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D QO120",
    "cond": "dark",
    "read_maker": "Square D",
@@ -8795,11 +8789,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-qo120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-qo120__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D QO120",
    "cond": "overexposed",
    "read_maker": "Square D",
@@ -8812,11 +8806,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-qo120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-qo120__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D QO120",
    "cond": "shadow",
    "read_maker": "Square D",
@@ -8829,11 +8823,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-qo120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-qo120__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D QO120",
    "cond": "noise_jpeg",
    "read_maker": "Square D",
@@ -8846,11 +8840,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-qo120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-qo120__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D QO120",
    "cond": "partial",
    "read_maker": "Square D",
@@ -8863,11 +8857,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-qo120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-qo120__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D QO120",
    "cond": "lowres",
    "read_maker": "Square D",
@@ -8880,11 +8874,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-qo120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sqd-qo120__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Square D QO120",
    "cond": "small_pack",
    "read_maker": "Square D",
@@ -8897,11 +8891,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "sqd-qo120",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "hub-5262__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Hubbell HBL5262",
    "cond": "clean",
    "read_maker": "Hubbell",
@@ -8914,11 +8908,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "hub-5262",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "hub-5262__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Hubbell HBL5262",
    "cond": "blur_light",
    "read_maker": "Hubbell",
@@ -8931,11 +8925,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "hub-5262",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "hub-5262__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Hubbell HBL5262",
    "cond": "blur_heavy",
    "read_maker": "Hubbell",
@@ -8948,28 +8942,28 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "hub-5262",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "hub-5262__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Hubbell HBL5262",
    "cond": "tilt",
    "read_maker": "Hubbell",
-   "read_part": "HBL526",
+   "read_part": "HBL5262",
    "conf": "medium",
-   "name": "Hubbell HBL526",
-   "pack_read": null,
+   "name": "Hubbell HBL5262 Duplex Receptacle 15A Brown",
+   "pack_read": 10,
    "pack_true": 10,
-   "NEW": "wrong_part_checkit",
-   "KNOWN": "right_item_in_list",
+   "NEW": "correct_checkit",
+   "KNOWN": "right_item_first",
    "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "top_known": "hub-5262",
+   "passes": 12
   },
   {
    "photo": "hub-5262__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Hubbell HBL5262",
    "cond": "rot90",
    "read_maker": "Hubbell",
@@ -8982,11 +8976,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "hub-5262",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "hub-5262__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Hubbell HBL5262",
    "cond": "rot180",
    "read_maker": "Hubbell",
@@ -8999,11 +8993,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "hub-5262",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "hub-5262__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Hubbell HBL5262",
    "cond": "dark",
    "read_maker": "Hubbell",
@@ -9016,11 +9010,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "hub-5262",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "hub-5262__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Hubbell HBL5262",
    "cond": "overexposed",
    "read_maker": "Hubbell",
@@ -9033,11 +9027,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "hub-5262",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "hub-5262__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Hubbell HBL5262",
    "cond": "shadow",
    "read_maker": "Hubbell",
@@ -9050,11 +9044,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "hub-5262",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "hub-5262__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Hubbell HBL5262",
    "cond": "noise_jpeg",
    "read_maker": "Hubbell",
@@ -9067,11 +9061,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "hub-5262__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Hubbell HBL5262",
    "cond": "partial",
    "read_maker": "Hubbell",
@@ -9084,11 +9078,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "hub-5262",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "hub-5262__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Hubbell HBL5262",
    "cond": "lowres",
    "read_maker": "Hubbell",
@@ -9101,11 +9095,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "hub-5262",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "hub-5262__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Hubbell HBL5262",
    "cond": "small_pack",
    "read_maker": "Hubbell",
@@ -9118,7 +9112,7 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "hub-5262",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "raco-8195__clean",
@@ -9173,24 +9167,24 @@
   },
   {
    "photo": "raco-8195__tilt",
-   "passes_used": 10,
+   "passes_used": 2,
    "product": "Raco 8195",
    "cond": "tilt",
    "read_maker": "Raco",
-   "read_part": "",
-   "conf": "low",
-   "name": "",
-   "pack_read": null,
+   "read_part": "8195",
+   "conf": "high",
+   "name": "Raco 8195",
+   "pack_read": 25,
    "pack_true": 25,
-   "NEW": "asks",
-   "KNOWN": "asks",
+   "NEW": "correct_sure",
+   "KNOWN": "right_item_first",
    "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "top_known": "raco-8195",
+   "passes": 2
   },
   {
    "photo": "raco-8195__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Raco 8195",
    "cond": "rot90",
    "read_maker": "Raco",
@@ -9203,11 +9197,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "raco-8195",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "raco-8195__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Raco 8195",
    "cond": "rot180",
    "read_maker": "Raco",
@@ -9220,7 +9214,7 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "raco-8195",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "raco-8195__dark",
@@ -9275,7 +9269,7 @@
   },
   {
    "photo": "raco-8195__noise_jpeg",
-   "passes_used": 9,
+   "passes_used": 11,
    "product": "Raco 8195",
    "cond": "noise_jpeg",
    "read_maker": "Raco",
@@ -9288,7 +9282,7 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "raco-8195",
-   "passes": 9
+   "passes": 11
   },
   {
    "photo": "raco-8195__partial",
@@ -9394,24 +9388,24 @@
   },
   {
    "photo": "raco-232__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Raco 232",
    "cond": "tilt",
    "read_maker": "Raco",
-   "read_part": "",
-   "conf": "low",
-   "name": "",
-   "pack_read": null,
+   "read_part": "232",
+   "conf": "medium",
+   "name": "Raco 232 Square Box Cover",
+   "pack_read": 50,
    "pack_true": 50,
-   "NEW": "asks",
-   "KNOWN": "asks",
+   "NEW": "correct_checkit",
+   "KNOWN": "right_item_first",
    "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "top_known": "raco-232",
+   "passes": 12
   },
   {
    "photo": "raco-232__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Raco 232",
    "cond": "rot90",
    "read_maker": "Raco",
@@ -9424,11 +9418,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "raco-232",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "raco-232__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Raco 232",
    "cond": "rot180",
    "read_maker": "Raco",
@@ -9441,7 +9435,7 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "raco-232",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "raco-232__dark",
@@ -9496,7 +9490,7 @@
   },
   {
    "photo": "raco-232__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Raco 232",
    "cond": "noise_jpeg",
    "read_maker": "Raco",
@@ -9509,7 +9503,7 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "raco-232",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "raco-232__partial",
@@ -9564,224 +9558,224 @@
   },
   {
    "photo": "wago-221__clean",
-   "passes_used": 3,
+   "passes_used": 12,
    "product": "Wago 221-412",
    "cond": "clean",
    "read_maker": "Wago",
    "read_part": "221-412",
-   "conf": "high",
+   "conf": "medium",
    "name": "Wago 221-412",
    "pack_read": 50,
    "pack_true": 50,
-   "NEW": "correct_sure",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "wago-221",
-   "passes": 3
+   "passes": 12
   },
   {
    "photo": "wago-221__blur_light",
-   "passes_used": 3,
+   "passes_used": 12,
    "product": "Wago 221-412",
    "cond": "blur_light",
    "read_maker": "Wago",
    "read_part": "221-412",
-   "conf": "high",
+   "conf": "medium",
    "name": "Wago 221-412",
    "pack_read": 50,
    "pack_true": 50,
-   "NEW": "correct_sure",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "wago-221",
-   "passes": 3
+   "passes": 12
   },
   {
    "photo": "wago-221__blur_heavy",
-   "passes_used": 3,
+   "passes_used": 12,
    "product": "Wago 221-412",
    "cond": "blur_heavy",
    "read_maker": "Wago",
    "read_part": "221-412",
-   "conf": "high",
+   "conf": "medium",
    "name": "Wago 221-412 Connector",
    "pack_read": 50,
    "pack_true": 50,
-   "NEW": "correct_sure",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "wago-221",
-   "passes": 3
+   "passes": 12
   },
   {
    "photo": "wago-221__tilt",
-   "passes_used": 3,
+   "passes_used": 12,
    "product": "Wago 221-412",
    "cond": "tilt",
    "read_maker": "Wago",
    "read_part": "221-412",
-   "conf": "high",
+   "conf": "medium",
    "name": "Wago 221-412",
    "pack_read": 50,
    "pack_true": 50,
-   "NEW": "correct_sure",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "wago-221",
-   "passes": 3
+   "passes": 12
   },
   {
    "photo": "wago-221__rot90",
-   "passes_used": 7,
+   "passes_used": 12,
    "product": "Wago 221-412",
    "cond": "rot90",
    "read_maker": "Wago",
    "read_part": "221-412",
-   "conf": "high",
+   "conf": "medium",
    "name": "Wago 221-412",
    "pack_read": 50,
    "pack_true": 50,
-   "NEW": "correct_sure",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "wago-221",
-   "passes": 7
+   "passes": 12
   },
   {
    "photo": "wago-221__rot180",
-   "passes_used": 8,
+   "passes_used": 12,
    "product": "Wago 221-412",
    "cond": "rot180",
    "read_maker": "Wago",
    "read_part": "221-412",
-   "conf": "high",
+   "conf": "medium",
    "name": "Wago 221-412",
    "pack_read": 50,
    "pack_true": 50,
-   "NEW": "correct_sure",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "wago-221",
-   "passes": 8
+   "passes": 12
   },
   {
    "photo": "wago-221__dark",
-   "passes_used": 3,
+   "passes_used": 12,
    "product": "Wago 221-412",
    "cond": "dark",
    "read_maker": "Wago",
    "read_part": "221-412",
-   "conf": "high",
-   "name": "Wago 221-412",
+   "conf": "medium",
+   "name": "Wago 221-412 Lever Conductor Compact",
    "pack_read": 50,
    "pack_true": 50,
-   "NEW": "correct_sure",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "wago-221",
-   "passes": 3
+   "passes": 12
   },
   {
    "photo": "wago-221__overexposed",
-   "passes_used": 3,
+   "passes_used": 12,
    "product": "Wago 221-412",
    "cond": "overexposed",
    "read_maker": "Wago",
    "read_part": "221-412",
-   "conf": "high",
+   "conf": "medium",
    "name": "Wago 221-412",
    "pack_read": 50,
    "pack_true": 50,
-   "NEW": "correct_sure",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "wago-221",
-   "passes": 3
+   "passes": 12
   },
   {
    "photo": "wago-221__shadow",
-   "passes_used": 3,
+   "passes_used": 12,
    "product": "Wago 221-412",
    "cond": "shadow",
    "read_maker": "Wago",
    "read_part": "221-412",
-   "conf": "high",
+   "conf": "medium",
    "name": "Wago 221-412",
    "pack_read": 50,
    "pack_true": 50,
-   "NEW": "correct_sure",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "wago-221",
-   "passes": 3
+   "passes": 12
   },
   {
    "photo": "wago-221__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Wago 221-412",
    "cond": "noise_jpeg",
    "read_maker": "Wago",
    "read_part": "221-412",
-   "conf": "high",
+   "conf": "medium",
    "name": "Wago 221-412",
    "pack_read": 50,
    "pack_true": 50,
-   "NEW": "correct_sure",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "wago-221",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "wago-221__partial",
-   "passes_used": 3,
+   "passes_used": 12,
    "product": "Wago 221-412",
    "cond": "partial",
    "read_maker": "Wago",
    "read_part": "221-412",
-   "conf": "high",
-   "name": "Wago 221-412",
+   "conf": "medium",
+   "name": "Wago 221-412 Connector",
    "pack_read": 50,
    "pack_true": 50,
-   "NEW": "correct_sure",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "wago-221",
-   "passes": 3
+   "passes": 12
   },
   {
    "photo": "wago-221__lowres",
-   "passes_used": 3,
+   "passes_used": 12,
    "product": "Wago 221-412",
    "cond": "lowres",
    "read_maker": "Wago",
    "read_part": "221-412",
-   "conf": "high",
+   "conf": "medium",
    "name": "Wago 221-412",
    "pack_read": 50,
    "pack_true": 50,
-   "NEW": "correct_sure",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "wago-221",
-   "passes": 3
+   "passes": 12
   },
   {
    "photo": "wago-221__small_pack",
-   "passes_used": 3,
+   "passes_used": 12,
    "product": "Wago 221-412",
    "cond": "small_pack",
    "read_maker": "Wago",
    "read_part": "221-412",
-   "conf": "high",
-   "name": "Wago 221-412",
+   "conf": "medium",
+   "name": "Wago 221-412 Connector",
    "pack_read": 50,
    "pack_true": 50,
-   "NEW": "correct_sure",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "wago-221",
-   "passes": 3
+   "passes": 12
   },
   {
    "photo": "wago-221-413__clean",
@@ -9836,24 +9830,24 @@
   },
   {
    "photo": "wago-221-413__tilt",
-   "passes_used": 10,
+   "passes_used": 2,
    "product": "Wago 221-413",
    "cond": "tilt",
    "read_maker": "Wago",
-   "read_part": "221",
-   "conf": "medium",
-   "name": "Wago 221",
+   "read_part": "221-413",
+   "conf": "high",
+   "name": "Wago 221-413",
    "pack_read": 50,
    "pack_true": 50,
-   "NEW": "wrong_part_checkit",
-   "KNOWN": "right_item_in_list",
+   "NEW": "correct_sure",
+   "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
-   "top_known": "",
-   "passes": 10
+   "top_known": "wago-221-413",
+   "passes": 2
   },
   {
    "photo": "wago-221-413__rot90",
-   "passes_used": 7,
+   "passes_used": 9,
    "product": "Wago 221-413",
    "cond": "rot90",
    "read_maker": "Wago",
@@ -9866,11 +9860,11 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "wago-221-413",
-   "passes": 7
+   "passes": 9
   },
   {
    "photo": "wago-221-413__rot180",
-   "passes_used": 8,
+   "passes_used": 10,
    "product": "Wago 221-413",
    "cond": "rot180",
    "read_maker": "Wago",
@@ -9883,7 +9877,7 @@
    "KNOWN": "right_item_first",
    "SIB": "shown_as_possible_only",
    "top_known": "wago-221-413",
-   "passes": 8
+   "passes": 10
   },
   {
    "photo": "wago-221-413__dark",
@@ -10006,7 +10000,7 @@
   },
   {
    "photo": "sw-122__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 12/2 NM-B W/G 250 FT",
    "cond": "clean",
    "read_maker": "Southwire",
@@ -10019,11 +10013,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-122__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 12/2 NM-B W/G 250 FT",
    "cond": "blur_light",
    "read_maker": "Southwire",
@@ -10036,11 +10030,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-122__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 12/2 NM-B W/G 250 FT",
    "cond": "blur_heavy",
    "read_maker": "Southwire",
@@ -10053,11 +10047,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-122__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 12/2 NM-B W/G 250 FT",
    "cond": "tilt",
    "read_maker": "Southwire",
@@ -10070,11 +10064,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-122__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 12/2 NM-B W/G 250 FT",
    "cond": "rot90",
    "read_maker": "Southwire",
@@ -10087,11 +10081,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-122__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 12/2 NM-B W/G 250 FT",
    "cond": "rot180",
    "read_maker": "Southwire",
@@ -10104,11 +10098,11 @@
    "KNOWN": "not_offered",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-122__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 12/2 NM-B W/G 250 FT",
    "cond": "dark",
    "read_maker": "Southwire",
@@ -10121,11 +10115,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-122__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 12/2 NM-B W/G 250 FT",
    "cond": "overexposed",
    "read_maker": "Southwire",
@@ -10138,11 +10132,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-122__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 12/2 NM-B W/G 250 FT",
    "cond": "shadow",
    "read_maker": "Cooper",
@@ -10155,11 +10149,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-122__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 12/2 NM-B W/G 250 FT",
    "cond": "noise_jpeg",
    "read_maker": "Southwire",
@@ -10172,11 +10166,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-122__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 12/2 NM-B W/G 250 FT",
    "cond": "partial",
    "read_maker": "Southwire",
@@ -10189,11 +10183,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-122__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 12/2 NM-B W/G 250 FT",
    "cond": "lowres",
    "read_maker": "Southwire",
@@ -10206,11 +10200,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-122__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 12/2 NM-B W/G 250 FT",
    "cond": "small_pack",
    "read_maker": "Southwire",
@@ -10223,11 +10217,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-142__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 14/2 NM-B W/G 250 FT",
    "cond": "clean",
    "read_maker": "Southwire",
@@ -10240,11 +10234,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-142__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 14/2 NM-B W/G 250 FT",
    "cond": "blur_light",
    "read_maker": "Southwire",
@@ -10257,11 +10251,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-142__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 14/2 NM-B W/G 250 FT",
    "cond": "blur_heavy",
    "read_maker": "Southwire",
@@ -10274,11 +10268,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-142__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 14/2 NM-B W/G 250 FT",
    "cond": "tilt",
    "read_maker": "Southwire",
@@ -10291,11 +10285,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-142__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 14/2 NM-B W/G 250 FT",
    "cond": "rot90",
    "read_maker": "Southwire",
@@ -10308,11 +10302,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-142__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 14/2 NM-B W/G 250 FT",
    "cond": "rot180",
    "read_maker": "Southwire",
@@ -10325,11 +10319,11 @@
    "KNOWN": "not_offered",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-142__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 14/2 NM-B W/G 250 FT",
    "cond": "dark",
    "read_maker": "Southwire",
@@ -10342,11 +10336,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-142__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 14/2 NM-B W/G 250 FT",
    "cond": "overexposed",
    "read_maker": "Southwire",
@@ -10359,11 +10353,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-142__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 14/2 NM-B W/G 250 FT",
    "cond": "shadow",
    "read_maker": "Cooper",
@@ -10376,11 +10370,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-142__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 14/2 NM-B W/G 250 FT",
    "cond": "noise_jpeg",
    "read_maker": "Southwire",
@@ -10393,11 +10387,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-142__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 14/2 NM-B W/G 250 FT",
    "cond": "partial",
    "read_maker": "Southwire",
@@ -10410,11 +10404,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-142__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 14/2 NM-B W/G 250 FT",
    "cond": "lowres",
    "read_maker": "Southwire",
@@ -10427,11 +10421,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "sw-142__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Southwire Romex SIMpull 14/2 NM-B W/G 250 FT",
    "cond": "small_pack",
    "read_maker": "Southwire",
@@ -10444,11 +10438,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "halo-lt560__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Halo LT560WH6930",
    "cond": "clean",
    "read_maker": "Halo",
@@ -10461,11 +10455,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "halo-lt560",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "halo-lt560__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Halo LT560WH6930",
    "cond": "blur_light",
    "read_maker": "Halo",
@@ -10478,45 +10472,45 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "halo-lt560",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "halo-lt560__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Halo LT560WH6930",
    "cond": "blur_heavy",
    "read_maker": "Halo",
-   "read_part": "LTS60WH6930",
+   "read_part": "LT560WH6930",
    "conf": "medium",
-   "name": "Halo LTS60WH6930 5/6 LED Retrofit Recessed Trim",
+   "name": "Halo LT560WH6930 5/6 LED Retrofit Recessed Trim",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "halo-lt560",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "halo-lt560__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Halo LT560WH6930",
    "cond": "tilt",
    "read_maker": "Halo",
-   "read_part": "LT56",
+   "read_part": "LT560WH6930",
    "conf": "medium",
-   "name": "Halo LT56 LED Retrofit White",
+   "name": "Halo LT560WH6930 5/6 LED Retrofit Trim White",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_checkit",
-   "KNOWN": "right_item_in_list",
+   "NEW": "correct_checkit",
+   "KNOWN": "right_item_first",
    "SIB": "none",
-   "top_known": "",
-   "passes": 10
+   "top_known": "halo-lt560",
+   "passes": 12
   },
   {
    "photo": "halo-lt560__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Halo LT560WH6930",
    "cond": "rot90",
    "read_maker": "Halo",
@@ -10529,11 +10523,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "halo-lt560__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Halo LT560WH6930",
    "cond": "rot180",
    "read_maker": "Halo",
@@ -10546,11 +10540,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "halo-lt560__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Halo LT560WH6930",
    "cond": "dark",
    "read_maker": "Halo",
@@ -10563,11 +10557,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "halo-lt560",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "halo-lt560__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Halo LT560WH6930",
    "cond": "overexposed",
    "read_maker": "Halo",
@@ -10580,11 +10574,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "halo-lt560",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "halo-lt560__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Halo LT560WH6930",
    "cond": "shadow",
    "read_maker": "Halo",
@@ -10597,11 +10591,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "halo-lt560",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "halo-lt560__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Halo LT560WH6930",
    "cond": "noise_jpeg",
    "read_maker": "Halo",
@@ -10614,11 +10608,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "halo-lt560__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Halo LT560WH6930",
    "cond": "partial",
    "read_maker": "Halo",
@@ -10631,11 +10625,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "halo-lt560",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "halo-lt560__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Halo LT560WH6930",
    "cond": "lowres",
    "read_maker": "Halo",
@@ -10648,11 +10642,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "halo-lt560__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Halo LT560WH6930",
    "cond": "small_pack",
    "read_maker": "Halo",
@@ -10665,11 +10659,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "carlon-b114__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Carlon B114R",
    "cond": "clean",
    "read_maker": "Carlon",
@@ -10682,11 +10676,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "carlon-b114",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "carlon-b114__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Carlon B114R",
    "cond": "blur_light",
    "read_maker": "Carlon",
@@ -10699,11 +10693,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "carlon-b114",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "carlon-b114__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Carlon B114R",
    "cond": "blur_heavy",
    "read_maker": "Carlon",
@@ -10716,28 +10710,28 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "carlon-b114",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "carlon-b114__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Carlon B114R",
    "cond": "tilt",
    "read_maker": "Carlon",
    "read_part": "B114R",
    "conf": "medium",
-   "name": "Carlon B114R",
-   "pack_read": null,
+   "name": "Carlon B114R 1-Gang Old Work",
+   "pack_read": 25,
    "pack_true": 25,
    "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "carlon-b114",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "carlon-b114__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Carlon B114R",
    "cond": "rot90",
    "read_maker": "Carlon",
@@ -10750,11 +10744,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "carlon-b114",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "carlon-b114__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Carlon B114R",
    "cond": "rot180",
    "read_maker": "Carlon",
@@ -10767,11 +10761,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "carlon-b114",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "carlon-b114__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Carlon B114R",
    "cond": "dark",
    "read_maker": "Carlon",
@@ -10784,11 +10778,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "carlon-b114",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "carlon-b114__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Carlon B114R",
    "cond": "overexposed",
    "read_maker": "Carlon",
@@ -10801,11 +10795,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "carlon-b114",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "carlon-b114__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Carlon B114R",
    "cond": "shadow",
    "read_maker": "Carlon",
@@ -10818,11 +10812,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "carlon-b114",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "carlon-b114__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Carlon B114R",
    "cond": "noise_jpeg",
    "read_maker": "Carlon",
@@ -10835,11 +10829,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "carlon-b114",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "carlon-b114__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Carlon B114R",
    "cond": "partial",
    "read_maker": "Carlon",
@@ -10852,11 +10846,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "carlon-b114",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "carlon-b114__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Carlon B114R",
    "cond": "lowres",
    "read_maker": "Carlon",
@@ -10869,11 +10863,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "carlon-b114",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "carlon-b114__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Carlon B114R",
    "cond": "small_pack",
    "read_maker": "Carlon",
@@ -10886,11 +10880,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "carlon-b114",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "intm-st01__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Intermatic ST01C",
    "cond": "clean",
    "read_maker": "Intermatic",
@@ -10903,11 +10897,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "intm-st01__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Intermatic ST01C",
    "cond": "blur_light",
    "read_maker": "Intermatic",
@@ -10920,11 +10914,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "intm-st01",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "intm-st01__blur_heavy",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Intermatic ST01C",
    "cond": "blur_heavy",
    "read_maker": "Intermatic",
@@ -10937,28 +10931,28 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "intm-st01__tilt",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Intermatic ST01C",
    "cond": "tilt",
    "read_maker": "Intermatic",
-   "read_part": "STO1C",
+   "read_part": "STOL1C",
    "conf": "medium",
-   "name": "Intermatic STO1C Astro Digita Timer",
+   "name": "Intermatic STOL1C Digital Timer",
    "pack_read": null,
    "pack_true": 1,
    "NEW": "wrong_part_checkit",
-   "KNOWN": "right_item_first",
+   "KNOWN": "right_item_in_list",
    "SIB": "none",
-   "top_known": "intm-st01",
-   "passes": 10
+   "top_known": "",
+   "passes": 12
   },
   {
    "photo": "intm-st01__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Intermatic ST01C",
    "cond": "rot90",
    "read_maker": "Intermatic",
@@ -10971,11 +10965,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "intm-st01__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Intermatic ST01C",
    "cond": "rot180",
    "read_maker": "Intermatic",
@@ -10988,11 +10982,11 @@
    "KNOWN": "not_offered",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "intm-st01__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Intermatic ST01C",
    "cond": "dark",
    "read_maker": "Intermatic",
@@ -11005,11 +10999,11 @@
    "KNOWN": "right_item_in_list",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "intm-st01__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Intermatic ST01C",
    "cond": "overexposed",
    "read_maker": "Intermatic",
@@ -11022,11 +11016,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "intm-st01__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Intermatic ST01C",
    "cond": "shadow",
    "read_maker": "",
@@ -11039,11 +11033,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "intm-st01__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Intermatic ST01C",
    "cond": "noise_jpeg",
    "read_maker": "Intermatic",
@@ -11056,11 +11050,11 @@
    "KNOWN": "asks",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "intm-st01__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Intermatic ST01C",
    "cond": "partial",
    "read_maker": "Intermatic",
@@ -11073,11 +11067,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "intm-st01",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "intm-st01__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Intermatic ST01C",
    "cond": "lowres",
    "read_maker": "Intermatic",
@@ -11090,11 +11084,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "intm-st01",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "intm-st01__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Intermatic ST01C",
    "cond": "small_pack",
    "read_maker": "Intermatic",
@@ -11107,11 +11101,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "intm-st01",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "kidde-i12__clean",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Kidde i12060",
    "cond": "clean",
    "read_maker": "Kidde",
@@ -11124,11 +11118,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "kidde-i12",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "kidde-i12__blur_light",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Kidde i12060",
    "cond": "blur_light",
    "read_maker": "Kidde",
@@ -11141,45 +11135,45 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "kidde-i12",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "kidde-i12__blur_heavy",
-   "passes_used": 3,
+   "passes_used": 12,
    "product": "Kidde i12060",
    "cond": "blur_heavy",
    "read_maker": "Kidde",
-   "read_part": "112060",
-   "conf": "high",
-   "name": "Kidde 112060",
+   "read_part": "I12060",
+   "conf": "medium",
+   "name": "Kidde I12060",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_SURE",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "kidde-i12",
-   "passes": 3
+   "passes": 12
   },
   {
    "photo": "kidde-i12__tilt",
-   "passes_used": 3,
+   "passes_used": 12,
    "product": "Kidde i12060",
    "cond": "tilt",
    "read_maker": "Kidde",
-   "read_part": "112060",
-   "conf": "high",
-   "name": "Kidde 112060",
+   "read_part": "I12060",
+   "conf": "medium",
+   "name": "Kidde I12060",
    "pack_read": null,
    "pack_true": 1,
-   "NEW": "wrong_part_SURE",
+   "NEW": "correct_checkit",
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "kidde-i12",
-   "passes": 3
+   "passes": 12
   },
   {
    "photo": "kidde-i12__rot90",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Kidde i12060",
    "cond": "rot90",
    "read_maker": "Kidde",
@@ -11192,11 +11186,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "kidde-i12",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "kidde-i12__rot180",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Kidde i12060",
    "cond": "rot180",
    "read_maker": "Kidde",
@@ -11209,11 +11203,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "kidde-i12",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "kidde-i12__dark",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Kidde i12060",
    "cond": "dark",
    "read_maker": "Kidde",
@@ -11226,11 +11220,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "kidde-i12",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "kidde-i12__overexposed",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Kidde i12060",
    "cond": "overexposed",
    "read_maker": "Kidde",
@@ -11243,11 +11237,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "kidde-i12",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "kidde-i12__shadow",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Kidde i12060",
    "cond": "shadow",
    "read_maker": "Kidde",
@@ -11260,28 +11254,28 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "kidde-i12",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "kidde-i12__noise_jpeg",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Kidde i12060",
    "cond": "noise_jpeg",
    "read_maker": "Kidde",
-   "read_part": "11206",
+   "read_part": "I1206",
    "conf": "medium",
-   "name": "Kidde 11206 Smoke Alarm Red",
+   "name": "Kidde I1206 Smoke Alarm Red",
    "pack_read": null,
    "pack_true": 1,
    "NEW": "wrong_part_checkit",
    "KNOWN": "right_item_in_list",
    "SIB": "none",
    "top_known": "",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "kidde-i12__partial",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Kidde i12060",
    "cond": "partial",
    "read_maker": "Kidde",
@@ -11294,11 +11288,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "kidde-i12",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "kidde-i12__lowres",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Kidde i12060",
    "cond": "lowres",
    "read_maker": "Kidde",
@@ -11311,11 +11305,11 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "kidde-i12",
-   "passes": 10
+   "passes": 12
   },
   {
    "photo": "kidde-i12__small_pack",
-   "passes_used": 10,
+   "passes_used": 12,
    "product": "Kidde i12060",
    "cond": "small_pack",
    "read_maker": "Kidde",
@@ -11328,7 +11322,7 @@
    "KNOWN": "right_item_first",
    "SIB": "none",
    "top_known": "kidde-i12",
-   "passes": 10
+   "passes": 12
   }
  ]
 }
