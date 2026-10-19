@@ -245,10 +245,45 @@ async function encWith(key,obj){const iv=crypto.getRandomValues(new Uint8Array(1
 async function decWith(key,b64){const bin=atob(b64);const iv=Uint8Array.from(bin.slice(0,12),c=>c.charCodeAt(0));
   const ct=Uint8Array.from(bin.slice(12),c=>c.charCodeAt(0));
   const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,ct);return JSON.parse(new TextDecoder().decode(pt));}
-// device-bound wrap/unwrap using the NON-EXTRACTABLE device key (for the Face-ID password verifier): a copy of
-// browser storage alone cannot be decrypted or brute-forced off-device. Returns null when no device key is available.
-window.EX_wrap=async function(obj){try{const dk=await deviceKey();if(!dk)return null;return await encWith(dk,obj);}catch(e){return null;}};
-window.EX_unwrap=async function(b64){try{const dk=await deviceKey();if(!dk||!b64)return null;return await decWith(dk,b64);}catch(e){return null;}};
+// ---- Face-ID PASSWORD VERIFIER (device-bound; defined here so the device key, encWith/decWith stay MODULE-LOCAL and
+//      are never exposed to page scripts). The verifier is ALWAYS encrypted with the non-extractable device key: a copy
+//      of browser storage cannot be read or brute-forced off-device. If there is NO device key, we store NOTHING and
+//      fail securely (online server login still works). We never store a readable PBKDF2 value. Only these
+//      password-taking functions are exposed — there is no general decrypt, so no exposed function can bypass auth.
+async function pbkdf2Bytes(pass,saltU8,iter){const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass||''),'PBKDF2',false,['deriveBits']);
+  return new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',salt:saltU8,iterations:iter,hash:'SHA-256'},k,256));}
+window.EX_setPwVerifier=async function(pass,user){try{if(!pass||!user||!(crypto&&crypto.subtle))return false;
+    const dk=await deviceKey();if(!dk){try{localStorage.removeItem('ex_pwv');}catch(e){}return false;} // no key → store nothing (fail secure)
+    const salt=crypto.getRandomValues(new Uint8Array(16)),iter=210000;
+    const hash=await pbkdf2Bytes(pass,salt,iter);
+    const blob=await encWith(dk,{salt:Array.from(salt),iter,hash:Array.from(hash)}); // salt+hash sealed inside the device-key ciphertext
+    localStorage.setItem('ex_pwv',JSON.stringify({fmt:'wrapped',user,blob}));return true;
+  }catch(e){return false;}};
+// true (match) / false (wrong) / null (no usable local verifier → caller must use the server)
+window.EX_checkPwVerifier=async function(pass,user){try{if(!(crypto&&crypto.subtle))return null;
+    const rec=JSON.parse(localStorage.getItem('ex_pwv')||'null');if(!rec||rec.user!==user||rec.fmt!=='wrapped'||!rec.blob)return null;
+    const dk=await deviceKey();if(!dk)return null;
+    let inner=null;try{inner=await decWith(dk,rec.blob);}catch(e){return null;}
+    if(!inner||!Array.isArray(inner.salt)||!Array.isArray(inner.hash))return null;
+    const h=await pbkdf2Bytes(pass,new Uint8Array(inner.salt),inner.iter||210000);
+    if(h.length!==inner.hash.length)return false;let d=0;for(let i=0;i<h.length;i++)d|=h[i]^inner.hash[i];return d===0; // constant-time
+  }catch(e){return null;}};
+window.EX_clearPwVerifier=function(){try{localStorage.removeItem('ex_pwv');}catch(e){}};
+window.EX_hasPwVerifier=function(user){try{const r=JSON.parse(localStorage.getItem('ex_pwv')||'null');return !!(r&&r.user===user&&r.fmt==='wrapped');}catch(e){return false;}};
+// On an account switch, securely stash the PREVIOUS employee's LIVE unsent work (encrypted, keyed to THEM) before the
+// live copy is wiped — so it is preserved, recoverable only when they sign back in, and never visible/uploadable under
+// the next employee. Merges with any existing stash; verifies the ciphertext decrypts back before trusting it.
+async function stashLiveFor(prev){try{if(!prev)return;const dk=await deviceKey();if(!dk)return;
+  try{const live=JSON.parse(localStorage.getItem('ex_queue')||'{}');if(live&&Object.keys(live).length){let merged=live;
+    try{const ex=localStorage.getItem('ex_qenc__'+prev);if(ex){const old=await decWith(dk,ex);if(old&&typeof old==='object')merged=Object.assign({},old,live);}}catch(e){}
+    const blob=await encWith(dk,merged);let back=null;try{back=await decWith(dk,blob);}catch(e){}
+    if(back&&JSON.stringify(back)===JSON.stringify(merged))localStorage.setItem('ex_qenc__'+prev,blob);}}catch(e){}
+  try{const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');const sraw=localStorage.getItem(K+'__stockq');const sarr=sraw?JSON.parse(sraw):[];
+    if(Array.isArray(sarr)&&sarr.length){let merged=sarr;
+    try{const ex=localStorage.getItem('ex_sqenc__'+prev);if(ex){const old=await decWith(dk,ex);if(Array.isArray(old)){const seen=new Set(sarr.map(x=>x&&x.id));merged=sarr.concat(old.filter(x=>x&&!seen.has(x.id)));}}}catch(e){}
+    const blob=await encWith(dk,merged);let back=null;try{back=await decWith(dk,blob);}catch(e){}
+    if(back&&JSON.stringify(back)===JSON.stringify(merged))localStorage.setItem('ex_sqenc__'+prev,blob);}}catch(e){}
+}catch(e){}}
 // recover a securely-stashed stock queue for the SAME person on their next sign-in (merge by id; never overwrite newer)
 async function recoverStockStash(uid){try{if(!uid)return;const enc=localStorage.getItem('ex_sqenc__'+uid);if(!enc)return;
   const dk=await deviceKey();if(!dk)return;let arr=null;try{arr=await decWith(dk,enc);}catch(e){return;}
@@ -337,7 +372,12 @@ window.EX_boot=async function(){if(!REAL)return {real:false};
   window.EX_sb=sb;
   let email=null,uid=null;try{const s=await withTO(sb.auth.getSession(),6000,'sign-in');const u=s.data.session&&s.data.session.user;email=u?u.email:null;uid=u?u.id:null;}catch(e){email=cachedEmail();st.slow=true;}st.user=email;
   // account switch: if the person signed in now is not the one this phone's cached data belongs to, drop the old copy first
-  try{const prev=localStorage.getItem('ex_uid');if(uid){if(prev&&prev!==uid){const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');localStorage.removeItem(K);['ex_queue','electrix_bio','ex_faceid_asked','ex_faceid','ex_pwv','ex_qenc__'+prev,'ex_sqenc__'+prev,K+'__stockq'].forEach(k=>localStorage.removeItem(k));queue={};}localStorage.setItem('ex_uid',uid);}}catch(e){}
+  try{const prev=localStorage.getItem('ex_uid');if(uid){if(prev&&prev!==uid){
+      await stashLiveFor(prev);   // preserve the previous employee's unsent work (encrypted, keyed to them) BEFORE wiping live data
+      const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');
+      // wipe everything the next employee must NOT see — but KEEP ex_qenc__prev / ex_sqenc__prev (prev's encrypted stash)
+      ['ex_queue','electrix_bio','ex_faceid_asked','ex_faceid','ex_pwv',K,K+'__stockq'].forEach(k=>localStorage.removeItem(k));queue={};
+    }localStorage.setItem('ex_uid',uid);}}catch(e){}
   // an auto-resumed session (same uid) recovers its own encrypted stash; a legacy plaintext stash is discarded, never loaded
   try{if(uid){try{localStorage.removeItem('ex_queue__'+uid);}catch(e){}
     const enc=localStorage.getItem('ex_qenc__'+uid);if(enc){const dk=await deviceKey();if(dk){const rec=await decWith(dk,enc);if(rec&&typeof rec==='object'){Object.keys(rec).forEach(k=>{if(!queue[k])queue[k]=rec[k];});localStorage.removeItem('ex_qenc__'+uid);saveQ();}}}

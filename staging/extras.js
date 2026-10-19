@@ -71,34 +71,8 @@ const T=s=>typeof t==='function'?t(s):s;
 // We store ONLY a salted, 210k-round PBKDF2 verifier of the password (never the password itself), so when Face ID
 // fails the person can confirm who they are with their password WITHOUT a server round-trip and WITHOUT signing out.
 // Created at sign-in and on password change (the only moments we hold the plaintext). Wiped on sign-out.
-const PWV='ex_pwv';
-async function pbkdf2(pass,saltBytes,iter){const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass||''),'PBKDF2',false,['deriveBits']);
-  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:saltBytes,iterations:iter,hash:'SHA-256'},k,256);return b64u(bits);}
-const ctEq=(a,b)=>{if(typeof a!=='string'||typeof b!=='string'||a.length!==b.length)return false;let d=0;for(let i=0;i<a.length;i++)d|=a.charCodeAt(i)^b.charCodeAt(i);return d===0;};
-window.EX_setPwVerifier=async function(pass,user){try{if(!pass||!user||!(crypto&&crypto.subtle))return false;
-    const salt=crypto.getRandomValues(new Uint8Array(16)),iter=210000;
-    const inner={salt:b64u(salt.buffer),iter,hash:await pbkdf2(pass,salt,iter)};
-    // Prefer a DEVICE-BOUND verifier: encrypt {salt,iter,hash} with the non-extractable device key, so a copy of
-    // browser storage can't even read the salt — no off-device brute force. Fall back to plain PBKDF2 if no device key
-    // (never weaker than before; offline unlock still works).
-    let blob=null;try{if(window.EX_wrap)blob=await EX_wrap(inner);}catch(e){}
-    if(blob)localStorage.setItem(PWV,JSON.stringify({fmt:'wrapped',user,blob}));
-    else localStorage.setItem(PWV,JSON.stringify({fmt:'plain',user,salt:inner.salt,iter,hash:inner.hash}));
-    return true;
-  }catch(e){return false;}};
-// returns true (match), false (wrong), or null (no usable local verifier → caller should use the server)
-window.EX_checkPwVerifier=async function(pass,user){try{if(!(crypto&&crypto.subtle))return null;
-    const rec=JSON.parse(localStorage.getItem(PWV)||'null');if(!rec||rec.user!==user)return null;
-    let inner=null;
-    if(rec.fmt==='wrapped'){inner=window.EX_unwrap?await EX_unwrap(rec.blob):null;if(!inner)return null;} // device key gone → can't verify locally
-    else if(rec.salt&&rec.hash){inner={salt:rec.salt,iter:rec.iter||210000,hash:rec.hash};}
-    else return null;
-    const h=await pbkdf2(pass,unb64u(inner.salt),inner.iter||210000);
-    return ctEq(h,inner.hash);
-  }catch(e){return null;}};
-window.EX_clearPwVerifier=function(){try{localStorage.removeItem(PWV);}catch(e){}};
-window.EX_hasPwVerifier=function(user){try{const r=JSON.parse(localStorage.getItem(PWV)||'null');return !!(r&&r.user===user);}catch(e){return false;}};
-
+// The Face-ID password verifier lives in sync.js (window.EX_setPwVerifier / EX_checkPwVerifier / EX_clearPwVerifier /
+// EX_hasPwVerifier) so the device key and raw decrypt stay out of page scope. extras.js only CALLS those below.
 let unlocked=false,hiddenAt=0,fails=0;
 function unlockNow(){unlocked=true;fails=0;const o=document.getElementById('exLock');if(o)o.remove();}
 function lockBase(o,dark){o.style.background=dark?'#000':'#fff';o.style.color=dark?'#f2f2f7':'#1F1E2A';}

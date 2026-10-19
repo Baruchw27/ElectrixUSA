@@ -5,10 +5,10 @@
 <meta name="theme-color" content="#ffffff"><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Electrix Field</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
-<script>window.EX_VER='vstk1024';</script><script src="config.js"></script>
+<script>window.EX_VER='vstk1025';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vstk1024"></script>
-<script src="extras.js?vstk1024"></script>
+<script src="sync.js?vstk1025"></script>
+<script src="extras.js?vstk1025"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -3903,6 +3903,12 @@ async function flushStockQ(){if(stockFlushing)return;
       if(r&&r.error){const perm=stockErrMsg(r.error);
         if(perm){stockRevert(txn.moves);q=stockQ().filter(x=>x.id!==txn.id);stockQSave(q);changed=true;
           const li=D.stockLog.find(x=>x.id===txn.id);if(li){li.pending=false;li.rejected=true;}
+          // PRESERVE the rejected movement for an admin to recover — never silently discarded. RLS scopes it:
+          // the employee who made it + staff can see it, nobody else.
+          try{const raw=(r.error&&(r.error.message||''))||'';D.rejq=D.rejq||[];
+            if(!D.rejq.some(x=>x.id==='rej_'+txn.id))D.rejq.push({id:'rej_'+txn.id,src:'stock',by:txn.by,kind:txn.kind,site:txn.site,
+              moves:txn.moves.map(m=>({id:m.id,name:m.name,unit:m.unit,delta:m.delta,set:m.set,expect:m.expect})),
+              reason:perm,serverError:raw.slice(0,160),ts:txn.ts,rejectedAt:Date.now()});}catch(e){}
           stockOutcomes[txn.id]={status:'rejected',reason:perm};try{toast('⚠ '+perm,'bad');}catch(e){}continue;}
         break;} // transient (network/server): keep queued, retry later
       const res=(r&&r.data)||{};(res.qtys||[]).forEach(x=>{const s=stockItem(x.id);if(s){s.qty=Math.max(0,+x.qty||0);changed=true;}});
@@ -4083,7 +4089,14 @@ async function openRecon(){if(!mhStaff()){toast(t('Owners and office only'));ret
     '<div class="card" style="flex:1;text-align:center;padding:10px 6px;margin:0"><div style="font-size:24px;font-weight:800;color:#1b7a3d">'+ok.length+'</div><div style="font-size:11px;color:var(--g4)">'+t('in sync')+'</div></div>'+
     '<div class="card" style="flex:1;text-align:center;padding:10px 6px;margin:0"><div style="font-size:24px;font-weight:800;color:#6b7590">'+base.length+'</div><div style="font-size:11px;color:var(--g4)">'+t('no ledger yet')+'</div></div></div>';
   const order=[...bad,...base,...ok];
-  document.getElementById('rcList').innerHTML=order.length?order.map(rcRow).join(''):'<div class="empty">'+t('No stock items.')+'</div>';}
+  // Rejected movements an admin can recover (RLS already scoped what synced down to this account)
+  const rej=(D.rejq||[]).filter(x=>x&&x.src==='stock').slice().sort((a,b)=>(b.rejectedAt||0)-(a.rejectedAt||0));
+  const rejHtml=rej.length?('<div class="sec" style="margin-top:14px">⚠ '+t('Rejected movements (for review)')+'</div>'+rej.slice(0,50).map(x=>
+    '<div class="card" style="padding:9px 11px;border-color:#f0b4ae;background:#fdecea"><div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:13px">'+(MH_KIND[x.kind]?MH_KIND[x.kind].i+' '+t(MH_KIND[x.kind].t):esc(x.kind||''))+'</b><span style="font-size:11px;color:var(--g4)">'+tsFull(x.rejectedAt)+'</span></div>'+
+    '<div style="font-size:12px;color:var(--g4)">'+esc(nameOf(x.by)||'—')+(x.site?' · '+esc(siteName(x.site)):'')+'</div>'+
+    '<div style="font-size:12px">'+ (x.moves||[]).map(m=>((m.set!=null?('→ '+m.set):((m.delta>0?'+':'')+m.delta))+'× '+esc(m.name||m.id))).join(' · ')+'</div>'+
+    '<div style="font-size:12px;color:#c0392b;margin-top:2px">'+esc(x.reason||'')+'</div></div>').join('')):'';
+  document.getElementById('rcList').innerHTML=(order.length?order.map(rcRow).join(''):'<div class="empty">'+t('No stock items.')+'</div>')+rejHtml;}
 
 function reconLocal(){const latest={};
   (D.stockLog||[]).forEach(l=>{if(l.deleted||l.auth!==true)return;const seq=+l.seq||0,sts=+l.serverTs||+l.ts||0;(l.items||[]).forEach(it=>{if(it.after==null)return;const c=latest[it.id];if(!c||seq>c.seq||(seq===c.seq&&sts>c.sts)){latest[it.id]={after:+it.after,seq,sts,n:(c?c.n:0)+1};}else{c.n++;}});});
@@ -4185,6 +4198,22 @@ function exOverlay(msg){let o=document.getElementById('exBoot');if(!o){o=documen
 const MAX_OFFLINE_DAYS=7;
 function exStaleBlock(){let o=document.getElementById('exBoot');if(!o){exOverlay(' ');o=document.getElementById('exBoot');}
   o.innerHTML='<div style="font-size:15px;color:#1F1E2A;font-weight:600;max-width:300px;text-align:center">'+t('For security, please connect to the internet to sign in.')+'</div><div style="font-size:13px;max-width:300px;text-align:center">'+t('This phone hasn’t reached the server in a while.')+'</div><button style="border:0;background:#1F1E2A;color:#fff;font-size:16px;font-weight:600;padding:12px 24px;border-radius:12px" onclick="location.reload()">'+t('Try again')+'</button><button style="border:0;background:none;color:#D53C36;text-decoration:underline;font-size:13px" onclick="exOverlay(null);needLogin()">'+t('Sign in again')+'</button>';}
+// Enforce the offline limit continuously — not just at startup: on foreground resume and periodically. If the phone has
+// gone stale, try to revalidate with the server first (which also re-checks that the employee is still active); only if
+// that fails do we lock access behind a required sign-in. lastseen advances ONLY on a real successful server pull, so a
+// refreshed-but-unvalidated token can never extend offline access.
+let exGuardBusy=false;
+async function exOfflineGuard(){if(!window.EX_REAL||exGuardBusy)return;
+  let ls=0;try{ls=+(localStorage.getItem('ex_lastseen')||0)||0;}catch(e){}
+  if(!ls||Date.now()-ls<=MAX_OFFLINE_DAYS*86400000)return;      // fresh enough
+  exGuardBusy=true;
+  try{try{if(window.EX_catchUp)await EX_catchUp();}catch(e){}   // revalidate authorization + refresh lastseen
+    try{ls=+(localStorage.getItem('ex_lastseen')||0)||0;}catch(e){}
+    if(Date.now()-ls>MAX_OFFLINE_DAYS*86400000){try{if(window.EX_lockOff)EX_lockOff();}catch(e){}exStaleBlock();} // still stale → require sign-in
+  }finally{exGuardBusy=false;}}
+try{document.addEventListener('visibilitychange',()=>{if(!document.hidden)exOfflineGuard();});
+    window.addEventListener('online',()=>{try{if(window.EX_catchUp)EX_catchUp();}catch(e){}setTimeout(exOfflineGuard,4000);});
+    setInterval(exOfflineGuard,10*60000);}catch(e){}
 async function exBootstrap(){if(!window.EX_REAL){document.documentElement.classList.remove('exreal');return;}document.documentElement.classList.add('exreal');D.demo=false;
   // open right away from the copy on this phone; the server catches up in the background (never a frozen "Loading…")
   const ce=window.EX_cachedEmail&&EX_cachedEmail();const lu=ce&&(D.emps||[]).length>1?D.emps.find(e=>!e.inactive&&EX_emailFor(e)===ce):null;
