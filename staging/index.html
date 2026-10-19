@@ -5,10 +5,10 @@
 <meta name="theme-color" content="#ffffff"><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Electrix Field</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
-<script>window.EX_VER='vstk1021';</script><script src="config.js"></script>
+<script>window.EX_VER='vstk1022';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vstk1021"></script>
-<script src="extras.js?vstk1021"></script>
+<script src="sync.js?vstk1022"></script>
+<script src="extras.js?vstk1022"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -1953,11 +1953,32 @@ function needLogin(){const el=document.getElementById('m-login');const img=docum
   const hasBio=(()=>{try{return !!localStorage.getItem('electrix_bio');}catch(e){return false;}})();document.getElementById('bioBtn').style.display=hasBio&&window.PublicKeyCredential?'':'none';
   document.getElementById('lgErr').textContent='';el.classList.remove('hid');navUpdate();}
 function findUser(q){q=(q||'').trim().toLowerCase();if(!q)return null;const dig=q.replace(/\D/g,'');return D.emps.find(e=>!e.inactive&&(e.name.toLowerCase()===q||(e.email&&e.email.toLowerCase()===q)||(dig.length>=7&&(e.phone||'').replace(/\D/g,'')===dig)||e.name.toLowerCase().split(' ')[0]===q))||null;}
-async function doLogin(){const err=document.getElementById('lgErr');if(window.EX_REAL){const q=document.getElementById('lgUser').value,p=document.getElementById('lgPass').value;if(!q||!p){err.textContent=t('Type your name and password.');return;}err.textContent=t('Signing in…');
-    const r=await EX_login(q,p);if(!r.ok){err.textContent=r.err==='confirm'?t('This sign-in is not confirmed yet. Call the office.'):t('Check your name and password.');return;}
-    try{await EX_start();}catch(e){err.textContent=t('Could not load the company data.')+' '+(e.message||'');return;}
-    const u=D.emps.find(e=>!e.inactive&&EX_emailFor(e)===r.email);if(!u){err.textContent=t('Signed in, but you are not on the team list. Call the office.');await EX_logout();return;}
-    window.EX_ME=u.id;signIn(u.id);try{EX_pushOn(true);}catch(e){}setTimeout(exOfferFaceId,900);return;}
+async function doLogin(){const err=document.getElementById('lgErr');
+  if(doLogin._busy)return;                       // ignore double-taps while a sign-in is already running
+  if(window.EX_REAL){const q=document.getElementById('lgUser').value,p=document.getElementById('lgPass').value;if(!q||!p){err.textContent=t('Type your name and password.');return;}
+    doLogin._busy=true;const btn=document.querySelector('#m-login .btn.gr');if(btn)btn.style.opacity='.6';
+    const wait=ms=>new Promise(r=>setTimeout(r,ms));
+    try{
+      // 1) SIGN IN — be patient on a weak signal and retry automatically; only a real wrong name/password stops us.
+      let r=null;
+      for(let a=1;a<=3;a++){err.textContent=a===1?t('Signing in…'):t('Weak signal — still trying…')+' ('+a+'/3)';
+        r=await EX_login(q,p);
+        if(r.ok||r.err==='badpass'||r.err==='confirm')break;   // definitive answer from the server
+        if(a<3)await wait(1200*a);}                            // offline/timeout → brief backoff, try again
+      if(!r.ok){err.textContent=r.err==='confirm'?t('This sign-in is not confirmed yet. Call the office.')
+          :r.err==='offline'?t('Can’t reach the server — check your signal and tap Sign in to try again.')
+          :t('Check your name and password.');return;}
+      // 2) LOAD YOUR DATA — same patience; keep the person informed instead of a frozen label.
+      let loaded=false,authBad=false;
+      for(let a=1;a<=3;a++){err.textContent=a===1?t('Loading your data…'):t('Loading your data… weak signal, still trying')+' ('+a+'/3)';
+        try{await EX_start();loaded=true;break;}
+        catch(e){if(/JWT|session|auth|refresh|401/i.test(e.message||'')){authBad=true;break;}if(a<3)await wait(1200*a);}}
+      if(authBad){err.textContent=t('Check your name and password.');return;}
+      if(!loaded){err.textContent=t('Signed in, but couldn’t load your data on this signal. Move to a stronger connection and tap Sign in again.');return;}
+      const u=D.emps.find(e=>!e.inactive&&EX_emailFor(e)===r.email);if(!u){err.textContent=t('Signed in, but you are not on the team list. Call the office.');await EX_logout();return;}
+      window.EX_ME=u.id;signIn(u.id);try{EX_pushOn(true);}catch(e){}setTimeout(exOfferFaceId,900);
+    }finally{doLogin._busy=false;const b=document.querySelector('#m-login .btn.gr');if(b)b.style.opacity='';}
+    return;}
   const u=findUser(document.getElementById('lgUser').value),p=document.getElementById('lgPass').value;
   if(!u){err.textContent=t('No one by that name, phone or email.');return;}if((u.pass||'1234')!==p){err.textContent=t('Wrong password.');return;}
   signIn(u.id);const bioOK=window.PublicKeyCredential&&navigator.credentials&&navigator.credentials.create;let has=false;try{has=!!localStorage.getItem('electrix_bio');}catch(e){}

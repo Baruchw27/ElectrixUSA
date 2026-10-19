@@ -247,8 +247,10 @@ async function decWith(key,b64){const bin=atob(b64);const iv=Uint8Array.from(bin
 // sign in through the server-side "login" function: the name/phone -> email lookup happens on the server, so the
 // sign-in email is never handed back to someone who isn't signed in (closes the anonymous email-lookup leak).
 window.EX_login=async function(q,pass){q=(q||'').trim();if(!q||!pass)return {err:'badpass'};
-  try{const r=await withTO(sb.functions.invoke('login',{body:{q,password:pass}}),12000,'sign-in');
-    if(r.error||!r.data||!r.data.session)return {err:'badpass'};
+  try{const r=await withTO(sb.functions.invoke('login',{body:{q,password:pass}}),15000,'sign-in');
+    // We got a response from the server: a missing session here means it declined the name/password
+    // (or the sign-in isn't confirmed) — a real credential problem, not a connection problem.
+    if(r.error||!r.data||!r.data.session){const m=(r.error&&(r.error.message||''))||'';return {err:/confirm/i.test(m)?'confirm':'badpass'};}
     const s=r.data.session;const ss=await sb.auth.setSession({access_token:s.access_token,refresh_token:s.refresh_token});
     if(ss.error||!ss.data||!ss.data.user)return {err:'badpass'};
     const uid=ss.data.user.id;try{localStorage.setItem('ex_uid',uid);}catch(e){}
@@ -257,7 +259,7 @@ window.EX_login=async function(q,pass){q=(q||'').trim();if(!q||!pass)return {err
     // any legacy plaintext stash from an older build is DISCARDED, not loaded, so no unencrypted work is ever restored.
     try{localStorage.removeItem('ex_queue__'+uid);}catch(e){}
     return {ok:true,email:ss.data.user.email};
-  }catch(e){return {err:'badpass',msg:(e&&e.message)||''};}};
+  }catch(e){return {err:'offline',msg:(e&&e.message)||''};}};  // timed out / never reached the server → connection problem, not a wrong password
 // signing out wipes this phone's copy of the company data, the saved session, and the biometric sign-in, so the next
 // person to use the phone (or the same person on another account) can't see the previous account's data.
 // Unsent work is protected: if we're online with queued changes, they're sent as the current user BEFORE signing out;
