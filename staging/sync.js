@@ -182,7 +182,8 @@ async function pullAll(){const rows=[];let from=0;const PAGE=1000;
 // signed in but the server no longer lets this person in (turned off by the office): wipe this phone's copy and go to sign-in
 async function turnedOff(){let member=true;try{const r=await withTO(sb.rpc('is_member'),6000,'access check');if(r&&!r.error&&r.data===false){const t=await withTO(sb.rpc('no_team_yet'),6000,'team check');member=!!(t&&t.data===true);}}catch(e){return false;}
   if(member)return false;
-  try{localStorage.removeItem(typeof KEY!=='undefined'?KEY:'electrix_v29');localStorage.removeItem('ex_queue');localStorage.setItem('ex_off','1');}catch(e){}
+  // disabled/removed employee: force-clear this phone's data, lock, verifier and offline queues even if a logout would abort
+  try{const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');['ex_queue','ex_faceid','ex_pwv','electrix_bio',K,K+'__stockq'].forEach(k=>localStorage.removeItem(k));localStorage.setItem('ex_off','1');}catch(e){}
   queue={};try{await window.EX_logout();}catch(e){}try{location.reload();}catch(e){}return true;}
 window.EX_turnedOff=turnedOff;
 // after the phone slept: fetch only what changed meanwhile, and reconnect the live feed
@@ -295,8 +296,8 @@ window.EX_logout=async function(){
   }
   // Nothing unsent, or it is safely encrypted: sign out and clear everything personal from this phone.
   try{if(sb)await withTO(sb.auth.signOut(),3000,'sign-out');}catch(e){}
-  try{['ex_auth','ex_uid','ex_queue','electrix_bio','ex_faceid_asked'].forEach(k=>localStorage.removeItem(k));
-      localStorage.removeItem(typeof KEY!=='undefined'?KEY:'electrix_v29');}catch(e){}
+  try{const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');
+      ['ex_auth','ex_uid','ex_queue','electrix_bio','ex_faceid_asked','ex_faceid','ex_pwv',K,K+'__stockq'].forEach(k=>localStorage.removeItem(k));}catch(e){}
   queue={};ready=false;localReady=false;
   if(secured){try{if(typeof toast==='function')toast(typeof t==='function'?t('Some changes will finish saving next time you sign in.'):'Some changes will finish saving next time you sign in.');}catch(e){}}
   return {stashed,secured,aborted:false};};
@@ -315,7 +316,7 @@ window.EX_boot=async function(){if(!REAL)return {real:false};
   window.EX_sb=sb;
   let email=null,uid=null;try{const s=await withTO(sb.auth.getSession(),6000,'sign-in');const u=s.data.session&&s.data.session.user;email=u?u.email:null;uid=u?u.id:null;}catch(e){email=cachedEmail();st.slow=true;}st.user=email;
   // account switch: if the person signed in now is not the one this phone's cached data belongs to, drop the old copy first
-  try{const prev=localStorage.getItem('ex_uid');if(uid){if(prev&&prev!==uid){localStorage.removeItem(typeof KEY!=='undefined'?KEY:'electrix_v29');['ex_queue','electrix_bio','ex_faceid_asked'].forEach(k=>localStorage.removeItem(k));queue={};}localStorage.setItem('ex_uid',uid);}}catch(e){}
+  try{const prev=localStorage.getItem('ex_uid');if(uid){if(prev&&prev!==uid){const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');localStorage.removeItem(K);['ex_queue','electrix_bio','ex_faceid_asked','ex_faceid','ex_pwv','ex_qenc__'+prev,K+'__stockq'].forEach(k=>localStorage.removeItem(k));queue={};}localStorage.setItem('ex_uid',uid);}}catch(e){}
   // an auto-resumed session (same uid) recovers its own encrypted stash; a legacy plaintext stash is discarded, never loaded
   try{if(uid){try{localStorage.removeItem('ex_queue__'+uid);}catch(e){}
     const enc=localStorage.getItem('ex_qenc__'+uid);if(enc){const dk=await deviceKey();if(dk){const rec=await decWith(dk,enc);if(rec&&typeof rec==='object'){Object.keys(rec).forEach(k=>{if(!queue[k])queue[k]=rec[k];});localStorage.removeItem('ex_qenc__'+uid);saveQ();}}}}}catch(e){}

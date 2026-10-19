@@ -65,19 +65,81 @@ window.EX_lockEnroll=async function(){const m=(D.emps||[]).find(e=>e.id===window
       pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'preferred'},hints:['client-device'],timeout:60000}});
     localStorage.setItem(LK,JSON.stringify({cred:b64u(cred.rawId),user:m.id}));return true;}catch(e){console.warn('faceid enroll',e);return false;}};
 window.EX_lockOff=function(){try{localStorage.removeItem(LK);}catch(e){}};
+const T=s=>typeof t==='function'?t(s):s;
+
+// ---- SECURE LOCAL password check for the Face-ID fallback ----
+// We store ONLY a salted, 210k-round PBKDF2 verifier of the password (never the password itself), so when Face ID
+// fails the person can confirm who they are with their password WITHOUT a server round-trip and WITHOUT signing out.
+// Created at sign-in and on password change (the only moments we hold the plaintext). Wiped on sign-out.
+const PWV='ex_pwv';
+window.EX_setPwVerifier=async function(pass,user){try{if(!pass||!user||!(crypto&&crypto.subtle))return false;
+    const salt=crypto.getRandomValues(new Uint8Array(16)),iter=210000;
+    const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveBits']);
+    const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt,iterations:iter,hash:'SHA-256'},k,256);
+    localStorage.setItem(PWV,JSON.stringify({v:1,user,salt:b64u(salt.buffer),iter,hash:b64u(bits)}));return true;
+  }catch(e){return false;}};
+// returns true (match), false (wrong), or null (no local verifier for this user → caller should use the server)
+window.EX_checkPwVerifier=async function(pass,user){try{if(!(crypto&&crypto.subtle))return null;
+    const rec=JSON.parse(localStorage.getItem(PWV)||'null');if(!rec||rec.user!==user||!rec.salt||!rec.hash)return null;
+    const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass||''),'PBKDF2',false,['deriveBits']);
+    const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:unb64u(rec.salt),iterations:rec.iter||210000,hash:'SHA-256'},k,256);
+    const a=b64u(bits),b=rec.hash;if(a.length!==b.length)return false;let d=0;for(let i=0;i<a.length;i++)d|=a.charCodeAt(i)^b.charCodeAt(i);return d===0; // constant-time compare
+  }catch(e){return null;}};
+window.EX_clearPwVerifier=function(){try{localStorage.removeItem(PWV);}catch(e){}};
+window.EX_hasPwVerifier=function(user){try{const r=JSON.parse(localStorage.getItem(PWV)||'null');return !!(r&&r.user===user);}catch(e){return false;}};
+
 let unlocked=false,hiddenAt=0,fails=0;
+function unlockNow(){unlocked=true;fails=0;const o=document.getElementById('exLock');if(o)o.remove();}
+function lockBase(o,dark){o.style.background=dark?'#000':'#fff';o.style.color=dark?'#f2f2f7':'#1F1E2A';}
 function lockScreen(msg){let o=document.getElementById('exLock');if(!o){o=document.createElement('div');o.id='exLock';o.style.cssText='position:fixed;inset:0;z-index:950;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center';document.body.appendChild(o);}
-  const dark=document.documentElement.dataset.theme==='dark';o.style.background=dark?'#000':'#fff';o.style.color=dark?'#f2f2f7':'#1F1E2A';
+  const dark=document.documentElement.dataset.theme==='dark';lockBase(o,dark);
   o.innerHTML='<img src="'+(dark?'logo-dark.svg':'logo-light.svg')+'" style="height:42px"><div style="font-size:15px;opacity:.7">'+(msg||'')+'</div>'
-   +'<button id="exUnlock" style="border:0;background:#1F1E2A;color:#fff;font-size:17px;font-weight:600;padding:15px 26px;border-radius:14px;min-width:240px">🔒 '+(typeof t==='function'?t('Unlock with Face ID'):'Unlock with Face ID')+'</button>'
-   +'<button id="exUnlockPw" style="border:0;background:none;color:#D53C36;font-size:14px;text-decoration:underline">'+(typeof t==='function'?t('Use my password instead'):'Use my password instead')+'</button>';
-  document.getElementById('exUnlock').onclick=()=>EX_unlock();document.getElementById('exUnlockPw').onclick=()=>{try{EX_lockOff();}catch(e){}window.EX_logout&&EX_logout().then(()=>location.reload());};}
+   +'<button id="exUnlock" style="border:0;background:#1F1E2A;color:#fff;font-size:17px;font-weight:600;padding:15px 26px;border-radius:14px;min-width:240px">🔒 '+T('Unlock with Face ID')+'</button>'
+   +'<button id="exUnlockPw" style="border:0;background:none;color:#D53C36;font-size:14px;text-decoration:underline">'+T('Use my password instead')+'</button>';
+  document.getElementById('exUnlock').onclick=()=>EX_unlock();
+  document.getElementById('exUnlockPw').onclick=()=>lockPwScreen('');  // ← password now UNLOCKS (verifies), never signs out
+}
+// Password fallback: verify identity (locally if we can, else via the server) and reveal the already-signed-in app.
+// It never clears the session or data. A separate, explicit "Sign out" is offered for people who truly want to switch.
+let pwBusy=false;
+function lockPwScreen(msg){let o=document.getElementById('exLock');if(!o){lockScreen('');o=document.getElementById('exLock');}
+  const dark=document.documentElement.dataset.theme==='dark';lockBase(o,dark);
+  const ff=dark?'#1c1c1e':'#fff',fc=dark?'#f2f2f7':'#1F1E2A',bd=dark?'#3a3a3c':'#d0d3da';
+  o.innerHTML='<img src="'+(dark?'logo-dark.svg':'logo-light.svg')+'" style="height:40px"><div style="font-size:15px;opacity:.75">'+T('Enter your password to unlock')+'</div>'
+   +'<input id="exPwIn" type="password" autocomplete="current-password" inputmode="text" placeholder="••••••••" style="width:min(320px,80vw);font-size:17px;padding:13px 14px;border-radius:12px;border:1px solid '+bd+';background:'+ff+';color:'+fc+'">'
+   +'<div id="exPwErr" style="color:#D53C36;font-size:13px;min-height:16px">'+(msg||'')+'</div>'
+   +'<button id="exPwGo" style="border:0;background:#1F1E2A;color:#fff;font-size:17px;font-weight:600;padding:14px 26px;border-radius:14px;min-width:240px">'+T('Unlock')+'</button>'
+   +'<button id="exPwFace" style="border:0;background:none;color:'+fc+';opacity:.75;font-size:14px;text-decoration:underline">‹ '+T('Try Face ID')+'</button>'
+   +'<button id="exPwOut" style="border:0;background:none;color:#D53C36;font-size:13px;margin-top:4px">'+T('Sign out instead')+'</button>';
+  const inp=document.getElementById('exPwIn');
+  document.getElementById('exPwGo').onclick=()=>lockPwTry();
+  inp.onkeydown=e=>{if(e.key==='Enter')lockPwTry();};
+  document.getElementById('exPwFace').onclick=()=>{lockScreen('');setTimeout(()=>EX_unlock(false),150);};
+  document.getElementById('exPwOut').onclick=()=>{if(typeof window.signOut==='function')window.signOut();else{try{EX_lockOff();EX_clearPwVerifier();}catch(e){}window.EX_logout&&EX_logout().then(()=>location.reload());}};
+  setTimeout(()=>{try{inp.focus();}catch(e){}},60);
+}
+async function lockPwTry(){if(pwBusy)return;const inp=document.getElementById('exPwIn'),errEl=document.getElementById('exPwErr');if(!inp)return;
+  const pass=inp.value||'';if(!pass){if(errEl)errEl.textContent=T('Type your password.');return;}
+  pwBusy=true;const go=document.getElementById('exPwGo');if(go){go.disabled=true;go.textContent=T('Checking…');}
+  try{const user=window.EX_ME;
+    const local=await EX_checkPwVerifier(pass,user);   // true / false / null
+    if(local===true){unlockNow();return;}
+    if(local===false){if(errEl)errEl.textContent=T('Wrong password.');return;}
+    // No local verifier (older session, or password never captured on this device) → verify with the server, once.
+    const m=(D.emps||[]).find(e=>e.id===user);const name=m&&m.name;
+    if(!name||typeof EX_login!=='function'){if(errEl)errEl.textContent=T('Can’t verify right now — try Face ID.');return;}
+    const r=await EX_login(name,pass);
+    if(r&&r.ok){try{await EX_setPwVerifier(pass,user);}catch(e){}unlockNow();return;}
+    if(errEl)errEl.textContent=r&&r.err==='offline'?T('Can’t reach the server — try Face ID, or connect and try again.')
+      :r&&r.err==='confirm'?T('This sign-in is not confirmed yet. Call the office.'):T('Wrong password.');
+  }finally{pwBusy=false;const g=document.getElementById('exPwGo');if(g){g.disabled=false;g.textContent=T('Unlock');}}}
 window.EX_lock=function(){if(!EX_lockOn())return;unlocked=false;lockScreen('');setTimeout(()=>EX_unlock(true),350);};
 window.EX_unlock=async function(auto){const r=lockRec();if(!r)return;try{await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),allowCredentials:[{type:'public-key',id:unb64u(r.cred),transports:['internal']}],hints:['client-device'],userVerification:'required',timeout:60000}});
-    unlocked=true;const o=document.getElementById('exLock');if(o)o.remove();}
+    unlockNow();}
   catch(e){fails++;const gone=e&&(e.name==='NotAllowedError'||e.name==='InvalidStateError'||e.name==='SecurityError');
-    if(fails>=2||(gone&&!auto&&fails>=1)){lockScreen((typeof t==='function'?t('Face ID is not working on this phone. Sign in with your password — you can turn Face ID on again after.'):'Use your password'));const b=document.getElementById('exUnlock');if(b)b.style.display='none';const pw=document.getElementById('exUnlockPw');if(pw){pw.style.cssText='border:0;background:#1F1E2A;color:#fff;font-size:17px;font-weight:600;padding:15px 26px;border-radius:14px;min-width:240px';}return;}
-    if(!auto)lockScreen(typeof t==='function'?t('Face ID did not work. Try again.'):'Try again');}};
+    // Face ID failed or was cancelled → offer the password (which verifies & unlocks). NEVER sign out or wipe here.
+    if(fails>=2||(gone&&!auto&&fails>=1)){lockPwScreen(T('Face ID didn’t work — enter your password to unlock.'));return;}
+    if(!auto)lockScreen(T('Face ID did not work. Try again.'));}};
 document.addEventListener('visibilitychange',()=>{if(document.hidden){hiddenAt=Date.now();}else if(hiddenAt&&Date.now()-hiddenAt>60000&&EX_lockOn()){EX_lock();}});
 })();
 
