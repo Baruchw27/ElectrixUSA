@@ -113,10 +113,13 @@ async function _flush(){const keys=Object.keys(queue);if(!keys.length){lastRejec
     for(const k of keys){const o=queue[k];if(o.del)dels.push(o);else{
       // offload big blobs; the live object in D is the same reference for arrays, so update it too
       const live=o.coll==='_'?null:liveRecord(o.coll,o.id);const target=live||o.data;
-      try{const ch=await offloadBlobs(o.coll,o.id,target);if(ch&&live){o.data=(o.coll==='emps')?stripEmp(live):live;snap[o.coll][o.id]=canon(o.data);localSave();}}catch(e){skipped++;continue;}
-      const cur=JSON.parse(JSON.stringify(live?(o.coll==='emps'?stripEmp(live):live):o.data));let row;
+      try{const ch=await offloadBlobs(o.coll,o.id,target);if(ch&&live){o.data=(o.coll==='emps')?stripEmp(live):upStrip(o.coll,live);snap[o.coll][o.id]=canon(o.data);localSave();}}catch(e){skipped++;continue;}
+      // stock qty is NEVER sent by the normal sync (only apply_stock_txn changes it) — the live record carries the phone's local qty
+      const cur=JSON.parse(JSON.stringify(live?(o.coll==='emps'?stripEmp(live):upStrip(o.coll,live)):upStrip(o.coll,o.data)));let row;
       const plain=v=>!!v&&typeof v==='object'&&!Array.isArray(v);let bb=null;try{bb=o.base?JSON.parse(o.base):null;}catch(e){}
       if(bb&&plain(cur)&&plain(bb)){const b=bb;const patch={},unset=[];Object.keys(cur).forEach(f=>{if(canon(cur[f])!==canon(b[f]))patch[f]=cur[f];});Object.keys(b).forEach(f=>{if(!(f in cur))unset.push(f);});row={coll:o.coll,id:o.id,patch,unset,by:st.user||null};}
+      else if(o.coll==='stock')row={coll:o.coll,id:o.id,patch:cur,unset:[],by:st.user||null};
+      if(o.coll==='stock'&&row.patch){delete row.patch.qty;if(row.unset)row.unset=row.unset.filter(f=>f!=='qty');} // merge, never replace: keeps the server's count (another phone may have counted it already)
       else row={coll:o.coll,id:o.id,full:cur,by:st.user||null};
       ups.push(row);refs.push(o);}}
     const done=(k,o)=>{if(queue[k]===o)delete queue[k];};

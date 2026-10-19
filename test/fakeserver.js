@@ -4,6 +4,7 @@ const ROOT=path.join(__dirname,'..');const PORT=+process.argv[2]||8787;
 const users={};      // email -> {id,pass}
 const tokens={};     // token -> email
 const records=new Map(); // coll\u0001id -> row
+if(process.env.STOCKDBG){const _set=records.set.bind(records);records.set=(k,v)=>{const o=records.get(k);if(k.startsWith('stock\u0001')&&o&&o.data&&o.data.qty!=null&&(v.data||{}).qty==null)console.log('STOCK QTY DROPPED',k,new Error().stack.split('\n').slice(2,4).join(' | '));return _set(k,v);};}
 const blobs={};      // path -> {type,buf}
 let clients=[];let PRIVATE=false;let NET='ok';      // SSE {res,email}
 const now=()=>new Date().toISOString();
@@ -90,6 +91,23 @@ http.createServer(async (req,res)=>{
   // ---- server functions (stand-ins)
   if(p==='/functions/v1/trello'&&req.method==='GET'){const em=who(req);if(!isMember(em))return send(res,401,{error:'not allowed'});res.writeHead(200,{'Content-Type':'application/pdf','Access-Control-Allow-Origin':'*'});return res.end('%PDF-1.4 fake plan');}
   if(p==='/functions/v1/ai'){const em=who(req);if(!isMember(em))return send(res,401,{error:'not allowed'});const b=await body(req);stats.ai=(stats.ai||0)+1;stats.aiImages=(b.images||[]).length;return send(res,200,{text:'```json\n{"answer":"Carlos is at 177 Bates Dr"}\n```'});}
+  // ---- server-side sign-in (stand-in for the "login" function: name/phone → account on the server)
+  if(p==='/functions/v1/login'){const b=await body(req);const q=(b.q||'').trim().toLowerCase();const dig=q.replace(/\D/g,'');const e=emps().map(r=>r.data).filter(d=>!d.inactive);
+    const hit=e.find(d=>d.name.toLowerCase()===q)||e.find(d=>(d.email||'').toLowerCase()===q||(d.authEmail||'').toLowerCase()===q||(dig.length>=7&&(d.phone||'').replace(/\D/g,'')===dig)||d.name.toLowerCase().split(' ')[0]===q);
+    const em=hit&&(hit.authEmail||'').toLowerCase();const x=em&&users[em];if(!x||x.pass!==b.password)return send(res,200,{session:null});const tk=crypto.randomUUID();tokens[tk]=em;return send(res,200,{session:{access_token:tk,refresh_token:'r'+tk}});}
+  // ---- stock transactions (stand-in for apply_stock_txn: atomic, idempotent by id, shortage refused)
+  if(p==='/rpc/apply_stock_txn'){const em=who(req);if(!em||!isMember(em))return send(res,403,{error:'not allowed'});const b=await body(req);const txn=b.txn||{};
+    global.__applied=global.__applied||{};const fp=JSON.stringify([txn.kind,txn.moves]);stats.stockTxn=(stats.stockTxn||0)+1;
+    const qtys=()=>[...new Set((txn.moves||[]).map(m=>m.id))].map(id=>{const r=records.get('stock\u0001'+id);return {id,qty:r&&!r.deleted?(+r.data.qty||0):0};});
+    if(global.__applied[txn.id]){if(global.__applied[txn.id]!==fp)return send(res,400,{error:'txn_reuse_conflict'});stats.stockDup=(stats.stockDup||0)+1;return send(res,200,{duplicate:true,qtys:qtys()});}
+    const plan=[];for(const m of txn.moves||[]){const k='stock\u0001'+m.id;const r=records.get(k);const cur=r&&!r.deleted?(+r.data.qty||0):0;const nq='set' in m?Math.max(0,+m.set):cur+(+m.delta||0);
+      if(nq<0)return send(res,400,{error:'insufficient_stock: '+(m.name||m.id)+' available '+cur+', requested '+Math.abs(m.delta)});plan.push({k,m,r,nq,cur});}
+    global.__applied[txn.id]=fp;const me=myEmp(em);
+    for(const x of plan){const data=x.r&&!x.r.deleted?Object.assign({},x.r.data,{qty:x.nq}):{id:x.m.id,name:x.m.name||x.m.id,unit:x.m.unit||'pc',min:0,qty:x.nq};const row={coll:'stock',id:x.m.id,data:pg(data),deleted:false,updated_by:me,updated_at:now()};records.set(x.k,row);
+      const msg='data: '+JSON.stringify({eventType:'UPDATE',new:row})+'\n\n';clients.forEach(c=>{if(isMember(c.email))c.res.write(msg);});}
+    const lg={coll:'stockLog',id:txn.id,data:pg({kind:txn.kind,by:me,site:txn.site,items:plan.map(x=>({id:x.m.id,name:x.m.name,before:x.cur,after:x.nq})),ts:txn.ts,applied:true,auth:true}),deleted:false,updated_at:now()};records.set('stockLog\u0001'+txn.id,lg);
+    return send(res,200,{duplicate:false,qtys:qtys()});}
+  if(p==='/functions/v1/upc'){const em=who(req);if(!isMember(em))return send(res,401,{error:'not allowed'});stats.upc=(stats.upc||0)+1;return send(res,200,{found:false});}
   // ---- test hooks
   if(p==='/__state'){return send(res,200,{users:Object.keys(users),records:records.size,colls:[...new Set([...records.values()].map(r=>r.coll))],stats});}
   if(p==='/__records'){const c=u.searchParams.get('coll');return send(res,200,[...records.values()].filter(r=>!c||r.coll===c));}

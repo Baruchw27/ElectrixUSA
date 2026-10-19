@@ -1,0 +1,6 @@
+out/img/
+out/real/
+out/ocr_v1.json
+out/label_results_v1pipe.json
+__pycache__/
+out/gen.log

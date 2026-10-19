@@ -1,0 +1,49 @@
+{
+ "pass": 1556,
+ "fail": 0,
+ "groups": {
+  "read UPC-A / EAN-13 / GTIN-14": {
+   "pass": 360,
+   "fail": 0
+  },
+  "box barcodes": {
+   "pass": 360,
+   "fail": 0
+  },
+  "UPC-E": {
+   "pass": 101,
+   "fail": 0
+  },
+  "EAN-8": {
+   "pass": 40,
+   "fail": 0
+  },
+  "Code 128 text": {
+   "pass": 9,
+   "fail": 0
+  },
+  "misreads rejected": {
+   "pass": 465,
+   "fail": 0
+  },
+  "maker from barcode": {
+   "pass": 9,
+   "fail": 0
+  },
+  "product memory": {
+   "pass": 12,
+   "fail": 0
+  },
+  "similar numbers ≠ same product": {
+   "pass": 200,
+   "fail": 0
+  }
+ },
+ "fails": [],
+ "misreads": {
+  "caught": 300,
+  "wrongDigit": 300,
+  "swapCaught": 162,
+  "swaps": 162
+ }
+}
