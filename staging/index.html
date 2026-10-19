@@ -375,12 +375,13 @@ html[data-theme=dark] .sc-av.in{background:#173B2A;color:#7EE0AE}html[data-theme
 <!-- HOURS (payroll) -->
 <div class="pg" id="pg-hours">
   <h2 data-i18n="Hours">Hours</h2>
+  <div id="attWrap"></div>
   <div id="jobDash"></div>
   <div class="sec" data-i18n="Punch list">Punch list</div>
   <div class="note" data-i18n="Every punch for everyone. Tap a row to fix the in/out time. Missing a punch out = red.">Every punch for everyone. Tap a row to fix the in/out time. Missing a punch out = red.</div>
   <div id="fixQueue"></div>
   <div class="chips" id="hrChips"></div>
-  <div style="display:flex;gap:8px;margin-bottom:10px"><input type="date" id="hrDate" onchange="renderHours()" style="flex:1"><select id="hrWho" onchange="renderHours()" style="flex:1"></select></div>
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><input type="date" id="hrDate" onchange="renderHours()" style="flex:1 1 30%;min-width:120px"><select id="hrWho" onchange="renderHours()" style="flex:1 1 30%;min-width:120px"></select><select id="hrSite" onchange="renderHours()" style="flex:1 1 30%;min-width:120px"></select></div>
   <div id="hrList"></div>
   <button class="btn sec2" onclick="openPunchEdit(null)" data-i18n="+ Add missed punch">+ Add missed punch</button>
 </div>
@@ -1682,7 +1683,7 @@ function hhmm2min(v){if(!v)return null;const p=String(v).split(':').map(Number);
 // raw day row -> one-off/legacy assignments (no rules)
 function rawDayAsgs(key){const r=D.sched[key];if(!r)return [];if(Array.isArray(r.assignments))return r.assignments.filter(a=>a&&a.site).map(a=>({id:a.id||newAsgId(),site:a.site,start:a.start==null?null:a.start,end:a.end==null?null:a.end,note:a.note||''}));if(r.site)return [{id:'legacy',site:r.site,start:pMin(r.time),end:null,note:r.note||'',legacy:true}];return [];}
 // ── ongoing "until reassigned" rule: ONE per crew, key "ONG:<crewId>" ──
-function crewWorkday(crewId){const c=D.crews.find(x=>x.id===crewId);const d=c&&c.day;return {start:(d&&d.start!=null)?d.start:420,end:(d&&d.end!=null)?d.end:930,workdays:(d&&d.workdays)||[1,2,3,4,5]};}
+function crewWorkday(crewId){const c=D.crews.find(x=>x.id===crewId);const d=c&&c.day;return {start:(d&&d.start!=null)?d.start:480,end:(d&&d.end!=null)?d.end:1110,workdays:(d&&d.workdays)||[1,2,3,4,5]};}
 function rulesForCrew(crewId){const pre='ONG:'+crewId+':';return Object.keys(D.sched).filter(k=>k.slice(0,pre.length)===pre).map(k=>Object.assign({ruleId:k.slice(pre.length)},D.sched[k])).filter(r=>r&&r.site);}
 function ruleActiveOn(r,date){if(!r||!r.site)return false;if(r.from&&date<r.from)return false;if(r.to&&date>r.to)return false;return (r.workdays||[1,2,3,4,5]).includes(new Date(date+'T12:00').getDay());}
 // the ONE ongoing rule active for a crew on a given date (closed rules kept as history, non-overlapping ranges)
@@ -2940,28 +2941,31 @@ function weekCard(who,compact,ref,title){const s=weekStats(who,ref);const DL=['S
   const bars=s.days.map((v,i)=>'<div style="flex:1;text-align:center"><div style="height:34px;display:flex;align-items:flex-end;justify-content:center"><div style="width:70%;height:'+Math.min(34,v*3)+'px;background:'+(i===today?'var(--blue-mid)':'var(--g3)')+';border-radius:3px 3px 0 0"></div></div><div style="font-size:10px;color:'+(i===today?'var(--blue-mid)':'var(--g4)')+';font-weight:'+(i===today?'700':'400')+'">'+t(DL[i])+'</div><div style="font-size:10px;color:var(--g4)">'+(v?v.toFixed(1):'')+'</div></div>').join('');
   return '<div class="card" style="padding:10px 13px"><div class="row" style="align-items:baseline"><b>'+(compact?esc(nameOf(who)):t(title||'This week'))+'</b><span style="font-size:12px;color:var(--g4)">'+new Date(s.ws).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' – '+new Date(s.ws+6*86400000).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+'</span></div><div style="display:flex;gap:4px;margin:8px 0 6px">'+bars+'</div><div style="display:flex;gap:10px;font-size:13px"><span><b style="font-size:18px">'+s.total.toFixed(1)+'</b> h</span><span style="color:var(--g4)">'+t('Regular')+' <b>'+s.reg.toFixed(1)+'</b></span><span style="color:'+(s.ot?'#c0392b':'var(--g4)')+'">'+t('Overtime')+' <b>'+s.ot.toFixed(1)+'</b></span>'+(!s.ot&&s.total<OT_AFTER?'<span style="color:var(--g3);font-size:11px;align-self:center">'+(OT_AFTER-s.total).toFixed(1)+' '+t('to OT')+'</span>':'')+'</div>'+(()=>{const tw=travelWeek(who,ref);const pay=tw.reduce((q,x)=>q+travelPayOf(x),0);return tw.length?'<div style="font-size:12.5px;margin-top:6px;padding-top:6px;border-top:1px solid var(--g1)">🚗 '+t('Travel bonus')+' <b style="color:var(--green)">'+money(pay)+'</b> <span style="color:var(--g4)">· '+tw.length+' '+t('trips')+' · '+t('not counted in hours or OT')+'</span></div>':'';})()+'</div>';}
 function renderHours(){
-  const m=me();if(!canEditHours(m))return;renderJobDash();renderFixQueue();
+  const m=me();if(!canEditHours(m))return;renderAttendance();renderJobDash();renderFixQueue();
   (function(){let box=document.getElementById('timeOffQueue');if(!box){box=document.createElement('div');box.id='timeOffQueue';const fq=document.getElementById('fixQueue');(fq?fq.parentNode:document.getElementById('pg-hours')).insertBefore(box,fq||document.getElementById('hrChips'));}const pend=D.timeoff.filter(r=>r.status==='pending').sort((a,b)=>a.ts-b.ts);box.innerHTML=pend.length?'<div class="sec">🏖 '+t('Time off requests')+' · '+pend.length+'</div>'+pend.map(r=>timeOffCard(r,true)).join(''):'';})();
   const dEl=document.getElementById('hrDate');if(!dEl.value)dEl.value=dkey(new Date());
   const wEl=document.getElementById('hrWho');if(!wEl.options.length)wEl.innerHTML='<option value="">'+t('Everyone')+'</option>'+D.emps.filter(e=>e.role!=='office'&&e.role!=='owner').map(e=>'<option value="'+e.id+'">'+esc(e.name)+'</option>').join('');
+  const sEl=document.getElementById('hrSite');if(sEl&&!sEl.options.length)sEl.innerHTML='<option value="">'+t('All jobs')+'</option>'+D.sites.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');
   document.getElementById('hrChips').innerHTML=[['day',t('Day')],['week',t('Week')],['missing',t('Missing punch-out')]].map(([k,l])=>'<div class="chip '+(hrRange===k?'on':'')+'" onclick="hrRange=\''+jsq(k)+'\';renderHours()">'+l+'</div>').join('');
   const base=new Date(dEl.value+'T12:00');base.setHours(0,0,0,0);let from=base.getTime(),to=from+86400000;
   if(hrRange==='week'){from=base.getTime()-base.getDay()*86400000;to=from+7*86400000;}
   let rows=D.punches.map((p,i)=>({p,i})).filter(({p})=>hrRange==='missing'?(!p.out&&!p.away&&Date.now()-p.in>14*3600000):(p.in>=from&&p.in<to));
+  const siteFilter=sEl&&sEl.value;
   if(wEl.value)rows=rows.filter(({p})=>p.who===wEl.value);
+  if(siteFilter)rows=rows.filter(({p})=>p.site===siteFilter);
   rows.sort((a,b)=>a.p.who===b.p.who?a.p.in-b.p.in:nameOf(a.p.who).localeCompare(nameOf(b.p.who)));
   const el=document.getElementById('hrList');
   if(!rows.length){el.innerHTML='<div class="empty">'+t('No punches.')+'</div>';return;}
   // group by employee with total
   const by={};rows.forEach(r=>{(by[r.p.who]=by[r.p.who]||[]).push(r);});
   let grand=0;
-  el.innerHTML=Object.keys(by).map(who=>{const rs=by[who];let tot=0;
+  el.innerHTML=(siteFilter?'<div class="note" style="margin-bottom:6px">'+t('Showing hours at this job only. Overtime is figured on the full week across all jobs.')+'</div>':'')+Object.keys(by).map(who=>{const rs=by[who];let tot=0;
     const items=rs.map(({p,i})=>{const end=p.out||(p.away?p.away:null);const dur=end?punchDur(p):null;if(dur)tot+=dur;const open=!end;const stale=open&&Date.now()-p.in>14*3600000;
       const trips=(p.trips||[]).map(tr=>'<div style="font-size:11px;color:var(--g4);padding-left:8px">↳ '+t('off site')+' '+fmtT(tr.left)+'–'+fmtT(tr.back)+' ('+Math.round((tr.back-tr.left)/60000)+' min)</div>').join('');
       const ed=(p.edits&&p.edits.length?'<div style="font-size:11px;color:var(--amber);padding-left:8px">✎ '+t('edited by')+' '+esc(nameOf(p.edits[p.edits.length-1].by))+' — '+esc(p.edits[p.edits.length-1].why||'')+'</div>':'')+((p.breaks||[]).length?'<div style="font-size:11px;color:var(--g4);padding-left:8px">☕ '+(p.breaks||[]).map(b=>fmtT(b.s)+'–'+fmtT(b.e)).join(', ')+' ('+Math.round((p.breaks||[]).reduce((q,b)=>q+(b.e-b.s),0)/60000)+' min '+t('off the clock')+')</div>':'')+(p.transfer?'<div style="font-size:11px;color:var(--g4);padding-left:8px">↔ '+t('switched sites')+'</div>':'')+(p.check?'<div style="font-size:11px;padding-left:8px;color:'+(p.check.injured?'#c0392b':'var(--g4)')+'">'+(p.check.injured?'🚑 '+t('INJURED')+' — '+esc((p.check.injury||{}).what||'')+(p.check.injury&&p.check.injury.told?' · '+t('told')+' '+esc(nameOf(p.check.injury.told)):'')+(p.check.injury&&p.check.injury.care&&p.check.injury.care!=='no'?' · '+esc(p.check.injury.care):''):'✓ '+t('not injured'))+' · '+(p.check.mealBreak?'✓ '+t('meal break'):'⚠ '+t('no meal break')+' ('+t({chose:'chose to',told:'was told to skip',short:'short day'}[p.check.noBreakWhy]||'')+')')+'</div>':'')+(p.selfie?'<img src="'+safeSrc(p.selfie)+'" onclick="event.stopPropagation();document.getElementById(\'photoWrap\').innerHTML=\'<img src=&quot;'+safeSrc(p.selfie)+'&quot; style=&quot;max-width:100%;max-height:70vh;border-radius:10px&quot;>\';show(\'m-photo\')" style="width:34px;height:34px;border-radius:17px;object-fit:cover;margin:4px 0 0 8px;border:2px solid var(--g2)">':p.noSelfie?'<div style="font-size:11px;color:#c0392b;padding-left:8px">⚠ '+t('no selfie')+'</div>':'');
       return '<div class="plog" style="flex-direction:column;align-items:stretch;cursor:pointer;'+(stale?'background:var(--red-bg);margin:0 -13px;padding:8px 13px':'')+'" onclick="openPunchEdit('+i+')"><div style="display:flex;justify-content:space-between"><span>'+new Date(p.in).toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'})+' · '+esc(siteName(p.site))+'</span><span><b>'+fmtT(p.in)+'</b> – '+(end?'<b>'+fmtT(end)+'</b>':'<span style="color:#c0392b;font-weight:600">'+(stale?t('NO PUNCH OUT'):t('on site'))+'</span>')+(dur!==null?' <span style="color:var(--g4)">('+dur.toFixed(2)+'h)</span>':'')+'</span></div>'+trips+ed+'</div>';}).join('');
     grand+=tot;
-    const ot=hrRange==='week'?Math.max(0,tot-OT_AFTER):0;return '<div class="card"><div class="row" style="margin-bottom:6px"><b>'+esc(nameOf(who))+'</b><span>'+(hrRange==='week'?'<span class="badge b-open">'+Math.min(tot,OT_AFTER).toFixed(2)+' '+t('reg')+'</span> '+(ot?'<span class="badge b-ov">'+ot.toFixed(2)+' '+t('OT')+'</span>':''):'<span class="badge b-open">'+tot.toFixed(2)+' h</span>')+'</span></div>'+items+'</div>';}).join('')+(hrRange==='week'?(()=>{const reg=Object.keys(by).reduce((a,w)=>{const tt=by[w].reduce((q,{p})=>q+(p.out||p.away?hrs(p.in,p.out||p.away):0),0);return a+Math.min(tt,OT_AFTER);},0);return '<div class="card" style="text-align:right;font-weight:700">'+t('Week total')+': '+grand.toFixed(2)+' h · '+t('Regular')+' '+reg.toFixed(2)+' · <span style="color:#c0392b">'+t('Overtime')+' '+(grand-reg).toFixed(2)+'</span></div>';})():'');
+    const ot=(hrRange==='week'&&!siteFilter)?Math.max(0,tot-OT_AFTER):0;return '<div class="card"><div class="row" style="margin-bottom:6px"><b>'+esc(nameOf(who))+'</b><span>'+((hrRange==='week'&&!siteFilter)?'<span class="badge b-open">'+Math.min(tot,OT_AFTER).toFixed(2)+' '+t('reg')+'</span> '+(ot?'<span class="badge b-ov">'+ot.toFixed(2)+' '+t('OT')+'</span>':''):'<span class="badge b-open">'+tot.toFixed(2)+' h</span>')+'</span></div>'+items+'</div>';}).join('')+((hrRange==='week'&&!siteFilter)?(()=>{const reg=Object.keys(by).reduce((a,w)=>{const tt=by[w].reduce((q,{p})=>q+((p.out||p.away)?punchDur(p):0),0);return a+Math.min(tt,OT_AFTER);},0);return '<div class="card" style="text-align:right;font-weight:700">'+t('Week total')+': '+grand.toFixed(2)+' h · '+t('Regular')+' '+reg.toFixed(2)+' · <span style="color:#c0392b">'+t('Overtime')+' '+(grand-reg).toFixed(2)+'</span></div>';})():(siteFilter?'<div class="card" style="text-align:right;font-weight:700">'+t('Total at this job')+': '+grand.toFixed(2)+' h</div>':''));
 }
 function openPunchEdit(i){peIdx=i;const m=me();const p=i===null?null:D.punches[i];
   document.getElementById('peTitle').textContent=p?t('Edit punch'):t('Add missed punch');
@@ -2969,7 +2973,7 @@ function openPunchEdit(i){peIdx=i;const m=me();const p=i===null?null:D.punches[i
   document.getElementById('peSite').innerHTML=D.sites.map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');
   const tm=x=>x?new Date(x).toTimeString().slice(0,5):'';
   if(p){document.getElementById('peWho').value=p.who;document.getElementById('peSite').value=p.site;document.getElementById('peDate').value=dkey(new Date(p.in));document.getElementById('peIn').value=tm(p.in);document.getElementById('peOut').value=tm(p.out||p.away);}
-  else{document.getElementById('peDate').value=document.getElementById('hrDate').value||dkey(new Date());document.getElementById('peIn').value='07:00';document.getElementById('peOut').value='16:30';}
+  else{document.getElementById('peDate').value=document.getElementById('hrDate').value||dkey(new Date());document.getElementById('peIn').value='08:00';document.getElementById('peOut').value='18:30';}
   document.getElementById('peWhy').value='';document.getElementById('peDel').style.display=p?'':'none';
   const log=document.getElementById('peLog');if(p&&p.edits&&p.edits.length){log.style.display='block';log.innerHTML=p.edits.map(e=>'✎ '+new Date(e.at).toLocaleString(LOC(),{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+' '+esc(nameOf(e.by))+': '+esc(e.why||'')+' ('+fmtT(e.from.in)+'–'+(e.from.out?fmtT(e.from.out):'—')+' → '+fmtT(e.to.in)+'–'+(e.to.out?fmtT(e.to.out):'—')+')').join('<br>');}else log.style.display='none';
   show('m-pe');}
@@ -2986,6 +2990,7 @@ function delPunch(){askConfirm(t('Delete this punch?'),()=>{D.punches.splice(peI
 // ───────────── JOB HOURS DASHBOARD — owner + Payroll only (gated by canEditHours; data is RLS-limited) ─────────────
 // Reuses punchDur (breaks, off-site trips and manual corrections are already inside it) and weekStart (Sun–Sat).
 let dashRange='tw',dashFrom='',dashTo='',jhSiteRange='all',jhSiteFrom='',jhSiteTo='',jhOpen={},dashSiteQ='';
+let _dsFocus=false,_dsPos=0; // keep the job-site search focused across background re-renders
 function monthStartMs(ref){const x=new Date(ref||Date.now());return new Date(x.getFullYear(),x.getMonth(),1).getTime();}
 function rangeBounds(kind,fromStr,toStr){const now=Date.now();
   if(kind==='tw'){const f=weekStart(now).getTime();return [f,f+7*86400000,t('This week')];}
@@ -3005,6 +3010,7 @@ function punchRowsHtml(ps){return ps.slice().sort((a,b)=>a.in-b.in).map(p=>{cons
 function dashSetRange(k){dashRange=k;jhOpen={};renderJobDash();}
 function dashEmp(id){jhOpen['dash:'+id]=!jhOpen['dash:'+id];renderJobDash();}
 function renderJobDash(){const box=document.getElementById('jobDash');if(!box)return;
+  const _wasDsFocus=_dsFocus||(document.activeElement&&document.activeElement.id==='dashSiteSearch'); // capture before innerHTML rebuild blurs the input
   const [from,to,label]=rangeBounds(dashRange,dashFrom,dashTo);
   const custom=dashRange==='custom'?'<div style="display:flex;gap:8px;margin:8px 0;flex-wrap:wrap"><input type="date" aria-label="From" value="'+esc(dashFrom)+'" onchange="dashFrom=this.value;renderJobDash()" style="flex:1 1 140px;min-width:130px;font-size:16px"><input type="date" aria-label="To" value="'+esc(dashTo)+'" onchange="dashTo=this.value;renderJobDash()" style="flex:1 1 140px;min-width:130px;font-size:16px"></div>':'';
   const ps=hrPunches(from,to);const total=sumDur(ps);
@@ -3018,14 +3024,51 @@ function renderJobDash(){const box=document.getElementById('jobDash');if(!box)re
     +'<div class="sec">'+t('By employee')+'</div>'
     +(emps.length?emps.map(id=>'<div class="card" style="padding:0"><div class="plog" style="cursor:pointer;margin:0;padding:10px 13px" onclick="dashEmp(\''+jsq(id)+'\')"><span style="flex:1">'+(jhOpen['dash:'+id]?'▾ ':'▸ ')+esc(nameOf(id))+'</span><b>'+byE[id].toFixed(2)+' h</b></div>'+(jhOpen['dash:'+id]?'<div style="padding:0 13px 8px">'+punchRowsHtml(ps.filter(p=>p.who===id))+'</div>':'')+'</div>').join(''):'<div class="empty">'+t('No hours in this range.')+'</div>')
     +'<div class="sec">'+t('By job site')+'</div>'
-    +'<input id="dashSiteSearch" type="search" placeholder="'+t('Find a job site…')+'" value="'+esc(dashSiteQ)+'" oninput="renderDashSites()" autocomplete="off" style="margin-bottom:8px;font-size:16px">'
+    +'<input id="dashSiteSearch" type="search" placeholder="'+t('Find a job site…')+'" value="'+esc(dashSiteQ)+'" onfocus="_dsFocus=true" onblur="_dsFocus=false" oninput="_dsPos=this.selectionStart;renderDashSites()" autocomplete="off" style="margin-bottom:8px;font-size:16px">'
     +'<div id="dashSiteList"></div>';
-  renderDashSites();}
+  renderDashSites();
+  if(_wasDsFocus){_dsFocus=true;const s=document.getElementById('dashSiteSearch');if(s){try{s.focus({preventScroll:true});s.setSelectionRange(_dsPos,_dsPos);}catch(e){}}}}
 function renderDashSites(){const el=document.getElementById('dashSiteList');if(!el)return;
   const se=document.getElementById('dashSiteSearch');dashSiteQ=se?se.value:dashSiteQ;const q=(dashSiteQ||'').trim().toLowerCase();
   const [from,to]=rangeBounds(dashRange,dashFrom,dashTo);const ps=hrPunches(from,to);const byS={};ps.forEach(p=>byS[p.site]=(byS[p.site]||0)+punchDur(p));
   const rows=Object.keys(byS).sort((a,b)=>byS[b]-byS[a]).filter(id=>!q||(siteName(id)||'').toLowerCase().includes(q));
   el.innerHTML=rows.length?rows.map(id=>'<div class="plog" style="cursor:pointer;gap:10px;align-items:flex-start" onclick="openFolder(\''+jsq(id)+'\')"><span style="flex:1;min-width:0;word-break:break-word;line-height:1.35">📍 '+esc(siteName(id)||'—')+'</span><b style="white-space:nowrap;flex-shrink:0">'+byS[id].toFixed(2)+' h <span style="color:var(--g4)">›</span></b></div>').join(''):'<div class="empty">'+t('No job site matches.')+'</div>';}
+// ───────────── LIVE ATTENDANCE (today) — owner + Payroll; real emps + punches, break-adjusted hours, no data writes ─────────────
+function attField(){return D.emps.filter(e=>e&&e.role!=='office'&&e.role!=='owner'&&!e.inactive);}
+function attStatusOf(id){const b=new Date();b.setHours(0,0,0,0);const from=b.getTime(),to=from+86400000;
+  const mine=D.punches.filter(p=>p.who===id&&!p.rejected&&!p.pending);   // semi/pending not counted as on the clock
+  const open=mine.find(p=>!p.out&&!p.away&&(Date.now()-p.in)<36*3600000);// currently working (incl. an overnight shift; ignore ancient stuck punches)
+  const today=mine.filter(p=>p.in>=from&&p.in<to);
+  const counted=(open&&today.indexOf(open)<0)?today.concat([open]):today; // today's punches + any still-open shift
+  const hours=counted.reduce((a,p)=>a+punchDur(p),0);                    // break + off-site adjusted; open punch ticks live
+  let status='none',site=null,inTime=null;
+  if(open){status='working';site=open.site;inTime=open.in;}
+  else if(today.length){status='out';site=(today.slice().sort((a,b)=>a.in-b.in).pop()||{}).site;inTime=today.reduce((m,p)=>Math.min(m,p.in),Infinity);}
+  const pend=D.punches.filter(p=>p.who===id&&p.pending&&p.in>=from&&p.in<to);
+  return {status,site,inTime:isFinite(inTime)?inTime:null,hours,shifts:counted.length,waiting:status==='none'&&pend.length>0};}
+function renderAttendance(){const box=document.getElementById('attWrap');if(!box)return;
+  const list=attField().slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  const st=list.map(e=>({e,s:attStatusOf(e.id)}));
+  const working=st.filter(x=>x.s.status==='working').length,outCnt=st.filter(x=>x.s.status==='out').length,none=st.filter(x=>x.s.status==='none').length;
+  const COL={working:'#1a6b3a',out:'var(--g4)',none:'#b06a00'},LBL={working:t('Working'),out:t('Punched out'),none:t('Not punched in')};
+  const sel=document.getElementById('hrWho')?document.getElementById('hrWho').value:'';
+  const summary='<div class="card" style="padding:11px 13px"><div class="row" style="align-items:baseline"><b style="font-size:15px">👷 '+t('Who\'s working now')+'</b><span style="font-size:12px;color:var(--g4)">'+new Date().toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'})+'</span></div>'
+    +'<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:13px">'
+    +'<span><b style="font-size:20px">'+list.length+'</b> '+t('active')+'</span>'
+    +'<span style="color:'+COL.working+'"><b style="font-size:20px">'+working+'</b> '+t('working')+'</span>'
+    +'<span style="color:var(--g4)"><b style="font-size:20px">'+outCnt+'</b> '+t('punched out')+'</span>'
+    +'<span style="color:'+COL.none+'"><b style="font-size:20px">'+none+'</b> '+t('not in')+'</span></div></div>';
+  const cards='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;margin:8px 0 4px">'
+    +st.map(({e,s})=>{const c=COL[s.status],on=sel===e.id;
+      return '<div class="card" onclick="attPick(\''+jsq(e.id)+'\')" style="padding:9px 10px;margin:0;cursor:pointer;border-left:4px solid '+c+(on?';outline:2px solid var(--blue-mid);outline-offset:-1px':'')+'">'
+        +'<div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(e.name)+'</div>'
+        +'<div style="font-size:11px;font-weight:700;color:'+c+';margin-top:2px">'+(s.status==='working'?'● ':'○ ')+LBL[s.status]+(s.waiting?' <span style="color:#b06a00">⏳</span>':'')+'</div>'
+        +(s.site?'<div style="font-size:11px;color:var(--g4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📍 '+esc(siteName(s.site)||'—')+'</div>':'')
+        +(s.inTime?'<div style="font-size:11px;color:var(--g4)">🕒 '+fmtT(s.inTime)+' · '+s.hours.toFixed(2)+' h'+(s.shifts>1?' · '+s.shifts+' '+t('shifts'):'')+'</div>':'')
+        +'</div>';}).join('')+'</div>';
+  box.innerHTML=summary+cards;}
+function attPick(id){const w=document.getElementById('hrWho');if(w)w.value=id;renderHours();const el=document.getElementById('hrChips')||document.getElementById('hrList');if(el)try{el.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}}
+try{setInterval(()=>{try{if(typeof curPage==='function'&&curPage()==='hours'&&me()&&canEditHours(me()))renderAttendance();}catch(e){}},60000);}catch(e){}
 // Per-job labor history (inside the job folder)
 function jhSetRange(k){jhSiteRange=k;jhOpen={};renderJobHours(fdSite);}
 function jhTog(who){jhOpen[fdSite+'|'+who]=!jhOpen[fdSite+'|'+who];renderJobHours(fdSite);}
@@ -4186,7 +4229,7 @@ const PAGE_R={jobs:()=>renderJobs(),sched:()=>renderSched(),team:()=>renderTeam(
 const _dirty=new Set();
 function curPage(){const p=document.querySelector('.pg.on');return p?p.id.slice(3):'';}
 function renderPage(n){if(!PAGE_R[n])return;_dirty.delete(n);try{PAGE_R[n]();}catch(e){console.warn('render '+n,e);}}
-function renderAll(){try{setTimeout(markGot,0);}catch(e){}try{document.activeElement&&document.activeElement.tagName!=='BODY'&&document.activeElement.blur();}catch(e){}applyLang();renderBell();applyTabs();renderRoleSel();renderMyList();try{renderTravel();}catch(e){}renderMsgBadge();
+function renderAll(){try{setTimeout(markGot,0);}catch(e){}try{document.activeElement&&document.activeElement.tagName!=='BODY'&&document.activeElement.id!=='dashSiteSearch'&&document.activeElement.blur();}catch(e){}applyLang();renderBell();applyTabs();renderRoleSel();renderMyList();try{renderTravel();}catch(e){}renderMsgBadge();
   const cur=curPage();Object.keys(PAGE_R).forEach(n=>{if(n!==cur)_dirty.add(n);});if(cur==='home'||cur==='msg'||PAGE_R[cur])renderPage(cur);}
 setInterval(()=>{const m=me();const mine=D.jobs.filter(j=>j.pri&&j.status!=='done'&&(has(j,m.id)||has(j,m.crew)));if(mine.length)notify('🔴 '+t('PRIORITY')+' ('+mine.length+'): '+mine.map(j=>jobText(j).slice(0,40)).join(' · ')+' — '+t('please complete'));},60*60*1000);
 async function exOfferFaceId(){try{if(localStorage.getItem('ex_faceid_asked')||EX_lockOn()||!(await EX_lockAvailable()))return;localStorage.setItem('ex_faceid_asked','1');}catch(e){return;}
