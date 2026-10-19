@@ -5,10 +5,10 @@
 <meta name="theme-color" content="#ffffff"><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Electrix Field</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
-<script>window.EX_VER='vstk1023';</script><script src="config.js"></script>
+<script>window.EX_VER='vstk1024';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vstk1023"></script>
-<script src="extras.js?vstk1023"></script>
+<script src="sync.js?vstk1024"></script>
+<script src="extras.js?vstk1024"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -4179,13 +4179,22 @@ function pwBad(p){p=String(p||'');if(p.length<8)return t('Password needs at leas
 function pwErr(m){m=String(m||'');return /weak|common|too short|easy|letters/i.test(m)?t('That password is too easy to guess'):m;}
 function exChangePw(){askPrompt(t('Change my password'),[{label:t('New password (8+ letters and numbers)'),value:'',type:'password'}],([p])=>{{const bad=pwBad(p);if(bad){toast(bad);return;}}EX_changeMyPassword(p).then(async r=>{if(r.ok){try{if(window.EX_setPwVerifier&&window.EX_ME)await EX_setPwVerifier(p,window.EX_ME);}catch(e){}}toast(r.ok?'🔑 '+t('Password changed'):'⚠ '+pwErr(r.err));});});}
 function exOverlay(msg){let o=document.getElementById('exBoot');if(!o){o=document.createElement('div');o.id='exBoot';o.style.cssText='position:fixed;inset:0;z-index:600;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-size:15px;color:#6b7590';document.body.appendChild(o);}if(msg===null){o.remove();return;}const lg=document.querySelector('.logo img');o.innerHTML=(lg?'<img src="'+lg.src+'" style="height:40px">':'')+'<div>'+esc(msg)+'</div>';}
+// Offline session policy: a phone may show its cached copy while briefly offline, but NOT indefinitely — this bounds
+// how long a lost/stolen/left-the-company device keeps showing company data without ever re-reaching the server.
+// Online use is unaffected (any successful sync resets the clock). Adjust to taste; 7 days balances field reality vs risk.
+const MAX_OFFLINE_DAYS=7;
+function exStaleBlock(){let o=document.getElementById('exBoot');if(!o){exOverlay(' ');o=document.getElementById('exBoot');}
+  o.innerHTML='<div style="font-size:15px;color:#1F1E2A;font-weight:600;max-width:300px;text-align:center">'+t('For security, please connect to the internet to sign in.')+'</div><div style="font-size:13px;max-width:300px;text-align:center">'+t('This phone hasn’t reached the server in a while.')+'</div><button style="border:0;background:#1F1E2A;color:#fff;font-size:16px;font-weight:600;padding:12px 24px;border-radius:12px" onclick="location.reload()">'+t('Try again')+'</button><button style="border:0;background:none;color:#D53C36;text-decoration:underline;font-size:13px" onclick="exOverlay(null);needLogin()">'+t('Sign in again')+'</button>';}
 async function exBootstrap(){if(!window.EX_REAL){document.documentElement.classList.remove('exreal');return;}document.documentElement.classList.add('exreal');D.demo=false;
   // open right away from the copy on this phone; the server catches up in the background (never a frozen "Loading…")
   const ce=window.EX_cachedEmail&&EX_cachedEmail();const lu=ce&&(D.emps||[]).length>1?D.emps.find(e=>!e.inactive&&EX_emailFor(e)===ce):null;
-  if(lu)exEnter(lu,true);else{exOverlay(t('Loading…'));setTimeout(()=>{if(document.getElementById('exBoot')&&!window.EX_ready())exOverlayRetry();},15000);}
-  let b;try{b=await EX_boot();}catch(e){if(lu){exRetry();return;}exOverlay(null);toast('⚠ '+t('Could not reach the server')+': '+(e.message||''));needLogin();return;}
+  let ls=0;try{ls=+(localStorage.getItem('ex_lastseen')||0)||0;}catch(e){}
+  const stale=ls>0&&(Date.now()-ls>MAX_OFFLINE_DAYS*86400000);   // too long with no server contact → don't open from cache
+  const fastOpen=lu&&!stale;
+  if(fastOpen)exEnter(lu,true);else{exOverlay(t('Loading…'));setTimeout(()=>{if(document.getElementById('exBoot')&&!window.EX_ready()){stale?exStaleBlock():exOverlayRetry();}},stale?2500:15000);}
+  let b;try{b=await EX_boot();}catch(e){if(fastOpen){exRetry();return;}exOverlay(null);if(stale){exStaleBlock();return;}toast('⚠ '+t('Could not reach the server')+': '+(e.message||''));needLogin();return;}
   if(!b.email){exOverlay(null);needLogin();exSetupLink();return;}
-  try{await EX_start();}catch(e){if(/JWT|session|auth|refresh|401/i.test(e.message||'')){exOverlay(null);await EX_logout();needLogin();return;}if(lu){exRetry();return;}exOverlayRetry();return;}
+  try{await EX_start();}catch(e){if(/JWT|session|auth|refresh|401/i.test(e.message||'')){exOverlay(null);await EX_logout();needLogin();return;}if(fastOpen){exRetry();return;}if(stale){exStaleBlock();return;}exOverlayRetry();return;}
   const u=D.emps.find(e=>!e.inactive&&EX_emailFor(e)===b.email);
   if(!u){exOverlay(null);toast(t('You are not on the team list. Call the office.'));await EX_logout();needLogin();return;}
   exEnter(u,false);}
