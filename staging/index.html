@@ -3893,22 +3893,32 @@ function stockErrMsg(err){const m=(err&&err.message)||'';
   if((err&&err.code==='42501')||/not allowed|permission/i.test(m))return t('You are not allowed to make this stock change.');
   return '';}
 let stockFlushing=false;
+// Record a rejected movement to the recovery log and CONFIRM it is durably in localStorage.
+// Returns true only when the record is verified saved — the caller removes the movement from the queue only then.
+function stockCaptureReject(txn,perm,rawErr){try{D.rejq=D.rejq||[];const rid='rej_'+txn.id;
+    if(!D.rejq.some(x=>x.id===rid))D.rejq.push({id:rid,src:'stock',by:txn.by,kind:txn.kind,site:txn.site,
+      moves:(txn.moves||[]).map(m=>({id:m.id,name:m.name,unit:m.unit,delta:m.delta,set:m.set,expect:m.expect})),
+      reason:perm,serverError:String(rawErr||'').slice(0,160),ts:txn.ts,rejectedAt:Date.now()});
+    try{save();}catch(e){return false;}
+    const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');const saved=JSON.parse(localStorage.getItem(K)||'{}');
+    return !!(saved&&Array.isArray(saved.rejq)&&saved.rejq.some(x=>x.id===rid));
+  }catch(e){return false;}}
 async function flushStockQ(){if(stockFlushing)return;
   if(!window.EX_REAL){if(stockQ().length)stockQSave([]);return;}
   const sb=window.EX_sb,on=window.EX_SYNC&&window.EX_SYNC.online;if(!sb||!on)return;
   stockFlushing=true;let changed=false;
   try{let q=stockQ();
     for(const txn of q.slice()){
+      // A movement already rejected but whose recovery record wasn't durably saved yet: finish recording it; never re-apply.
+      if(txn.rej){if(stockCaptureReject(txn,txn.rej.reason,txn.rej.serverError)){q=stockQ().filter(x=>x.id!==txn.id);stockQSave(q);changed=true;}continue;}
       let r;try{r=await sb.rpc('apply_stock_txn',{txn:{id:txn.id,kind:txn.kind,by:txn.by,site:txn.site,ts:txn.ts,reason:txn.reason,moves:txn.moves.map(m=>{const o={id:m.id,name:m.name,unit:m.unit};if('set'in m){o.set=m.set;if('expect'in m)o.expect=m.expect;}else o.delta=m.delta;return o;})}});}catch(e){break;}
       if(r&&r.error){const perm=stockErrMsg(r.error);
-        if(perm){stockRevert(txn.moves);q=stockQ().filter(x=>x.id!==txn.id);stockQSave(q);changed=true;
+        if(perm){stockRevert(txn.moves);changed=true;const raw=(r.error&&(r.error.message||''))||'';
           const li=D.stockLog.find(x=>x.id===txn.id);if(li){li.pending=false;li.rejected=true;}
-          // PRESERVE the rejected movement for an admin to recover — never silently discarded. RLS scopes it:
-          // the employee who made it + staff can see it, nobody else.
-          try{const raw=(r.error&&(r.error.message||''))||'';D.rejq=D.rejq||[];
-            if(!D.rejq.some(x=>x.id==='rej_'+txn.id))D.rejq.push({id:'rej_'+txn.id,src:'stock',by:txn.by,kind:txn.kind,site:txn.site,
-              moves:txn.moves.map(m=>({id:m.id,name:m.name,unit:m.unit,delta:m.delta,set:m.set,expect:m.expect})),
-              reason:perm,serverError:raw.slice(0,160),ts:txn.ts,rejectedAt:Date.now()});}catch(e){}
+          // CAPTURE-THEN-DEQUEUE: remove from the offline queue ONLY after the recovery record is confirmed saved;
+          // otherwise keep it queued (marked, never re-applied) so the movement can never be silently lost.
+          if(stockCaptureReject(txn,perm,raw)){q=stockQ().filter(x=>x.id!==txn.id);stockQSave(q);}
+          else{const cur=stockQ();const i=cur.findIndex(x=>x.id===txn.id);if(i>=0){cur[i].rej={reason:perm,serverError:raw.slice(0,160)};stockQSave(cur);}}
           stockOutcomes[txn.id]={status:'rejected',reason:perm};try{toast('⚠ '+perm,'bad');}catch(e){}continue;}
         break;} // transient (network/server): keep queued, retry later
       const res=(r&&r.data)||{};(res.qtys||[]).forEach(x=>{const s=stockItem(x.id);if(s){s.qty=Math.max(0,+x.qty||0);changed=true;}});

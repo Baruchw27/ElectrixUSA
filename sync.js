@@ -9,7 +9,7 @@
 const CFG=window.EX_CFG||{};
 const REAL=!!(CFG.url&&CFG.anonKey&&window.supabase);
 window.EX_REAL=REAL;
-const SKIP=new Set(['role','nextId']);         // never shared
+const SKIP=new Set(['role','nextId','stockLog']); // never uploaded (stockLog = authoritative, server-written only)
 const EMP_STRIP=['pass'];                       // never leaves the phone
 const DOMAIN=CFG.domain||'electrixusa.app';
 const BLOB_MIN=60000;                           // data: URLs longer than this go to storage
@@ -32,8 +32,12 @@ window.EX_emailFor=emailFor;
 
 // ---------- walking D ----------
 function colls(){return Object.keys(D).filter(k=>!SKIP.has(k)&&D[k]!==null&&typeof D[k]==='object');}
+// Stock quantity is owned by the server RPC apply_stock_txn (atomic deltas), never by the normal patch sync —
+// otherwise a device's absolute qty write would clobber another device's concurrent change. Strip qty from the
+// sync view everywhere snap is set; the live value still comes down from the server on pull/catch-up for display.
+function upStrip(coll,data){if(coll==='stock'&&data&&typeof data==='object'){const d=Object.assign({},data);delete d.qty;return d;}return data;}
 function recordsOf(k){const v=D[k];const out={};
-  if(Array.isArray(v)){v.forEach(x=>{if(!x||typeof x!=='object')return;if(!x.id)x.id=nid(k.slice(0,2));let r=x;if(k==='emps'){r=Object.assign({},x);EMP_STRIP.forEach(f=>delete r[f]);r.authEmail=emailFor(x);}out[x.id]=r;});}
+  if(Array.isArray(v)){v.forEach(x=>{if(!x||typeof x!=='object')return;if(!x.id)x.id=nid(k.slice(0,2));let r=x;if(k==='emps'){r=Object.assign({},x);EMP_STRIP.forEach(f=>delete r[f]);r.authEmail=emailFor(x);}else if(k==='stock'){r=Object.assign({},x);delete r.qty;}out[x.id]=r;});}
   else{Object.keys(v).forEach(id=>{out[id]=v[id];});}
   return out;}
 function scalars(){const out={};Object.keys(D).forEach(k=>{if(SKIP.has(k))return;const v=D[k];if(v===null||typeof v!=='object')out[k]=v;});return out;}
@@ -160,7 +164,7 @@ window.EX_saveNow=async function(){if(!REAL)return {ok:true,rejected:[]};
   const seen={},rejected=[];collected.forEach(x=>{const k=x.coll+'\u0001'+x.id;if(!seen[k]){seen[k]=1;rejected.push(x);}});
   return {ok:!hadError&&rejected.length===0,rejected};};
 // take the server's merged version of what we just saved (it may include another phone's changes)
-function adopt(rows){if(!Array.isArray(rows))return;let changed=false;rows.forEach(r=>{const key=r.coll;if(queue[r.coll+'\u0001'+r.id])return;const j=r.deleted?null:canon(r.coll==='_'?(r.data||{}).v:r.data);
+function adopt(rows){if(!Array.isArray(rows))return;let changed=false;rows.forEach(r=>{const key=r.coll;if(queue[r.coll+'\u0001'+r.id])return;const j=r.deleted?null:canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));
     if(r.deleted){if(snap[key]&&r.id in snap[key]){applyRows([r],{replace:false});delete snap[key][r.id];changed=true;}return;}
     const mine=r.coll==='emps'?(snap[key]||{})[r.id]:null;if(snap[key]&&snap[key][r.id]===j)return;
     if(r.coll==='emps'){const live=liveRecord('emps',r.id);if(live&&canon(stripEmp(live))===j)return;}
@@ -174,11 +178,12 @@ function localSave(){try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){}
 async function pullAll(){const rows=[];let from=0;const PAGE=1000;
   const t0=Date.now();
   while(true){const r=await withTO(sb.from('records').select('coll,id,data,deleted').range(from,from+PAGE-1),20000,'download');if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<PAGE)break;from+=PAGE;}
-  lastPull=t0;return rows;}
+  lastPull=t0;try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}return rows;}
 // signed in but the server no longer lets this person in (turned off by the office): wipe this phone's copy and go to sign-in
 async function turnedOff(){let member=true;try{const r=await withTO(sb.rpc('is_member'),6000,'access check');if(r&&!r.error&&r.data===false){const t=await withTO(sb.rpc('no_team_yet'),6000,'team check');member=!!(t&&t.data===true);}}catch(e){return false;}
   if(member)return false;
-  try{localStorage.removeItem(typeof KEY!=='undefined'?KEY:'electrix_v29');localStorage.removeItem('ex_queue');localStorage.setItem('ex_off','1');}catch(e){}
+  // disabled/removed employee: force-clear this phone's data, lock, verifier and offline queues even if a logout would abort
+  try{const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');['ex_queue','ex_faceid','ex_pwv','electrix_bio',K,K+'__stockq'].forEach(k=>localStorage.removeItem(k));localStorage.setItem('ex_off','1');}catch(e){}
   queue={};try{await window.EX_logout();}catch(e){}try{location.reload();}catch(e){}return true;}
 window.EX_turnedOff=turnedOff;
 // after the phone slept: fetch only what changed meanwhile, and reconnect the live feed
@@ -186,8 +191,8 @@ async function catchUp(){if(!REAL||!ready||catching||!st.online)return;catching=
   try{if(await turnedOff())return;
     const since=new Date((lastPull||Date.now())-3*60000).toISOString();const t0=Date.now();const rows=[];let from=0;
     while(true){const r=await withTO(sb.from('records').select('coll,id,data,deleted').gt('updated_at',since).range(from,from+999),20000,'catch-up');if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<1000)break;from+=1000;}
-    lastPull=t0;const fresh=rows.filter(r=>!queue[r.coll+'\u0001'+r.id]);
-    if(fresh.length){applyRows(fresh,{replace:false});fresh.forEach(r=>{const k=r.coll;if(r.deleted){if(snap[k])delete snap[k][r.id];}else{(snap[k]=snap[k]||{})[r.id]=canon(r.coll==='_'?(r.data||{}).v:r.data);}});localSave();bump();}
+    lastPull=t0;try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}const fresh=rows.filter(r=>!queue[r.coll+'\u0001'+r.id]);
+    if(fresh.length){applyRows(fresh,{replace:false});fresh.forEach(r=>{const k=r.coll;if(r.deleted){if(snap[k])delete snap[k][r.id];}else{(snap[k]=snap[k]||{})[r.id]=canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));}});localSave();bump();}
     try{if(sb.removeAllChannels)await withTO(sb.removeAllChannels(),3000,'reconnect');}catch(e){}subscribe();flush();st.err='';paint();}
   catch(e){log('catch-up',e);}finally{catching=false;}}
 window.EX_catchUp=catchUp;
@@ -240,20 +245,69 @@ async function encWith(key,obj){const iv=crypto.getRandomValues(new Uint8Array(1
 async function decWith(key,b64){const bin=atob(b64);const iv=Uint8Array.from(bin.slice(0,12),c=>c.charCodeAt(0));
   const ct=Uint8Array.from(bin.slice(12),c=>c.charCodeAt(0));
   const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv},key,ct);return JSON.parse(new TextDecoder().decode(pt));}
+// ---- Face-ID PASSWORD VERIFIER (device-bound; defined here so the device key, encWith/decWith stay MODULE-LOCAL and
+//      are never exposed to page scripts). The verifier is ALWAYS encrypted with the non-extractable device key: a copy
+//      of browser storage cannot be read or brute-forced off-device. If there is NO device key, we store NOTHING and
+//      fail securely (online server login still works). We never store a readable PBKDF2 value. Only these
+//      password-taking functions are exposed — there is no general decrypt, so no exposed function can bypass auth.
+async function pbkdf2Bytes(pass,saltU8,iter){const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass||''),'PBKDF2',false,['deriveBits']);
+  return new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',salt:saltU8,iterations:iter,hash:'SHA-256'},k,256));}
+window.EX_setPwVerifier=async function(pass,user){try{if(!pass||!user||!(crypto&&crypto.subtle))return false;
+    const dk=await deviceKey();if(!dk){try{localStorage.removeItem('ex_pwv');}catch(e){}return false;} // no key → store nothing (fail secure)
+    const salt=crypto.getRandomValues(new Uint8Array(16)),iter=210000;
+    const hash=await pbkdf2Bytes(pass,salt,iter);
+    const blob=await encWith(dk,{salt:Array.from(salt),iter,hash:Array.from(hash)}); // salt+hash sealed inside the device-key ciphertext
+    localStorage.setItem('ex_pwv',JSON.stringify({fmt:'wrapped',user,blob}));return true;
+  }catch(e){return false;}};
+// true (match) / false (wrong) / null (no usable local verifier → caller must use the server)
+window.EX_checkPwVerifier=async function(pass,user){try{if(!(crypto&&crypto.subtle))return null;
+    const rec=JSON.parse(localStorage.getItem('ex_pwv')||'null');if(!rec||rec.user!==user||rec.fmt!=='wrapped'||!rec.blob)return null;
+    const dk=await deviceKey();if(!dk)return null;
+    let inner=null;try{inner=await decWith(dk,rec.blob);}catch(e){return null;}
+    if(!inner||!Array.isArray(inner.salt)||!Array.isArray(inner.hash))return null;
+    const h=await pbkdf2Bytes(pass,new Uint8Array(inner.salt),inner.iter||210000);
+    if(h.length!==inner.hash.length)return false;let d=0;for(let i=0;i<h.length;i++)d|=h[i]^inner.hash[i];return d===0; // constant-time
+  }catch(e){return null;}};
+window.EX_clearPwVerifier=function(){try{localStorage.removeItem('ex_pwv');}catch(e){}};
+window.EX_hasPwVerifier=function(user){try{const r=JSON.parse(localStorage.getItem('ex_pwv')||'null');return !!(r&&r.user===user&&r.fmt==='wrapped');}catch(e){return false;}};
+// On an account switch, securely stash the PREVIOUS employee's LIVE unsent work (encrypted, keyed to THEM) before the
+// live copy is wiped — so it is preserved, recoverable only when they sign back in, and never visible/uploadable under
+// the next employee. Merges with any existing stash; verifies the ciphertext decrypts back before trusting it.
+async function stashLiveFor(prev){try{if(!prev)return;const dk=await deviceKey();if(!dk)return;
+  try{const live=JSON.parse(localStorage.getItem('ex_queue')||'{}');if(live&&Object.keys(live).length){let merged=live;
+    try{const ex=localStorage.getItem('ex_qenc__'+prev);if(ex){const old=await decWith(dk,ex);if(old&&typeof old==='object')merged=Object.assign({},old,live);}}catch(e){}
+    const blob=await encWith(dk,merged);let back=null;try{back=await decWith(dk,blob);}catch(e){}
+    if(back&&JSON.stringify(back)===JSON.stringify(merged))localStorage.setItem('ex_qenc__'+prev,blob);}}catch(e){}
+  try{const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');const sraw=localStorage.getItem(K+'__stockq');const sarr=sraw?JSON.parse(sraw):[];
+    if(Array.isArray(sarr)&&sarr.length){let merged=sarr;
+    try{const ex=localStorage.getItem('ex_sqenc__'+prev);if(ex){const old=await decWith(dk,ex);if(Array.isArray(old)){const seen=new Set(sarr.map(x=>x&&x.id));merged=sarr.concat(old.filter(x=>x&&!seen.has(x.id)));}}}catch(e){}
+    const blob=await encWith(dk,merged);let back=null;try{back=await decWith(dk,blob);}catch(e){}
+    if(back&&JSON.stringify(back)===JSON.stringify(merged))localStorage.setItem('ex_sqenc__'+prev,blob);}}catch(e){}
+}catch(e){}}
+// recover a securely-stashed stock queue for the SAME person on their next sign-in (merge by id; never overwrite newer)
+async function recoverStockStash(uid){try{if(!uid)return;const enc=localStorage.getItem('ex_sqenc__'+uid);if(!enc)return;
+  const dk=await deviceKey();if(!dk)return;let arr=null;try{arr=await decWith(dk,enc);}catch(e){return;}
+  if(!Array.isArray(arr)||!arr.length){try{localStorage.removeItem('ex_sqenc__'+uid);}catch(e){}return;}
+  const SQK=(typeof KEY!=='undefined'?KEY:'electrix_v29')+'__stockq';let cur=[];try{cur=JSON.parse(localStorage.getItem(SQK)||'[]');if(!Array.isArray(cur))cur=[];}catch(e){cur=[];}
+  const seen=new Set(cur.map(x=>x&&x.id));arr.forEach(x=>{if(x&&!seen.has(x.id)){cur.push(x);seen.add(x.id);}});
+  try{localStorage.setItem(SQK,JSON.stringify(cur));localStorage.removeItem('ex_sqenc__'+uid);}catch(e){}}catch(e){}}
 // sign in through the server-side "login" function: the name/phone -> email lookup happens on the server, so the
 // sign-in email is never handed back to someone who isn't signed in (closes the anonymous email-lookup leak).
 window.EX_login=async function(q,pass){q=(q||'').trim();if(!q||!pass)return {err:'badpass'};
-  try{const r=await withTO(sb.functions.invoke('login',{body:{q,password:pass}}),12000,'sign-in');
-    if(r.error||!r.data||!r.data.session)return {err:'badpass'};
+  try{const r=await withTO(sb.functions.invoke('login',{body:{q,password:pass}}),15000,'sign-in');
+    // We got a response from the server: a missing session here means it declined the name/password
+    // (or the sign-in isn't confirmed) — a real credential problem, not a connection problem.
+    if(r.error||!r.data||!r.data.session){const m=(r.error&&(r.error.message||''))||'';return {err:/confirm/i.test(m)?'confirm':'badpass'};}
     const s=r.data.session;const ss=await sb.auth.setSession({access_token:s.access_token,refresh_token:s.refresh_token});
     if(ss.error||!ss.data||!ss.data.user)return {err:'badpass'};
     const uid=ss.data.user.id;try{localStorage.setItem('ex_uid',uid);}catch(e){}
     // recover this employee's own encrypted stash from a previous logout (device key unwraps it; not tied to password).
     try{const enc=localStorage.getItem('ex_qenc__'+uid);if(enc){const dk=await deviceKey();if(dk){const rec=await decWith(dk,enc);if(rec&&typeof rec==='object'){Object.keys(rec).forEach(k=>{if(!queue[k])queue[k]=rec[k];});localStorage.removeItem('ex_qenc__'+uid);saveQ();}}}}catch(e){}
+    await recoverStockStash(uid);   // restore any securely-stashed stock transactions for this person
     // any legacy plaintext stash from an older build is DISCARDED, not loaded, so no unencrypted work is ever restored.
     try{localStorage.removeItem('ex_queue__'+uid);}catch(e){}
     return {ok:true,email:ss.data.user.email};
-  }catch(e){return {err:'badpass',msg:(e&&e.message)||''};}};
+  }catch(e){return {err:'offline',msg:(e&&e.message)||''};}};  // timed out / never reached the server → connection problem, not a wrong password
 // signing out wipes this phone's copy of the company data, the saved session, and the biometric sign-in, so the next
 // person to use the phone (or the same person on another account) can't see the previous account's data.
 // Unsent work is protected: if we're online with queued changes, they're sent as the current user BEFORE signing out;
@@ -271,29 +325,38 @@ window.EX_logout=async function(){
   // discarded (we do not decide by the online flag). It is encrypted with the device key and we VERIFY it actually
   // persisted and decrypts back BEFORE we clear the live queue. If it cannot be securely stored (no WebCrypto/IndexedDB,
   // or storage is full), we do NOT clear the live queue and we do NOT claim success — no plaintext stash, no silent loss.
-  let stashed=0, secured=null;
-  if(uid&&Object.keys(queue).length){const q=queue;const want=Object.keys(q).length;
+  // Securely preserve BOTH unsent queues — main business data (jobs, hours, punches…) AND stock transactions —
+  // by encrypting each with the device key and VERIFYING the stash persisted and decrypts back BEFORE anything is
+  // cleared. If EITHER cannot be secured, do NOT sign out: stay signed in and tell the person to sync first.
+  // No plaintext stash, no silent loss of any pending business data.
+  let stashed=0, secured=null, stockSecured=null;
+  const SQK=(typeof KEY!=='undefined'?KEY:'electrix_v29')+'__stockq';
+  let stockArr=[];try{const raw=localStorage.getItem(SQK);stockArr=raw?JSON.parse(raw):[];if(!Array.isArray(stockArr))stockArr=[];}catch(e){stockArr=[];}
+  if(uid&&(Object.keys(queue).length||stockArr.length)){
     try{const dk=await deviceKey();
-      if(dk){const blob=await encWith(dk,q);localStorage.setItem('ex_qenc__'+uid,blob);
-        const back=localStorage.getItem('ex_qenc__'+uid);const dec=back?await decWith(dk,back):null;
-        if(dec&&JSON.stringify(dec)===JSON.stringify(q)){secured=true;stashed=want;}
-        else{try{localStorage.removeItem('ex_qenc__'+uid);}catch(e){}secured=false;}
-      } else secured=false;
-    }catch(e){try{localStorage.removeItem('ex_qenc__'+uid);}catch(e2){}secured=false;}
+      if(!dk){if(Object.keys(queue).length)secured=false;if(stockArr.length)stockSecured=false;}
+      else{
+        if(Object.keys(queue).length){const q=queue;const blob=await encWith(dk,q);localStorage.setItem('ex_qenc__'+uid,blob);
+          const back=localStorage.getItem('ex_qenc__'+uid);const dec=back?await decWith(dk,back):null;
+          if(dec&&JSON.stringify(dec)===JSON.stringify(q)){secured=true;stashed=Object.keys(q).length;}else secured=false;}
+        if(stockArr.length){const blob=await encWith(dk,stockArr);localStorage.setItem('ex_sqenc__'+uid,blob);
+          const back=localStorage.getItem('ex_sqenc__'+uid);const dec=back?await decWith(dk,back):null;
+          stockSecured=(dec&&JSON.stringify(dec)===JSON.stringify(stockArr))?true:false;}
+      }
+    }catch(e){if(Object.keys(queue).length)secured=false;if(stockArr.length)stockSecured=false;}
   }
-  // If there is unsent work we could NOT securely encrypt, do NOT sign out: keeping an unencrypted queue on a shared
-  // phone would both expose it and risk the next employee seeing it. Stay signed in and tell the person to sync first.
-  if(secured===false){
+  if(secured===false||stockSecured===false){
+    try{localStorage.removeItem('ex_qenc__'+uid);localStorage.removeItem('ex_sqenc__'+uid);}catch(e){}
     try{if(typeof toast==='function')toast(typeof t==='function'?t('You have unsent changes that could not be secured on this phone. Connect to the internet and let them finish saving before you sign out.'):'Unsent changes could not be secured — connect and let them save before signing out.','bad');}catch(e){}
     return {aborted:true,secured:false,stashed:0};
   }
   // Nothing unsent, or it is safely encrypted: sign out and clear everything personal from this phone.
   try{if(sb)await withTO(sb.auth.signOut(),3000,'sign-out');}catch(e){}
-  try{['ex_auth','ex_uid','ex_queue','electrix_bio','ex_faceid_asked'].forEach(k=>localStorage.removeItem(k));
-      localStorage.removeItem(typeof KEY!=='undefined'?KEY:'electrix_v29');}catch(e){}
+  try{const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');
+      ['ex_auth','ex_uid','ex_queue','electrix_bio','ex_faceid_asked','ex_faceid','ex_pwv',K,K+'__stockq'].forEach(k=>localStorage.removeItem(k));}catch(e){}
   queue={};ready=false;localReady=false;
-  if(secured){try{if(typeof toast==='function')toast(typeof t==='function'?t('Some changes will finish saving next time you sign in.'):'Some changes will finish saving next time you sign in.');}catch(e){}}
-  return {stashed,secured,aborted:false};};
+  if(secured||stockSecured){try{if(typeof toast==='function')toast(typeof t==='function'?t('Some changes will finish saving next time you sign in.'):'Some changes will finish saving next time you sign in.');}catch(e){}}
+  return {stashed,secured,stockSecured,aborted:false};};
 function tie(e,uid){if(!uid)return;const live=liveRecord('emps',e.id)||e;if(live.authUid!==uid){live.authUid=uid;try{save();}catch(x){}}}
 window.EX_createUser=async function(e,pass){const r=await sb.rpc('admin_create_user',{p_email:emailFor(e),p_pass:pass});if(r.error)return {err:r.error.message};if(!r.data)return {err:'failed'};tie(e,r.data);return {ok:true,email:emailFor(e)};};
 window.EX_setPassword=async function(e,pass){const r=await sb.rpc('admin_set_password',{p_email:emailFor(e),p_pass:pass});if(r.error)return {err:r.error.message};if(!r.data)return {err:'nouser'};tie(e,r.data);return {ok:true};};
@@ -309,10 +372,16 @@ window.EX_boot=async function(){if(!REAL)return {real:false};
   window.EX_sb=sb;
   let email=null,uid=null;try{const s=await withTO(sb.auth.getSession(),6000,'sign-in');const u=s.data.session&&s.data.session.user;email=u?u.email:null;uid=u?u.id:null;}catch(e){email=cachedEmail();st.slow=true;}st.user=email;
   // account switch: if the person signed in now is not the one this phone's cached data belongs to, drop the old copy first
-  try{const prev=localStorage.getItem('ex_uid');if(uid){if(prev&&prev!==uid){localStorage.removeItem(typeof KEY!=='undefined'?KEY:'electrix_v29');['ex_queue','electrix_bio','ex_faceid_asked'].forEach(k=>localStorage.removeItem(k));queue={};}localStorage.setItem('ex_uid',uid);}}catch(e){}
+  try{const prev=localStorage.getItem('ex_uid');if(uid){if(prev&&prev!==uid){
+      await stashLiveFor(prev);   // preserve the previous employee's unsent work (encrypted, keyed to them) BEFORE wiping live data
+      const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');
+      // wipe everything the next employee must NOT see — but KEEP ex_qenc__prev / ex_sqenc__prev (prev's encrypted stash)
+      ['ex_queue','electrix_bio','ex_faceid_asked','ex_faceid','ex_pwv',K,K+'__stockq'].forEach(k=>localStorage.removeItem(k));queue={};
+    }localStorage.setItem('ex_uid',uid);}}catch(e){}
   // an auto-resumed session (same uid) recovers its own encrypted stash; a legacy plaintext stash is discarded, never loaded
   try{if(uid){try{localStorage.removeItem('ex_queue__'+uid);}catch(e){}
-    const enc=localStorage.getItem('ex_qenc__'+uid);if(enc){const dk=await deviceKey();if(dk){const rec=await decWith(dk,enc);if(rec&&typeof rec==='object'){Object.keys(rec).forEach(k=>{if(!queue[k])queue[k]=rec[k];});localStorage.removeItem('ex_qenc__'+uid);saveQ();}}}}}catch(e){}
+    const enc=localStorage.getItem('ex_qenc__'+uid);if(enc){const dk=await deviceKey();if(dk){const rec=await decWith(dk,enc);if(rec&&typeof rec==='object'){Object.keys(rec).forEach(k=>{if(!queue[k])queue[k]=rec[k];});localStorage.removeItem('ex_qenc__'+uid);saveQ();}}}
+    await recoverStockStash(uid);}}catch(e){}   // restore any securely-stashed stock transactions for this person
   sb.auth.onAuthStateChange((ev,sess)=>{st.user=sess&&sess.user?sess.user.email:null;if(ev==='SIGNED_OUT'){ready=false;}});
   return {real:true,email};};
 // the job list and the material catalog ship with the app; if the database doesn't have them yet, the owner's phone fills them in once

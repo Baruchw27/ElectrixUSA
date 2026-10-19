@@ -5,10 +5,10 @@
 <meta name="theme-color" content="#ffffff"><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Electrix Field</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
-<script>window.EX_VER='vui1019';</script><script src="config.js"></script>
+<script>window.EX_VER='vui1028';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vui1019"></script>
-<script src="extras.js?vui1019"></script>
+<script src="sync.js?vui1028"></script>
+<script src="extras.js?vui1028"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -454,7 +454,7 @@ html[data-theme=dark] .sc-av.in{background:#173B2A;color:#7EE0AE}html[data-theme
     <div style="display:flex;gap:8px;margin-bottom:10px"><button class="btn" style="flex:1" onclick="openPickup()">📤 <span data-i18n="I'm picking up material">I'm picking up material</span></button><button class="btn gr" style="flex:1" id="stockInBtn" onclick="openStockIn()">📥 <span data-i18n="Material came in">Material came in</span></button></div>
     <div class="chips" id="skChips"></div>
     <div id="skList"></div>
-    <div class="sec" data-i18n="Recent moves">Recent moves</div>
+    <div class="sec" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span data-i18n="Recent moves">Recent moves</span><span style="display:flex;gap:6px"><span class="bs" onclick="openMatHist({})">📜 <span data-i18n="All history">All history</span></span><span class="bs" id="skReconBtn" style="display:none" onclick="openRecon()">⚖️ <span data-i18n="Check">Check</span></span></span></div>
     <div id="skLog"></div>
   </div>
 </div>
@@ -954,6 +954,24 @@ html[data-theme=dark] .sc-av.in{background:#173B2A;color:#7EE0AE}html[data-theme
   <input id="siFind" placeholder="Type an item… romex, GFI, slim" oninput="siMatch()" style="margin-top:6px"><div id="siMatches" class="pick" style="margin-top:6px;max-height:160px;overflow-y:auto"></div>
   <div style="display:flex;gap:8px;margin-top:14px"><button class="btn gr" onclick="saveStockIn()" data-i18n="Add to garage">Add to garage</button><button class="btn sec2" style="width:auto;padding:12px 18px" onclick="hide('m-stockin')" data-i18n="Cancel">Cancel</button></div>
 </div></div>
+<!-- MATERIAL HISTORY -->
+<div class="ov hid" id="m-mathist"><div class="md" style="max-height:92vh"><div class="hd"></div>
+  <h2 id="mhTitle">📜 <span data-i18n="Material history">Material history</span></h2>
+  <div id="mhSub" class="note" style="margin-top:-2px"></div>
+  <div id="mhNet"></div>
+  <div id="mhFilters" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px"></div>
+  <div id="mhList"></div>
+  <div id="mhMore" style="margin-top:10px"></div>
+  <button type="button" class="btn sec2" style="margin-top:10px" onclick="hide('m-mathist')" data-i18n="Close">Close</button>
+</div></div>
+<!-- RECONCILIATION -->
+<div class="ov hid" id="m-recon"><div class="md" style="max-height:92vh"><div class="hd"></div>
+  <h2>⚖️ <span data-i18n="Inventory check">Inventory check</span></h2>
+  <div class="note" data-i18n="Compares the actual garage count with the authoritative movement ledger. Differences are flagged for you to look into — nothing is changed automatically.">Compares the actual garage count with the authoritative movement ledger. Differences are flagged for you to look into — nothing is changed automatically.</div>
+  <div id="rcSummary" style="margin:8px 0"></div>
+  <div id="rcList"></div>
+  <button type="button" class="btn sec2" style="margin-top:10px" onclick="hide('m-recon')" data-i18n="Close">Close</button>
+</div></div>
 <!-- NEW TOOL MODAL -->
 <div class="ov hid" id="m-newtool"><div class="md"><div class="hd"></div>
   <h2 data-i18n="Add a tool">Add a tool</h2>
@@ -978,6 +996,7 @@ html[data-theme=dark] .sc-av.in{background:#173B2A;color:#7EE0AE}html[data-theme
   <input type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.dwg" id="fdRepl" style="display:none" onchange="fdReplPicked(this)"><input type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.dwg" multiple id="fdFile" style="display:none" onchange="fdAdd(this)"><input type="file" accept="image/*" capture="environment" id="fdCam" style="display:none" onchange="fdAdd(this)">
   <div id="fdAssign"></div>
   <div id="fdOverview"></div>
+  <button type="button" class="btn sec2" style="margin-top:8px" onclick="if(typeof fdSite!=='undefined'&&fdSite)openMatHist({site:fdSite})">📦 <span data-i18n="Material taken to this job">Material taken to this job</span></button>
   <div class="sec">🗒 <span data-i18n="Job notes">Job notes</span></div>
   <div id="fdNotes"></div>
   <div hidden style="display:flex;gap:6px;margin-top:6px"><input id="fdNoteNew" placeholder="Note for whoever comes next… (🎤 key to say it)" style="flex:1" onkeydown="if(event.key==='Enter')fdNoteAdd()"><button class="btn sec2" style="width:auto;padding:0 10px" onclick="document.getElementById('fdNoteCam').value='';document.getElementById('fdNoteCam').click()">📷</button><button class="btn" style="width:auto;padding:0 14px" onclick="fdNoteAdd()">+</button></div>
@@ -1934,17 +1953,46 @@ function needLogin(){const el=document.getElementById('m-login');const img=docum
   const hasBio=(()=>{try{return !!localStorage.getItem('electrix_bio');}catch(e){return false;}})();document.getElementById('bioBtn').style.display=hasBio&&window.PublicKeyCredential?'':'none';
   document.getElementById('lgErr').textContent='';el.classList.remove('hid');navUpdate();}
 function findUser(q){q=(q||'').trim().toLowerCase();if(!q)return null;const dig=q.replace(/\D/g,'');return D.emps.find(e=>!e.inactive&&(e.name.toLowerCase()===q||(e.email&&e.email.toLowerCase()===q)||(dig.length>=7&&(e.phone||'').replace(/\D/g,'')===dig)||e.name.toLowerCase().split(' ')[0]===q))||null;}
-async function doLogin(){const err=document.getElementById('lgErr');if(window.EX_REAL){const q=document.getElementById('lgUser').value,p=document.getElementById('lgPass').value;if(!q||!p){err.textContent=t('Type your name and password.');return;}err.textContent=t('Signing in…');
-    const r=await EX_login(q,p);if(!r.ok){err.textContent=r.err==='confirm'?t('This sign-in is not confirmed yet. Call the office.'):t('Check your name and password.');return;}
-    try{await EX_start();}catch(e){err.textContent=t('Could not load the company data.')+' '+(e.message||'');return;}
-    const u=D.emps.find(e=>!e.inactive&&EX_emailFor(e)===r.email);if(!u){err.textContent=t('Signed in, but you are not on the team list. Call the office.');await EX_logout();return;}
-    window.EX_ME=u.id;signIn(u.id);try{EX_pushOn(true);}catch(e){}setTimeout(exOfferFaceId,900);return;}
+async function doLogin(){const err=document.getElementById('lgErr');
+  if(doLogin._busy)return;                           // a second tap while signing in is IGNORED — never a duplicate session (point 6)
+  if(window.EX_REAL){const q=document.getElementById('lgUser').value,p=document.getElementById('lgPass').value;if(!q||!p){err.textContent=t('Type your name and password.');return;}
+    doLogin._busy=true;doLogin._cancel=false;const btn=document.querySelector('#m-login .btn.gr');if(btn)btn.style.opacity='.6';
+    const wait=ms=>new Promise(r=>setTimeout(r,ms));
+    const deadline=Date.now()+40000;                 // overall cap so it can never run forever (point 8)
+    const stop=()=>doLogin._cancel||Date.now()>deadline;
+    const cancelLink='<span style="text-decoration:underline;cursor:pointer;margin-left:8px" onclick="doLogin._cancel=true">'+t('Cancel')+'</span>';
+    const prog=s=>{err.innerHTML=esc(s)+cancelLink;};  // progress with an explicit Cancel the user can tap (point 8)
+    try{
+      // 1) SIGN IN — patient + auto-retry on weak signal; only a real wrong name/password (or cancel) stops us.
+      let r=null;
+      for(let a=1;a<=3&&!stop();a++){prog(a===1?t('Signing in…'):t('Weak signal — still trying…')+' ('+a+'/3)');
+        r=await EX_login(q,p);
+        if(r.ok||r.err==='badpass'||r.err==='confirm')break;   // definitive answer from the server
+        if(a<3&&!stop())await wait(1200*a);}                   // offline/timeout → brief backoff, try again
+      if(doLogin._cancel){err.textContent=t('Sign-in cancelled — tap Sign in to try again.');return;}
+      if(!r||!r.ok){err.textContent=(r&&r.err==='confirm')?t('This sign-in is not confirmed yet. Call the office.')
+          :(!r||r.err==='offline')?t('Can’t reach the server — check your signal and tap Sign in to try again.')
+          :t('Check your name and password.');return;}
+      // 2) LOAD YOUR DATA — same patience; never show the app until the pull fully succeeds (point 7).
+      let loaded=false,authBad=false;
+      for(let a=1;a<=3&&!stop();a++){prog(a===1?t('Loading your data…'):t('Loading your data… weak signal, still trying')+' ('+a+'/3)');
+        try{await EX_start();loaded=true;break;}
+        catch(e){if(/JWT|session|auth|refresh|401/i.test(e.message||'')){authBad=true;break;}if(a<3&&!stop())await wait(1200*a);}}
+      if(doLogin._cancel){err.textContent=t('Sign-in cancelled — tap Sign in to try again.');return;}
+      if(authBad){err.textContent=t('Check your name and password.');return;}
+      if(!loaded){err.textContent=t('Signed in, but couldn’t load your data on this signal. Move to a stronger connection and tap Sign in again.');return;}
+      const u=D.emps.find(e=>!e.inactive&&EX_emailFor(e)===r.email);if(!u){err.textContent=t('Signed in, but you are not on the team list. Call the office.');await EX_logout();return;}
+      window.EX_ME=u.id;try{if(window.EX_setPwVerifier)await EX_setPwVerifier(p,u.id);}catch(e){}  // secure local verifier for the Face-ID password fallback (no plaintext)
+      signIn(u.id);try{EX_pushOn(true);}catch(e){}setTimeout(exOfferFaceId,900);
+    }finally{doLogin._busy=false;doLogin._cancel=false;const b=document.querySelector('#m-login .btn.gr');if(b)b.style.opacity='';}
+    return;}
   const u=findUser(document.getElementById('lgUser').value),p=document.getElementById('lgPass').value;
   if(!u){err.textContent=t('No one by that name, phone or email.');return;}if((u.pass||'1234')!==p){err.textContent=t('Wrong password.');return;}
   signIn(u.id);const bioOK=window.PublicKeyCredential&&navigator.credentials&&navigator.credentials.create;let has=false;try{has=!!localStorage.getItem('electrix_bio');}catch(e){}
   if(bioOK&&!has&&!window.EX_REAL)setTimeout(()=>askConfirm(t('Use Face ID / fingerprint next time on this phone?'),()=>bioEnroll(u),t('Yes, set it up')),400);}
 function signIn(id){try{localStorage.setItem(SESS,id);}catch(e){}D.role=id;save();document.getElementById('m-login').classList.add('hid');document.getElementById('lgPass').value='';renderAll();navReset();toast('👋 '+t('Hi')+' '+nameOf(id).split(' ')[0],'green');}
-async function signOut(){if(window.EX_REAL){const r=await EX_logout();if(r&&r.aborted){return;}/* aborted: unsent work couldn't be secured — stay signed in, EX_logout already warned */try{localStorage.removeItem(SESS);}catch(e){}location.reload();return;}try{localStorage.removeItem(SESS);}catch(e){}needLogin();}
+async function signOut(){if(window.EX_REAL){try{if(window.EX_flushStockQ&&window.EX_SYNC&&window.EX_SYNC.online)await EX_flushStockQ();}catch(e){}  // push unsent stock moves before the wipe
+    const r=await EX_logout();if(r&&r.aborted){return;}/* aborted: unsent work couldn't be secured — stay signed in, EX_logout already warned */try{localStorage.removeItem(SESS);}catch(e){}location.reload();return;}try{localStorage.removeItem(SESS);}catch(e){}needLogin();}
 async function bioEnroll(u){try{const cred=await navigator.credentials.create({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rp:{name:'Electrix USA'},user:{id:new TextEncoder().encode(u.id),name:u.phone||u.email||u.name,displayName:u.name},pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'preferred'},timeout:60000}});
     const id=btoa(String.fromCharCode(...new Uint8Array(cred.rawId)));try{localStorage.setItem('electrix_bio',JSON.stringify({cred:id,user:u.id}));}catch(e){}toast('🔐 '+t('Face ID / fingerprint is on for this phone'),'green');}
   catch(e){toast(t('Could not set up Face ID here — it works once the app is installed on the phone.'));}}
@@ -3510,7 +3558,7 @@ function personCard(e){const today=new Date().toDateString();const k=dkey(new Da
   const wk=weekStats(e.id);const jobs=D.jobs.filter(j=>j.status!=='done'&&(has(j,e.id)||(e.crew&&has(j,e.crew))));const gh=D.goHomeLog.filter(x=>x.who===e.id&&new Date(x.ts).toDateString()===today).slice(-1)[0];const tof=D.timeoff.find(r=>r.who===e.id&&r.status==='approved'&&r.from<=k&&r.to>=k);
   return '<div class="card" style="border-color:#b8ccee;background:var(--blue-light);padding:12px 14px"><div class="row"><div><b style="font-size:17px">'+esc(e.name)+'</b><div style="font-size:12px;color:var(--g4)">'+t(e.title||ROLE_LABEL[e.role])+(e.crew?' · '+esc(nameOf(e.crew))+(e.lead?' ★':''):'')+(e.inactive?' · <span style="color:#c0392b">'+t('INACTIVE')+'</span>':'')+'</div></div>'+(e.phone?'<a href="tel:'+esc(e.phone)+'" class="bs b" style="text-decoration:none">📞 '+t('Call')+'</a>':'')+'</div>'
    +'<div style="margin-top:8px;font-size:14px;line-height:1.7">'+(tof?'<div>🏖 <b>'+t('Time off')+'</b> '+tof.from+(tof.to!==tof.from?' → '+tof.to:'')+'</div>':'')+'<div>📍 <b>'+t('Today')+':</b> '+(sl?esc(siteName(sl.site))+' · '+esc(sl.time):t('no job scheduled'))+'</div><div>⏱ '+st+'</div>'+(gh?'<div>🏠 '+t('sent home')+' '+fmtT(gh.ts)+' '+t('by')+' '+esc(nameOf(gh.by))+'</div>':'')+'<div>🕒 <b>'+t('This week')+':</b> '+wk.total.toFixed(1)+' h'+(wk.ot?' · <span style="color:#c0392b">'+wk.ot.toFixed(1)+' OT</span>':'')+'</div><div>📋 <b>'+t('Open jobs')+':</b> '+jobs.length+(jobs.length?' — '+esc(jobs.slice(0,2).map(j=>jobText(j).slice(0,30)).join('; ')):'')+'</div></div>'
-   +'<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><span class="bs b" onclick="hide(\'m-search\');jobFilter=\''+jsq(e.id)+'\';jobView=\'open\';goTab(\'jobs\')">'+t('Jobs')+'</span>'+(canEditHours(me())?'<span class="bs b" onclick="hide(\'m-search\');hrRange=\'week\';goTab(\'hours\');document.getElementById(\'hrWho\').value=\''+jsq(e.id)+'\';renderHours()">'+t('Hours')+'</span>':'')+(sl?'<span class="bs b" onclick="hide(\'m-search\');openFolder(\''+jsq(sl.site)+'\')">'+t('Job folder')+'</span>':'')+'</div></div>';}
+   +'<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><span class="bs b" onclick="hide(\'m-search\');jobFilter=\''+jsq(e.id)+'\';jobView=\'open\';goTab(\'jobs\')">'+t('Jobs')+'</span>'+(canEditHours(me())?'<span class="bs b" onclick="hide(\'m-search\');hrRange=\'week\';goTab(\'hours\');document.getElementById(\'hrWho\').value=\''+jsq(e.id)+'\';renderHours()">'+t('Hours')+'</span>':'')+(sl?'<span class="bs b" onclick="hide(\'m-search\');openFolder(\''+jsq(sl.site)+'\')">'+t('Job folder')+'</span>':'')+(mhStaff()?'<span class="bs b" onclick="hide(\'m-search\');openMatHist({by:\''+jsq(e.id)+'\'})">'+t('Materials')+'</span>':'')+'</div></div>';}
 // who may see other people's hours (same rule as the server): owner, managers, office, everyone-access
 function seesTime(m){return !!m&&(m.role==='owner'||m.role==='manager'||m.role==='office'||!!m.all);}
 function siteCard(s){const today=new Date().toDateString();const k=dkey(new Date());const crews=D.crews.filter(c=>(D.sched[c.id+'|'+k]||{}).site===s.id);const on=D.emps.filter(e=>D.punches.some(p=>p.who===e.id&&!p.out&&!p.away&&p.site===s.id&&new Date(p.in).toDateString()===today));
@@ -3661,13 +3709,19 @@ const toolScore=(tool,q)=>{const nq=normQ(q);const words=nq.split('\n').filter(B
   if(hit<words.length)return 0;if(tool.qty>0)s+=2;if(tool.photo)s+=0.5;return s+Math.max(0,20-name.length)/100;};
 function renderStock(){const m=me();const q=(document.getElementById('skSearch').value||'').trim();
   document.getElementById('stockInBtn').style.display=canStockIn(m)?'':'none';
+  {const rb=document.getElementById('skReconBtn');if(rb)rb.style.display=mhStaff()?'':'none';}
   const cats=[...new Set(D.stock.map(s=>s.cat).filter(Boolean))];document.getElementById('skChips').innerHTML=[['all',t('All')],['have',t('In stock')],['low',t('Running low')],...cats.map(c=>[c,t(c)])].map(([k,l])=>'<div class="chip '+(skFilter===k?'on':'')+'" onclick="skFilter=\''+k.replace(/'/g,"\\'")+'\';renderStock()">'+esc(l)+'</div>').join('');
   let list=D.stock.slice();if(q)list=list.map(x=>({x,s:toolScore(x,q)})).filter(r=>r.s>0).sort((a,b)=>b.s-a.s).map(r=>r.x);else if(skFilter==='low')list=list.filter(s=>(s.min>0&&s.qty<=s.min));else if(skFilter==='have')list=list.filter(s=>s.qty>0);else if(skFilter!=='all')list=list.filter(s=>s.cat===skFilter);
   list.sort((a,b)=>((a.min>0&&a.qty<=a.min)?0:1)-((b.min>0&&b.qty<=b.min)?0:1)||(a.qty>0?0:1)-(b.qty>0?0:1)||a.name.localeCompare(b.name));if(skFilter==='all'&&!q)list=list.slice(0,80);
   const low=D.stock.filter(s=>(s.min>0&&s.qty<=s.min)).length;
-  document.getElementById('skList').innerHTML=(low&&!q&&skFilter==='all'?'<div class="note">⚠ '+low+' '+t('items running low')+' — <span style="text-decoration:underline;cursor:pointer" onclick="skFilter=\'low\';renderStock()">'+t('see them')+'</span></div>':'')+(list.length?list.map(s=>'<div class="card" style="padding:8px 10px;display:flex;align-items:center;gap:10px">'+stockThumb(s)+'<div style="flex:1;min-width:0"><b style="font-size:14px">'+esc(s.name)+'</b><div style="font-size:11px;color:var(--g4)">'+t('min')+' '+esc(s.min)+' '+esc(s.unit)+'</div></div><div style="text-align:right"><b style="font-size:22px;color:'+(s.qty<=0?'#c0392b':(s.min>0&&s.qty<=s.min)?'var(--amber)':'var(--green)')+'">'+esc(s.qty)+'</b><div style="font-size:11px;color:var(--g4)">'+esc(s.unit)+'</div></div>'+(canStockIn(m)?'<span class="bs" style="padding:4px 8px" onclick="stockAdj(\''+jsq(s.id)+'\')">✎</span>':'')+'</div>').join(''):'<div class="empty">'+t('Nothing in stock.')+'</div>');
-  document.getElementById('skLog').innerHTML=D.stockLog.slice().sort((a,b)=>b.ts-a.ts).slice(0,8).map(l=>'<div class="plog" style="flex-direction:column;align-items:stretch"><div style="display:flex;justify-content:space-between"><span>'+(l.kind==='in'?'📥 ':'📤 ')+esc(nameOf(l.by))+(l.kind==='out'?' → '+esc(siteName(l.site)):l.src?' · '+esc(l.src):'')+'</span><span style="color:var(--g4);font-size:12px">'+new Date(l.ts).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+'</span></div><div style="font-size:12px;color:var(--g4)">'+l.items.map(i=>i.qty+' × '+esc(i.name)).join(' · ')+'</div>'+(l.photo?'<img src="'+safeSrc(l.photo)+'" style="width:60px;height:60px;object-fit:cover;border-radius:6px;margin-top:4px">':'')+'</div>').join('')||'<div style="font-size:13px;color:var(--g3)">—</div>';}
-function stockAdj(id){const s=D.stock.find(x=>x.id===id);askPrompt(s.name,[{label:t('Count in garage'),value:s.qty,type:'number'},{label:t('Warn when below'),value:s.min,type:'number'}],([q,mn])=>{s.qty=parseInt(q)||0;s.min=parseInt(mn)||0;save();renderStock();});}
+  document.getElementById('skList').innerHTML=(low&&!q&&skFilter==='all'?'<div class="note">⚠ '+low+' '+t('items running low')+' — <span style="text-decoration:underline;cursor:pointer" onclick="skFilter=\'low\';renderStock()">'+t('see them')+'</span></div>':'')+(list.length?list.map(s=>'<div class="card" style="padding:8px 10px;display:flex;align-items:center;gap:10px">'+stockThumb(s)+'<div style="flex:1;min-width:0"><b style="font-size:14px">'+esc(s.name)+'</b><div style="font-size:11px;color:var(--g4)">'+t('min')+' '+esc(s.min)+' '+esc(s.unit)+'</div></div><div style="text-align:right"><b style="font-size:22px;color:'+(s.qty<=0?'#c0392b':(s.min>0&&s.qty<=s.min)?'var(--amber)':'var(--green)')+'">'+esc(s.qty)+'</b><div style="font-size:11px;color:var(--g4)">'+esc(s.unit)+'</div></div>'+'<span class="bs" style="padding:4px 8px" title="'+t('History')+'" onclick="event.stopPropagation();openMatHist({item:\''+jsq(s.id)+'\'})">🕑</span>'+(canStockIn(m)?'<span class="bs" style="padding:4px 8px" onclick="stockAdj(\''+jsq(s.id)+'\')">✎</span>':'')+'</div>').join(''):'<div class="empty">'+t('Nothing in stock.')+'</div>');
+  document.getElementById('skLog').innerHTML=D.stockLog.slice().sort((a,b)=>b.ts-a.ts).slice(0,8).map(l=>'<div class="plog" style="flex-direction:column;align-items:stretch"><div style="display:flex;justify-content:space-between"><span>'+(l.kind==='in'?'📥 ':'📤 ')+esc(nameOf(l.by))+(l.kind==='out'?' → '+esc(siteName(l.site)):l.src?' · '+esc(l.src):'')+'</span><span style="color:var(--g4);font-size:12px">'+new Date(l.ts).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+'</span></div><div style="font-size:12px;color:var(--g4)">'+l.items.map(i=>(i.qty!=null?i.qty:Math.abs(+i.change||0))+' × '+esc(i.name)).join(' · ')+'</div>'+(l.photo?'<img src="'+safeSrc(l.photo)+'" style="width:60px;height:60px;object-fit:cover;border-radius:6px;margin-top:4px">':'')+'</div>').join('')||'<div style="font-size:13px;color:var(--g3)">—</div>';}
+function stockAdj(id){const s=stockItem(id);if(!s)return;askPrompt(s.name,[{label:t('Count in garage'),value:s.qty,type:'number'},{label:t('Warn when below'),value:s.min,type:'number'},{label:t('Reason for the correction (optional)'),value:'',type:'text'}],async([q,mn,reason])=>{const newQty=Math.max(0,parseInt(q)||0);s.min=Math.max(0,parseInt(mn)||0);save();
+  if(newQty===(+s.qty||0)){renderStock();return;}
+  const txn=commitStockTxn('set',[{id:s.id,name:s.name,unit:s.unit,qty:newQty}],null,{reason});renderStock();
+  const res=await confirmStockTxn(txn.id);renderStock();
+  if(res.status==='rejected')return;
+  toast('✓ '+t('Count updated')+(res.status==='queued'?' · '+t('will sync when online'):''),'green');});}
 // lines editor shared by pickup / stock-in
 function linesHtml(arr,fn){return arr.map((l,i)=>'<div class="plog" style="align-items:center;gap:8px"><span style="flex:1">'+esc(l.name)+'</span><input type="number" value="'+l.qty+'" style="width:70px;padding:6px 8px" onchange="'+fn+'[' +i+'].qty=parseInt(this.value)||0"><span style="font-size:12px;color:var(--g4);width:36px">'+esc(l.unit||'')+'</span><span class="x" style="color:var(--g3);cursor:pointer;font-size:18px" onclick="'+fn+'.splice('+i+',1);'+(fn==='puLines'?'puRender()':'siRender()')+'">×</span></div>').join('')||'<div style="font-size:13px;color:var(--g3);padding:6px 0">'+t('No lines yet — type an item below.')+'</div>';}
 function puRender(){document.getElementById('puLines').innerHTML=linesHtml(puLines,'puLines');}
@@ -3806,19 +3860,269 @@ function shrink(f,cb){const r=new FileReader();r.onload=()=>{const img=new Image
 function openPickup(){const m=me();puFile=null;puLines=[];document.getElementById('puPrev').innerHTML='';document.getElementById('puFind').value='';puMatch();puRender();
   document.getElementById('puSite').innerHTML=D.sites.map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');const ds=garDefaultSite();if(ds)document.getElementById('puSite').value=ds;show('m-pick2');}
 function puPhoto(inp){const f=inp.files&&inp.files[0];if(!f)return;shrink(f,d=>{puFile=d;document.getElementById('puPrev').innerHTML='<img src="'+safeSrc(d)+'" style="max-width:100%;max-height:180px;border-radius:8px">';aiReadMaterial(d,'out');});}
-function savePickup(){const m=me();if(!puLines.length){toast(t('Add at least one item'));return;}
-  puLines.forEach(l=>{let s=l.id?D.stock.find(x=>x.id===l.id):stockFind(l.name);if(!s){s={id:nid('s_'),name:l.name,unit:l.unit||'pc',qty:0,min:0};D.stock.push(s);}s.qty=Math.max(0,s.qty-l.qty);});
-  D.stockLog.push({id:nid('sl'),kind:'out',by:m.id,site:document.getElementById('puSite').value,items:puLines.map(l=>({name:l.name,qty:l.qty})),photo:puFile||'',ts:Date.now()});
-  try{save();}catch(e){toast(t('Phone storage is full — photo not saved. Live app stores photos in the cloud.'));D.stockLog.pop();return;}
-  hide('m-pick2');renderStock();toast('📤 '+puLines.map(l=>l.qty+'× '+l.name.split(' ')[0]).join(', ')+' → '+siteName(document.getElementById('puSite').value),'green');
-  const low=D.stock.filter(s=>(s.min>0&&s.qty<=s.min)&&puLines.some(l=>l.name===s.name));if(low.length)pushTo(D.emps.filter(e=>e.role==='office'&&e.title==='Material').map(e=>e.id),'⚠ '+t('Running low')+': '+low.map(s=>s.name+' ('+s.qty+' '+s.unit+')').join(', '));}
+/* ═══ RELIABLE, TRACEABLE STOCK TRANSACTIONS ═══
+   Every pick-up / put-back / manual adjust is ONE atomic server transaction (apply_stock_txn):
+   • qty = row-locked server deltas (concurrent moves all count; a shortage is REJECTED, never silently floored);
+   • the txn id is a fingerprinted idempotency key (retry/duplicate never double-applies; reuse with different
+     content is rejected);
+   • an authoritative, tamper-proof movement record (item, before/after, employee, site, type, original + server
+     time, approver) is written in the SAME DB transaction as the qty change;
+   • offline: queued with the original action time, flushed on reconnect; a rejected move is UNDONE locally and
+     clearly reported — never a false "saved". */
+const STOCKQ_KEY=(typeof KEY!=='undefined'?KEY:'electrix_v29')+'__stockq';
+const stockOutcomes={};
+function stockQ(){try{return JSON.parse(localStorage.getItem(STOCKQ_KEY)||'[]');}catch(e){return [];}}
+function stockQSave(q){try{localStorage.setItem(STOCKQ_KEY,JSON.stringify(q));}catch(e){}}
+function stockItem(id){return D.stock.find(x=>x.id===id);}
+function stockApplyLocal(moves){moves.forEach(m=>{let s=stockItem(m.id);if(!s){s={id:m.id,name:m.name||m.id,unit:m.unit||'pc',qty:0,min:0};D.stock.push(s);}m._pre=(+s.qty||0);if('set' in m)s.qty=Math.max(0,+m.set||0);else s.qty=Math.max(0,(+s.qty||0)+(+m.delta||0));});}
+function stockRevert(moves){moves.forEach(m=>{const s=stockItem(m.id);if(!s)return;if('_pre' in m)s.qty=Math.max(0,+m._pre||0);else if('delta' in m)s.qty=Math.max(0,(+s.qty||0)-(+m.delta||0));});}
+function commitStockTxn(kind,lines,site,extra){const by=me().id;
+  const moves=lines.map(l=>{const b={id:l.id,name:l.name,unit:l.unit||'pc'};if(kind==='set'){b.set=Math.max(0,+l.qty||0);const cur=stockItem(l.id);b.expect=(cur?(+cur.qty||0):0);}else b.delta=(kind==='out'?-1:1)*Math.abs(+l.qty||0);return b;}).filter(m=>('set' in m)||m.delta!==0);
+  if(!moves.length)return null;
+  const reason=(extra&&extra.reason&&String(extra.reason).trim())||undefined;
+  const txn={id:nid('sl'),kind,by,site:site||undefined,moves,ts:Date.now(),reason};
+  stockApplyLocal(moves);
+  D.stockLog.push({id:txn.id,kind,by,site:txn.site,items:lines.map(l=>({id:l.id,name:l.name,qty:Math.abs(+l.qty||0)})),photo:(extra&&extra.photo)||'',src:(extra&&extra.src)||undefined,reason,ts:txn.ts,pending:true});
+  const q=stockQ();q.push(txn);stockQSave(q);
+  try{save();}catch(e){}
+  flushStockQ();return txn;}
+function stockErrMsg(err){const m=(err&&err.message)||'';
+  if(/insufficient_stock/.test(m)){const mm=m.match(/available (\d+)/);return t('Not enough in the garage')+(mm?' — '+t('only')+' '+mm[1]+' '+t('available'):'')+'. '+t('This pick-up was not saved.');}
+  if(/stock_changed_recount/.test(m))return t('Stock changed while you were counting — please recount.');
+  if(/txn_reuse_conflict/.test(m))return t('Could not save this change.');
+  if((err&&err.code==='42501')||/not allowed|permission/i.test(m))return t('You are not allowed to make this stock change.');
+  return '';}
+let stockFlushing=false;
+// Record a rejected movement to the recovery log and CONFIRM it is durably in localStorage.
+// Returns true only when the record is verified saved — the caller removes the movement from the queue only then.
+function stockCaptureReject(txn,perm,rawErr){try{D.rejq=D.rejq||[];const rid='rej_'+txn.id;
+    if(!D.rejq.some(x=>x.id===rid))D.rejq.push({id:rid,src:'stock',by:txn.by,kind:txn.kind,site:txn.site,
+      moves:(txn.moves||[]).map(m=>({id:m.id,name:m.name,unit:m.unit,delta:m.delta,set:m.set,expect:m.expect})),
+      reason:perm,serverError:String(rawErr||'').slice(0,160),ts:txn.ts,rejectedAt:Date.now()});
+    try{save();}catch(e){return false;}
+    const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');const saved=JSON.parse(localStorage.getItem(K)||'{}');
+    return !!(saved&&Array.isArray(saved.rejq)&&saved.rejq.some(x=>x.id===rid));
+  }catch(e){return false;}}
+async function flushStockQ(){if(stockFlushing)return;
+  if(!window.EX_REAL){if(stockQ().length)stockQSave([]);return;}
+  const sb=window.EX_sb,on=window.EX_SYNC&&window.EX_SYNC.online;if(!sb||!on)return;
+  stockFlushing=true;let changed=false;
+  try{let q=stockQ();
+    for(const txn of q.slice()){
+      // A movement already rejected but whose recovery record wasn't durably saved yet: finish recording it; never re-apply.
+      if(txn.rej){if(stockCaptureReject(txn,txn.rej.reason,txn.rej.serverError)){q=stockQ().filter(x=>x.id!==txn.id);stockQSave(q);changed=true;}continue;}
+      let r;try{r=await sb.rpc('apply_stock_txn',{txn:{id:txn.id,kind:txn.kind,by:txn.by,site:txn.site,ts:txn.ts,reason:txn.reason,moves:txn.moves.map(m=>{const o={id:m.id,name:m.name,unit:m.unit};if('set'in m){o.set=m.set;if('expect'in m)o.expect=m.expect;}else o.delta=m.delta;return o;})}});}catch(e){break;}
+      if(r&&r.error){const perm=stockErrMsg(r.error);
+        if(perm){stockRevert(txn.moves);changed=true;const raw=(r.error&&(r.error.message||''))||'';
+          const li=D.stockLog.find(x=>x.id===txn.id);if(li){li.pending=false;li.rejected=true;}
+          // CAPTURE-THEN-DEQUEUE: remove from the offline queue ONLY after the recovery record is confirmed saved;
+          // otherwise keep it queued (marked, never re-applied) so the movement can never be silently lost.
+          if(stockCaptureReject(txn,perm,raw)){q=stockQ().filter(x=>x.id!==txn.id);stockQSave(q);}
+          else{const cur=stockQ();const i=cur.findIndex(x=>x.id===txn.id);if(i>=0){cur[i].rej={reason:perm,serverError:raw.slice(0,160)};stockQSave(cur);}}
+          stockOutcomes[txn.id]={status:'rejected',reason:perm};try{toast('⚠ '+perm,'bad');}catch(e){}continue;}
+        break;} // transient (network/server): keep queued, retry later
+      const res=(r&&r.data)||{};(res.qtys||[]).forEach(x=>{const s=stockItem(x.id);if(s){s.qty=Math.max(0,+x.qty||0);changed=true;}});
+      const li=D.stockLog.find(x=>x.id===txn.id);if(li)li.pending=false;
+      stockOutcomes[txn.id]={status:'saved'};
+      q=stockQ().filter(x=>x.id!==txn.id);stockQSave(q);
+    }
+  }finally{stockFlushing=false;if(changed){try{save();}catch(e){}try{renderStock();}catch(e){}}}}
+window.EX_flushStockQ=flushStockQ;
+// await the TRUE outcome of a txn so the UI never reports a false success
+async function confirmStockTxn(id){if(!window.EX_REAL)return {status:'saved'};
+  if(!(window.EX_SYNC&&window.EX_SYNC.online))return {status:'queued'};
+  try{await flushStockQ();}catch(e){}
+  if(stockOutcomes[id])return stockOutcomes[id];
+  return stockQ().some(t=>t.id===id)?{status:'queued'}:{status:'saved'};}
+try{window.addEventListener('online',()=>setTimeout(flushStockQ,600));document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(flushStockQ,600);});setInterval(()=>{if(stockQ().length)flushStockQ();},15000);setTimeout(flushStockQ,2500);}catch(e){}
+async function savePickup(){if(!puLines.length){toast(t('Add at least one item'));return;}
+  const site=document.getElementById('puSite').value;
+  const lines=puLines.map(l=>{const s=l.id?stockItem(l.id):stockFind(l.name);return {id:s?s.id:nid('s_'),name:s?s.name:l.name,unit:s?s.unit:(l.unit||'pc'),qty:Math.abs(+l.qty||0)};}).filter(l=>l.qty>0);
+  if(!lines.length){toast(t('Add at least one item'));return;}
+  const txn=commitStockTxn('out',lines,site,{photo:puFile||''});
+  hide('m-pick2');renderStock();
+  const res=await confirmStockTxn(txn.id);renderStock();
+  if(res.status==='rejected')return;          // clear error already shown; optimistic change undone
+  if(res.status==='queued'){toast('📤 '+t('Saved — will sync when online'),'green');return;}
+  toast('📤 '+lines.map(l=>l.qty+'× '+l.name.split(' ')[0]).join(', ')+' → '+siteName(site),'green');
+  const low=D.stock.filter(s=>(s.min>0&&s.qty<=s.min)&&lines.some(l=>l.id===s.id));if(low.length)pushTo(D.emps.filter(e=>e.role==='office'&&e.title==='Material').map(e=>e.id),'⚠ '+t('Running low')+': '+low.map(s=>s.name+' ('+s.qty+' '+s.unit+')').join(', '));}
 function openStockIn(){siFile=null;siLines=[];{const ss=document.getElementById('siSite');if(ss){ss.innerHTML='<option value="">'+t('Supplier / other')+'</option>'+visSites().map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');ss.value=garDefaultSite()||'';}}document.getElementById('siPrev').innerHTML='';document.getElementById('siSrc').value='';document.getElementById('siFind').value='';siMatch();siRender();show('m-stockin');}
 function siPhoto(inp){const f=inp.files&&inp.files[0];if(!f)return;if(!f.type.startsWith('image/')){siFile={d:'',name:f.name};document.getElementById('siPrev').innerHTML='<div class="note">📎 '+esc(f.name)+' — '+t('Live app reads the lines off the invoice')+'</div>';return;}shrink(f,d=>{siFile={d,name:f.name};document.getElementById('siPrev').innerHTML='<img src="'+safeSrc(d)+'" style="max-width:100%;max-height:180px;border-radius:8px">';aiReadMaterial(d,'in');});}
-function saveStockIn(){const m=me();if(!siLines.length){toast(t('Add at least one line'));return;}
-  siLines.forEach(l=>{let s=l.id?D.stock.find(x=>x.id===l.id):stockFind(l.name);if(!s){s={id:nid('s_'),name:l.name,unit:l.unit||'pc',qty:0,min:0};D.stock.push(s);}s.qty+=l.qty;});
-  D.stockLog.push({id:nid('sl'),kind:'in',by:m.id,site:siRetSite||((document.getElementById('siSite')||{}).value)||undefined,src:document.getElementById('siSrc').value.trim(),items:siLines.map(l=>({name:l.name,qty:l.qty})),photo:siFile&&siFile.d?siFile.d:'',file:siFile?siFile.name:'',ts:Date.now()});
-  try{save();}catch(e){toast(t('Phone storage is full — photo not saved. Live app stores photos in the cloud.'));D.stockLog.pop();return;}
-  siRetSite=null;hide('m-stockin');renderStock();try{renderMat();}catch(e){}toast('📥 '+t('Added to garage'),'green');}
+async function saveStockIn(){if(!siLines.length){toast(t('Add at least one line'));return;}
+  const site=siRetSite||((document.getElementById('siSite')||{}).value)||undefined;const src=(document.getElementById('siSrc').value||'').trim();
+  const lines=siLines.map(l=>{const s=l.id?stockItem(l.id):stockFind(l.name);return {id:s?s.id:nid('s_'),name:s?s.name:l.name,unit:s?s.unit:(l.unit||'pc'),qty:Math.abs(+l.qty||0)};}).filter(l=>l.qty>0);
+  if(!lines.length){toast(t('Add at least one line'));return;}
+  const txn=commitStockTxn('in',lines,site,{photo:siFile&&siFile.d?siFile.d:'',src});
+  siRetSite=null;hide('m-stockin');renderStock();try{renderMat();}catch(e){}
+  const res=await confirmStockTxn(txn.id);renderStock();
+  if(res.status==='rejected')return;
+  toast('📥 '+t('Added to garage')+(res.status==='queued'?' · '+t('will sync when online'):''),'green');}
+/* ═══ MATERIAL HISTORY + RECONCILIATION (traceability UI) ═══════════════════════════
+   One history screen with filters (item · employee · job · type · dates) and incremental
+   "load more" so a long history never freezes a phone. Visibility is enforced at the DB
+   level (RLS on stockLog via can_see2): staff see every movement, a field worker sees only
+   their own — the client never decides who may see what. When live & online we read the
+   role-scoped server RPCs; otherwise we read the already-synced-down (already role-filtered)
+   data so history still opens offline and in the demo. Legacy vs verified is shown honestly:
+   only movements written by the authoritative ledger (auth=true) are badged “verified”. */
+const MH_PAGE=40;
+let mhState=null; // {item,site,by,kind,from,to,offset,rows,done,loading}
+function stockNameOf(id){const s=stockItem(id);return s?s.name:id;}
+function mhStaff(){const m=me();return m.role==='owner'||m.role==='manager'||m.role==='office'||!!m.all;}
+function tsDay(ts){return ts?new Date(+ts).toLocaleDateString(LOC(),{month:'short',day:'numeric',year:'2-digit'}):'—';}
+function tsFull(ts){return ts?new Date(+ts).toLocaleDateString(LOC(),{month:'short',day:'numeric',year:'numeric'})+' '+fmtT(+ts):'—';}
+const MH_KIND={out:{t:'Pick-up',i:'📤'},in:{t:'Put back / received',i:'📥'},set:{t:'Manual count',i:'✎'}};
+
+// local mirror of stock_history_v2 — reads data this device already holds (RLS already applied server-side)
+function mhLocal(a){const nm=a.item?stockNameOf(a.item):null;const rows=[];
+  (D.stockLog||[]).forEach(l=>{if(l.deleted)return;const items=Array.isArray(l.items)?l.items:[];
+    items.forEach(it=>{
+      if(a.item&&!(it.id===a.item||it.name===nm))return;
+      if(a.site&&(l.site||'')!==a.site)return;
+      if(a.by&&(l.by||'')!==a.by)return;
+      if(a.kind&&(l.kind||'')!==a.kind)return;
+      const sts=(+l.serverTs||+l.ts||0);
+      if(a.from&&sts<a.from)return;
+      if(a.to&&sts>a.to)return;
+      let change=(it.change!=null)?+it.change:(it.qty!=null?((l.kind==='in'?1:-1)*Math.abs(+it.qty)):0);
+      rows.push({txn_id:l.id,seq:+l.seq||0,action_ts:(l.ts!=null?+l.ts:null),server_ts:(l.serverTs!=null?+l.serverTs:null),
+        kind:l.kind||'',by_emp:l.by||'',approved_by:l.approvedBy||null,site:l.site||'',dir:l.dir||'',
+        item_id:it.id,item_name:it.name||it.id,before_qty:(it.before!=null?+it.before:null),after_qty:(it.after!=null?+it.after:null),
+        change:change,reason:l.reason||null,verified:(l.auth===true),pending:!!l.pending,rejected:!!l.rejected});});});
+  rows.sort((x,y)=>(y.seq-x.seq)||((y.server_ts||0)-(x.server_ts||0))||((y.action_ts||0)-(x.action_ts||0)));
+  return rows.slice(a.offset,a.offset+a.limit);}
+
+async function mhFetch(a){
+  if(window.EX_REAL&&window.EX_sb&&window.EX_SYNC&&window.EX_SYNC.online){
+    try{const r=await window.EX_sb.rpc('stock_history_v2',{p_item:a.item||null,p_site:a.site||null,p_by:a.by||null,p_kind:a.kind||null,p_from:a.from||null,p_to:a.to||null,p_limit:a.limit,p_offset:a.offset});
+      if(r&&!r.error&&Array.isArray(r.data))return r.data.map(x=>Object.assign(x,{pending:false,rejected:false}));}catch(e){}
+  }
+  return mhLocal(a);}
+
+function openMatHist(preset){preset=preset||{};
+  mhState={item:preset.item||null,site:preset.site||null,by:preset.by||null,kind:preset.kind||null,from:null,to:null,offset:0,rows:[],done:false,loading:false};
+  // title + subline describing the lens
+  let title='📜 '+t('Material history'),sub='';
+  if(preset.item){title='📜 '+esc(stockNameOf(preset.item));sub=t('Every movement of this item.');}
+  else if(preset.site){title='📦 '+esc(siteName(preset.site));sub=t('Material taken to and returned from this job.');}
+  else if(preset.by){title='👤 '+esc(nameOf(preset.by));sub=t('Everything this person picked up and put back.');}
+  else sub=t('Every pick-up, put-back and manual count.');
+  document.getElementById('mhTitle').innerHTML=title;
+  document.getElementById('mhSub').textContent=sub;
+  document.getElementById('mhNet').innerHTML='';
+  document.getElementById('mhList').innerHTML='';
+  document.getElementById('mhMore').innerHTML='';
+  mhRenderFilters();
+  if(preset.site)mhRenderNet(preset.site);
+  show('m-mathist');
+  mhLoad(true);}
+
+function mhRenderFilters(){const el=document.getElementById('mhFilters');if(!el)return;const s=mhState;const staff=mhStaff();
+  const sel=(id,label,val,opts)=>'<select id="'+id+'" onchange="mhFilterChange()" style="padding:7px 8px;font-size:13px;min-width:0;flex:1 1 44%">'+
+    '<option value="">'+esc(label)+'</option>'+opts.map(o=>'<option value="'+esc(o.v)+'"'+(String(val||'')===String(o.v)?' selected':'')+'>'+esc(o.l)+'</option>').join('')+'</select>';
+  let html='';
+  // item filter only when not already locked to one item
+  if(!s.item)html+=sel('mhItem',t('All items'),'', D.stock.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(x=>({v:x.id,l:x.name})));
+  if(staff&&!s.by)html+=sel('mhBy',t('Anyone'),'', D.emps.filter(e=>!e.inactive).sort((a,b)=>a.name.localeCompare(b.name)).map(e=>({v:e.id,l:e.name})));
+  if(!s.site)html+=sel('mhSite',t('Any job'),'', visSites().map(x=>({v:x.id,l:x.name})));
+  html+=sel('mhKind',t('All types'),'', [{v:'out',l:t('Pick-up')},{v:'in',l:t('Put back / received')},{v:'set',l:t('Manual count')}]);
+  html+='<input id="mhFrom" type="date" onchange="mhFilterChange()" style="padding:6px 8px;font-size:13px;flex:1 1 44%" aria-label="'+t('From')+'">';
+  html+='<input id="mhTo" type="date" onchange="mhFilterChange()" style="padding:6px 8px;font-size:13px;flex:1 1 44%" aria-label="'+t('To')+'">';
+  el.innerHTML=html;}
+
+function mhFilterChange(){const s=mhState;if(!s)return;const g=id=>{const e=document.getElementById(id);return e?e.value:'';};
+  if(!s.item)s.item=g('mhItem')||null;
+  if(mhStaff()&&!document.getElementById('mhBy')&&s.by){/*locked*/}else if(document.getElementById('mhBy'))s.by=g('mhBy')||null;
+  if(document.getElementById('mhSite'))s.site=g('mhSite')||null;
+  s.kind=g('mhKind')||null;
+  const f=g('mhFrom'),to=g('mhTo');
+  s.from=f?new Date(f+'T00:00:00').getTime():null;
+  s.to=to?new Date(to+'T23:59:59').getTime():null;
+  s.offset=0;s.rows=[];s.done=false;
+  document.getElementById('mhList').innerHTML='';document.getElementById('mhMore').innerHTML='';
+  if(s.site)mhRenderNet(s.site);else document.getElementById('mhNet').innerHTML='';
+  mhLoad(true);}
+
+async function mhLoad(reset){const s=mhState;if(!s||s.loading||s.done)return;s.loading=true;
+  const more=document.getElementById('mhMore');if(more)more.innerHTML='<div class="note" style="text-align:center">'+t('Loading…')+'</div>';
+  const page=await mhFetch({item:s.item,site:s.site,by:s.by,kind:s.kind,from:s.from,to:s.to,limit:MH_PAGE,offset:s.offset});
+  if(!mhState||mhState!==s){return;} // screen changed under us
+  s.rows=s.rows.concat(page);s.offset+=page.length;if(page.length<MH_PAGE)s.done=true;s.loading=false;
+  mhRenderRows();}
+
+function mhBadge(r){if(r.rejected)return '<span style="font-size:10px;font-weight:700;color:#c0392b;background:#fdecea;padding:1px 6px;border-radius:999px">'+t('rejected')+'</span>';
+  if(r.pending)return '<span style="font-size:10px;font-weight:700;color:#8a6d00;background:#fff6d9;padding:1px 6px;border-radius:999px">'+t('not synced yet')+'</span>';
+  if(r.verified)return '<span style="font-size:10px;font-weight:700;color:#1b7a3d;background:#e6f6ec;padding:1px 6px;border-radius:999px">✓ '+t('verified')+'</span>';
+  return '<span style="font-size:10px;font-weight:700;color:#6b7590;background:#eef0f4;padding:1px 6px;border-radius:999px">'+t('legacy')+'</span>';}
+
+function mhRow(r){const k=MH_KIND[r.kind]||{t:r.kind||'move',i:'•'};const chg=(+r.change||0);
+  const chgStr=(chg>0?'+':'')+chg;const chgColor=chg>0?'#1b7a3d':chg<0?'#c0392b':'#6b7590';
+  const ba=(r.before_qty!=null&&r.after_qty!=null)?('<span style="color:var(--g4)">'+t('was')+' '+r.before_qty+' → '+t('now')+' '+r.after_qty+'</span>'):'';
+  const where=r.site?(' · '+(r.kind==='in'?t('from'):'→')+' '+esc(siteName(r.site))):'';
+  const who=esc(nameOf(r.by_emp)||'—');
+  const appr=(r.kind==='set'&&r.approved_by)?('<div style="font-size:11px;color:var(--g4)">'+t('approved by')+' '+esc(nameOf(r.approved_by))+'</div>'):'';
+  const rsn=r.reason?('<div style="font-size:12px;color:#8a5a00;background:#fff8e6;border-radius:6px;padding:4px 7px;margin-top:4px">📝 '+esc(r.reason)+'</div>'):'';
+  const itemLine=mhState&&mhState.item?'':'<b style="font-size:13px">'+esc(r.item_name)+'</b> ';
+  return '<div class="plog" style="flex-direction:column;align-items:stretch;gap:2px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">'+
+      '<span>'+k.i+' '+itemLine+'<b style="color:'+chgColor+'">'+esc(chgStr)+'</b> '+(ba)+'</span>'+
+      '<span style="white-space:nowrap">'+mhBadge(r)+'</span></div>'+
+    '<div style="font-size:12px;color:var(--g4)">'+esc(t(k.t))+' · '+who+where+'</div>'+
+    '<div style="font-size:11px;color:var(--g4)">🕒 '+tsFull(r.server_ts||r.action_ts)+(r.action_ts&&r.server_ts&&Math.abs(r.action_ts-r.server_ts)>120000?' · '+t('done')+' '+tsFull(r.action_ts):'')+'</div>'+
+    appr+rsn+'</div>';}
+
+function mhRenderRows(){const s=mhState;const list=document.getElementById('mhList');const more=document.getElementById('mhMore');if(!list)return;
+  if(!s.rows.length){list.innerHTML='<div class="empty">'+t('No movements match.')+'</div>';more.innerHTML='';return;}
+  list.innerHTML=s.rows.map(mhRow).join('');
+  more.innerHTML=s.done?'<div class="note" style="text-align:center">'+s.rows.length+' '+t('movements')+'</div>':'<button type="button" class="btn sec2" onclick="mhLoad()">'+t('Load more')+'</button>';}
+
+function mhRenderNet(site){const box=document.getElementById('mhNet');if(!box)return;
+  (async()=>{let rows=null;
+    if(window.EX_REAL&&window.EX_sb&&window.EX_SYNC&&window.EX_SYNC.online){try{const r=await window.EX_sb.rpc('stock_site_net',{p_site:site});if(r&&!r.error&&Array.isArray(r.data))rows=r.data;}catch(e){}}
+    if(!rows){const agg={};(D.stockLog||[]).forEach(l=>{if(l.deleted||l.auth!==true||(l.site||'')!==site)return;(l.items||[]).forEach(it=>{const c=(it.change!=null?+it.change:0);const a=agg[it.id]||(agg[it.id]={name:it.name||it.id,taken:0,returned:0,net:0});if(c<0)a.taken+=-c;else a.returned+=c;a.net+=-c;});});
+      rows=Object.keys(agg).map(id=>({item_id:id,item_name:agg[id].name,taken:agg[id].taken,returned:agg[id].returned,net:agg[id].net})).sort((x,y)=>x.item_name.localeCompare(y.item_name));}
+    if(!mhState||mhState.site!==site)return;
+    if(!rows.length){box.innerHTML='';return;}
+    box.innerHTML='<div class="card" style="padding:8px 10px;background:var(--blue-light,#eef3fb);border-color:#cdddf5"><div style="font-size:11px;color:var(--g4);text-transform:uppercase;font-weight:700;margin-bottom:4px">'+t('Net material at this job (verified)')+'</div>'+
+      rows.map(r=>'<div class="ln" style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span>'+esc(r.item_name)+'</span><b>'+(+r.net||0)+' <span style="font-weight:400;color:var(--g4)">('+t('took')+' '+(+r.taken||0)+' · '+t('back')+' '+(+r.returned||0)+')</span></b></div>').join('')+'</div>';})();}
+
+// ── Reconciliation (staff only; DB also returns nothing to non-staff) ──
+async function openRecon(){if(!mhStaff()){toast(t('Owners and office only'));return;}
+  document.getElementById('rcSummary').innerHTML='<div class="note">'+t('Checking…')+'</div>';
+  document.getElementById('rcList').innerHTML='';show('m-recon');
+  let rows=null;
+  if(window.EX_REAL&&window.EX_sb&&window.EX_SYNC&&window.EX_SYNC.online){try{const r=await window.EX_sb.rpc('stock_reconcile');if(r&&!r.error&&Array.isArray(r.data))rows=r.data;}catch(e){}}
+  if(!rows)rows=reconLocal();
+  const bad=rows.filter(r=>r.status==='DISCREPANCY');const base=rows.filter(r=>/baseline/.test(r.status||''));const ok=rows.filter(r=>r.status==='ok');
+  document.getElementById('rcSummary').innerHTML='<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+    '<div class="card" style="flex:1;text-align:center;padding:10px 6px;margin:0"><div style="font-size:24px;font-weight:800;color:'+(bad.length?'#c0392b':'#1b7a3d')+'">'+bad.length+'</div><div style="font-size:11px;color:var(--g4)">'+t('discrepancies')+'</div></div>'+
+    '<div class="card" style="flex:1;text-align:center;padding:10px 6px;margin:0"><div style="font-size:24px;font-weight:800;color:#1b7a3d">'+ok.length+'</div><div style="font-size:11px;color:var(--g4)">'+t('in sync')+'</div></div>'+
+    '<div class="card" style="flex:1;text-align:center;padding:10px 6px;margin:0"><div style="font-size:24px;font-weight:800;color:#6b7590">'+base.length+'</div><div style="font-size:11px;color:var(--g4)">'+t('no ledger yet')+'</div></div></div>';
+  const order=[...bad,...base,...ok];
+  // Rejected movements an admin can recover (RLS already scoped what synced down to this account)
+  const rej=(D.rejq||[]).filter(x=>x&&x.src==='stock').slice().sort((a,b)=>(b.rejectedAt||0)-(a.rejectedAt||0));
+  const rejHtml=rej.length?('<div class="sec" style="margin-top:14px">⚠ '+t('Rejected movements (for review)')+'</div>'+rej.slice(0,50).map(x=>
+    '<div class="card" style="padding:9px 11px;border-color:#f0b4ae;background:#fdecea"><div style="display:flex;justify-content:space-between;gap:8px"><b style="font-size:13px">'+(MH_KIND[x.kind]?MH_KIND[x.kind].i+' '+t(MH_KIND[x.kind].t):esc(x.kind||''))+'</b><span style="font-size:11px;color:var(--g4)">'+tsFull(x.rejectedAt)+'</span></div>'+
+    '<div style="font-size:12px;color:var(--g4)">'+esc(nameOf(x.by)||'—')+(x.site?' · '+esc(siteName(x.site)):'')+'</div>'+
+    '<div style="font-size:12px">'+ (x.moves||[]).map(m=>((m.set!=null?('→ '+m.set):((m.delta>0?'+':'')+m.delta))+'× '+esc(m.name||m.id))).join(' · ')+'</div>'+
+    '<div style="font-size:12px;color:#c0392b;margin-top:2px">'+esc(x.reason||'')+'</div></div>').join('')):'';
+  document.getElementById('rcList').innerHTML=(order.length?order.map(rcRow).join(''):'<div class="empty">'+t('No stock items.')+'</div>')+rejHtml;}
+
+function reconLocal(){const latest={};
+  (D.stockLog||[]).forEach(l=>{if(l.deleted||l.auth!==true)return;const seq=+l.seq||0,sts=+l.serverTs||+l.ts||0;(l.items||[]).forEach(it=>{if(it.after==null)return;const c=latest[it.id];if(!c||seq>c.seq||(seq===c.seq&&sts>c.sts)){latest[it.id]={after:+it.after,seq,sts,n:(c?c.n:0)+1};}else{c.n++;}});});
+  return (D.stock||[]).map(s=>{const l=latest[s.id];const cur=+s.qty||0;
+    return {id:s.id,name:s.name,current_qty:cur,expected_qty:l?l.after:null,moves_tracked:l?l.n:0,
+      status:!l?'baseline (no tracked history yet)':(cur===l.after?'ok':'DISCREPANCY')};})
+    .sort((a,b)=>((a.status==='DISCREPANCY'?0:1)-(b.status==='DISCREPANCY'?0:1))||a.name.localeCompare(b.name));}
+
+function rcRow(r){const disc=r.status==='DISCREPANCY';const baseline=/baseline/.test(r.status||'');
+  const diff=(r.expected_qty!=null)?((+r.current_qty||0)-(+r.expected_qty||0)):0;
+  return '<div class="card" style="padding:9px 11px;border-color:'+(disc?'#f0b4ae':baseline?'#e2e5ea':'#b7e0c3')+';background:'+(disc?'#fdecea':baseline?'#fff':'var(--green-bg,#eef9f1)')+'">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:14px">'+esc(r.name)+'</b>'+
+      (disc?'<span style="font-size:11px;font-weight:700;color:#c0392b">⚠ '+t('DIFFERENCE')+' '+(diff>0?'+':'')+diff+'</span>':baseline?'<span style="font-size:11px;color:#6b7590">'+t('no ledger yet')+'</span>':'<span style="font-size:11px;color:#1b7a3d">✓ '+t('in sync')+'</span>')+'</div>'+
+    '<div style="font-size:12px;color:var(--g4);margin-top:3px">'+t('Actual count')+': <b>'+(+r.current_qty||0)+'</b>'+(r.expected_qty!=null?' · '+t('Ledger says')+': <b>'+(+r.expected_qty||0)+'</b> · '+(+r.moves_tracked||0)+' '+t('tracked moves'):' · '+t('no verified movements recorded')) +'</div>'+
+    '<div style="margin-top:6px"><button type="button" class="bs b" onclick="hide(\'m-recon\');openMatHist({item:\''+jsq(r.id)+'\'})">'+t('Investigate history')+' ›</button></div></div>';}
+
 // ───────────── TOOLS — where is everything: garage / a van / a job site. Photo in, photo out. ─────────────
 let tkMode='take',tkFile=null,tkPick=null,ntFile=null,tlFilter='all';
 const vanOwners=()=>D.emps.filter(e=>e.role==='manager'||(e.role==='worker'&&e.lead));
@@ -3896,15 +4200,40 @@ function exCleanStart(){['jobs','punches','mats','meets','ests','tickets','tools
 const PW_COMMON=['password','password1','password123','12345678','123456789','1234567890','qwerty123','qwertyuiop','abc12345','abcd1234','iloveyou1','admin123','welcome1','letmein1','monkey123','11111111','00000000','12341234','passw0rd','electrix','electrix1','electrix123','electrixusa','electrix2026','monsey123','spring123'];
 function pwBad(p){p=String(p||'');if(p.length<8)return t('Password needs at least 8 characters');if(!/[A-Za-z]/.test(p)||!/[0-9]/.test(p))return t('Password needs letters and numbers');const l=p.toLowerCase();if(PW_COMMON.includes(l)||/^(.)\1+$/.test(p)||/electrix/.test(l))return t('That password is too easy to guess');return '';}
 function pwErr(m){m=String(m||'');return /weak|common|too short|easy|letters/i.test(m)?t('That password is too easy to guess'):m;}
-function exChangePw(){askPrompt(t('Change my password'),[{label:t('New password (8+ letters and numbers)'),value:'',type:'password'}],([p])=>{{const bad=pwBad(p);if(bad){toast(bad);return;}}EX_changeMyPassword(p).then(r=>toast(r.ok?'🔑 '+t('Password changed'):'⚠ '+pwErr(r.err)));});}
+function exChangePw(){askPrompt(t('Change my password'),[{label:t('New password (8+ letters and numbers)'),value:'',type:'password'}],([p])=>{{const bad=pwBad(p);if(bad){toast(bad);return;}}EX_changeMyPassword(p).then(async r=>{if(r.ok){try{if(window.EX_setPwVerifier&&window.EX_ME)await EX_setPwVerifier(p,window.EX_ME);}catch(e){}}toast(r.ok?'🔑 '+t('Password changed'):'⚠ '+pwErr(r.err));});});}
 function exOverlay(msg){let o=document.getElementById('exBoot');if(!o){o=document.createElement('div');o.id='exBoot';o.style.cssText='position:fixed;inset:0;z-index:600;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-size:15px;color:#6b7590';document.body.appendChild(o);}if(msg===null){o.remove();return;}const lg=document.querySelector('.logo img');o.innerHTML=(lg?'<img src="'+lg.src+'" style="height:40px">':'')+'<div>'+esc(msg)+'</div>';}
+// Offline session policy: a phone may show its cached copy while briefly offline, but NOT indefinitely — this bounds
+// how long a lost/stolen/left-the-company device keeps showing company data without ever re-reaching the server.
+// Online use is unaffected (any successful sync resets the clock). Adjust to taste; 7 days balances field reality vs risk.
+const MAX_OFFLINE_DAYS=7;
+function exStaleBlock(){let o=document.getElementById('exBoot');if(!o){exOverlay(' ');o=document.getElementById('exBoot');}
+  o.innerHTML='<div style="font-size:15px;color:#1F1E2A;font-weight:600;max-width:300px;text-align:center">'+t('For security, please connect to the internet to sign in.')+'</div><div style="font-size:13px;max-width:300px;text-align:center">'+t('This phone hasn’t reached the server in a while.')+'</div><button style="border:0;background:#1F1E2A;color:#fff;font-size:16px;font-weight:600;padding:12px 24px;border-radius:12px" onclick="location.reload()">'+t('Try again')+'</button><button style="border:0;background:none;color:#D53C36;text-decoration:underline;font-size:13px" onclick="exOverlay(null);needLogin()">'+t('Sign in again')+'</button>';}
+// Enforce the offline limit continuously — not just at startup: on foreground resume and periodically. If the phone has
+// gone stale, try to revalidate with the server first (which also re-checks that the employee is still active); only if
+// that fails do we lock access behind a required sign-in. lastseen advances ONLY on a real successful server pull, so a
+// refreshed-but-unvalidated token can never extend offline access.
+let exGuardBusy=false;
+async function exOfflineGuard(){if(!window.EX_REAL||exGuardBusy)return;
+  let ls=0;try{ls=+(localStorage.getItem('ex_lastseen')||0)||0;}catch(e){}
+  if(!ls||Date.now()-ls<=MAX_OFFLINE_DAYS*86400000)return;      // fresh enough
+  exGuardBusy=true;
+  try{try{if(window.EX_catchUp)await EX_catchUp();}catch(e){}   // revalidate authorization + refresh lastseen
+    try{ls=+(localStorage.getItem('ex_lastseen')||0)||0;}catch(e){}
+    if(Date.now()-ls>MAX_OFFLINE_DAYS*86400000){try{if(window.EX_lockOff)EX_lockOff();}catch(e){}exStaleBlock();} // still stale → require sign-in
+  }finally{exGuardBusy=false;}}
+try{document.addEventListener('visibilitychange',()=>{if(!document.hidden)exOfflineGuard();});
+    window.addEventListener('online',()=>{try{if(window.EX_catchUp)EX_catchUp();}catch(e){}setTimeout(exOfflineGuard,4000);});
+    setInterval(exOfflineGuard,10*60000);}catch(e){}
 async function exBootstrap(){if(!window.EX_REAL){document.documentElement.classList.remove('exreal');return;}document.documentElement.classList.add('exreal');D.demo=false;
   // open right away from the copy on this phone; the server catches up in the background (never a frozen "Loading…")
   const ce=window.EX_cachedEmail&&EX_cachedEmail();const lu=ce&&(D.emps||[]).length>1?D.emps.find(e=>!e.inactive&&EX_emailFor(e)===ce):null;
-  if(lu)exEnter(lu,true);else{exOverlay(t('Loading…'));setTimeout(()=>{if(document.getElementById('exBoot')&&!window.EX_ready())exOverlayRetry();},15000);}
-  let b;try{b=await EX_boot();}catch(e){if(lu){exRetry();return;}exOverlay(null);toast('⚠ '+t('Could not reach the server')+': '+(e.message||''));needLogin();return;}
+  let ls=0;try{ls=+(localStorage.getItem('ex_lastseen')||0)||0;}catch(e){}
+  const stale=ls>0&&(Date.now()-ls>MAX_OFFLINE_DAYS*86400000);   // too long with no server contact → don't open from cache
+  const fastOpen=lu&&!stale;
+  if(fastOpen)exEnter(lu,true);else{exOverlay(t('Loading…'));setTimeout(()=>{if(document.getElementById('exBoot')&&!window.EX_ready()){stale?exStaleBlock():exOverlayRetry();}},stale?2500:15000);}
+  let b;try{b=await EX_boot();}catch(e){if(fastOpen){exRetry();return;}exOverlay(null);if(stale){exStaleBlock();return;}toast('⚠ '+t('Could not reach the server')+': '+(e.message||''));needLogin();return;}
   if(!b.email){exOverlay(null);needLogin();exSetupLink();return;}
-  try{await EX_start();}catch(e){if(/JWT|session|auth|refresh|401/i.test(e.message||'')){exOverlay(null);await EX_logout();needLogin();return;}if(lu){exRetry();return;}exOverlayRetry();return;}
+  try{await EX_start();}catch(e){if(/JWT|session|auth|refresh|401/i.test(e.message||'')){exOverlay(null);await EX_logout();needLogin();return;}if(fastOpen){exRetry();return;}if(stale){exStaleBlock();return;}exOverlayRetry();return;}
   const u=D.emps.find(e=>!e.inactive&&EX_emailFor(e)===b.email);
   if(!u){exOverlay(null);toast(t('You are not on the team list. Call the office.'));await EX_logout();needLogin();return;}
   exEnter(u,false);}
