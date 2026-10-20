@@ -393,12 +393,12 @@ const SEEDABLE=['sites','stock'];
 window.EX_start=async function(){if(!REAL||ready)return;const local={};SEEDABLE.forEach(k=>{if(D[k])local[k]=JSON.parse(JSON.stringify(D[k]));});
   const rows=await pullAll();
   if(!rows.length&&await turnedOff())return;
-  if(rows.length){applyRows(rows,{replace:true});}
+  if(rows.length){applyRows(rows,{replace:true});applyPendingQueue();takeSnap();}   // unsent work back on top at once — no wait in between (a save during the wait turned it into a delete)
   const present=new Set(rows.filter(r=>!r.deleted).map(r=>r.coll));const seeded=[];
-  if(rows.length){try{const u=(await sb.auth.getUser()).data.user;const meRec=u&&(D.emps||[]).find(e=>e.authUid===u.id);
+  if(rows.length){try{const u=(await withTO(sb.auth.getUser(),6000,'who')).data.user;const meRec=u&&(D.emps||[]).find(e=>e.authUid===u.id);
     if(meRec&&meRec.role==='owner')SEEDABLE.forEach(k=>{const v=local[k];if(present.has(k)||!v||!(Array.isArray(v)?v.length:Object.keys(v).length))return;
       if(k==='stock')v.forEach(x=>{x.qty=0;x.min=0;delete x.photo;});if(k==='sites')v.forEach(s=>{s.notes=[];delete s.fenceReq;delete s.trip;});D[k]=v;seeded.push(k);});}catch(e){log('seed check',e);}}
-  applyPendingQueue();takeSnap();
+  if(!rows.length){applyPendingQueue();takeSnap();}
   seeded.forEach(k=>{const cur=recordsOf(k);Object.keys(cur).forEach(id=>{queue[k+'\u0001'+id]={coll:k,id,data:cur[id]};});});if(seeded.length)saveQ();
   if(!rows.length&&window.EX_allowSeed){Object.keys(queue).length||(function(){const ops=[];colls().forEach(k=>{const cur=recordsOf(k);Object.keys(cur).forEach(id=>ops.push({coll:k,id,data:cur[id]}));});const sc=scalars();Object.keys(sc).forEach(id=>ops.push({coll:'_',id,data:{v:sc[id]}}));ops.forEach(o=>queue[o.coll+'\u0001'+o.id]=o);saveQ();})();}
   try{if(typeof pruneOld==='function'&&pruneOld())localSave();}catch(e){log('prune',e);}
