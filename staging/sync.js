@@ -79,7 +79,7 @@ window.EX_queuedIn=function(coll){return Object.keys(queue).filter(k=>queue[k]&&
 // BEFORE the change leaves the waiting list; each person only ever sees their own.
 function loadRej(){try{const a=JSON.parse(durRead('ex_rejects')||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
 const memRej=[];
-function keepRej(list){const all=loadRej().concat(memRej.filter(m=>!loadRej().some(y=>y.id===m.id&&y.by===m.by)));list.forEach(x=>{if(!x||x.coll!=='sched')return;const i=all.findIndex(y=>y.coll===x.coll&&y.id===x.id&&y.by===(st.user||null));const rec={coll:x.coll,id:x.id,data:x.data===undefined?null:x.data,del:!!x.del,reason:x.stale?'stale':x.delRefused?'delete-refused':'refused',at:Date.now(),by:st.user||null};if(i>=0)all[i]=rec;else all.push(rec);});
+function keepRej(list){const all=loadRej().concat(memRej.filter(m=>!loadRej().some(y=>y.id===m.id&&y.by===m.by)));list.forEach(x=>{if(!x||x.coll==='inbox'||x.coll==='push'||x.coll==='_')return;/* B5: every kind of record (was: schedule only) */const i=all.findIndex(y=>y.coll===x.coll&&y.id===x.id&&y.by===(st.user||null));const rec={coll:x.coll,id:x.id,data:x.data===undefined?null:x.data,del:!!x.del,reason:x.stale?'stale':x.delRefused?'delete-refused':'refused',at:Date.now(),by:st.user||null};if(i>=0)all[i]=rec;else all.push(rec);});
   const ok=putSafe('ex_rejects',JSON.stringify(all.slice(-500)));
   if(!ok){all.forEach(r=>{if(!memRej.some(m=>m.id===r.id&&m.by===r.by))memRej.push(r);});}else memRej.length=0;
   return ok;}
@@ -161,7 +161,7 @@ function rejectedRows(sent,server){const out=[];if(!Array.isArray(server))return
     // A denied INSERT comes back absent. We flag that only for 'sched' (the Schedule feature this fix targets), to
     // keep every other feature's save behavior exactly as it is today — no new surprises outside scheduling.
     // B2: for every kind of record — except bell messages to other people (the sender may not read those back)
-    if(!s||s.deleted){if(row.coll!=='inbox'&&row.coll!=='push')out.push({coll:row.coll,id:row.id,absent:true});return;}
+    if(!s||s.deleted){if(row.coll!=='inbox'&&row.coll!=='push'&&row.coll!=='_')out.push({coll:row.coll,id:row.id,absent:true});return;}
     const d=s.data||{};
     const own=SERVER_OWNED[row.coll]||[];   // fields the server works out itself (it is not a refusal when they differ)
     const sentObj=(row.patch&&typeof row.patch==='object')?row.patch:(row.coll==='punches'&&row.full&&typeof row.full==='object'?row.full:null);
@@ -494,7 +494,7 @@ window.EX_logout=async function(){
   // Nothing unsent, or it is safely encrypted: sign out and clear everything personal from this phone.
   // Phone notifications: this phone stops getting the signed-out person's alerts (the next person signs up their own).
   try{if(sb&&'serviceWorker' in navigator){const reg=await withTO(navigator.serviceWorker.getRegistration(),2000,'sw');const sub=reg&&reg.pushManager?await withTO(reg.pushManager.getSubscription(),2000,'push'):null;
-    if(sub){const ep=sub.endpoint;const who=(typeof me==='function'&&me())?me().id:null;const P=(window.D&&D.push)||[];
+    if(sub){const ep=sub.endpoint;const who=(typeof me==='function'&&me())?me().id:null;const P=(typeof D!=='undefined'&&D&&D.push)||[];
       const ids=P.filter(x=>x&&x.who===who&&x.sub&&x.sub.endpoint===ep).map(x=>x.id);
       if(ids.length&&st&&st.online){try{await withTO(sb.rpc('save_records',{rows:ids.map(id=>({coll:'push',id,deleted:true,full:{},by:st.user||null}))}),4000,'push off');}catch(e){}}
       try{await withTO(sub.unsubscribe(),2000,'unsubscribe');}catch(e){}}}}catch(e){}
