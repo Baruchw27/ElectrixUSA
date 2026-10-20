@@ -40,8 +40,8 @@ function choose(title,html,choices){ask(title,html+'<div style="display:flex;fle
 
 // ───────── draft safety net (survives a reload / the app being closed mid-save) ─────────
 const DRAFT='ex_sched_drafts';
-function draftsAll(){try{const d=JSON.parse(localStorage.getItem(DRAFT)||'{}');return d&&typeof d==='object'&&!Array.isArray(d)?d:{};}catch(e){return {};}}
-function draftsWrite(all){try{localStorage.setItem(DRAFT,JSON.stringify(all));}catch(e){}}
+function draftsAll(){try{const d=JSON.parse((window.EX_durRead?EX_durRead(DRAFT):localStorage.getItem(DRAFT))||'{}');return d&&typeof d==='object'&&!Array.isArray(d)?d:{};}catch(e){return {};}}
+function draftsWrite(all){const v=JSON.stringify(all);if(window.EX_durPut){EX_durPut(DRAFT,v);return;}try{localStorage.setItem(DRAFT,v);}catch(e){}}
 function draftPut(d){const all=draftsAll();all[crewDayKey(d.crew,d.day)]=Object.assign({at:Date.now(),me:(me()||{}).id},d);draftsWrite(all);}
 function draftList(){const id=(me()||{}).id;const all=draftsAll();let ch=false;Object.keys(all).forEach(k=>{if(!all[k]||Date.now()-(all[k].at||0)>=3*864e5){delete all[k];ch=true;}});if(ch)draftsWrite(all);return Object.keys(draftsAll()).map(k=>Object.assign({key:k},draftsAll()[k])).filter(d=>d.me===id);}
 function draftGet(){return draftList()[0]||null;}

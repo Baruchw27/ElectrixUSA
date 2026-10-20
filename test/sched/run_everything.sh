@@ -11,4 +11,5 @@ r every-button python3 click_all.py
 r repro-stale python3 repro_stale.py; 
 r repro-loan python3 repro_loan.py
 LEAVE=0 r repro-storage-full python3 repro_quota.py
+r storage-full-all-work python3 storage_full.py
 if [ -f "$APP/selftest.js" ]; then for k in iphone android desktop; do KIND=$k r selftest-$k python3 run_selftest.py; done; fi
