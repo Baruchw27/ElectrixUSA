@@ -489,6 +489,12 @@ window.EX_logout=async function(){
     return {aborted:true,secured:false,stashed:0};
   }
   // Nothing unsent, or it is safely encrypted: sign out and clear everything personal from this phone.
+  // Phone notifications: this phone stops getting the signed-out person's alerts (the next person signs up their own).
+  try{if(sb&&'serviceWorker' in navigator){const reg=await withTO(navigator.serviceWorker.getRegistration(),2000,'sw');const sub=reg&&reg.pushManager?await withTO(reg.pushManager.getSubscription(),2000,'push'):null;
+    if(sub){const ep=sub.endpoint;const who=(typeof me==='function'&&me())?me().id:null;const P=(window.D&&D.push)||[];
+      const ids=P.filter(x=>x&&x.who===who&&x.sub&&x.sub.endpoint===ep).map(x=>x.id);
+      if(ids.length&&st&&st.online){try{await withTO(sb.rpc('save_records',{rows:ids.map(id=>({coll:'push',id,deleted:true,full:{},by:st.user||null}))}),4000,'push off');}catch(e){}}
+      try{await withTO(sub.unsubscribe(),2000,'unsubscribe');}catch(e){}}}}catch(e){}
   try{if(sb)await withTO(sb.auth.signOut(),3000,'sign-out');}catch(e){}
   try{const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');
       ['ex_auth','ex_uid','ex_queue','electrix_bio','ex_faceid_asked','ex_faceid','ex_pwv',K,K+'__stockq'].forEach(k=>localStorage.removeItem(k));}catch(e){}
