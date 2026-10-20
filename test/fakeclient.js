@@ -13,6 +13,7 @@ function createClient(url,key,opts){const base=url.replace(/\/$/,'');const persi
     async signInWithPassword({email,password}){const r=await call('/auth/signin',{email,password});if(r.error)return {data:{},error:r.error};setSess({access_token:r.data.token,user:r.data.user});return {data:{user:r.data.user,session:sess},error:null};},
     async signOut(){setSess(null);return {error:null};},
     async getUser(){if(!sess)return {data:{user:null}};return {data:{user:sess.user}};},
+    async setSession({access_token}){setSess({access_token,user:null});const r=await call('/auth/user',undefined,'GET');if(r.error){setSess(null);return {data:{},error:r.error};}sess.user=r.data.user;setSess(sess);return {data:{user:r.data.user,session:sess},error:null};},
     async updateUser({password}){const r=await call('/auth/update',{password});return {data:{},error:r.error};}
   };
   function from(table){const q={_range:[0,999]};
@@ -25,6 +26,7 @@ function createClient(url,key,opts){const base=url.replace(/\/$/,'');const persi
   const storage={from(bucket){return {async upload(path,blob,o){const r=await fetch(base+'/storage/upload/'+path,{method:'POST',headers:Object.assign({'Content-Type':(o&&o.contentType)||'application/octet-stream'},sess?{Authorization:'Bearer '+sess.access_token}:{}),body:blob});return r.ok?{data:{path},error:null}:{data:null,error:{message:'upload failed'}};},getPublicUrl(path){return {data:{publicUrl:base+'/storage/v1/object/public/files/'+path}};}};}};
   const chans=[];const ch0=channel;channel=function(){const c=ch0();chans.push(c);return c;};
   async function removeAllChannels(){chans.splice(0).forEach(c=>{try{c._es&&c._es.close();}catch(e){}});return [];}
-  return {auth,from,rpc,get channel(){return channel;},storage,removeAllChannels};}
+  const functions={async invoke(name,o){return call('/functions/v1/'+name,(o&&o.body)||{});}};
+  return {auth,from,rpc,functions,get channel(){return channel;},storage,removeAllChannels};}
 window.supabase={createClient};
 })();

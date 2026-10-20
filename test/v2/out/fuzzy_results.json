@@ -1,0 +1,37 @@
+{
+ "total": 591,
+ "out": {
+  "part": {
+   "exact:right_first_strong": 48,
+   "right_first_strong": 282,
+   "lookalike:right_first_strong": 94,
+   "nodash:right_first_strong": 27,
+   "lower:right_first_strong": 48,
+   "drop:right_first_possible": 29,
+   "right_first_possible": 50,
+   "extra:right_first_strong": 48,
+   "swap:right_in_list": 12,
+   "right_in_list": 15,
+   "drop:right_first_strong": 6,
+   "swap:right_first_possible": 19,
+   "swap:right_first_strong": 11,
+   "drop:right_in_list": 3,
+   "swap:not_found": 4,
+   "not_found": 4,
+   "lookalike:right_first_possible": 2
+  },
+  "name": {
+   "right_first_possible": 135,
+   "right_in_list": 15
+  },
+  "notInList": {
+   "shown_as_possible_only": 58,
+   "none": 32
+  }
+ },
+ "wrong": [],
+ "unit": {
+  "n": 16,
+  "fail": []
+ }
+}

@@ -5,10 +5,10 @@
 <meta name="theme-color" content="#ffffff"><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Electrix Field</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
-<script>window.EX_VER='vscan1019';</script><script src="config.js"></script>
+<script>window.EX_VER='vsch21a';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vscan1019"></script>
-<script src="extras.js?vscan1019"></script>
+<script src="sync.js?vsch21a"></script>
+<script src="extras.js?vsch21a"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -1113,7 +1113,7 @@ html[data-theme=dark] .sc-av.in{background:#173B2A;color:#7EE0AE}html[data-theme
   <div style="font-size:12.5px;color:var(--g4);margin-bottom:8px" data-i18n="Temporarily send one person to another job for part of the day. Their permanent crew doesn't change.">Temporarily send one person to another job for part of the day. Their permanent crew doesn't change.</div>
   <label data-i18n="Employee">Employee</label><select id="loanEmp"></select>
   <label data-i18n="To job site">To job site</label><select id="loanSite"></select>
-  <div style="display:flex;gap:8px"><label style="flex:1;font-size:12px;color:var(--g4)" data-i18n="Start">Start<input type="time" id="loanStart" value="12:00" style="font-size:16px"></label><label style="flex:1;font-size:12px;color:var(--g4)" data-i18n="End">End<input type="time" id="loanEnd" value="16:00" style="font-size:16px"></label></div>
+  <div style="display:flex;gap:8px"><label style="flex:1;font-size:12px;color:var(--g4)"><span data-i18n="Start">Start</span><input type="time" id="loanStart" value="12:00" style="font-size:16px"></label><label style="flex:1;font-size:12px;color:var(--g4)"><span data-i18n="End">End</span><input type="time" id="loanEnd" value="16:00" style="font-size:16px"></label></div>
   <label data-i18n="Note (optional)">Note (optional)</label><input type="text" id="loanNote">
   <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" onclick="saveLoan()" data-i18n="Save">Save</button><button class="btn rd" style="width:auto;padding:12px 14px" onclick="clearLoanFor(document.getElementById('loanEmp').value,loanDay);hide('m-loan')" data-i18n="Remove">Remove</button><button class="btn sec2" style="width:auto;padding:12px 14px" onclick="hide('m-loan')" data-i18n="Cancel">Cancel</button></div>
 </div></div>
@@ -1145,7 +1145,7 @@ function pruneOld(){const now=Date.now(),day=864e5;const old=(t,d)=>(+t||0)>0&&(
   const rules={punches:p=>old(p.out||p.in,120),inbox:x=>old(x.ts,45),jobs:j=>j.status==='done'&&old(j.doneAt||j.ts,90),exps:x=>old(x.ts,200)&&!(x.src==='personal'&&!x.paid),travel:x=>old(new Date((x.date||'')+'T12:00').getTime(),120),stockLog:x=>old(x.ts,120),goHomeLog:x=>old(x.ts,60)};
   let n=0;for(const k in rules){if(!Array.isArray(D[k]))continue;const keep=[],drop=[];D[k].forEach(x=>(x&&rules[k](x)?drop:keep).push(x));if(drop.length){D[k]=keep;n+=drop.length;try{if(window.EX_forget)EX_forget(k,drop.map(x=>x.id).filter(Boolean));}catch(e){}}}
   return n;}
-function save(){if(!save._p||Date.now()-save._p>3600000){save._p=Date.now();try{if(pruneOld()&&window.EX_forget){}}catch(e){}}sortSites();try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){try{if(pruneOld()){localStorage.setItem(KEY,JSON.stringify(D));return;}}catch(e3){}const old=Date.now()-14*86400000;D.jobs.forEach(j=>{if(j.status==='done'&&(j.doneAt||0)<old&&j.photos&&j.photos.length>1)j.photos=j.photos.slice(-1);});try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e2){}}try{if(window.EX_afterSave)window.EX_afterSave();}catch(e){console.warn(e);}}
+function save(){if(!save._p||Date.now()-save._p>3600000){save._p=Date.now();try{if(pruneOld()&&window.EX_forget){}}catch(e){}}sortSites();let _st=false;try{localStorage.setItem(KEY,JSON.stringify(D));_st=true;}catch(e){try{if(pruneOld()){localStorage.setItem(KEY,JSON.stringify(D));_st=true;}}catch(e3){}if(!_st){const old=Date.now()-14*86400000;D.jobs.forEach(j=>{if(j.status==='done'&&(j.doneAt||0)<old&&j.photos&&j.photos.length>1)j.photos=j.photos.slice(-1);});try{localStorage.setItem(KEY,JSON.stringify(D));_st=true;}catch(e2){}}}window.EX_localStored=_st;/* always hand the change to the sync layer — even when the phone copy could not be written (it used to return early here and the change never reached the server) */try{if(window.EX_afterSave)window.EX_afterSave();}catch(e){console.warn(e);}}
 function nid(p){D.nextId=(D.nextId||1)+1;return p+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
 load();
 try{D.crews.forEach(c=>{if(!c.managers)c.managers=c.manager?[c.manager]:[];delete c.manager;if(!c.type)c.type='rough';});
@@ -3952,9 +3952,23 @@ function puPhoto(inp){const f=inp.files&&inp.files[0];if(!f)return;shrink(f,d=>{
      clearly reported — never a false "saved". */
 const STOCKQ_KEY=(typeof KEY!=='undefined'?KEY:'electrix_v29')+'__stockq';
 const stockOutcomes={};
-function stockQ(){try{return JSON.parse(localStorage.getItem(STOCKQ_KEY)||'[]');}catch(e){return [];}}
-function stockQSave(q){try{localStorage.setItem(STOCKQ_KEY,JSON.stringify(q));}catch(e){}}
+function stockQ(){try{return JSON.parse((window.EX_durRead?EX_durRead(STOCKQ_KEY):localStorage.getItem(STOCKQ_KEY))||'[]');}catch(e){return [];}}
+function stockQSave(q){/* unsent stock moves: phone storage + IndexedDB, so a full phone can't lose them */if(window.EX_durPut){EX_durPut(STOCKQ_KEY,JSON.stringify(q));return;}try{localStorage.setItem(STOCKQ_KEY,JSON.stringify(q));}catch(e){}}
 function stockItem(id){return D.stock.find(x=>x.id===id);}
+// What a phone shows = the server's last known count + this phone's own moves that haven't reached the server yet.
+// (Counts from other phones arrive as server counts; nothing is ever added twice or lost when a move is refused.)
+let stockSrv={};try{stockSrv=JSON.parse(localStorage.getItem(STOCKQ_KEY+'_srv')||'{}')||{};}catch(e){stockSrv={};}
+function stockShown(id,skip){let v=+stockSrv[id]||0;stockQ().forEach(t=>{if(t.rej||t.id===skip)return;(t.moves||[]).forEach(m=>{if(m.id!==id)return;if('set' in m)v=Math.max(0,+m.set||0);else v=Math.max(0,v+(+m.delta||0));});});return v;}
+// qv = the server's version of that count (only goes up): an older count arriving after a newer one is ignored.
+let stockSrvV={};try{stockSrvV=JSON.parse(localStorage.getItem(STOCKQ_KEY+'_srvv')||'{}')||{};}catch(e){stockSrvV={};}
+function stockFromServer(id,q,skip,qv){if(q==null||isNaN(+q))return false;
+  const stale=qv!=null&&!isNaN(+qv)&&(id in stockSrvV)&&+qv<stockSrvV[id];
+  if(!stale){if(qv!=null&&!isNaN(+qv)){stockSrvV[id]=+qv;try{localStorage.setItem(STOCKQ_KEY+'_srvv',JSON.stringify(stockSrvV));}catch(e){}}
+    stockSrv[id]=+q;try{localStorage.setItem(STOCKQ_KEY+'_srv',JSON.stringify(stockSrv));}catch(e){}}
+  const s=stockItem(id);if(!s)return false;const v=stockShown(id,skip);if(s.qty!==v){s.qty=v;return true;}return false;}
+window.EX_stockFromServer=stockFromServer;
+function stockUndo(txn){const known=(txn.moves||[]).every(m=>m.id in stockSrv);if(!known)return stockRevert(txn.moves);
+  (txn.moves||[]).forEach(m=>{const s=stockItem(m.id);if(s)s.qty=stockShown(m.id,txn.id);});}
 function stockApplyLocal(moves){moves.forEach(m=>{let s=stockItem(m.id);if(!s){s={id:m.id,name:m.name||m.id,unit:m.unit||'pc',qty:0,min:0};D.stock.push(s);}m._pre=(+s.qty||0);if('set' in m)s.qty=Math.max(0,+m.set||0);else s.qty=Math.max(0,(+s.qty||0)+(+m.delta||0));});}
 function stockRevert(moves){moves.forEach(m=>{const s=stockItem(m.id);if(!s)return;if('_pre' in m)s.qty=Math.max(0,+m._pre||0);else if('delta' in m)s.qty=Math.max(0,(+s.qty||0)-(+m.delta||0));});}
 function commitStockTxn(kind,lines,site,extra){const by=me().id;
@@ -3994,7 +4008,7 @@ async function flushStockQ(){if(stockFlushing)return;
       if(txn.rej){if(stockCaptureReject(txn,txn.rej.reason,txn.rej.serverError)){q=stockQ().filter(x=>x.id!==txn.id);stockQSave(q);changed=true;}continue;}
       let r;try{r=await sb.rpc('apply_stock_txn',{txn:{id:txn.id,kind:txn.kind,by:txn.by,site:txn.site,ts:txn.ts,reason:txn.reason,moves:txn.moves.map(m=>{const o={id:m.id,name:m.name,unit:m.unit};if('set'in m){o.set=m.set;if('expect'in m)o.expect=m.expect;}else o.delta=m.delta;return o;})}});}catch(e){break;}
       if(r&&r.error){const perm=stockErrMsg(r.error);
-        if(perm){stockRevert(txn.moves);changed=true;const raw=(r.error&&(r.error.message||''))||'';
+        if(perm){stockUndo(txn);changed=true;const raw=(r.error&&(r.error.message||''))||'';
           const li=D.stockLog.find(x=>x.id===txn.id);if(li){li.pending=false;li.rejected=true;}
           // CAPTURE-THEN-DEQUEUE: remove from the offline queue ONLY after the recovery record is confirmed saved;
           // otherwise keep it queued (marked, never re-applied) so the movement can never be silently lost.
@@ -4002,41 +4016,45 @@ async function flushStockQ(){if(stockFlushing)return;
           else{const cur=stockQ();const i=cur.findIndex(x=>x.id===txn.id);if(i>=0){cur[i].rej={reason:perm,serverError:raw.slice(0,160)};stockQSave(cur);}}
           stockOutcomes[txn.id]={status:'rejected',reason:perm};try{toast('⚠ '+perm,'bad');}catch(e){}continue;}
         break;} // transient (network/server): keep queued, retry later
-      const res=(r&&r.data)||{};(res.qtys||[]).forEach(x=>{const s=stockItem(x.id);if(s){s.qty=Math.max(0,+x.qty||0);changed=true;}});
+      const res=(r&&r.data)||{};
+      q=stockQ().filter(x=>x.id!==txn.id);stockQSave(q);   // off the queue first, so the server count isn't added to it twice
+      (res.qtys||[]).forEach(x=>{if(stockFromServer(x.id,Math.max(0,+x.qty||0),null,x.qv))changed=true;});
       const li=D.stockLog.find(x=>x.id===txn.id);if(li)li.pending=false;
       stockOutcomes[txn.id]={status:'saved'};
-      q=stockQ().filter(x=>x.id!==txn.id);stockQSave(q);
     }
   }finally{stockFlushing=false;if(changed){try{save();}catch(e){}try{renderStock();}catch(e){}}}}
 window.EX_flushStockQ=flushStockQ;
 // await the TRUE outcome of a txn so the UI never reports a false success
 async function confirmStockTxn(id){if(!window.EX_REAL)return {status:'saved'};
   if(!(window.EX_SYNC&&window.EX_SYNC.online))return {status:'queued'};
-  try{await flushStockQ();}catch(e){}
+  try{await Promise.race([flushStockQ(),new Promise(r=>setTimeout(r,8000))]);}catch(e){} // a stalled network never blocks the next pick-up
   if(stockOutcomes[id])return stockOutcomes[id];
   return stockQ().some(t=>t.id===id)?{status:'queued'}:{status:'saved'};}
 try{window.addEventListener('online',()=>setTimeout(flushStockQ,600));document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(flushStockQ,600);});setInterval(()=>{if(stockQ().length)flushStockQ();},15000);setTimeout(flushStockQ,2500);}catch(e){}
-async function savePickup(){if(!puLines.length){toast(t('Add at least one item'));return;}
+let stockSaving=false; // one pick-up / put-back at a time: a double tap or a second click can never send it twice
+async function savePickup(){if(stockSaving)return;if(!puLines.length){toast(t('Add at least one item'));return;}
   const site=document.getElementById('puSite').value;
   const lines=puLines.map(l=>{const s=l.id?stockItem(l.id):stockFind(l.name);return {id:s?s.id:nid('s_'),name:s?s.name:l.name,unit:s?s.unit:(l.unit||'pc'),qty:Math.abs(+l.qty||0)};}).filter(l=>l.qty>0);
   if(!lines.length){toast(t('Add at least one item'));return;}
-  const txn=commitStockTxn('out',lines,site,{photo:puFile||''});
+  stockSaving=true;let res;const keep=puLines;
+  try{const txn=commitStockTxn('out',lines,site,{photo:puFile||''});puLines=[];
   hide('m-pick2');renderStock();
-  const res=await confirmStockTxn(txn.id);renderStock();
-  if(res.status==='rejected')return;          // clear error already shown; optimistic change undone
+  res=await confirmStockTxn(txn.id);renderStock();}finally{stockSaving=false;}
+  if(res.status==='rejected'){puLines=keep;return;}          // clear error already shown; optimistic change undone; lines kept to fix
   if(res.status==='queued'){toast('📤 '+t('Saved — will sync when online'),'green');return;}
   toast('📤 '+lines.map(l=>l.qty+'× '+l.name.split(' ')[0]).join(', ')+' → '+siteName(site),'green');
   const low=D.stock.filter(s=>(s.min>0&&s.qty<=s.min)&&lines.some(l=>l.id===s.id));if(low.length)pushTo(D.emps.filter(e=>e.role==='office'&&e.title==='Material').map(e=>e.id),'⚠ '+t('Running low')+': '+low.map(s=>s.name+' ('+s.qty+' '+s.unit+')').join(', '));}
 function openStockIn(){siFile=null;siLines=[];{const ss=document.getElementById('siSite');if(ss){ss.innerHTML='<option value="">'+t('Supplier / other')+'</option>'+visSites().map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');ss.value=garDefaultSite()||'';}}document.getElementById('siPrev').innerHTML='';document.getElementById('siSrc').value='';document.getElementById('siFind').value='';siMatch();siRender();show('m-stockin');}
 function siPhoto(inp){const f=inp.files&&inp.files[0];if(!f)return;if(!f.type.startsWith('image/')){siFile={d:'',name:f.name};document.getElementById('siPrev').innerHTML='<div class="note">📎 '+esc(f.name)+' — '+t('Live app reads the lines off the invoice')+'</div>';return;}shrink(f,d=>{siFile={d,name:f.name};document.getElementById('siPrev').innerHTML='<img src="'+safeSrc(d)+'" style="max-width:100%;max-height:180px;border-radius:8px">';aiReadMaterial(d,'in');});}
-async function saveStockIn(){if(!siLines.length){toast(t('Add at least one line'));return;}
+async function saveStockIn(){if(stockSaving)return;if(!siLines.length){toast(t('Add at least one line'));return;}
   const site=siRetSite||((document.getElementById('siSite')||{}).value)||undefined;const src=(document.getElementById('siSrc').value||'').trim();
   const lines=siLines.map(l=>{const s=l.id?stockItem(l.id):stockFind(l.name);return {id:s?s.id:nid('s_'),name:s?s.name:l.name,unit:s?s.unit:(l.unit||'pc'),qty:Math.abs(+l.qty||0)};}).filter(l=>l.qty>0);
   if(!lines.length){toast(t('Add at least one line'));return;}
-  const txn=commitStockTxn('in',lines,site,{photo:siFile&&siFile.d?siFile.d:'',src});
+  stockSaving=true;let res;const keep=siLines;
+  try{const txn=commitStockTxn('in',lines,site,{photo:siFile&&siFile.d?siFile.d:'',src});siLines=[];
   siRetSite=null;hide('m-stockin');renderStock();try{renderMat();}catch(e){}
-  const res=await confirmStockTxn(txn.id);renderStock();
-  if(res.status==='rejected')return;
+  res=await confirmStockTxn(txn.id);renderStock();}finally{stockSaving=false;}
+  if(res.status==='rejected'){siLines=keep;return;}
   toast('📥 '+t('Added to garage')+(res.status==='queued'?' · '+t('will sync when online'):''),'green');}
 /* ═══ MATERIAL HISTORY + RECONCILIATION (traceability UI) ═══════════════════════════
    One history screen with filters (item · employee · job · type · dates) and incremental
@@ -4476,5 +4494,6 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
+<script src="scanner-v2.js?vsch21a"></script><script src="scanner-v2-ui.js?vsch21a"></script><script src="sched-v21.js?vsch21a"></script><script src="selftest.js?vsch21a"></script>
 </body>
 </html>

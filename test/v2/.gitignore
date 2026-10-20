@@ -1,0 +1,9 @@
+out/img/
+out/real/
+out/ocr_v1.json
+out/label_results_v1pipe.json
+__pycache__/
+out/gen.log
+out/ocr_before_deskew.json
+out/real_ocr_before_deskew.json
+out/label_results_before_sure_fix.json

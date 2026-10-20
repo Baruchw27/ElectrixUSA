@@ -5,7 +5,8 @@ window.EX_CFG={
   anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJra3h5a2Rramdkc2drdWphbmF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyOTcxODYsImV4cCI6MjEwNzg3MzE4Nn0._eToR_8K_eL6D6j65vkVzXea--L8OeqlYIJ-Gtt-YXw',
   vapid:'BNb_nSg78OfiNKMnR4vqhszd7I3O09BuG0MLtYb6TcppMjwxdZRdINVAFPfDF8sid-axpvTQNVDgbH_BfLpnbg0',
   trello:false,
-  ai:false
+  ai:true,         // STAGING ONLY: AI label reading (works once the staging server secret ANTHROPIC_API_KEY is set; limits in ai_take)
+  fieldtest:true   // STAGING ONLY: log real-phone scans to scan_field_log (camera test)
 };
 // STAGING ONLY: the staging site lives on the same web address (baruchw27.github.io) as the real app, and browsers share
 // saved data per address. Prefix every saved key so the staging copy can never read or upload the real app's saved data.

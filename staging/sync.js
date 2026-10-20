@@ -14,6 +14,7 @@ const EMP_STRIP=['pass'];                       // never leaves the phone
 const DOMAIN=CFG.domain||'electrixusa.app';
 const BLOB_MIN=60000;                           // data: URLs longer than this go to storage
 const log=(...a)=>{if(CFG.debug)console.log('[sync]',...a);};
+const liveAt={}; // when each record last arrived through the live feed (so an older catch-up answer can't overwrite it)
 let sb=null,sbAux=null,snap={},queue=loadQ(),flushing=false,timer=null,ready=false,applying=false,renderT=null,localReady=false,lastPull=0,catching=false,hiddenSince=0;
 // never wait on the network forever: every server call has a time limit
 const withTO=(p,ms,what)=>Promise.race([p,new Promise((_,bad)=>setTimeout(()=>bad(new Error((what||'server')+' timeout')),ms))]);
@@ -26,7 +27,69 @@ window.EX_SYNC=st;
 function canon(v){if(v===null||typeof v!=='object')return v===undefined?'null':JSON.stringify(v);if(Array.isArray(v))return '['+v.map(x=>x===undefined||typeof x==='function'?'null':canon(x)).join(',')+']';
   const ks=Object.keys(v).filter(k=>v[k]!==undefined&&typeof v[k]!=='function').sort();return '{'+ks.map(k=>JSON.stringify(k)+':'+canon(v[k])).join(',')+'}';}
 function loadQ(){try{return JSON.parse(localStorage.getItem('ex_queue')||'{}');}catch(e){return {};}}
-function saveQ(){try{localStorage.setItem('ex_queue',JSON.stringify(queue));}catch(e){}st.pending=Object.keys(queue).length;paint();}
+// Unsent changes are the one thing on the phone that cannot be downloaded again, so they must be kept on disk.
+// If the phone's storage is full (it is shared with other copies of the app on the same web address), drop the
+// re-downloadable cached copy of the company data to make room — never the unsent work. If even that fails,
+// say so (st.qLost) so the app warns the person and never pretends the change is safe.
+function mainKey(){return (typeof KEY!=='undefined'?KEY:'electrix_v29');}
+// ---------- durable store for unsent work ----------
+// localStorage holds only ~5 MB per web address on a phone (shared with the staging copy). Unsent work is therefore ALSO
+// written to IndexedDB, which has a far larger allowance. Each write carries a sequence number; at start-up the newest
+// copy wins. The app always reads the newest copy (from memory when localStorage could not take it).
+const DUR_DB='ex_durable_'+String(CFG.url||'local').replace(/^https?:\/\//,'').replace(/[^a-z0-9]/gi,'_');   // per database: staging ≠ live
+function durKeys(){return ['ex_queue','ex_rejects',mainKey()+'__stockq','ex_sched_drafts'];}
+const durMem={},durInLS={},durInIDB={};let durN=0;
+const durSeqNow=()=>Date.now()*1000+((durN++)%1000);
+let idbP=null;
+function idb(){if(idbP)return idbP;idbP=new Promise(res=>{try{if(!window.indexedDB)return res(null);const r=indexedDB.open(DUR_DB,1);
+  r.onupgradeneeded=()=>{try{r.result.createObjectStore('kv');}catch(e){}};r.onsuccess=()=>res(r.result);r.onerror=()=>res(null);r.onblocked=()=>res(null);}catch(e){res(null);}});return idbP;}
+function idbOp(mode,fn){return idb().then(db=>new Promise(res=>{if(!db)return res(null);try{const tx=db.transaction('kv',mode);const st_=tx.objectStore('kv');const out=fn(st_);
+  tx.oncomplete=()=>res(out&&'result' in out?out.result:true);tx.onerror=tx.onabort=()=>res(null);}catch(e){res(null);}}));}
+function lsSet(k,v){try{localStorage.setItem(k,v);return true;}catch(e){return false;}}
+// write unsent work. Returns true when it is safe on the phone (localStorage now, or IndexedDB once that finishes)
+function durPut(k,v){const seq=durSeqNow();durMem[k]=v;const ok=lsSet(k,v);durInLS[k]=ok;if(ok)lsSet('ex_dseq__'+k,String(seq));
+  durInIDB[k]='pending';
+  idbOp('readwrite',o=>o.put({v,seq,at:Date.now()},k)).then(r=>{if(durMem[k]!==v)return;durInIDB[k]=!!r;
+    if(!ok&&!r){try{localStorage.removeItem(mainKey());}catch(e){}if(lsSet(k,v)){durInLS[k]=true;lsSet('ex_dseq__'+k,String(seq));}} // last resort: drop the re-downloadable cache
+    durState();});
+  durState();return ok;}
+window.EX_durPut=durPut;
+window.EX_durRead=function(k){return (k in durMem)?durMem[k]:localStorage.getItem(k);};
+const durRead=window.EX_durRead;
+// deliberate wipes (sign-out, account switch, turned-off employee) must clear BOTH copies, or the old work would come back
+async function durDel(keys){keys.forEach(k=>{delete durMem[k];delete durInLS[k];delete durInIDB[k];try{localStorage.removeItem(k);localStorage.removeItem('ex_dseq__'+k);}catch(e){}});
+  await idbOp('readwrite',o=>{keys.forEach(k=>o.delete(k));return null;});durState();}
+// at start-up: if IndexedDB holds a newer copy than localStorage (localStorage was full), use it
+async function durRestore(){for(const k of durKeys()){const rec=await idbOp('readonly',o=>o.get(k));if(!rec||typeof rec.v!=='string')continue;
+    const lsSeq=+(localStorage.getItem('ex_dseq__'+k)||0);
+    if(rec.seq>lsSeq){
+      durMem[k]=rec.v;durInIDB[k]=true;const ok=lsSet(k,rec.v);durInLS[k]=ok;if(ok)lsSet('ex_dseq__'+k,String(rec.seq));}}
+  try{const q=JSON.parse(durRead('ex_queue')||'{}');if(q&&typeof q==='object')queue=q;}catch(e){}st.pending=Object.keys(queue).length;durState();}
+// st.qStored / st.qLost: is every piece of unsent work safe on the phone?
+function durState(){const ks=durKeys();let lost=false,pend=false;ks.forEach(k=>{if(!(k in durMem))return;if(durInLS[k])return;if(durInIDB[k]==='pending')pend=true;else if(!durInIDB[k])lost=true;});
+  const n=Object.keys(queue).length;st.qStored=!lost;st.qLost=lost&&(n>0||ks.some(k=>k!=='ex_queue'&&(k in durMem)&&!durInLS[k]&&!durInIDB[k]));st.qPend=pend;try{paint();}catch(e){}}
+// write something that must not be lost
+function putSafe(k,v){return durPut(k,v);}
+function storeQ(){return putSafe('ex_queue',JSON.stringify(queue));}
+function saveQ(){const n=Object.keys(queue).length;st.pending=n;const ok=storeQ();durState();return ok;}
+window.EX_queued=function(coll,id){return !!queue[coll+'\u0001'+id];};
+window.EX_queuedIn=function(coll){return Object.keys(queue).filter(k=>queue[k]&&queue[k].coll===coll).map(k=>queue[k].id);};
+// Changes the server refused (permission, or another phone changed the same day first). Kept on the phone, with what
+// the person entered, until they re-apply or dismiss them — so a refused save is never silently thrown away. Written
+// BEFORE the change leaves the waiting list; each person only ever sees their own.
+function loadRej(){try{const a=JSON.parse(durRead('ex_rejects')||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
+const memRej=[];
+function keepRej(list){const all=loadRej().concat(memRej.filter(m=>!loadRej().some(y=>y.id===m.id&&y.by===m.by)));list.forEach(x=>{if(!x||x.coll!=='sched')return;const i=all.findIndex(y=>y.coll===x.coll&&y.id===x.id&&y.by===(st.user||null));const rec={coll:x.coll,id:x.id,data:x.data===undefined?null:x.data,del:!!x.del,reason:x.stale?'stale':x.delRefused?'delete-refused':'refused',at:Date.now(),by:st.user||null};if(i>=0)all[i]=rec;else all.push(rec);});
+  const ok=putSafe('ex_rejects',JSON.stringify(all.slice(-500)));
+  if(!ok){all.forEach(r=>{if(!memRej.some(m=>m.id===r.id&&m.by===r.by))memRej.push(r);});}else memRej.length=0;
+  return ok;}
+window.EX_rejects=function(){const me=st.user||null;const all=loadRej();memRej.forEach(m=>{if(!all.some(y=>y.id===m.id&&y.by===m.by))all.push(m);});return all.filter(x=>(x.by||null)===me);};
+window.EX_dropReject=function(coll,id){const me=st.user||null;for(let i=memRej.length-1;i>=0;i--)if(memRej[i].coll===coll&&memRej[i].id===id&&(memRej[i].by||null)===me)memRej.splice(i,1);const all=loadRej().filter(y=>!(y.coll===coll&&y.id===id&&(y.by||null)===me));putSafe('ex_rejects',JSON.stringify(all));};
+// what happened to each row the last time it was sent (decided at the moment the server answered)
+const outcome={};function mark(coll,id,status,extra){const now=Date.now();outcome[coll+'\u0001'+id]=Object.assign({status,at:now},extra||{});
+  if(Object.keys(outcome).length>2000)Object.keys(outcome).forEach(k=>{if(now-outcome[k].at>3600000)delete outcome[k];});}
+window.EX_SYNC_V=21;
+const TRANSIENT=/timeout|timed out|failed to fetch|networkerror|network error|load failed|fetch|aborted|connection was lost|appears to be offline|not connected/i;
 function emailFor(e){return (e.email&&/@/.test(e.email)?e.email:(e.id+'@'+DOMAIN)).toLowerCase();}
 window.EX_emailFor=emailFor;
 
@@ -35,9 +98,9 @@ function colls(){return Object.keys(D).filter(k=>!SKIP.has(k)&&D[k]!==null&&type
 // Stock quantity is owned by the server RPC apply_stock_txn (atomic deltas), never by the normal patch sync —
 // otherwise a device's absolute qty write would clobber another device's concurrent change. Strip qty from the
 // sync view everywhere snap is set; the live value still comes down from the server on pull/catch-up for display.
-function upStrip(coll,data){if(coll==='stock'&&data&&typeof data==='object'){const d=Object.assign({},data);delete d.qty;return d;}return data;}
+function upStrip(coll,data){if(coll==='stock'&&data&&typeof data==='object'){const d=Object.assign({},data);delete d.qty;delete d.qv;return d;}return data;}
 function recordsOf(k){const v=D[k];const out={};
-  if(Array.isArray(v)){v.forEach(x=>{if(!x||typeof x!=='object')return;if(!x.id)x.id=nid(k.slice(0,2));let r=x;if(k==='emps'){r=Object.assign({},x);EMP_STRIP.forEach(f=>delete r[f]);r.authEmail=emailFor(x);}else if(k==='stock'){r=Object.assign({},x);delete r.qty;}out[x.id]=r;});}
+  if(Array.isArray(v)){v.forEach(x=>{if(!x||typeof x!=='object')return;if(!x.id)x.id=nid(k.slice(0,2));let r=x;if(k==='emps'){r=Object.assign({},x);EMP_STRIP.forEach(f=>delete r[f]);r.authEmail=emailFor(x);}else if(k==='stock'){r=Object.assign({},x);delete r.qty;delete r.qv;}out[x.id]=r;});}
   else{Object.keys(v).forEach(id=>{out[id]=v[id];});}
   return out;}
 function scalars(){const out={};Object.keys(D).forEach(k=>{if(SKIP.has(k))return;const v=D[k];if(v===null||typeof v!=='object')out[k]=v;});return out;}
@@ -107,41 +170,61 @@ let suppressRejectToast=false; // EX_saveNow shows its own message at the point 
 let flushInFlight=null;
 function flush(){if(!REAL||!ready||!st.online)return Promise.resolve();if(flushInFlight)return flushInFlight;
   flushInFlight=_flush();const done=()=>{flushInFlight=null;};flushInFlight.then(done,done);return flushInFlight;}
-async function _flush(){const keys=Object.keys(queue);if(!keys.length){lastReject=[];return;}flushing=true;paint();
+async function _flush(){const keys=Object.keys(queue);if(!keys.length){lastReject=[];return;}flushing=true;st.flushing=true;paint();
   let skipped=0;const myRej=[];lastFlushError=null;
   try{const ups=[],dels=[],refs=[];
     for(const k of keys){const o=queue[k];if(o.del)dels.push(o);else{
       // offload big blobs; the live object in D is the same reference for arrays, so update it too
       const live=o.coll==='_'?null:liveRecord(o.coll,o.id);const target=live||o.data;
-      try{const ch=await offloadBlobs(o.coll,o.id,target);if(ch&&live){o.data=(o.coll==='emps')?stripEmp(live):live;snap[o.coll][o.id]=canon(o.data);localSave();}}catch(e){skipped++;continue;}
-      const cur=JSON.parse(JSON.stringify(live?(o.coll==='emps'?stripEmp(live):live):o.data));let row;
+      try{const ch=await offloadBlobs(o.coll,o.id,target);if(ch&&live){o.data=(o.coll==='emps')?stripEmp(live):upStrip(o.coll,live);snap[o.coll][o.id]=canon(o.data);localSave();}}catch(e){skipped++;continue;}
+      // stock qty is NEVER sent by the normal sync (only apply_stock_txn changes it) — the live record carries the phone's local qty
+      const cur=JSON.parse(JSON.stringify(live?(o.coll==='emps'?stripEmp(live):upStrip(o.coll,live)):upStrip(o.coll,o.data)));let row;
       const plain=v=>!!v&&typeof v==='object'&&!Array.isArray(v);let bb=null;try{bb=o.base?JSON.parse(o.base):null;}catch(e){}
       if(bb&&plain(cur)&&plain(bb)){const b=bb;const patch={},unset=[];Object.keys(cur).forEach(f=>{if(canon(cur[f])!==canon(b[f]))patch[f]=cur[f];});Object.keys(b).forEach(f=>{if(!(f in cur))unset.push(f);});row={coll:o.coll,id:o.id,patch,unset,by:st.user||null};}
+      else if(o.coll==='stock')row={coll:o.coll,id:o.id,patch:cur,unset:[],by:st.user||null};
       else row={coll:o.coll,id:o.id,full:cur,by:st.user||null};
+      if(o.coll==='stock'&&row.patch){delete row.patch.qty;delete row.patch.qv;if(row.unset)row.unset=row.unset.filter(f=>f!=='qty'&&f!=='qv');} // merge, never replace: keeps the server's count (another phone may have counted it already)
       ups.push(row);refs.push(o);}}
     const done=(k,o)=>{if(queue[k]===o)delete queue[k];};
-    for(let i=0;i<ups.length;i+=200){const part=ups.slice(i,i+200);const r=await withTO(sb.rpc('save_records',{rows:part}),45000,'save');
+    const isStale=e=>!!e&&(e.code==='40001'||/40001|stale_sched|could not serialize/i.test((e.message||'')+(e.details||'')));
+    let staleHit=false;
+    // Send a group of rows. The database checks each schedule day's revision and refuses the WHOLE call if any one
+    // day is out of date (another phone changed it first). So when that happens, resend the rows one by one: only the
+    // out-of-date day is refused (kept with what the person entered, see keepRej) and every other change still lands.
+    async function sendUps(part,prt){const r=await withTO(sb.rpc('save_records',{rows:part}),45000,'save');
       if(r.error){
-        // a simultaneous edit by another office user: the database rejects the stale write (errcode 40001). treat it
-        // like any other refusal — flag the rows, drop them from the queue so we don't retry a doomed write forever,
-        // and pull the winning version so the board shows what actually saved.
-        const e=r.error;if(e.code==='40001'||/40001|stale_sched|could not serialize/i.test((e.message||'')+(e.details||''))){
-          part.forEach((x,n)=>done(x.coll+'\u0001'+x.id,refs[i+n]));saveQ();
-          myRej.push(...part.map(x=>({coll:x.coll,id:x.id,stale:true})));
-          setTimeout(()=>{try{catchUp();}catch(_){}},0);continue;}
-        throw e;}
-      part.forEach((x,n)=>done(x.coll+'\u0001'+x.id,refs[i+n]));saveQ();adopt(r.data);
+        if(isStale(r.error)){
+          if(part.length>1){for(let n=0;n<part.length;n++)await sendUps([part[n]],[prt[n]]);return;}
+          const x=part[0],o=prt[0];
+          // a resend after a timeout: the first attempt may already have stored exactly this — then it is saved
+          try{const cur=await withTO(sb.from('records').select('coll,id,data,deleted').eq('coll',x.coll).eq('id',x.id),15000,'check');const row=cur&&!cur.error&&cur.data&&cur.data[0];
+            if(row&&!row.deleted&&row.data&&typeof row.data==='object'){const sent=x.full||x.patch||{};
+              const fs=Object.keys(sent).filter(f=>f!=='at'&&f!=='rev'&&f!=='by');
+              if(fs.length&&fs.every(f=>canon(row.data[f])===canon(sent[f]))&&(x.unset||[]).every(f=>!(f in row.data))){
+                done(x.coll+'\u0001'+x.id,o);saveQ();mark(x.coll,x.id,'ok');adopt([row]);return;}}}catch(e){}
+          const rj={coll:x.coll,id:x.id,stale:true,data:o&&o.data!==undefined?o.data:(x.full||x.patch||null)};
+          keepRej([rj]);done(x.coll+'\u0001'+x.id,o);saveQ();mark(x.coll,x.id,'rej',{stale:true});staleHit=true;myRej.push(rj);return;}
+        throw r.error;}
       const rej=rejectedRows(part,r.data);
+      rej.forEach(x=>{const n=part.findIndex(p=>p.coll===x.coll&&p.id===x.id);x.data=n>=0&&prt[n]?prt[n].data:null;});
+      if(rej.length)keepRej(rej);                     // what the person entered is safe before anything leaves the queue
+      part.forEach((x,n)=>{done(x.coll+'\u0001'+x.id,prt[n]);const bad=rej.find(y=>y.coll===x.coll&&y.id===x.id);mark(x.coll,x.id,bad?'rej':'ok',bad?{absent:!!bad.absent}:null);});
+      saveQ();adopt(r.data);
       // undo the local optimistic copy of anything the server refused: a denied insert stayed only on this phone,
       // so drop it (adopt() already reverted denied patches to the server's stored version).
       rej.forEach(x=>{if(x.absent&&!queue[x.coll+'\u0001'+x.id]){try{delRecord(x.coll,x.id);}catch(e){}if(snap[x.coll])delete snap[x.coll][x.id];}});
       if(rej.length){localSave();try{bump();}catch(e){}}
       myRej.push(...rej);}
-    for(let i=0;i<dels.length;i+=200){const part=dels.slice(i,i+200);const r=await withTO(sb.rpc('save_records',{rows:part.map(o=>({coll:o.coll,id:o.id,deleted:true,full:o.meta||{},by:st.user||null}))}),45000,'save');if(r.error)throw r.error;part.forEach(o=>done(o.coll+'\u0001'+o.id,o));saveQ();adopt(r.data);
-      // a delete the server refused comes back still present and not deleted → restore it locally (adopt did) and flag
+    for(let i=0;i<ups.length;i+=200)await sendUps(ups.slice(i,i+200),refs.slice(i,i+200));
+    if(staleHit)setTimeout(()=>{try{catchUp();}catch(_){}},0); // pull the version that won so the board shows what is really saved
+    for(let i=0;i<dels.length;i+=200){const part=dels.slice(i,i+200);const r=await withTO(sb.rpc('save_records',{rows:part.map(o=>({coll:o.coll,id:o.id,deleted:true,full:o.meta||{},by:st.user||null}))}),45000,'save');if(r.error)throw r.error;
+      // a delete the server refused comes back still present and not deleted → restore it locally (adopt does) and flag
       // (scoped to 'sched' so other features keep today's behavior)
       const dby={};(Array.isArray(r.data)?r.data:[]).forEach(s=>{dby[s.coll+'\u0001'+s.id]=s;});
-      part.forEach(o=>{if(o.coll!=='sched')return;const s=dby[o.coll+'\u0001'+o.id];if(s&&!s.deleted)myRej.push({coll:o.coll,id:o.id,delRefused:true});});}
+      const refused=part.filter(o=>{if(o.coll!=='sched')return false;const s=dby[o.coll+'\u0001'+o.id];return !!(s&&!s.deleted);}).map(o=>({coll:o.coll,id:o.id,delRefused:true,del:true}));
+      if(refused.length)keepRej(refused);
+      part.forEach(o=>{done(o.coll+'\u0001'+o.id,o);mark(o.coll,o.id,refused.some(x=>x.id===o.id&&x.coll===o.coll)?'rej':'ok');});saveQ();adopt(r.data);
+      myRej.push(...refused);}
     st.err=skipped?((typeof t==='function'?t('Photo upload failed — will retry'):'Photo upload failed')):'';st.retrying=false;
     lastReject=myRej;
     if(myRej.length){const msg=(typeof t==='function'?t('Some changes could not be saved — showing the saved version.'):'Some changes could not be saved — showing the saved version.');
@@ -150,25 +233,42 @@ async function _flush(){const keys=Object.keys(queue);if(!keys.length){lastRejec
   catch(e){lastReject=myRej;lastFlushError=(e&&e.message)||'sync error';
     // a slow/timed-out/offline save is transient: keep the change queued, retry quietly, and show a calm "Saving…" —
     // never the alarming "save timeout" banner (the data is safe on the phone and the retry lands it).
-    const _transient=/timeout|failed to fetch|networkerror|network error|load failed|fetch|aborted/i.test(lastFlushError);
+    const _transient=TRANSIENT.test(lastFlushError);
     st.err=_transient?'':lastFlushError;st.retrying=_transient;log('flush error',e);}
-  finally{flushing=false;paint();if(Object.keys(queue).length){if(lastFlushError)setTimeout(flush,4000);else schedule();}}}
+  finally{flushing=false;st.flushing=false;paint();if(Object.keys(queue).length){if(lastFlushError)setTimeout(flush,4000);else schedule();}}}
 // Save right now and report the TRUE outcome, so a caller (e.g. the schedule editor) can show a real result
 // instead of an optimistic "saved". Resolves {ok, rejected:[{coll,id,absent?}]}: ok=false when the server
 // refused any row we just sent (no permission, or a concurrent edit / stale revision) or the save errored.
-window.EX_saveNow=async function(){if(!REAL)return {ok:true,rejected:[]};
+// opts.keys: [[coll,id],…] — the records this save is about. The result then reports on exactly those:
+//   ok        — every one of them is stored on the server (sent, accepted, nothing left waiting)
+//   queued    — not sent yet (offline / not connected); kept on the phone (stored=false means storage is full and it
+//               is only in memory — the app must warn and must not reload)
+//   transient — the server could not be reached in time; still kept and retried automatically
+//   rejected  — the server refused it (no permission, or another phone changed the same day first)
+window.EX_saveNow=async function(opts){opts=opts||{};if(!REAL)return {v:21,ok:true,rejected:[],pending:[]};
+  const t0=Date.now();
   try{if(window.EX_afterSave)window.EX_afterSave();}catch(e){}
-  // offline or not yet connected: the change is safely queued and will sync later; if it is then refused, the
-  // background 'ex-rejected' path tells the person at that point. so report "queued OK" rather than a false error.
-  if(!ready||!st.online)return {ok:true,rejected:[],queued:true};
-  const collected=[];let hadError=false;suppressRejectToast=true;
-  try{clearTimeout(timer);await flush();collected.push(...lastReject);if(lastFlushError)hadError=true;
-    let guard=0;while(Object.keys(queue).length&&guard++<3){await new Promise(r=>setTimeout(r,250));await flush();collected.push(...lastReject);if(lastFlushError)hadError=true;}
-  }catch(e){hadError=true;}finally{suppressRejectToast=false;}
-  const seen={},rejected=[];collected.forEach(x=>{const k=x.coll+'\u0001'+x.id;if(!seen[k]){seen[k]=1;rejected.push(x);}});
-  return {ok:!hadError&&rejected.length===0,rejected};};
+  const mine=(opts.keys||[]).map(k=>k[0]+'\u0001'+k[1]);
+  const left=()=>mine.length?mine.filter(k=>queue[k]):Object.keys(queue);
+  if(!ready&&!localReady)return {v:21,ok:false,error:'not signed in',rejected:[],pending:left()};
+  if(!ready||!st.online){const q=left();return {v:21,ok:false,queued:true,stored:st.qStored!==false,rejected:[],pending:q};}
+  const collected=[];let hadError=false,errMsg='';suppressRejectToast=true;
+  const work=(async()=>{try{clearTimeout(timer);await flush();collected.push(...lastReject);if(lastFlushError){hadError=true;errMsg=lastFlushError;}
+    let guard=0;while(left().length&&guard++<3){await new Promise(r=>setTimeout(r,300));await flush();collected.push(...lastReject);if(lastFlushError){hadError=true;errMsg=lastFlushError;}}
+  }catch(e){hadError=true;errMsg=(e&&e.message)||'error';}})();
+  let timedOut=false;await Promise.race([work,new Promise(r=>setTimeout(()=>{timedOut=true;r();},opts.waitMs||15000))]);
+  suppressRejectToast=false;
+  const pending=left();let rejected=[],unknown=[];
+  if(mine.length){mine.forEach(k=>{const o=outcome[k];const i=k.indexOf('\u0001');const coll=k.slice(0,i),id=k.slice(i+1);
+      if(o&&o.at>=t0&&o.status==='rej')rejected.push(Object.assign({coll,id},o));
+      else if(!(o&&o.at>=t0&&o.status==='ok')&&!queue[k])unknown.push(k);});
+    if(!timedOut)unknown=[];   // nothing to send for those (already identical on the server)
+  }else{const seen={};collected.forEach(x=>{const k=x.coll+'\u0001'+x.id;if(!seen[k]){seen[k]=1;rejected.push(x);}});}
+  const transient=timedOut||(hadError&&TRANSIENT.test(errMsg));
+  const ok=!rejected.length&&!pending.length&&!unknown.length&&!(hadError&&!mine.length);
+  return {v:21,ok,rejected,pending:pending.concat(unknown),transient,timedOut,error:hadError?errMsg:'',stored:st.qStored!==false};};
 // take the server's merged version of what we just saved (it may include another phone's changes)
-function adopt(rows){if(!Array.isArray(rows))return;let changed=false;rows.forEach(r=>{const key=r.coll;if(queue[r.coll+'\u0001'+r.id])return;const j=r.deleted?null:canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));
+function adopt(rows){if(!Array.isArray(rows))return;let changed=false;rows.forEach(r=>{const key=r.coll;liveAt[r.coll+'\u0001'+r.id]=Date.now();if(queue[r.coll+'\u0001'+r.id])return;const j=r.deleted?null:canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));
     if(r.deleted){if(snap[key]&&r.id in snap[key]){applyRows([r],{replace:false});delete snap[key][r.id];changed=true;}return;}
     const mine=r.coll==='emps'?(snap[key]||{})[r.id]:null;if(snap[key]&&snap[key][r.id]===j)return;
     if(r.coll==='emps'){const live=liveRecord('emps',r.id);if(live&&canon(stripEmp(live))===j)return;}
@@ -176,7 +276,7 @@ function adopt(rows){if(!Array.isArray(rows))return;let changed=false;rows.forEa
   if(changed){localSave();bump();}}
 function liveRecord(coll,id){const v=D[coll];if(Array.isArray(v))return v.find(x=>x&&x.id===id)||null;return v&&typeof v==='object'?v[id]||null:null;}
 function stripEmp(x){const r=Object.assign({},x);EMP_STRIP.forEach(f=>delete r[f]);r.authEmail=emailFor(x);return r;}
-function localSave(){try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){}}
+function localSave(){try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){}if(Object.keys(queue).length&&st.qStored===false)saveQ();}
 
 // ---------- pull ----------
 async function pullAll(){const rows=[];let from=0;const PAGE=1000;
@@ -188,6 +288,7 @@ async function turnedOff(){let member=true;try{const r=await withTO(sb.rpc('is_m
   if(member)return false;
   // disabled/removed employee: force-clear this phone's data, lock, verifier and offline queues even if a logout would abort
   try{const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');['ex_queue','ex_faceid','ex_pwv','electrix_bio',K,K+'__stockq'].forEach(k=>localStorage.removeItem(k));localStorage.setItem('ex_off','1');}catch(e){}
+  try{await durDel(['ex_queue',mainKey()+'__stockq']);}catch(e){}
   queue={};try{await window.EX_logout();}catch(e){}try{location.reload();}catch(e){}return true;}
 window.EX_turnedOff=turnedOff;
 // after the phone slept: fetch only what changed meanwhile, and reconnect the live feed
@@ -195,7 +296,9 @@ async function catchUp(){if(!REAL||!ready||catching||!st.online)return;catching=
   try{if(await turnedOff())return;
     const since=new Date((lastPull||Date.now())-3*60000).toISOString();const t0=Date.now();const rows=[];let from=0;
     while(true){const r=await withTO(sb.from('records').select('coll,id,data,deleted').gt('updated_at',since).range(from,from+999),20000,'catch-up');if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<1000)break;from+=1000;}
-    lastPull=t0;try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}const fresh=rows.filter(r=>!queue[r.coll+'\u0001'+r.id]);
+    lastPull=t0;try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}rows.forEach(r=>{if(r.coll==='stock'&&!r.deleted&&r.data&&queue[r.coll+'\u0001'+r.id]&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,r.data.qty,null,r.data.qv);});
+    // a record that arrived live while this catch-up was in flight is newer than what the catch-up fetched: keep it
+    const fresh=rows.filter(r=>!queue[r.coll+'\u0001'+r.id]&&!((liveAt[r.coll+'\u0001'+r.id]||0)>=t0));
     if(fresh.length){applyRows(fresh,{replace:false});fresh.forEach(r=>{const k=r.coll;if(r.deleted){if(snap[k])delete snap[k][r.id];}else{(snap[k]=snap[k]||{})[r.id]=canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));}});localSave();bump();}
     try{if(sb.removeAllChannels)await withTO(sb.removeAllChannels(),3000,'reconnect');}catch(e){}subscribe();flush();st.err='';paint();}
   catch(e){log('catch-up',e);}finally{catching=false;}}
@@ -207,13 +310,16 @@ function applyRows(rows,{replace}){applying=true;try{
     if(r.coll==='_'){D[r.id]=r.data&&'v' in r.data?r.data.v:r.data;return;}
     if(!(r.coll in D))D[r.coll]=/^[a-z]+$/.test(r.coll)&&!['sched','mylist','punchlists','keepLabels','base'].includes(r.coll)?[]:{};
     const data=r.data;if(r.coll==='emps'){const old=liveRecord('emps',r.id);if(old&&old.pass)data.pass=old.pass;}
-    setRecord(r.coll,r.id,data);});
+    setRecord(r.coll,r.id,data);if(r.coll==='stock'&&data&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,data.qty,null,data.qv);});
   }finally{applying=false;}}
 function applyPendingQueue(){Object.values(queue).forEach(o=>{applying=true;try{if(o.coll==='_'){if(o.del)delete D[o.id];else D[o.id]=o.data.v;}else if(o.del)delRecord(o.coll,o.id);else setRecord(o.coll,o.id,o.data);}finally{applying=false;}});}
 
 // ---------- realtime ----------
 function subscribe(){sb.channel('records').on('postgres_changes',{event:'*',schema:'public',table:'records'},p=>{const r=p.new&&p.new.coll?p.new:null;if(!r)return;
-    const key=r.coll;const j=r.deleted?null:canon(r.coll==='_'?r.data.v:r.data);
+    const key=r.coll;const j=r.deleted?null:canon(r.coll==='_'?r.data.v:upStrip(r.coll,r.data));
+    // stock count belongs to the server: always take it (plus this phone's unsent moves), even when other fields are mid-edit
+    if(r.coll==='stock'&&!r.deleted&&r.data&&window.EX_stockFromServer&&window.EX_stockFromServer(r.id,r.data.qty,null,r.data.qv)){localSave();bump();}
+    liveAt[r.coll+'\u0001'+r.id]=Date.now();
     if(queue[r.coll+'\u0001'+r.id])return;                         // we have a newer local change in flight
     if(!r.deleted&&snap[key]&&snap[key][r.id]===j)return;          // already have it
     if(r.deleted&&!(snap[key]&&r.id in snap[key]))return;
@@ -223,7 +329,7 @@ function bump(){clearTimeout(renderT);renderT=setTimeout(()=>{const a=document.a
 
 // ---------- status pill ----------
 function paint(){let el=document.getElementById('exSync');if(!el){el=document.createElement('div');el.id='exSync';el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(64px + env(safe-area-inset-bottom));z-index:900;font-size:12px;padding:5px 11px;border-radius:99px;background:#1F1E2A;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.2);display:none;pointer-events:none';document.body.appendChild(el);}
-  const n=Object.keys(queue).length;let txt='';if(!REAL)txt='';else if(!st.online)txt='📵 '+(typeof t==='function'?t('Offline — saved on this phone'):'Offline')+(n?' ('+n+')':'');else if(st.err)txt='⚠ '+st.err;else if(n&&(flushing||st.retrying))txt='↑ '+(typeof t==='function'?t('Saving…'):'Saving…');
+  const n=Object.keys(queue).length;let txt='';if(!REAL)txt='';else if(st.qLost)txt='⚠ '+(typeof t==='function'?t('Phone storage is full — keep the app open until this finishes sending'):'Phone storage is full — keep the app open until this finishes sending')+(n?' ('+n+')':'');else if(!st.online)txt='📵 '+(typeof t==='function'?t('Offline — saved on this phone'):'Offline')+(n?' ('+n+')':'');else if(st.err)txt='⚠ '+st.err;else if(n&&(flushing||st.retrying))txt='↑ '+(typeof t==='function'?t('Saving…'):'Saving…');
   el.textContent=txt;el.style.display=txt?'block':'none';}
 window.addEventListener('online',()=>{st.online=true;paint();flush();catchUp();});window.addEventListener('offline',()=>{st.online=false;paint();});
 
@@ -278,11 +384,11 @@ window.EX_hasPwVerifier=function(user){try{const r=JSON.parse(localStorage.getIt
 // live copy is wiped — so it is preserved, recoverable only when they sign back in, and never visible/uploadable under
 // the next employee. Merges with any existing stash; verifies the ciphertext decrypts back before trusting it.
 async function stashLiveFor(prev){try{if(!prev)return;const dk=await deviceKey();if(!dk)return;
-  try{const live=JSON.parse(localStorage.getItem('ex_queue')||'{}');if(live&&Object.keys(live).length){let merged=live;
+  try{const live=JSON.parse(durRead('ex_queue')||'{}');if(live&&Object.keys(live).length){let merged=live;
     try{const ex=localStorage.getItem('ex_qenc__'+prev);if(ex){const old=await decWith(dk,ex);if(old&&typeof old==='object')merged=Object.assign({},old,live);}}catch(e){}
     const blob=await encWith(dk,merged);let back=null;try{back=await decWith(dk,blob);}catch(e){}
     if(back&&JSON.stringify(back)===JSON.stringify(merged))localStorage.setItem('ex_qenc__'+prev,blob);}}catch(e){}
-  try{const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');const sraw=localStorage.getItem(K+'__stockq');const sarr=sraw?JSON.parse(sraw):[];
+  try{const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');const sraw=durRead(K+'__stockq');const sarr=sraw?JSON.parse(sraw):[];
     if(Array.isArray(sarr)&&sarr.length){let merged=sarr;
     try{const ex=localStorage.getItem('ex_sqenc__'+prev);if(ex){const old=await decWith(dk,ex);if(Array.isArray(old)){const seen=new Set(sarr.map(x=>x&&x.id));merged=sarr.concat(old.filter(x=>x&&!seen.has(x.id)));}}}catch(e){}
     const blob=await encWith(dk,merged);let back=null;try{back=await decWith(dk,blob);}catch(e){}
@@ -292,9 +398,9 @@ async function stashLiveFor(prev){try{if(!prev)return;const dk=await deviceKey()
 async function recoverStockStash(uid){try{if(!uid)return;const enc=localStorage.getItem('ex_sqenc__'+uid);if(!enc)return;
   const dk=await deviceKey();if(!dk)return;let arr=null;try{arr=await decWith(dk,enc);}catch(e){return;}
   if(!Array.isArray(arr)||!arr.length){try{localStorage.removeItem('ex_sqenc__'+uid);}catch(e){}return;}
-  const SQK=(typeof KEY!=='undefined'?KEY:'electrix_v29')+'__stockq';let cur=[];try{cur=JSON.parse(localStorage.getItem(SQK)||'[]');if(!Array.isArray(cur))cur=[];}catch(e){cur=[];}
+  const SQK=(typeof KEY!=='undefined'?KEY:'electrix_v29')+'__stockq';let cur=[];try{cur=JSON.parse(durRead(SQK)||'[]');if(!Array.isArray(cur))cur=[];}catch(e){cur=[];}
   const seen=new Set(cur.map(x=>x&&x.id));arr.forEach(x=>{if(x&&!seen.has(x.id)){cur.push(x);seen.add(x.id);}});
-  try{localStorage.setItem(SQK,JSON.stringify(cur));localStorage.removeItem('ex_sqenc__'+uid);}catch(e){}}catch(e){}}
+  try{durPut(SQK,JSON.stringify(cur));localStorage.removeItem('ex_sqenc__'+uid);}catch(e){}}catch(e){}}
 // sign in through the server-side "login" function: the name/phone -> email lookup happens on the server, so the
 // sign-in email is never handed back to someone who isn't signed in (closes the anonymous email-lookup leak).
 window.EX_login=async function(q,pass){q=(q||'').trim();if(!q||!pass)return {err:'badpass'};
@@ -335,7 +441,7 @@ window.EX_logout=async function(){
   // No plaintext stash, no silent loss of any pending business data.
   let stashed=0, secured=null, stockSecured=null;
   const SQK=(typeof KEY!=='undefined'?KEY:'electrix_v29')+'__stockq';
-  let stockArr=[];try{const raw=localStorage.getItem(SQK);stockArr=raw?JSON.parse(raw):[];if(!Array.isArray(stockArr))stockArr=[];}catch(e){stockArr=[];}
+  let stockArr=[];try{const raw=durRead(SQK);stockArr=raw?JSON.parse(raw):[];if(!Array.isArray(stockArr))stockArr=[];}catch(e){stockArr=[];}
   if(uid&&(Object.keys(queue).length||stockArr.length)){
     try{const dk=await deviceKey();
       if(!dk){if(Object.keys(queue).length)secured=false;if(stockArr.length)stockSecured=false;}
@@ -358,6 +464,7 @@ window.EX_logout=async function(){
   try{if(sb)await withTO(sb.auth.signOut(),3000,'sign-out');}catch(e){}
   try{const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');
       ['ex_auth','ex_uid','ex_queue','electrix_bio','ex_faceid_asked','ex_faceid','ex_pwv',K,K+'__stockq'].forEach(k=>localStorage.removeItem(k));}catch(e){}
+  try{await durDel(['ex_queue',mainKey()+'__stockq']);}catch(e){}
   queue={};ready=false;localReady=false;
   if(secured||stockSecured){try{if(typeof toast==='function')toast(typeof t==='function'?t('Some changes will finish saving next time you sign in.'):'Some changes will finish saving next time you sign in.');}catch(e){}}
   return {stashed,secured,stockSecured,aborted:false};};
@@ -371,6 +478,7 @@ window.EX_whoami=function(){return st.user;};
 
 // ---------- boot ----------
 window.EX_boot=async function(){if(!REAL)return {real:false};
+  try{await durRestore();}catch(e){}   // a newer copy of unsent work that only IndexedDB could hold
   sb=window.supabase.createClient(CFG.url,CFG.anonKey,{auth:{persistSession:true,storageKey:'ex_auth',lock:async(_n,_t,fn)=>await fn()}});
   sbAux=window.supabase.createClient(CFG.url,CFG.anonKey,{auth:{persistSession:false,autoRefreshToken:false,storageKey:'ex_aux',lock:async(_n,_t,fn)=>await fn()}});
   window.EX_sb=sb;
@@ -381,6 +489,7 @@ window.EX_boot=async function(){if(!REAL)return {real:false};
       const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');
       // wipe everything the next employee must NOT see — but KEEP ex_qenc__prev / ex_sqenc__prev (prev's encrypted stash)
       ['ex_queue','electrix_bio','ex_faceid_asked','ex_faceid','ex_pwv',K,K+'__stockq'].forEach(k=>localStorage.removeItem(k));queue={};
+      try{await durDel(['ex_queue',K+'__stockq']);}catch(e){}
     }localStorage.setItem('ex_uid',uid);}}catch(e){}
   // an auto-resumed session (same uid) recovers its own encrypted stash; a legacy plaintext stash is discarded, never loaded
   try{if(uid){try{localStorage.removeItem('ex_queue__'+uid);}catch(e){}

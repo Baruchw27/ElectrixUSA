@@ -1,0 +1,148 @@
+{
+ "what": "SIMULATION — real product barcodes drawn by bwip-js 4.5.1, spoiled like a camera image, read by ZXing-js 0.21.3 (the iPhone path of the app, same hints and crop/rotate cycle) + the app's own UPC-E reader. Run on the staging edge function stg-barcode-test, Oct 19 2026. Missing cases ran out of the test machine's 2-second CPU limit.",
+ "wrong_reads": [
+  {
+   "case": "Code 128 '5621-2W' with a glare spot",
+   "read_as": "EAN-8 58791097",
+   "note": "valid check digit; the app now needs the same EAN-8/UPC-E/ITF number twice in a row, and an unknown code never counts anything without the person confirming"
+  }
+ ],
+ "before_upce_reader": "UPC-E 0/10 even on clean codes (ZXing-js 0.21.3 has no UPC-E reader)",
+ "matrix": {
+  "clean": {
+   "code128": "20/20",
+   "ean13": "10/10",
+   "ean8": "5/5",
+   "gs1-128": "10/10",
+   "itf14": "20/20",
+   "upca": "40/40",
+   "upce": "10/10"
+  },
+  "far away": {
+   "code128": "3/20",
+   "ean13": "0/10",
+   "ean8": "1/5",
+   "gs1-128": "0/10",
+   "itf14": "0/20",
+   "upca": "4/40",
+   "upce": "0/10"
+  },
+  "slight blur": {
+   "code128": "20/20",
+   "ean13": "10/10",
+   "ean8": "5/5",
+   "gs1-128": "10/10",
+   "itf14": "20/20",
+   "upca": "40/40",
+   "upce": "9/10"
+  },
+  "heavy blur": {
+   "code128": "0/20",
+   "ean13": "0/10",
+   "ean8": "0/5",
+   "gs1-128": "0/10",
+   "itf14": "0/20",
+   "upca": "0/40",
+   "upce": "0/10"
+  },
+  "tilted 8°": {
+   "code128": "20/20",
+   "ean13": "10/10",
+   "ean8": "5/5",
+   "gs1-128": "10/10",
+   "itf14": "20/20",
+   "upca": "40/40",
+   "upce": "10/10"
+  },
+  "tilted 20°": {
+   "code128": "17/20",
+   "ean13": "10/10",
+   "ean8": "5/5",
+   "gs1-128": "0/10",
+   "itf14": "20/20",
+   "upca": "40/40",
+   "upce": "10/10"
+  },
+  "sideways 90°": {
+   "code128": "20/20",
+   "ean13": "10/10",
+   "ean8": "5/5",
+   "gs1-128": "10/10",
+   "itf14": "20/20",
+   "upca": "40/40",
+   "upce": "10/10"
+  },
+  "upside down": {
+   "code128": "20/20",
+   "ean13": "10/10",
+   "ean8": "5/5",
+   "gs1-128": "10/10",
+   "itf14": "20/20",
+   "upca": "40/40",
+   "upce": "10/10"
+  },
+  "grainy (very dark, σ28 per pixel)": {
+   "code128": "0/17",
+   "ean13": "0/10",
+   "ean8": "0/5",
+   "gs1-128": "0/9",
+   "itf14": "0/18",
+   "upca": "0/34",
+   "upce": "0/10"
+  },
+  "dim / low contrast": {
+   "code128": "20/20",
+   "ean13": "10/10",
+   "ean8": "5/5",
+   "gs1-128": "10/10",
+   "itf14": "20/20",
+   "upca": "40/40",
+   "upce": "10/10"
+  },
+  "glare spot": {
+   "code128": "19/20",
+   "ean13": "10/10",
+   "ean8": "5/5",
+   "gs1-128": "10/10",
+   "itf14": "20/20",
+   "upca": "40/40",
+   "upce": "10/10"
+  },
+  "torn bars": {
+   "code128": "20/20",
+   "ean13": "10/10",
+   "ean8": "5/5",
+   "gs1-128": "10/10",
+   "itf14": "20/20",
+   "upca": "40/40",
+   "upce": "10/10"
+  },
+  "angled view": {
+   "code128": "20/20",
+   "ean13": "10/10",
+   "ean8": "5/5",
+   "gs1-128": "10/10",
+   "itf14": "0/20",
+   "upca": "40/40",
+   "upce": "10/10"
+  },
+  "blur+tilt+grain+dim": {
+   "code128": "0/16",
+   "ean13": "0/7",
+   "ean8": "0/5",
+   "gs1-128": "0/10",
+   "itf14": "0/18",
+   "upca": "0/36",
+   "upce": "0/10"
+  },
+  "indoor grain (phone-smoothed)": {
+   "code128": "20/20",
+   "ean13": "10/10",
+   "ean8": "5/5",
+   "gs1-128": "10/10",
+   "itf14": "20/20",
+   "upca": "40/40",
+   "upce": "10/10"
+  }
+ }
+}

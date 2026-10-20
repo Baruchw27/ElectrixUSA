@@ -1,0 +1,28 @@
+{
+ "pass": 16,
+ "fail": 4,
+ "ok": [
+  "Jon signed in",
+  "Carlos signed in",
+  "both read the label: Leviton 5601-2W, 10 per box",
+  "server: ONE item, not two",
+  "server: 2 boxes + 2 boxes = 40 pieces (nothing lost, nothing doubled)",
+  "server: one box barcode link",
+  "server: total stock items grew by exactly 1",
+  "phone A shows 40",
+  "phone B shows 40",
+  "instant \"how many boxes\" on phone B",
+  "single switch barcode \u2192 asks \"single item of a box you have\"",
+  "all 3 barcodes of the item kept (box, single, bin label)",
+  "known box works offline",
+  "waiting to send while offline",
+  "server unchanged while offline (40)",
+  "no page errors []"
+ ],
+ "bad": [
+  "back online: +10 sent once \u2192 50",
+  "sending again does not double count (still 50)",
+  "phone A sees 50",
+  "90 out of 50 refused, stock stays 50"
+ ]
+}
