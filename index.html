@@ -5,10 +5,10 @@
 <meta name="theme-color" content="#ffffff"><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Electrix Field</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
-<script>window.EX_VER='vui1030';</script><script src="config.js"></script>
+<script>window.EX_VER='vsch21p';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vui1030"></script>
-<script src="extras.js?vui1030"></script>
+<script src="sync.js?vsch21p"></script>
+<script src="extras.js?vsch21p"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -1113,7 +1113,7 @@ html[data-theme=dark] .sc-av.in{background:#173B2A;color:#7EE0AE}html[data-theme
   <div style="font-size:12.5px;color:var(--g4);margin-bottom:8px" data-i18n="Temporarily send one person to another job for part of the day. Their permanent crew doesn't change.">Temporarily send one person to another job for part of the day. Their permanent crew doesn't change.</div>
   <label data-i18n="Employee">Employee</label><select id="loanEmp"></select>
   <label data-i18n="To job site">To job site</label><select id="loanSite"></select>
-  <div style="display:flex;gap:8px"><label style="flex:1;font-size:12px;color:var(--g4)" data-i18n="Start">Start<input type="time" id="loanStart" value="12:00" style="font-size:16px"></label><label style="flex:1;font-size:12px;color:var(--g4)" data-i18n="End">End<input type="time" id="loanEnd" value="16:00" style="font-size:16px"></label></div>
+  <div style="display:flex;gap:8px"><label style="flex:1;font-size:12px;color:var(--g4)"><span data-i18n="Start">Start</span><input type="time" id="loanStart" value="12:00" style="font-size:16px"></label><label style="flex:1;font-size:12px;color:var(--g4)"><span data-i18n="End">End</span><input type="time" id="loanEnd" value="16:00" style="font-size:16px"></label></div>
   <label data-i18n="Note (optional)">Note (optional)</label><input type="text" id="loanNote">
   <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" onclick="saveLoan()" data-i18n="Save">Save</button><button class="btn rd" style="width:auto;padding:12px 14px" onclick="clearLoanFor(document.getElementById('loanEmp').value,loanDay);hide('m-loan')" data-i18n="Remove">Remove</button><button class="btn sec2" style="width:auto;padding:12px 14px" onclick="hide('m-loan')" data-i18n="Cancel">Cancel</button></div>
 </div></div>
@@ -1145,7 +1145,7 @@ function pruneOld(){const now=Date.now(),day=864e5;const old=(t,d)=>(+t||0)>0&&(
   const rules={punches:p=>old(p.out||p.in,120),inbox:x=>old(x.ts,45),jobs:j=>j.status==='done'&&old(j.doneAt||j.ts,90),exps:x=>old(x.ts,200)&&!(x.src==='personal'&&!x.paid),travel:x=>old(new Date((x.date||'')+'T12:00').getTime(),120),stockLog:x=>old(x.ts,120),goHomeLog:x=>old(x.ts,60)};
   let n=0;for(const k in rules){if(!Array.isArray(D[k]))continue;const keep=[],drop=[];D[k].forEach(x=>(x&&rules[k](x)?drop:keep).push(x));if(drop.length){D[k]=keep;n+=drop.length;try{if(window.EX_forget)EX_forget(k,drop.map(x=>x.id).filter(Boolean));}catch(e){}}}
   return n;}
-function save(){if(!save._p||Date.now()-save._p>3600000){save._p=Date.now();try{if(pruneOld()&&window.EX_forget){}}catch(e){}}sortSites();try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){try{if(pruneOld()){localStorage.setItem(KEY,JSON.stringify(D));return;}}catch(e3){}const old=Date.now()-14*86400000;D.jobs.forEach(j=>{if(j.status==='done'&&(j.doneAt||0)<old&&j.photos&&j.photos.length>1)j.photos=j.photos.slice(-1);});try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e2){}}try{if(window.EX_afterSave)window.EX_afterSave();}catch(e){console.warn(e);}}
+function save(){if(!save._p||Date.now()-save._p>3600000){save._p=Date.now();try{if(pruneOld()&&window.EX_forget){}}catch(e){}}sortSites();let _st=false;try{localStorage.setItem(KEY,JSON.stringify(D));_st=true;}catch(e){try{if(pruneOld()){localStorage.setItem(KEY,JSON.stringify(D));_st=true;}}catch(e3){}if(!_st){const old=Date.now()-14*86400000;D.jobs.forEach(j=>{if(j.status==='done'&&(j.doneAt||0)<old&&j.photos&&j.photos.length>1)j.photos=j.photos.slice(-1);});try{localStorage.setItem(KEY,JSON.stringify(D));_st=true;}catch(e2){}}}window.EX_localStored=_st;/* always hand the change to the sync layer — even when the phone copy could not be written (it used to return early here and the change never reached the server) */try{if(window.EX_afterSave)window.EX_afterSave();}catch(e){console.warn(e);}}
 function nid(p){D.nextId=(D.nextId||1)+1;return p+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
 load();
 try{D.crews.forEach(c=>{if(!c.managers)c.managers=c.manager?[c.manager]:[];delete c.manager;if(!c.type)c.type='rough';});
@@ -4448,6 +4448,6 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
   window.EX_mic={start,stop,get on(){return on;},get cur(){return cur;}};
 })();
 
-</script>
+</script><script src="sched-v21.js?vsch21p"></script>
 </body>
 </html>

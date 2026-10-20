@@ -2,3 +2,5 @@ __pycache__/
 shots/
 prod_sites.json
 seed_prod.json
+__pycache__/
+shots/
