@@ -1,8 +1,8 @@
 // Offline support: the app opens even with no signal; data waits on the phone and syncs later.
-const C='electrix-v14';
-const SHELL=['./','index.html','sync.js','extras.js','config.js','manifest.json','icon-192.png','icon-512.png','apple-touch-icon.png','logo-light.svg','logo-dark.svg'];
+const C='electrix-v17';
+const SHELL=['./','index.html','sync.js','extras.js','config.js','manifest.json','icon-192.png','icon-512.png','apple-touch-icon.png','logo-light.svg','logo-dark.svg','scanner-v2.js','scanner-v2-ui.js','catalog-real.json','sched-v21.js'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));});
-self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C&&!k.startsWith('electrix-staging')).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET')return;
   // photos, receipts, voice notes, videos are private: open them with the signed-in person's pass
   if(u.pathname.includes('/storage/v1/object/public/files/')){e.respondWith(privateFile(e,u));return;}
@@ -19,8 +19,13 @@ function saved(req){return caches.match(req,{ignoreSearch:true}).then(r=>r||(req
 function raceSaved(req,net,ms){return new Promise(res=>{let done=false;const fin=r=>{if(!done&&r){done=true;res(r);}};
   net.then(fin).catch(()=>saved(req).then(r=>{if(!done){done=true;res(r||Response.error());}}));
   setTimeout(()=>{if(done)return;saved(req).then(r=>{if(r)fin(r);});},ms);});}
-self.addEventListener('notificationclick',e=>{e.notification.close();e.waitUntil(self.clients.matchAll({type:'window'}).then(cs=>cs.length?cs[0].focus():self.clients.openWindow('./')));});
-self.addEventListener('push',e=>{let d={};try{d=e.data.json();}catch(x){d={title:'Electrix',body:e.data?e.data.text():''};}e.waitUntil(self.registration.showNotification(d.title||'Electrix',{body:d.body||'',icon:'icon-192.png',badge:'icon-192.png'}));});
+// tapping a notification opens the app on that message's job / screen
+self.addEventListener('notificationclick',e=>{e.notification.close();const id=(e.notification.data||{}).id||'';
+  e.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(cs=>{const c=cs[0];
+    if(c){return c.focus().then(w=>{try{(w||c).postMessage({type:'ex-open',id});}catch(x){}});}
+    return self.clients.openWindow('./'+(id?'?n='+encodeURIComponent(id):''));}));});
+self.addEventListener('push',e=>{let d={};try{d=e.data.json();}catch(x){d={title:'Electrix',body:e.data?e.data.text():''};}
+  e.waitUntil(self.registration.showNotification(d.title||'Electrix',{body:d.body||'',icon:'icon-192.png',badge:'icon-192.png',tag:d.id||undefined,data:{id:d.id||''}}));});
 
 // ---- private files: the app hands its sign-in pass to this helper; files open only for signed-in team members
 let PASS=null;
