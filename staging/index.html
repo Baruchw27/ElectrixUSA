@@ -3952,8 +3952,8 @@ function puPhoto(inp){const f=inp.files&&inp.files[0];if(!f)return;shrink(f,d=>{
      clearly reported — never a false "saved". */
 const STOCKQ_KEY=(typeof KEY!=='undefined'?KEY:'electrix_v29')+'__stockq';
 const stockOutcomes={};
-function stockQ(){try{return JSON.parse(localStorage.getItem(STOCKQ_KEY)||'[]');}catch(e){return [];}}
-function stockQSave(q){try{localStorage.setItem(STOCKQ_KEY,JSON.stringify(q));}catch(e){}}
+function stockQ(){try{return JSON.parse((window.EX_durRead?EX_durRead(STOCKQ_KEY):localStorage.getItem(STOCKQ_KEY))||'[]');}catch(e){return [];}}
+function stockQSave(q){/* unsent stock moves: phone storage + IndexedDB, so a full phone can't lose them */if(window.EX_durPut){EX_durPut(STOCKQ_KEY,JSON.stringify(q));return;}try{localStorage.setItem(STOCKQ_KEY,JSON.stringify(q));}catch(e){}}
 function stockItem(id){return D.stock.find(x=>x.id===id);}
 // What a phone shows = the server's last known count + this phone's own moves that haven't reached the server yet.
 // (Counts from other phones arrive as server counts; nothing is ever added twice or lost when a move is refused.)

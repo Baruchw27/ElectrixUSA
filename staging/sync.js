@@ -32,23 +32,56 @@ function loadQ(){try{return JSON.parse(localStorage.getItem('ex_queue')||'{}');}
 // re-downloadable cached copy of the company data to make room — never the unsent work. If even that fails,
 // say so (st.qLost) so the app warns the person and never pretends the change is safe.
 function mainKey(){return (typeof KEY!=='undefined'?KEY:'electrix_v29');}
-// write something that must not be lost; if storage is full, drop the re-downloadable cached copy and try again
-function putSafe(k,v){try{localStorage.setItem(k,v);return true;}catch(e){}
-  try{localStorage.removeItem(mainKey());}catch(e){}           // cached company data: safe to drop, it comes back from the server
-  try{localStorage.setItem(k,v);return true;}catch(e){}
-  return false;}
+// ---------- durable store for unsent work ----------
+// localStorage holds only ~5 MB per web address on a phone (shared with the staging copy). Unsent work is therefore ALSO
+// written to IndexedDB, which has a far larger allowance. Each write carries a sequence number; at start-up the newest
+// copy wins. The app always reads the newest copy (from memory when localStorage could not take it).
+const DUR_DB='ex_durable_'+String(CFG.url||'local').replace(/^https?:\/\//,'').replace(/[^a-z0-9]/gi,'_');   // per database: staging ≠ live
+function durKeys(){return ['ex_queue','ex_rejects',mainKey()+'__stockq','ex_sched_drafts'];}
+const durMem={},durInLS={},durInIDB={};let durN=0;
+const durSeqNow=()=>Date.now()*1000+((durN++)%1000);
+let idbP=null;
+function idb(){if(idbP)return idbP;idbP=new Promise(res=>{try{if(!window.indexedDB)return res(null);const r=indexedDB.open(DUR_DB,1);
+  r.onupgradeneeded=()=>{try{r.result.createObjectStore('kv');}catch(e){}};r.onsuccess=()=>res(r.result);r.onerror=()=>res(null);r.onblocked=()=>res(null);}catch(e){res(null);}});return idbP;}
+function idbOp(mode,fn){return idb().then(db=>new Promise(res=>{if(!db)return res(null);try{const tx=db.transaction('kv',mode);const st_=tx.objectStore('kv');const out=fn(st_);
+  tx.oncomplete=()=>res(out&&'result' in out?out.result:true);tx.onerror=tx.onabort=()=>res(null);}catch(e){res(null);}}));}
+function lsSet(k,v){try{localStorage.setItem(k,v);return true;}catch(e){return false;}}
+// write unsent work. Returns true when it is safe on the phone (localStorage now, or IndexedDB once that finishes)
+function durPut(k,v){const seq=durSeqNow();durMem[k]=v;const ok=lsSet(k,v);durInLS[k]=ok;if(ok)lsSet('ex_dseq__'+k,String(seq));
+  durInIDB[k]='pending';
+  idbOp('readwrite',o=>o.put({v,seq,at:Date.now()},k)).then(r=>{if(durMem[k]!==v)return;durInIDB[k]=!!r;
+    if(!ok&&!r){try{localStorage.removeItem(mainKey());}catch(e){}if(lsSet(k,v)){durInLS[k]=true;lsSet('ex_dseq__'+k,String(seq));}} // last resort: drop the re-downloadable cache
+    durState();});
+  durState();return ok;}
+window.EX_durPut=durPut;
+window.EX_durRead=function(k){return (k in durMem)?durMem[k]:localStorage.getItem(k);};
+const durRead=window.EX_durRead;
+// deliberate wipes (sign-out, account switch, turned-off employee) must clear BOTH copies, or the old work would come back
+async function durDel(keys){keys.forEach(k=>{delete durMem[k];delete durInLS[k];delete durInIDB[k];try{localStorage.removeItem(k);localStorage.removeItem('ex_dseq__'+k);}catch(e){}});
+  await idbOp('readwrite',o=>{keys.forEach(k=>o.delete(k));return null;});durState();}
+// at start-up: if IndexedDB holds a newer copy than localStorage (localStorage was full), use it
+async function durRestore(){for(const k of durKeys()){const rec=await idbOp('readonly',o=>o.get(k));if(!rec||typeof rec.v!=='string')continue;
+    const lsSeq=+(localStorage.getItem('ex_dseq__'+k)||0);
+    if(rec.seq>lsSeq){
+      durMem[k]=rec.v;durInIDB[k]=true;const ok=lsSet(k,rec.v);durInLS[k]=ok;if(ok)lsSet('ex_dseq__'+k,String(rec.seq));}}
+  try{const q=JSON.parse(durRead('ex_queue')||'{}');if(q&&typeof q==='object')queue=q;}catch(e){}st.pending=Object.keys(queue).length;durState();}
+// st.qStored / st.qLost: is every piece of unsent work safe on the phone?
+function durState(){const ks=durKeys();let lost=false,pend=false;ks.forEach(k=>{if(!(k in durMem))return;if(durInLS[k])return;if(durInIDB[k]==='pending')pend=true;else if(!durInIDB[k])lost=true;});
+  const n=Object.keys(queue).length;st.qStored=!lost;st.qLost=lost&&(n>0||ks.some(k=>k!=='ex_queue'&&(k in durMem)&&!durInLS[k]&&!durInIDB[k]));st.qPend=pend;try{paint();}catch(e){}}
+// write something that must not be lost
+function putSafe(k,v){return durPut(k,v);}
 function storeQ(){return putSafe('ex_queue',JSON.stringify(queue));}
-function saveQ(){const n=Object.keys(queue).length;const ok=storeQ();st.qStored=ok;st.qLost=!ok&&n>0;st.pending=n;paint();return ok;}
+function saveQ(){const n=Object.keys(queue).length;st.pending=n;const ok=storeQ();durState();return ok;}
 window.EX_queued=function(coll,id){return !!queue[coll+'\u0001'+id];};
 window.EX_queuedIn=function(coll){return Object.keys(queue).filter(k=>queue[k]&&queue[k].coll===coll).map(k=>queue[k].id);};
 // Changes the server refused (permission, or another phone changed the same day first). Kept on the phone, with what
 // the person entered, until they re-apply or dismiss them — so a refused save is never silently thrown away. Written
 // BEFORE the change leaves the waiting list; each person only ever sees their own.
-function loadRej(){try{const a=JSON.parse(localStorage.getItem('ex_rejects')||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
+function loadRej(){try{const a=JSON.parse(durRead('ex_rejects')||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
 const memRej=[];
 function keepRej(list){const all=loadRej().concat(memRej.filter(m=>!loadRej().some(y=>y.id===m.id&&y.by===m.by)));list.forEach(x=>{if(!x||x.coll!=='sched')return;const i=all.findIndex(y=>y.coll===x.coll&&y.id===x.id&&y.by===(st.user||null));const rec={coll:x.coll,id:x.id,data:x.data===undefined?null:x.data,del:!!x.del,reason:x.stale?'stale':x.delRefused?'delete-refused':'refused',at:Date.now(),by:st.user||null};if(i>=0)all[i]=rec;else all.push(rec);});
   const ok=putSafe('ex_rejects',JSON.stringify(all.slice(-500)));
-  if(!ok){all.forEach(r=>{if(!memRej.some(m=>m.id===r.id&&m.by===r.by))memRej.push(r);});st.qLost=true;paint();}else memRej.length=0;
+  if(!ok){all.forEach(r=>{if(!memRej.some(m=>m.id===r.id&&m.by===r.by))memRej.push(r);});}else memRej.length=0;
   return ok;}
 window.EX_rejects=function(){const me=st.user||null;const all=loadRej();memRej.forEach(m=>{if(!all.some(y=>y.id===m.id&&y.by===m.by))all.push(m);});return all.filter(x=>(x.by||null)===me);};
 window.EX_dropReject=function(coll,id){const me=st.user||null;for(let i=memRej.length-1;i>=0;i--)if(memRej[i].coll===coll&&memRej[i].id===id&&(memRej[i].by||null)===me)memRej.splice(i,1);const all=loadRej().filter(y=>!(y.coll===coll&&y.id===id&&(y.by||null)===me));putSafe('ex_rejects',JSON.stringify(all));};
@@ -255,6 +288,7 @@ async function turnedOff(){let member=true;try{const r=await withTO(sb.rpc('is_m
   if(member)return false;
   // disabled/removed employee: force-clear this phone's data, lock, verifier and offline queues even if a logout would abort
   try{const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');['ex_queue','ex_faceid','ex_pwv','electrix_bio',K,K+'__stockq'].forEach(k=>localStorage.removeItem(k));localStorage.setItem('ex_off','1');}catch(e){}
+  try{await durDel(['ex_queue',mainKey()+'__stockq']);}catch(e){}
   queue={};try{await window.EX_logout();}catch(e){}try{location.reload();}catch(e){}return true;}
 window.EX_turnedOff=turnedOff;
 // after the phone slept: fetch only what changed meanwhile, and reconnect the live feed
@@ -350,11 +384,11 @@ window.EX_hasPwVerifier=function(user){try{const r=JSON.parse(localStorage.getIt
 // live copy is wiped — so it is preserved, recoverable only when they sign back in, and never visible/uploadable under
 // the next employee. Merges with any existing stash; verifies the ciphertext decrypts back before trusting it.
 async function stashLiveFor(prev){try{if(!prev)return;const dk=await deviceKey();if(!dk)return;
-  try{const live=JSON.parse(localStorage.getItem('ex_queue')||'{}');if(live&&Object.keys(live).length){let merged=live;
+  try{const live=JSON.parse(durRead('ex_queue')||'{}');if(live&&Object.keys(live).length){let merged=live;
     try{const ex=localStorage.getItem('ex_qenc__'+prev);if(ex){const old=await decWith(dk,ex);if(old&&typeof old==='object')merged=Object.assign({},old,live);}}catch(e){}
     const blob=await encWith(dk,merged);let back=null;try{back=await decWith(dk,blob);}catch(e){}
     if(back&&JSON.stringify(back)===JSON.stringify(merged))localStorage.setItem('ex_qenc__'+prev,blob);}}catch(e){}
-  try{const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');const sraw=localStorage.getItem(K+'__stockq');const sarr=sraw?JSON.parse(sraw):[];
+  try{const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');const sraw=durRead(K+'__stockq');const sarr=sraw?JSON.parse(sraw):[];
     if(Array.isArray(sarr)&&sarr.length){let merged=sarr;
     try{const ex=localStorage.getItem('ex_sqenc__'+prev);if(ex){const old=await decWith(dk,ex);if(Array.isArray(old)){const seen=new Set(sarr.map(x=>x&&x.id));merged=sarr.concat(old.filter(x=>x&&!seen.has(x.id)));}}}catch(e){}
     const blob=await encWith(dk,merged);let back=null;try{back=await decWith(dk,blob);}catch(e){}
@@ -364,9 +398,9 @@ async function stashLiveFor(prev){try{if(!prev)return;const dk=await deviceKey()
 async function recoverStockStash(uid){try{if(!uid)return;const enc=localStorage.getItem('ex_sqenc__'+uid);if(!enc)return;
   const dk=await deviceKey();if(!dk)return;let arr=null;try{arr=await decWith(dk,enc);}catch(e){return;}
   if(!Array.isArray(arr)||!arr.length){try{localStorage.removeItem('ex_sqenc__'+uid);}catch(e){}return;}
-  const SQK=(typeof KEY!=='undefined'?KEY:'electrix_v29')+'__stockq';let cur=[];try{cur=JSON.parse(localStorage.getItem(SQK)||'[]');if(!Array.isArray(cur))cur=[];}catch(e){cur=[];}
+  const SQK=(typeof KEY!=='undefined'?KEY:'electrix_v29')+'__stockq';let cur=[];try{cur=JSON.parse(durRead(SQK)||'[]');if(!Array.isArray(cur))cur=[];}catch(e){cur=[];}
   const seen=new Set(cur.map(x=>x&&x.id));arr.forEach(x=>{if(x&&!seen.has(x.id)){cur.push(x);seen.add(x.id);}});
-  try{localStorage.setItem(SQK,JSON.stringify(cur));localStorage.removeItem('ex_sqenc__'+uid);}catch(e){}}catch(e){}}
+  try{durPut(SQK,JSON.stringify(cur));localStorage.removeItem('ex_sqenc__'+uid);}catch(e){}}catch(e){}}
 // sign in through the server-side "login" function: the name/phone -> email lookup happens on the server, so the
 // sign-in email is never handed back to someone who isn't signed in (closes the anonymous email-lookup leak).
 window.EX_login=async function(q,pass){q=(q||'').trim();if(!q||!pass)return {err:'badpass'};
@@ -407,7 +441,7 @@ window.EX_logout=async function(){
   // No plaintext stash, no silent loss of any pending business data.
   let stashed=0, secured=null, stockSecured=null;
   const SQK=(typeof KEY!=='undefined'?KEY:'electrix_v29')+'__stockq';
-  let stockArr=[];try{const raw=localStorage.getItem(SQK);stockArr=raw?JSON.parse(raw):[];if(!Array.isArray(stockArr))stockArr=[];}catch(e){stockArr=[];}
+  let stockArr=[];try{const raw=durRead(SQK);stockArr=raw?JSON.parse(raw):[];if(!Array.isArray(stockArr))stockArr=[];}catch(e){stockArr=[];}
   if(uid&&(Object.keys(queue).length||stockArr.length)){
     try{const dk=await deviceKey();
       if(!dk){if(Object.keys(queue).length)secured=false;if(stockArr.length)stockSecured=false;}
@@ -430,6 +464,7 @@ window.EX_logout=async function(){
   try{if(sb)await withTO(sb.auth.signOut(),3000,'sign-out');}catch(e){}
   try{const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');
       ['ex_auth','ex_uid','ex_queue','electrix_bio','ex_faceid_asked','ex_faceid','ex_pwv',K,K+'__stockq'].forEach(k=>localStorage.removeItem(k));}catch(e){}
+  try{await durDel(['ex_queue',mainKey()+'__stockq']);}catch(e){}
   queue={};ready=false;localReady=false;
   if(secured||stockSecured){try{if(typeof toast==='function')toast(typeof t==='function'?t('Some changes will finish saving next time you sign in.'):'Some changes will finish saving next time you sign in.');}catch(e){}}
   return {stashed,secured,stockSecured,aborted:false};};
@@ -443,6 +478,7 @@ window.EX_whoami=function(){return st.user;};
 
 // ---------- boot ----------
 window.EX_boot=async function(){if(!REAL)return {real:false};
+  try{await durRestore();}catch(e){}   // a newer copy of unsent work that only IndexedDB could hold
   sb=window.supabase.createClient(CFG.url,CFG.anonKey,{auth:{persistSession:true,storageKey:'ex_auth',lock:async(_n,_t,fn)=>await fn()}});
   sbAux=window.supabase.createClient(CFG.url,CFG.anonKey,{auth:{persistSession:false,autoRefreshToken:false,storageKey:'ex_aux',lock:async(_n,_t,fn)=>await fn()}});
   window.EX_sb=sb;
@@ -453,6 +489,7 @@ window.EX_boot=async function(){if(!REAL)return {real:false};
       const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');
       // wipe everything the next employee must NOT see — but KEEP ex_qenc__prev / ex_sqenc__prev (prev's encrypted stash)
       ['ex_queue','electrix_bio','ex_faceid_asked','ex_faceid','ex_pwv',K,K+'__stockq'].forEach(k=>localStorage.removeItem(k));queue={};
+      try{await durDel(['ex_queue',K+'__stockq']);}catch(e){}
     }localStorage.setItem('ex_uid',uid);}}catch(e){}
   // an auto-resumed session (same uid) recovers its own encrypted stash; a legacy plaintext stash is discarded, never loaded
   try{if(uid){try{localStorage.removeItem('ex_queue__'+uid);}catch(e){}
