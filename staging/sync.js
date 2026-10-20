@@ -45,12 +45,16 @@ window.EX_queuedIn=function(coll){return Object.keys(queue).filter(k=>queue[k]&&
 // the person entered, until they re-apply or dismiss them — so a refused save is never silently thrown away. Written
 // BEFORE the change leaves the waiting list; each person only ever sees their own.
 function loadRej(){try{const a=JSON.parse(localStorage.getItem('ex_rejects')||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
-function keepRej(list){const all=loadRej();list.forEach(x=>{if(!x||x.coll!=='sched')return;const i=all.findIndex(y=>y.coll===x.coll&&y.id===x.id&&y.by===(st.user||null));const rec={coll:x.coll,id:x.id,data:x.data===undefined?null:x.data,del:!!x.del,reason:x.stale?'stale':x.delRefused?'delete-refused':'refused',at:Date.now(),by:st.user||null};if(i>=0)all[i]=rec;else all.push(rec);});
-  return putSafe('ex_rejects',JSON.stringify(all.slice(-500)));}
-window.EX_rejects=function(){const me=st.user||null;return loadRej().filter(x=>(x.by||null)===me);};
-window.EX_dropReject=function(coll,id){const me=st.user||null;const all=loadRej().filter(y=>!(y.coll===coll&&y.id===id&&(y.by||null)===me));putSafe('ex_rejects',JSON.stringify(all));};
+const memRej=[];
+function keepRej(list){const all=loadRej().concat(memRej.filter(m=>!loadRej().some(y=>y.id===m.id&&y.by===m.by)));list.forEach(x=>{if(!x||x.coll!=='sched')return;const i=all.findIndex(y=>y.coll===x.coll&&y.id===x.id&&y.by===(st.user||null));const rec={coll:x.coll,id:x.id,data:x.data===undefined?null:x.data,del:!!x.del,reason:x.stale?'stale':x.delRefused?'delete-refused':'refused',at:Date.now(),by:st.user||null};if(i>=0)all[i]=rec;else all.push(rec);});
+  const ok=putSafe('ex_rejects',JSON.stringify(all.slice(-500)));
+  if(!ok){all.forEach(r=>{if(!memRej.some(m=>m.id===r.id&&m.by===r.by))memRej.push(r);});st.qLost=true;paint();}else memRej.length=0;
+  return ok;}
+window.EX_rejects=function(){const me=st.user||null;const all=loadRej();memRej.forEach(m=>{if(!all.some(y=>y.id===m.id&&y.by===m.by))all.push(m);});return all.filter(x=>(x.by||null)===me);};
+window.EX_dropReject=function(coll,id){const me=st.user||null;for(let i=memRej.length-1;i>=0;i--)if(memRej[i].coll===coll&&memRej[i].id===id&&(memRej[i].by||null)===me)memRej.splice(i,1);const all=loadRej().filter(y=>!(y.coll===coll&&y.id===id&&(y.by||null)===me));putSafe('ex_rejects',JSON.stringify(all));};
 // what happened to each row the last time it was sent (decided at the moment the server answered)
-const outcome={};function mark(coll,id,status,extra){outcome[coll+'\u0001'+id]=Object.assign({status,at:Date.now()},extra||{});}
+const outcome={};function mark(coll,id,status,extra){const now=Date.now();outcome[coll+'\u0001'+id]=Object.assign({status,at:now},extra||{});
+  if(Object.keys(outcome).length>2000)Object.keys(outcome).forEach(k=>{if(now-outcome[k].at>3600000)delete outcome[k];});}
 window.EX_SYNC_V=21;
 const TRANSIENT=/timeout|timed out|failed to fetch|networkerror|network error|load failed|fetch|aborted|connection was lost|appears to be offline|not connected/i;
 function emailFor(e){return (e.email&&/@/.test(e.email)?e.email:(e.id+'@'+DOMAIN)).toLowerCase();}
@@ -162,7 +166,8 @@ async function _flush(){const keys=Object.keys(queue);if(!keys.length){lastRejec
           // a resend after a timeout: the first attempt may already have stored exactly this — then it is saved
           try{const cur=await withTO(sb.from('records').select('coll,id,data,deleted').eq('coll',x.coll).eq('id',x.id),15000,'check');const row=cur&&!cur.error&&cur.data&&cur.data[0];
             if(row&&!row.deleted&&row.data&&typeof row.data==='object'){const sent=x.full||x.patch||{};
-              if(Object.keys(sent).filter(f=>f!=='at'&&f!=='rev'&&f!=='by').every(f=>canon(row.data[f])===canon(sent[f]))){
+              const fs=Object.keys(sent).filter(f=>f!=='at'&&f!=='rev'&&f!=='by');
+              if(fs.length&&fs.every(f=>canon(row.data[f])===canon(sent[f]))&&(x.unset||[]).every(f=>!(f in row.data))){
                 done(x.coll+'\u0001'+x.id,o);saveQ();mark(x.coll,x.id,'ok');adopt([row]);return;}}}catch(e){}
           const rj={coll:x.coll,id:x.id,stale:true,data:o&&o.data!==undefined?o.data:(x.full||x.patch||null)};
           keepRej([rj]);done(x.coll+'\u0001'+x.id,o);saveQ();mark(x.coll,x.id,'rej',{stale:true});staleHit=true;myRej.push(rj);return;}

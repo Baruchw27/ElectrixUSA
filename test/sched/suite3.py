@@ -96,6 +96,26 @@ async def run3():
             urllib.request.urlopen(BASE+'/__dropresp?n=1'); await clear_toasts(A)
             await open_day(A,'c2',k); await A.evaluate("slotSet(0,'site','t70')"); await tap_save(A); await A.wait_for_timeout(9000); await settle(A,15000); await A.evaluate("renderSched()")
             check('answer lost after the server stored it → resent, no false “someone else changed it”',sites_of(sched(f'c2|{k}'))[0][0]=='t70' and not await A.evaluate(f"EX_rejects().some(x=>x.id==='c2|{k}')"),await A.evaluate("JSON.stringify(EX_rejects())"))
+            # re-review: offline "Move to date" must not take the booking off the old day before the new day is confirmed
+            mx=await day(A,130); my=await day(A,131)
+            await open_day(A,'c4',mx); await add_full(A,'t32'); await tap_save(A); await settle(A)
+            net('refuse'); await open_day(A,'c4',mx); await A.evaluate(f"askPrompt=function(t,f,cb){{cb(['{my}'])}};0")
+            await A.click("#slotBody button:has-text('Move to date')"); await A.wait_for_timeout(16500)
+            body=await A.evaluate("document.getElementById('m-ask').classList.contains('hid')?'':document.getElementById('askBody').innerText")
+            net('ok'); await A.evaluate("hide('m-ask')"); await settle(A,15000)
+            check('offline move: says it was NOT taken off the old day',('NOT taken off' in body),body[:200])
+            check('… after reconnecting the booking is on both days (nothing lost)',sched(f'c4|{mx}') is not None and sched(f'c4|{my}') is not None)
+            # re-review: copy from a day with unsaved edits keeps the ongoing job ongoing
+            await open_day(A,'c3',src_o); await A.evaluate("slotOneoffs=slotOneoffs.map(a=>Object.assign(a,{site:'t49'}));renderSlotEditor()")
+            t2o=None
+            for i in range(2,9):
+                kk=await day(A,0); kk=await A.evaluate(f"(()=>{{const d=new Date('{src_o}T12:00');d.setDate(d.getDate()+{i});return dkey(d)}})()")
+                if await A.evaluate(f"[1,2,3,4,5].includes(new Date('{kk}T12:00').getDay())"): t2o=kk; break
+            await A.click("#slotBody button:has-text('Copy day')"); await A.wait_for_timeout(200); await A.click(f"#askBody [data-k='{t2o}']"); await A.click('#askOk'); await A.wait_for_timeout(500)
+            if await modal_open(A,'m-ask'): await A.click("#askBody button:has-text('Replace them')")
+            await settle(A)
+            eff=await A.evaluate(f"JSON.stringify(effectiveAsgs('c3','{t2o}').map(a=>[a.site,!!a.ongoing]))")
+            check('copy from an edited day: ongoing job stays ongoing, edited one-off copied',('["t27",true]' in eff and '"t49",false' in eff),eff)
             errs=ea+eb; check('no page errors',not errs,errs[:3])
             await b.close()
     finally: sp.kill()
