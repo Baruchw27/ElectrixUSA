@@ -5,10 +5,10 @@
 <meta name="theme-color" content="#ffffff"><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Electrix Field</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
-<script>window.EX_VER='vlun1020';</script><script src="config.js"></script>
+<script>window.EX_VER='vmat1020';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vlun1020"></script>
-<script src="extras.js?vlun1020"></script>
+<script src="sync.js?vmat1020"></script>
+<script src="extras.js?vmat1020"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -2201,7 +2201,7 @@ function renderPunch(){
   const wb=document.getElementById('weekBox');if(wb){const lw=new Date();lw.setDate(lw.getDate()-7);wb.innerHTML=weekCard(m.id)+weekCard(m.id,false,lw,'Last week · paid this week');}
   document.getElementById('punchLog').innerHTML=logs.length?logs.map(p=>{
     const status=p.away?`<span style="color:#c0392b">${t('off site')} ${fmtT(p.away)}</span>`:p.out?fmtT(p.out):`<span style="color:var(--green)">${t('on site')}</span>`;
-    const trips=(p.trips||[]).map(t=>`<div style="font-size:11px;color:var(--g4);padding-left:10px">↳ material run ${fmtT(t.left)}–${fmtT(t.back)} (${Math.round((t.back-t.left)/60000)} min, kept on clock)</div>`).join('');
+    const trips=(p.trips||[]).map(t=>`<div style="font-size:11px;color:var(--g4);padding-left:10px">↳ ${t('material run')} ${fmtT(t.left)}–${fmtT(t.back)} (${Math.round((t.back-t.left)/60000)} min, ${t('paid')})</div>`).join('');
     const gh=p.goHome?`<div style="font-size:11px;color:#c0392b;padding-left:10px">🏠 Go-home sent ${fmtT(p.goHome)}${!p.out&&Date.now()-p.goHome>15*60000?' · ⚠ still on clock — phone buzzing':''}</div>`:'';
     const ghBtn=((m.role==='manager'||m.role==='owner'||m.all)&&!p.out&&!p.goHome)?`<button class="bs r" style="margin-top:6px;align-self:flex-end" onclick="goHome('${jsq(p.who)}')">🏠 ${t('Go home')}</button>`:'';
     return `<div class="plog" style="flex-direction:column;align-items:stretch"><div style="display:flex;justify-content:space-between"><span><b>${esc(nameOf(p.who))}</b> · ${esc(siteName(p.site))}</span><span>${fmtT(p.in)} – ${status}</span></div>${trips}${gh}${punchFlags(p)}${ghBtn}</div>`;}).join('')
@@ -3005,28 +3005,30 @@ const OT_AFTER=40;
 // L1 paid lunch: up to PAID_LUNCH_MIN minutes of lunch per person per workday (the day of the clock-in, so an overnight
 // shift belongs to the day it started) are paid; the rest is unpaid. All of that person's counted clock entries that
 // day share the allowance, earliest clock-in first (a site switch splits a day into two entries). Lunch time that
-// overlaps an off-site trip is not taken off a second time. Trips keep their own rule (unchanged).
+// overlaps a material run (off-site trip) is counted once, as work. R1: material runs are paid working time — never deducted.
 const PAID_LUNCH_MIN=40;
 let _lunchIdx=null,_lunchArr=null,_lunchN=-1;
 function _lunchSibs(p){const A=D.punches||[];if(!_lunchIdx||_lunchArr!==A||_lunchN!==A.length){_lunchIdx={};_lunchArr=A;_lunchN=A.length;A.forEach(x=>{if(!x||x.in==null)return;const k=x.who+'|'+dkey(x.in);(_lunchIdx[k]=_lunchIdx[k]||[]).push(x);});Promise.resolve().then(()=>{_lunchIdx=null;});}
   const L=(_lunchIdx[p.who+'|'+dkey(p.in)]||[]).filter(x=>x===p||payCounts(x));if(!L.includes(p))L.push(p);
   return L.slice().sort((a,b)=>(a.in-b.in)||String(a.id||'').localeCompare(String(b.id||'')));}
 function _ivLen(iv){iv=iv.filter(x=>x[1]>x[0]).sort((a,b)=>a[0]-b[0]);let t=0,cs=null,ce=0;iv.forEach(([s,e])=>{if(cs===null||s>ce){if(cs!==null)t+=ce-cs;cs=s;ce=e;}else if(e>ce)ce=e;});if(cs!==null)t+=ce-cs;return t;}
-// lunch time of one clock entry (ms), inside the entry and not already off the clock as an off-site trip
+// lunch time of one clock entry (ms), inside the entry and outside any material run (run minutes are paid work)
 function lunchMs(p){if(!p)return 0;const end=p.out||p.away||Date.now();const c=(a,b)=>[Math.max(+a||0,p.in),Math.min(+b||0,end)];
   const T=(p.trips||[]).filter(tr=>tr&&tr.back).map(tr=>c(tr.left,tr.back));
   const Lv=(p.breaks||[]).filter(b=>b&&b.s&&b.e).map(b=>c(b.s,b.e));if(p.breakStart&&!p.out&&!p.away)Lv.push(c(p.breakStart,Date.now()));
   if(!Lv.length)return 0;return Math.max(0,_ivLen(Lv.concat(T))-_ivLen(T));}
 function lunchInfo(p){const tot=lunchMs(p);if(!tot)return {lunch:0,paid:0,unpaid:0};let used=0;for(const x of _lunchSibs(p)){if(x===p)break;used+=lunchMs(x);}
   const paid=Math.min(tot,Math.max(0,PAID_LUNCH_MIN*60000-used));return {lunch:tot,paid,unpaid:tot-paid};}
-// hours on the clock for one entry: clock time minus off-site trips minus UNPAID lunch (paid lunch stays in)
-function punchDur(p){const end=p.out||p.away||Date.now();let d=(end-p.in)/3600000;const clip=(a,b)=>Math.max(0,Math.min(b,end)-Math.max(a,p.in))/3600000;(p.trips||[]).forEach(tr=>{if(tr.back)d-=clip(tr.left,tr.back);});d-=lunchInfo(p).unpaid/3600000;return Math.max(0,d);}
-// one person's day: worked (clock time minus trips), paid lunch, unpaid lunch, payable (worked minus unpaid lunch) — hours
+// hours on the clock for one entry: clock time minus UNPAID lunch (paid lunch and material runs stay in — R1)
+function punchDur(p){const end=p.out||p.away||Date.now();let d=(end-p.in)/3600000;d-=lunchInfo(p).unpaid/3600000;return Math.max(0,d);}
+// material-run minutes inside one clock entry (shown for information; paid, never deducted)
+function runMs(p){if(!p)return 0;const end=p.out||p.away||Date.now();return _ivLen((p.trips||[]).filter(tr=>tr&&tr.left).map(tr=>[Math.max(+tr.left||0,p.in),Math.min(+(tr.back||Date.now()),end)]));}
+// one person's day: worked (clock time, material runs included), paid lunch, unpaid lunch, payable (worked minus unpaid lunch) — hours
 function dayLunchSummary(who,day){const ps=(D.punches||[]).filter(x=>x.who===who&&x.in!=null&&dkey(x.in)===day&&payCounts(x));let worked=0,paid=0,unpaid=0,pay=0;
   ps.forEach(x=>{const li=lunchInfo(x);pay+=punchDur(x);paid+=li.paid;unpaid+=li.unpaid;worked+=punchDur(x)+li.unpaid/3600000;});
   return {worked,paidLunch:paid/60000,unpaidLunch:unpaid/60000,payable:pay,n:ps.length};}
 function lunchLine(p){const li=lunchInfo(p);if(!li.lunch)return '';return '🍽 '+t('lunch')+' '+Math.round(li.lunch/60000)+' min: '+Math.round(li.paid/60000)+' '+t('paid')+(li.unpaid>=30000?' · '+Math.round(li.unpaid/60000)+' '+t('unpaid'):'');}
-Object.assign(ES,{"Lunch":"Almuerzo","Back from lunch":"Volver del almuerzo","On lunch — up to 40 min paid":"En almuerzo — hasta 40 min pagados","on lunch since":"en almuerzo desde","lunch":"almuerzo","paid":"pagado","unpaid":"sin pago","Today":"Hoy","worked":"trabajado","paid lunch":"almuerzo pagado","unpaid lunch":"almuerzo sin pago","payable":"a pagar","Lunch: up to 40 minutes a day are paid.":"Almuerzo: hasta 40 minutos al día son pagados."});
+Object.assign(ES,{"material run":"vuelta por material","Lunch":"Almuerzo","Back from lunch":"Volver del almuerzo","On lunch — up to 40 min paid":"En almuerzo — hasta 40 min pagados","on lunch since":"en almuerzo desde","lunch":"almuerzo","paid":"pagado","unpaid":"sin pago","Today":"Hoy","worked":"trabajado","paid lunch":"almuerzo pagado","unpaid lunch":"almuerzo sin pago","payable":"a pagar","Lunch: up to 40 minutes a day are paid.":"Almuerzo: hasta 40 minutos al día son pagados."});
 function weekStart(d){const x=new Date(d||Date.now());x.setHours(0,0,0,0);x.setDate(x.getDate()-x.getDay());return x;}
 function weekStats(who,ref){const ws=weekStart(ref).getTime(),we=addDaysMs(ws,7);const days=[0,0,0,0,0,0,0];D.punches.filter(p=>p.who===who&&p.in>=ws&&p.in<we&&payCounts(p)&&!staleOpen(p)).forEach(p=>{const i=dayIndex(p.in,ws);if(i>=0&&i<7)days[i]+=punchDur(p);});const total=days.reduce((a,b)=>a+b,0);return {ws,days,total,reg:Math.min(total,OT_AFTER),ot:Math.max(0,total-OT_AFTER)};}
 function weekCard(who,compact,ref,title){const s=weekStats(who,ref);const DL=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];const today=Math.floor((new Date().setHours(0,0,0,0)-s.ws)/86400000);
@@ -3063,7 +3065,7 @@ function renderHours(){
   let grand=0;
   el.innerHTML=histNote+(siteFilter?'<div class="note" style="margin-bottom:6px">'+t('Showing hours at this job only. Overtime is figured on the full week across all jobs.')+'</div>':'')+Object.keys(by).map(who=>{const rs=by[who];let tot=0;
     const items=rs.map(({p,i})=>{const end=p.out||(p.away?p.away:null);const dur=end?punchDur(p):null;const counts=payCounts(p);if(dur&&counts)tot+=dur;const open=!end;const stale=open&&Date.now()-p.in>14*3600000;
-      const trips=(p.trips||[]).map(tr=>'<div style="font-size:11px;color:var(--g4);padding-left:8px">↳ '+t('off site')+' '+fmtT(tr.left)+'–'+fmtT(tr.back)+' ('+Math.round((tr.back-tr.left)/60000)+' min)</div>').join('');
+      const trips=(p.trips||[]).map(tr=>'<div style="font-size:11px;color:var(--g4);padding-left:8px">↳ '+t('material run')+' '+fmtT(tr.left)+'–'+fmtT(tr.back)+' ('+Math.round((tr.back-tr.left)/60000)+' min, '+t('paid')+')</div>').join('');
       const ed=(p.edits&&p.edits.length?'<div style="font-size:11px;color:var(--amber);padding-left:8px">✎ '+t('edited by')+' '+esc(nameOf(p.edits[p.edits.length-1].by))+' — '+esc(p.edits[p.edits.length-1].why||'')+'</div>':'')+((p.breaks||[]).length?'<div style="font-size:11px;color:var(--g4);padding-left:8px">'+lunchLine(p)+' ('+(p.breaks||[]).map(b=>fmtT(b.s)+'–'+fmtT(b.e)).join(', ')+')</div>':'')+(p.transfer?'<div style="font-size:11px;color:var(--g4);padding-left:8px">↔ '+t('switched sites')+'</div>':'')+punchFlags(p)+(p.check?'<div style="font-size:11px;padding-left:8px;color:'+(p.check.injured?'#c0392b':'var(--g4)')+'">'+(p.check.injured?'🚑 '+t('INJURED')+' — '+esc((p.check.injury||{}).what||'')+(p.check.injury&&p.check.injury.told?' · '+t('told')+' '+esc(nameOf(p.check.injury.told)):'')+(p.check.injury&&p.check.injury.care&&p.check.injury.care!=='no'?' · '+esc(p.check.injury.care):''):'✓ '+t('not injured'))+' · '+(p.check.mealBreak?'✓ '+t('meal break'):'⚠ '+t('no meal break')+' ('+t({chose:'chose to',told:'was told to skip',short:'short day'}[p.check.noBreakWhy]||'')+')')+'</div>':'')+(p.selfie?'<img src="'+safeSrc(p.selfie)+'" onclick="event.stopPropagation();document.getElementById(\'photoWrap\').innerHTML=\'<img src=&quot;'+safeSrc(p.selfie)+'&quot; style=&quot;max-width:100%;max-height:70vh;border-radius:10px&quot;>\';show(\'m-photo\')" style="width:34px;height:34px;border-radius:17px;object-fit:cover;margin:4px 0 0 8px;border:2px solid var(--g2)">':p.noSelfie?'<div style="font-size:11px;color:#c0392b;padding-left:8px">⚠ '+t('no selfie')+'</div>':'');
       return '<div class="plog" style="flex-direction:column;align-items:stretch;cursor:pointer;'+(stale?'background:var(--red-bg);margin:0 -13px;padding:8px 13px':'')+'" onclick="openPunchEdit('+i+')"><div style="display:flex;justify-content:space-between"><span>'+new Date(p.in).toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'})+' · '+esc(siteName(p.site))+'</span><span><b>'+fmtT(p.in)+'</b> – '+(end?'<b>'+fmtT(end)+'</b>':'<span style="color:#c0392b;font-weight:600">'+(stale?t('NO PUNCH OUT'):t('on site'))+'</span>')+(dur!==null?' <span style="color:var(--g4)">('+dur.toFixed(2)+'h)</span>':'')+'</span></div>'+(!counts?'<div style="font-size:11px;color:var(--amber);padding-left:8px">'+(p.rejected?t('Rejected — not counted'):t('Waiting for approval — not counted yet'))+'</div>':'')+trips+ed+'</div>';}).join('');
     grand+=tot;
@@ -3097,7 +3099,7 @@ function delPunch(){const p=D.punches.find(x=>x.id===peIdx);if(!p){hide('m-pe');
     save();hide('m-pe');renderHours();renderPunch();toast('✓ '+(undo?t('Restored'):t('Removed — kept in the history')),'green');});}
 
 // ───────────── JOB HOURS DASHBOARD — owner + Payroll only (gated by canEditHours; data is RLS-limited) ─────────────
-// Reuses punchDur (breaks, off-site trips and manual corrections are already inside it) and weekStart (Sun–Sat).
+// Reuses punchDur (lunch rule and manual corrections are already inside it; material runs are paid time) and weekStart (Sun–Sat).
 let dashRange='tw',dashFrom='',dashTo='',jhSiteRange='all',jhSiteFrom='',jhSiteTo='',jhOpen={},dashSiteQ='';
 let _dsFocus=false,_dsPos=0; // keep the job-site search focused across background re-renders
 function monthStartMs(ref){const x=new Date(ref||Date.now());return new Date(x.getFullYear(),x.getMonth(),1).getTime();}
@@ -4659,6 +4661,6 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vlun1020"></script><script src="scanner-v2-ui.js?vlun1020"></script><script src="sched-v21.js?vlun1020"></script>
+<script src="scanner-v2.js?vmat1020"></script><script src="scanner-v2-ui.js?vmat1020"></script><script src="sched-v21.js?vmat1020"></script>
 </body>
 </html>
