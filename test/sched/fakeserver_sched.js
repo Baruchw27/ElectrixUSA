@@ -124,7 +124,7 @@ http.createServer(async (req,res)=>{
   if(p==='/__payloads'){const out=global.PAY||[];if(u.searchParams.get('clear'))global.PAY=[];return send(res,200,out);}
   if(p==='/__state'){return send(res,200,{users:Object.keys(users),records:records.size,colls:[...new Set([...records.values()].map(r=>r.coll))],stats});}
   if(p==='/__records'){const c=u.searchParams.get('coll');return send(res,200,[...records.values()].filter(r=>!c||r.coll===c));}
-  if(p==='/__seed'){const b=await body(req);(b.users||[]).forEach(u=>{users[u.email]={id:u.id,pass:u.pass};});(b.rows||[]).forEach(r=>records.set(r.coll+'\u0001'+r.id,{coll:r.coll,id:r.id,data:pg(r.data),deleted:false,updated_at:now()}));return send(res,200,{ok:1});}
+  if(p==='/__seed'){const b=await body(req);(b.users||[]).forEach(u=>{users[u.email]={id:u.id,pass:u.pass};});(b.rows||[]).forEach(r=>records.set(r.coll+'\u0001'+r.id,{coll:r.coll,id:r.id,data:pg(r.data),deleted:false,updated_at:r.updated_at||now()}));return send(res,200,{ok:1});}
   if(p==='/__droptxn'){global.__dropTxn=+u.searchParams.get('n')||1;return send(res,200,{ok:1});}
   if(p==='/__reset'){Object.keys(users).forEach(k=>delete users[k]);records.clear();return send(res,200,{ok:1});}
   // ---- static app files

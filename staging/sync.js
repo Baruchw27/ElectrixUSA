@@ -130,10 +130,11 @@ window.EX_afterSave=function(){if(!REAL||!(ready||localReady)||applying)return;c
 function schedule(){clearTimeout(timer);timer=setTimeout(flush,400);}
 
 // ---------- blobs → storage ----------
+// clock-in selfies (~10 KB each, on every punch) are moved to file storage too, or office phones fill up within weeks
 async function offloadBlobs(coll,id,data){let changed=false;const seen=[];
   async function walk(o,path){if(!o||typeof o!=='object')return;
     for(const k of Object.keys(o)){const v=o[k];
-      if(typeof v==='string'&&v.startsWith('data:')&&v.length>BLOB_MIN){const url=await upload(coll,id,path+k,v);if(url){o[k]=url;changed=true;}else throw new Error('upload');}
+      if(typeof v==='string'&&v.startsWith('data:')&&v.length>(coll==='punches'?4000:BLOB_MIN)){const url=await upload(coll,id,path+k,v);if(url){o[k]=url;changed=true;}else throw new Error('upload');}
       else if(v&&typeof v==='object'&&seen.indexOf(v)<0){seen.push(v);await walk(v,path+k+'/');}}}
   await walk(data,'');return changed;}
 async function upload(coll,id,key,dataUrl){try{const m=/^data:([^;,]+)/.exec(dataUrl);const type=m?m[1]:'application/octet-stream';const blob=await (await fetch(dataUrl)).blob();
@@ -281,9 +282,15 @@ function stripEmp(x){const r=Object.assign({},x);EMP_STRIP.forEach(f=>delete r[f
 function localSave(){try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){}if(Object.keys(queue).length&&st.qStored===false)saveQ();}
 
 // ---------- pull ----------
-async function pullAll(){const rows=[];let from=0;const PAGE=1000;
-  const t0=Date.now();
-  while(true){const r=await withTO(sb.from('records').select('coll,id,data,deleted').range(from,from+PAGE-1),20000,'download');if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<PAGE)break;from+=PAGE;}
+// History the phone keeps only for a while (see pruneOld in the app): download just the recent part, so the start-up
+// download (and the phone copy) does not keep growing month after month. Everything stays on the server.
+const HIST_COLLS=['punches','travel','stockLog','inbox','goHomeLog'],HIST_DAYS=130;
+async function pullAll(){const rows=[];const PAGE=1000;
+  const t0=Date.now();const since=new Date(t0-HIST_DAYS*864e5).toISOString();
+  // pages are read in a fixed order (coll, id); without an order a row changed mid-download could be missed or doubled
+  async function pages(mk){let from=0;while(true){const r=await withTO(mk().order('coll').order('id').range(from,from+PAGE-1),20000,'download');if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<PAGE)break;from+=PAGE;}}
+  await pages(()=>sb.from('records').select('coll,id,data,deleted').not('coll','in','('+HIST_COLLS.join(',')+')'));
+  await pages(()=>sb.from('records').select('coll,id,data,deleted').in('coll',HIST_COLLS).gt('updated_at',since));
   lastPull=t0;try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}return rows;}
 // signed in but the server no longer lets this person in (turned off by the office): wipe this phone's copy and go to sign-in
 async function turnedOff(){let member=true;try{const r=await withTO(sb.rpc('is_member'),6000,'access check');if(r&&!r.error&&r.data===false){const t=await withTO(sb.rpc('no_team_yet'),6000,'team check');member=!!(t&&t.data===true);}}catch(e){return false;}
@@ -294,7 +301,13 @@ async function turnedOff(){let member=true;try{const r=await withTO(sb.rpc('is_m
   queue={};try{await window.EX_logout();}catch(e){}try{location.reload();}catch(e){}return true;}
 window.EX_turnedOff=turnedOff;
 // after the phone slept: fetch only what changed meanwhile, and reconnect the live feed
-async function catchUp(){if(!REAL||!ready||catching||!st.online)return;catching=true;
+// a caller that needs the newest server copy (e.g. "Use my version") waits for a catch-up already running instead of
+// getting nothing back — otherwise it would build on an old version and be refused again
+let catchP=null,catchAgain=false;
+function catchUp(){if(!REAL||!ready||!st.online)return Promise.resolve();
+  if(catchP){catchAgain=true;return catchP;}
+  catchP=(async()=>{try{do{catchAgain=false;await catchUp1();}while(catchAgain&&st.online);}finally{catchP=null;}})();return catchP;}
+async function catchUp1(){if(!REAL||!ready||catching||!st.online)return;catching=true;
   try{if(await turnedOff())return;
     // open the new live feed before fetching: any change from now on arrives live, anything earlier is in the fetch
     const old=chan;let nu=null;if(sb.removeChannel){try{nu=subscribe();const w0=Date.now();while(!nu._ok&&Date.now()-w0<4000)await new Promise(r=>setTimeout(r,100));}catch(e){}}
