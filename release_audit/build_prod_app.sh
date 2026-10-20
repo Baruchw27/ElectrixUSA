@@ -3,7 +3,7 @@
 # The live site changes only when, after Baruch's approval, the folder's files are copied to the repo root and pushed.
 #   usage: release_audit/build_prod_app.sh OUTDIR [CACHE_NUMBER]   (default cache electrix-v17: live v14, schedule v15, its rollback v16)
 set -e
-REPO="$(cd "$(dirname "$0")/.." && pwd)"; OUT="$1"; N="${2:-17}"; VER="vaud$(date +%m%d)"
+REPO="$(cd "$(dirname "$0")/.." && pwd)"; OUT="$1"; N="${2:-17}"; VER="${VER:-vaud$(date +%m%d)}"
 [ -n "$OUT" ] || { echo "usage: $0 OUTDIR [N]"; exit 1; }
 rm -rf "$OUT"; mkdir -p "$OUT"
 # start from the live site exactly as it is today (origin/main root files: config, icons, manifest…)

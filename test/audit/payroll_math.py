@@ -7,10 +7,10 @@ sys.path.insert(0,os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','
 from suite import *
 CASES=[
  # name, JS that returns hours, hand-computed expected (hours), tolerance
- ('plain day 7:00–15:30, 30-min break → 8.0 h', "punchDur(P(2026,10,12,7,0,15,30,{breaks:[B(2026,10,12,12,0,12,30)]}))", 8.0),
+ ('L1 plain day 7:00–15:30, 30-min lunch is paid (up to 40 min a day) → 8.5 h', "punchDur(P(2026,10,12,7,0,15,30,{breaks:[B(2026,10,12,12,0,12,30)]}))", 8.5),
  ('no break 7:00–15:30 → 8.5 h', "punchDur(P(2026,10,12,7,0,15,30))", 8.5),
- ('two breaks (15 + 30 min) → 7.75 h', "punchDur(P(2026,10,12,7,0,15,30,{breaks:[B(2026,10,12,9,0,9,15),B(2026,10,12,12,0,12,30)]}))", 7.75),
- ('break partly outside the shift only counts the part inside (6:45–7:15 break on a 7:00–15:30 shift) → 8.25 h', "punchDur(P(2026,10,12,7,0,15,30,{breaks:[B(2026,10,12,6,45,7,15)]}))", 8.25),
+ ('L1 two lunches (15 + 30 = 45 min): 40 paid, 5 unpaid → 8.5 − 0.0833 = 8.4167 h', "punchDur(P(2026,10,12,7,0,15,30,{breaks:[B(2026,10,12,9,0,9,15),B(2026,10,12,12,0,12,30)]}))", 8.4167),
+ ('lunch partly outside the shift only counts the part inside (6:45–7:15 on a 7:00–15:30 shift; 15 min, paid) → 8.5 h', "punchDur(P(2026,10,12,7,0,15,30,{breaks:[B(2026,10,12,6,45,7,15)]}))", 8.5),
  ('POLICY material run: left 10:00, back 10:40 is NOT paid today → 8.5 − 0.667 = 7.833 h', "punchDur(P(2026,10,12,7,0,15,30,{trips:[{left:T(2026,10,12,10,0),back:T(2026,10,12,10,40)}]}))", 7.8333),
  ('a material run still in progress (not back yet) is not taken off', "punchDur(P(2026,10,12,7,0,15,30,{trips:[{left:T(2026,10,12,10,0)}]}))", 8.5),
  ('crosses midnight: 18:00 → 02:00 = 8.0 h', "punchDur(P2(2026,10,12,18,0,2026,10,13,2,0))", 8.0),
@@ -29,7 +29,7 @@ CASES=[
  ('travel pay: 20-minute drive is a local job → $0', "(()=>{const r=D.travelRate,m=D.travelMin;D.travelRate=30;D.travelMin=25;const v=travelPayFor({id:'x'},20);D.travelRate=r;D.travelMin=m;return v;})()", 0.0),
  ('travel pay: a job with a fixed travel amount ($40) pays that amount', "travelPayFor({id:'x',travelPay:40},90)", 40.0),
  ('POLICY shift that crosses into a new week (Sat 22:00 → Sun 06:00): all 8 h are counted in the week it STARTED', "(()=>{clr();D.punches.push(P2(2026,10,17,22,0,2026,10,18,6,0));const a=weekStats('u7',T(2026,10,15,12,0)).total,b=weekStats('u7',T(2026,10,19,12,0)).total;return a*10+b;})()", 80.0),
- ('POLICY a break taken during a material run is taken off twice today (8.5 − 1.0 run − 0.5 break = 7.0; once would be 7.5)', "punchDur(P(2026,10,12,7,0,15,30,{trips:[{left:T(2026,10,12,11,45),back:T(2026,10,12,12,45)}],breaks:[B(2026,10,12,12,0,12,30)]}))", 7.0),
+ ('L1 a lunch taken during a material run is taken off only once (8.5 − 1.0 run = 7.5; the run keeps today\'s unpaid rule)', "punchDur(P(2026,10,12,7,0,15,30,{trips:[{left:T(2026,10,12,11,45),back:T(2026,10,12,12,45)}],breaks:[B(2026,10,12,12,0,12,30)]}))", 7.5),
 ]
 async def run():
     sp=start_server()
