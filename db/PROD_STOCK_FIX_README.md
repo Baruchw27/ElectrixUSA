@@ -22,3 +22,15 @@ Tests
 Apply (after approval): run db/prod_stock_security_fix.sql on the live project once. It refuses to run if the live
 function is not the exact version tested.
 Undo: the two commented lines at the bottom of the file (disable the trigger; restore the saved function).
+
+## Applied to LIVE — 2026-10-20 (approved by Baruch)
+Before: every live database function, trigger and policy (62 objects) saved in private.fn_backup ('pre-stock-fix/…')
+and a copy outside the database; apply_stock_txn copy matches md5 36d8402e…; stock counts and stock history checksums
+recorded (stock 4087de63… / 1797, history 035a4132… / 2).
+After: function patched (md5 changed, '-- SEC moves' present), count guard trigger on; stock and history checksums
+identical to before (nothing changed). Live permission test with real employee accounts inside a transaction that
+was rolled back (nothing kept; only a stock sequence number was used up): 13/13 pass — worker cannot set counts,
+normal pick-up and return work, retry applied once, +50 pick-up / −5 return / count-as-amount refused, worker count
+refused, Material office count works, rename keeps count, owner count works, owner cannot set counts directly,
+history cannot be written directly. Afterwards: no test rows left, checksums unchanged.
+Rollback (tested on an exact copy): the two lines at the bottom of prod_stock_security_fix.sql.
