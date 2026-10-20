@@ -1,5 +1,5 @@
 // Offline support: the app opens even with no signal; data waits on the phone and syncs later.
-const C='electrix-v13';
+const C='electrix-v15';
 const SHELL=['./','index.html','sync.js','extras.js','config.js','manifest.json','icon-192.png','icon-512.png','apple-touch-icon.png','logo-light.svg','logo-dark.svg','sched-v21.js'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));});
 // only clean up the live app's own old caches — never the staging copy's (same web address)
