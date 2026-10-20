@@ -1,10 +1,15 @@
 # Release audit: staging → production (database)
 
-Staging `rkkxykdkjgdsgkujanau` (target) vs production `lnbcrptcdufnmqsvsisv` (live). Captured 2026-10-20 using read-only catalog queries only, and **regenerated after staging migration `audit_b4_stock_input`**. Nothing was applied.
+Staging `rkkxykdkjgdsgkujanau` (target) vs production `lnbcrptcdufnmqsvsisv` (live). Captured 2026-10-20 using read-only catalog queries only, and **regenerated after staging migrations `audit_b4_stock_input`, `audit_b5_review_msgs`, `audit_b6_timeclock` and `audit_b6_ongoing_removed`**. Nothing was applied.
 Every function body in `10_forward.sql` / `90_rollback.sql` is checked against the source `md5(pg_get_functiondef)`: 48 of 48 match. I also ran a dry run on a throwaway local PostgreSQL 16 with a mock of production: forward ×2, rollback, forward again. All passed, and the 40 function md5s plus the 5 trigger md5s matched staging.
 
 Re-check at regeneration time:
-- On staging, the only object that changed is `public.apply_stock_txn`: md5 `dad5618d…` → **`6a0c1f0cc2466a6a174414fbc754c22c`**, grants unchanged. Every other function, trigger, cron job, policy and table matches the first capture.
+- On staging, only four objects changed since the first capture, and their grants did not:
+  - `public.apply_stock_txn` (`audit_b4_stock_input`): md5 `dad5618d…` → **`6a0c1f0cc2466a6a174414fbc754c22c`**
+  - `public.can_see2` (`audit_b5_review_msgs`): md5 `bb52dde1…` → **`3169e5b31b58f45b6594d680b0d6b66a`**
+  - `public.guard_emp_pay` (`audit_b6_timeclock`): md5 `fd659341…` → **`de75b4ac716230674878873ad8a2813b`**
+  - `public.notify_assign` (`audit_b6_ongoing_removed`): md5 `614cf04c…` → **`50741fff00ade44dbcd727c6162bfa31`**
+- Every other function, trigger, cron job, policy and table matches the first capture.
 - Production has not changed: all 41 function md5s and grants match the first capture (aggregate `a720ec33…`), and so do its triggers, cron jobs and policies.
 
 ## Production logic that staging lacks: now resolved, with one small difference
@@ -33,12 +38,20 @@ Apart from that, production's version of every function has nothing that staging
 |---|---|---|
 | `apply_stock_txn` | `bad kind` check moved before the duplicate check; moves are processed in `id` order, which avoids deadlocks; production's SEC input checks are carried over as B4 (`_num`-based); new `qv` version counter on stock rows and in the returned `qtys`; B1: a positive delta brings a deleted stock item back; `move needs delta or set`; `src` is stored in the stockLog | no (only nuance: numeric *strings* such as `"5"` are accepted, see above) |
 | `guard_record` | punches: server receive time `srvIn` is set once; A5b keeps `pending/approvedBy/rejected/rejectWhy` when a phone re-sends an old copy; only Payroll can un-delete a punch or change breaks (`punch_breaks_kept`); sites: `travelPay` is protected like lat/lng; a boss cannot approve or deny their own time off; travel: new or restored rows by non-bosses **and bosses' own rows** now go through `private.travel_checked` (server computes minutes and pay, rejects bad dates, duplicates and local jobs) | no |
-| `can_see2` | adds visibility rules for `incidents`, `fixes`, `msgs`, `apps`, `invites`. Today these fall into "visible to everyone" | no |
+| `can_see2` | adds visibility rules for `incidents`, `fixes`, `msgs`, `apps`, `invites`. Today these fall into "visible to everyone". For `msgs`, a person sees a message if they are the owner, the sender or the recipient, or if the message's `k` starts with `g:`, which marks a group message (`audit_b5_review_msgs`) | no |
 | `guard_stock_qty` | also protects the new `qv` field from phone writes | no |
 | `stamp_record` | rejects records over 400 kB from app users (`record too large`) | no |
 | `save_records` | B2: a patch to a row deleted on another phone no longer brings it back (except punches, sched, stock) | no |
 | `on_record_change` | the push notify payload also sends `id` and `ts` | no |
 | `meeting_reminders` | the reminder text is now per person and in Spanish for `lang='es'` (`en N min`, `Reunión`) | no (text rebuilt, same content for English) |
+
+## B6 staging changes (both functions exist only on staging, so production has nothing to lose here)
+
+- **`guard_emp_pay`** now guards the Time Clock field `clock` (default YES) instead of `payMonthly`, and also lets all-access users change it. **It no longer protects `payMonthly` at all**, so after the release any app user who can edit an employee (for example a manager) could switch "Paid monthly" on or off. Production has never had this guard, so this isn't a regression for production, but it is a step back from the earlier staging rule. The f1 regression's five "Paid monthly" tests were also removed (only the `-- PAID MONTHLY` heading is left). If "Paid monthly" should still be limited to Owner and Payroll, it needs its own guard again.
+- **`notify_assign`** (schedule notices):
+  - A removed schedule day now sends "schedule changed — open the app" / "el horario cambió — abre la app" instead of "no job scheduled".
+  - A day with a cancel, replace or patch never names a guessed job.
+  - A removed ongoing rule is announced as ending today.
 
 ## Functions only on staging (32), added by forward
 
@@ -56,7 +69,7 @@ Apart from that, production's version of every function has nothing that staging
 ## Triggers on `public.records`
 
 - **Differs:** `records_guard_emphr`. Production fires on `coll='emphr'`, staging on `coll='empHR'`. Staging adds `records_guard_emphr2` for `'emphr'`, so after the release both spellings are guarded.
-- **Staging only (created by forward):** `records_guard_emphr2`, `records_guard_punch` → `guard_punch()` (clock-entry rules, reasons and history, late-entry approval), `records_guard_emppay` → `guard_emp_pay()` (only the owner or Payroll can change `payMonthly`), `records_zz_notify_assign` → `notify_assign()` (assignment and schedule notifications, which feed `private.notify_queue`).
+- **Staging only (created by forward):** `records_guard_emphr2`, `records_guard_punch` → `guard_punch()` (clock-entry rules, reasons and history, late-entry approval), `records_guard_emppay` → `guard_emp_pay()` (only the owner, all-access users or Payroll can change the Time Clock YES/NO field `clock`; anyone else's change is silently undone), `records_zz_notify_assign` → `notify_assign()` (assignment and schedule notifications, which feed `private.notify_queue`).
 - Disabled on one side but not the other: **none**. Every trigger is `tgenabled='O'` on both sides. Storage triggers are identical.
 - Rollback disables the 4 new triggers (no DROP) and restores production's `records_guard_emphr`.
 

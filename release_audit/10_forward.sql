@@ -331,7 +331,7 @@ AS $function$
 
 -- ----- 6b. public functions (non-trigger) -----
 
--- public.can_see2  [REPLACES production version]  staging md5 bb52dde12643dc2d42d29486317569c9
+-- public.can_see2  [REPLACES production version]  staging md5 3169e5b31b58f45b6594d680b0d6b66a
 CREATE OR REPLACE FUNCTION public.can_see2(c text, d jsonb, me jsonb)
  RETURNS boolean
  LANGUAGE sql
@@ -355,7 +355,7 @@ AS $function$
     when c = 'exps' then
          me->>'role' in ('owner','manager') or (me->>'all')::boolean
       or (me->>'role' = 'office' and me->>'title' in ('Payroll','Bookkeeper')) or d->>'who' = me->>'id'
-    when c = 'msgs' then me->>'role' = 'owner' or d->>'from' = me->>'id' or d->>'to' = me->>'id'
+    when c = 'msgs' then me->>'role' = 'owner' or d->>'from' = me->>'id' or d->>'to' = me->>'id' or coalesce(d->>'k','') like 'g:%'
     when c in ('apps','invites') then me->>'role' in ('owner','manager','office') or coalesce((me->>'all')::boolean,false)
     else true end;
 $function$
@@ -1208,7 +1208,7 @@ grant execute on function public.guard_punch() to anon;
 grant execute on function public.guard_punch() to authenticated;
 grant execute on function public.guard_punch() to service_role;
 
--- public.guard_emp_pay  [new (staging-only)]  staging md5 fd65934170746a75f05054cddd0f67a4
+-- public.guard_emp_pay  [new (staging-only)]  staging md5 de75b4ac716230674878873ad8a2813b
 CREATE OR REPLACE FUNCTION public.guard_emp_pay()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -1218,11 +1218,11 @@ declare me jsonb; oldv jsonb;
 begin
   if current_user not in ('authenticated', 'anon') or auth.uid() is null then return new; end if;
   if jsonb_typeof(new.data) <> 'object' then return new; end if;
-  oldv := case when tg_op = 'UPDATE' and not old.deleted and jsonb_typeof(old.data) = 'object' then old.data->'payMonthly' end;
-  if coalesce(new.data->'payMonthly', 'false'::jsonb) = coalesce(oldv, 'false'::jsonb) then return new; end if;
+  oldv := case when tg_op = 'UPDATE' and not old.deleted and jsonb_typeof(old.data) = 'object' then old.data->'clock' end;
+  if coalesce(new.data->'clock', 'true'::jsonb) = coalesce(oldv, 'true'::jsonb) then return new; end if;
   me := public.my_emp_data();
-  if me->>'role' = 'owner' or (me->>'role' = 'office' and me->>'title' = 'Payroll') then return new; end if;
-  new.data := (new.data - 'payMonthly') || case when oldv is not null then jsonb_build_object('payMonthly', oldv) else '{}'::jsonb end;
+  if me->>'role' = 'owner' or coalesce((me->>'all')::boolean, false) or (me->>'role' = 'office' and me->>'title' = 'Payroll') then return new; end if;
+  new.data := (new.data - 'clock') || case when oldv is not null then jsonb_build_object('clock', oldv) else '{}'::jsonb end;
   return new;
 end $function$
 ;
@@ -1289,7 +1289,7 @@ end $function$
 revoke all on function public.on_record_change() from public, anon, authenticated, service_role;
 grant execute on function public.on_record_change() to service_role;
 
--- public.notify_assign  [new (staging-only)]  staging md5 614cf04c66eb47f8f561bdedd5be93a1
+-- public.notify_assign  [new (staging-only)]  staging md5 50741fff00ade44dbcd727c6162bfa31
 CREATE OR REPLACE FUNCTION public.notify_assign()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -1301,7 +1301,8 @@ declare me jsonb; actor text; aname text; n jsonb := new.data; o jsonb := '{}'::
         crew text; sig_o text; sig_n text; txt text; k text;
 begin
   if auth.uid() is null then return null; end if;
-  if new.deleted or jsonb_typeof(n) <> 'object' then return null; end if;
+  if new.coll = 'sched' and new.deleted then n := '{}'::jsonb;
+  elsif new.deleted or jsonb_typeof(n) <> 'object' then return null; end if;
   if tg_op = 'UPDATE' and not old.deleted and jsonb_typeof(old.data) = 'object' then o := old.data; end if;
   isnew := o = '{}'::jsonb;
   begin
@@ -1379,6 +1380,7 @@ begin
       k := new.id;
       if k ~ '^ONG:' then
         crew := split_part(k, ':', 2);
+        if n = '{}'::jsonb then n := o || jsonb_build_object('to', to_char(tdy, 'YYYY-MM-DD')); end if;   -- removed rule = ends today
         if coalesce(n->>'to', '') <> '' and n->>'to' ~ '^\d{4}-\d{2}-\d{2}$' then
           if (n->>'to')::date < tdy then return null; end if;
           en := '♾ Ongoing job at ' || private.short_site(n->>'site') || ' ends after ' || private.day_label((n->>'to')::date, 'en');
@@ -1410,12 +1412,13 @@ begin
         end if;
       else
         crew := split_part(k, '|', 1);
+        if coalesce(n->>'cancel','') <> '' or coalesce(n->>'replace','') <> '' or n ? 'patch' then txt := ''; end if;
         en := private.day_label(day, 'en') || ': ' || case when txt <> '' then txt
-                when coalesce(n->>'cancel', '') <> '' or coalesce(n->>'replace', '') <> '' then 'changed — open the schedule'
-                else 'no job scheduled for your crew' end;
+                when coalesce(n->>'cancel', '') <> '' or coalesce(n->>'replace', '') <> '' then 'schedule changed — open the app'
+                else 'schedule changed — open the app' end;
         es := private.day_label(day, 'es') || ': ' || case when txt <> '' then txt
-                when coalesce(n->>'cancel', '') <> '' or coalesce(n->>'replace', '') <> '' then 'cambió — abre el horario'
-                else 'sin trabajo programado para tu cuadrilla' end;
+                when coalesce(n->>'cancel', '') <> '' or coalesce(n->>'replace', '') <> '' then 'el horario cambió — abre la app'
+                else 'el horario cambió — abre la app' end;
         for who in select x from private.expand_people(jsonb_build_array(crew)) x loop
           if who <> coalesce(actor, '') then
             insert into private.notify_queue(to_id, qkey, actor, en, es, sig_before, sig_after, link)
@@ -1493,7 +1496,7 @@ with expected(fn, md5) as (values
   ('private.travel_checked', '72c7d74496d13a9f2ffe0aef23d9b342'),
   ('private.notify_now', '5f339e028bb1b2212714fdd7e9b08371'),
   ('private.tidy_client_errors', '658a69525f76f54797f23c211101440e'),
-  ('public.can_see2', 'bb52dde12643dc2d42d29486317569c9'),
+  ('public.can_see2', '3169e5b31b58f45b6594d680b0d6b66a'),
   ('public.save_records', '4eb565356a50caa8c9b5e73eaf140b2f'),
   ('public.apply_stock_moves', '31d1b5735e1f5f4d69a6febd3daec083'),
   ('public.apply_stock_txn', '6a0c1f0cc2466a6a174414fbc754c22c'),
@@ -1514,10 +1517,10 @@ with expected(fn, md5) as (values
   ('public.stamp_record', 'f52794abe1e2ea7f08c1781c05971133'),
   ('public.guard_record', '47c076253aae9855349d58699b5d6ac0'),
   ('public.guard_punch', 'c3f0a4333c1c835621af2643d879ed64'),
-  ('public.guard_emp_pay', 'fd65934170746a75f05054cddd0f67a4'),
+  ('public.guard_emp_pay', 'de75b4ac716230674878873ad8a2813b'),
   ('public.guard_stock_qty', 'ffae2d53aafe84ac874aa1128b6a9474'),
   ('public.on_record_change', '7a111c9b90636c1915a24d99b682d66e'),
-  ('public.notify_assign', '614cf04c66eb47f8f561bdedd5be93a1'))
+  ('public.notify_assign', '50741fff00ade44dbcd727c6162bfa31'))
 select e.fn, e.md5 as expected, md5(pg_get_functiondef(p.oid)) as actual, e.md5 = md5(pg_get_functiondef(p.oid)) as ok
   from expected e
   left join pg_proc p on p.oid = to_regproc(e.fn)
