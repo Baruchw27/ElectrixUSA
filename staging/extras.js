@@ -136,7 +136,8 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){hiddenAt=D
 
 // ---------- stay up to date: when a new version is published, reload quietly (never while typing or in a window) ----------
 (function(){let pending=false;
-  function busy(){const a=document.activeElement;if(a&&(a.tagName==='TEXTAREA'||(a.tagName==='INPUT'&&a.value)))return true;if(document.querySelector('.ov:not(.hid),.xpk,#exViewer[style*="flex"]'))return true;if(window.EX_mic&&window.EX_mic.on)return true;return false;}
+  // never reload while a change is still on its way to the server (a reload in the middle of a save can lose it)
+  function busy(){const S=window.EX_SYNC;if(S&&(S.pending>0||S.flushing))return true;const a=document.activeElement;if(a&&(a.tagName==='TEXTAREA'||(a.tagName==='INPUT'&&a.value)))return true;if(document.querySelector('.ov:not(.hid),.xpk,#exViewer[style*="flex"]'))return true;if(window.EX_mic&&window.EX_mic.on)return true;return false;}
   async function check(){if(!window.EX_VER||!navigator.onLine)return;try{const r=await fetch('version.json?'+Date.now(),{cache:'no-store'});if(!r.ok)return;const j=await r.json();if(!j.v||j.v===window.EX_VER)return;
       let tried='';try{tried=sessionStorage.getItem('ex_upd')||'';}catch(e){}if(tried===j.v)return; // never loop
       if(busy()){pending=true;return;}try{sessionStorage.setItem('ex_upd',j.v);}catch(e){}location.reload();}catch(e){}}

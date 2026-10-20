@@ -1,0 +1,38 @@
+"""Screenshots of the new schedule screens at iPhone size (for review)."""
+from harness import *
+SEED=json.load(open(os.path.join(HERE,'seed_prod.json')))
+OUT=os.environ.get('OUT',os.path.join(HERE,'shots'));os.makedirs(OUT,exist_ok=True)
+async def main():
+    sp=start_server()
+    try:
+        srvpost('/__seed',SEED)
+        async with async_playwright() as p:
+            b=await p.chromium.launch()
+            c,P,e,ok=await login(b,'Baruch','Testpass123','iphone'); await until(P,"EX_ready&&EX_ready()",10000)
+            y=await P.evaluate("dkey(new Date(Date.now()+864e5*1))"); k=await P.evaluate("dkey(new Date(Date.now()+864e5*2))")
+            for crew,site in [('c1','t32'),('c2','t150'),('c5','t49')]:
+                await P.evaluate(f"editSlot('{crew}','{y}');slotOneoffs=[];slotPickMode('menu');document.getElementById('slotAddSite').value='{site}';slotAddFull();saveSlot()"); await P.wait_for_timeout(700)
+            await P.evaluate(f"editSlot('c2','{k}');slotOneoffs=[];slotPickMode('menu');document.getElementById('slotAddSite').value='t27';slotAddFull();saveSlot()"); await P.wait_for_timeout(800)
+            await P.evaluate("goTab('sched');schedView='today';boardDay=2;renderSched();window.scrollTo(0,0)"); await P.wait_for_timeout(400)
+            await P.screenshot(path=f'{OUT}/1_day_board_buttons.png')
+            await P.click('#schDayTools button >> nth=0'); await P.wait_for_timeout(300)
+            await P.screenshot(path=f'{OUT}/2_same_as_yesterday_warning.png')
+            await P.evaluate("hide('m-ask')")
+            await P.evaluate(f"editSlot('c1','{y}')"); await P.wait_for_timeout(200)
+            await P.screenshot(path=f'{OUT}/3_day_editor.png')
+            await P.click("#slotBody button:has-text('Copy day')"); await P.wait_for_timeout(200)
+            await P.click("#askBody button:has-text('Next 5 workdays')"); await P.wait_for_timeout(100)
+            await P.screenshot(path=f'{OUT}/4_copy_pick_days.png')
+            await P.evaluate("hide('m-ask')")
+            urllib.request.urlopen(BASE+'/__deny?coll=sched')
+            await P.evaluate("slotSet(0,'site','t70')"); await P.click("#slotBody button.btn[onclick='saveSlot()']"); await until(P,"!!document.getElementById('slotErr')",15000)
+            await P.evaluate("document.getElementById('slotErr').scrollIntoView({block:'center'})")
+            await P.screenshot(path=f'{OUT}/5_not_saved_in_editor.png')
+            urllib.request.urlopen(BASE+'/__deny?coll='); await P.evaluate("hide('m-slot')")
+            await c.set_offline(True); await P.evaluate("window.dispatchEvent(new Event('offline'))")
+            await P.evaluate(f"editSlot('c4','{k}');slotOneoffs=[];slotPickMode('menu');document.getElementById('slotAddSite').value='t54';slotAddFull();saveSlot()"); await P.wait_for_timeout(600)
+            await P.evaluate("renderSched();window.scrollTo(0,0)"); await P.wait_for_timeout(300)
+            await P.screenshot(path=f'{OUT}/6_offline_waiting.png')
+            await b.close()
+    finally: sp.kill()
+asyncio.run(main())

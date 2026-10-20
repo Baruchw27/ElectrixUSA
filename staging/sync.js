@@ -27,7 +27,25 @@ window.EX_SYNC=st;
 function canon(v){if(v===null||typeof v!=='object')return v===undefined?'null':JSON.stringify(v);if(Array.isArray(v))return '['+v.map(x=>x===undefined||typeof x==='function'?'null':canon(x)).join(',')+']';
   const ks=Object.keys(v).filter(k=>v[k]!==undefined&&typeof v[k]!=='function').sort();return '{'+ks.map(k=>JSON.stringify(k)+':'+canon(v[k])).join(',')+'}';}
 function loadQ(){try{return JSON.parse(localStorage.getItem('ex_queue')||'{}');}catch(e){return {};}}
-function saveQ(){try{localStorage.setItem('ex_queue',JSON.stringify(queue));}catch(e){}st.pending=Object.keys(queue).length;paint();}
+// Unsent changes are the one thing on the phone that cannot be downloaded again, so they must be kept on disk.
+// If the phone's storage is full (it is shared with other copies of the app on the same web address), drop the
+// re-downloadable cached copy of the company data to make room — never the unsent work. If even that fails,
+// say so (st.qLost) so the app warns the person and never pretends the change is safe.
+function mainKey(){return (typeof KEY!=='undefined'?KEY:'electrix_v29');}
+function storeQ(){const s=JSON.stringify(queue);try{localStorage.setItem('ex_queue',s);return true;}catch(e){}
+  try{localStorage.removeItem(mainKey());}catch(e){}           // cached company data: safe to drop, it comes back from the server
+  try{localStorage.setItem('ex_queue',s);return true;}catch(e){}
+  return false;}
+function saveQ(){const n=Object.keys(queue).length;const ok=storeQ();st.qStored=ok;st.qLost=!ok&&n>0;st.pending=n;paint();return ok;}
+window.EX_queued=function(coll,id){return !!queue[coll+'\u0001'+id];};
+window.EX_queuedIn=function(coll){return Object.keys(queue).filter(k=>queue[k]&&queue[k].coll===coll).map(k=>queue[k].id);};
+// Changes the server refused (permission, or another phone changed the same day first). Kept on the phone, with what
+// the person entered, until they re-apply or dismiss them — so a refused save is never silently thrown away.
+function loadRej(){try{const a=JSON.parse(localStorage.getItem('ex_rejects')||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
+function keepRej(list){const all=loadRej();list.forEach(x=>{if(!x||x.coll!=='sched')return;const i=all.findIndex(y=>y.coll===x.coll&&y.id===x.id);const rec={coll:x.coll,id:x.id,data:x.data===undefined?null:x.data,del:!!x.del,reason:x.stale?'stale':x.delRefused?'delete-refused':'refused',at:Date.now(),by:st.user||null};if(i>=0)all[i]=rec;else all.push(rec);});
+  try{localStorage.setItem('ex_rejects',JSON.stringify(all.slice(-50)));}catch(e){}}
+window.EX_rejects=function(){return loadRej();};
+window.EX_dropReject=function(coll,id){const all=loadRej().filter(y=>!(y.coll===coll&&y.id===id));try{localStorage.setItem('ex_rejects',JSON.stringify(all));}catch(e){}};
 function emailFor(e){return (e.email&&/@/.test(e.email)?e.email:(e.id+'@'+DOMAIN)).toLowerCase();}
 window.EX_emailFor=emailFor;
 
@@ -108,7 +126,7 @@ let suppressRejectToast=false; // EX_saveNow shows its own message at the point 
 let flushInFlight=null;
 function flush(){if(!REAL||!ready||!st.online)return Promise.resolve();if(flushInFlight)return flushInFlight;
   flushInFlight=_flush();const done=()=>{flushInFlight=null;};flushInFlight.then(done,done);return flushInFlight;}
-async function _flush(){const keys=Object.keys(queue);if(!keys.length){lastReject=[];return;}flushing=true;paint();
+async function _flush(){const keys=Object.keys(queue);if(!keys.length){lastReject=[];return;}flushing=true;st.flushing=true;paint();
   let skipped=0;const myRej=[];lastFlushError=null;
   try{const ups=[],dels=[],refs=[];
     for(const k of keys){const o=queue[k];if(o.del)dels.push(o);else{
@@ -120,57 +138,73 @@ async function _flush(){const keys=Object.keys(queue);if(!keys.length){lastRejec
       const plain=v=>!!v&&typeof v==='object'&&!Array.isArray(v);let bb=null;try{bb=o.base?JSON.parse(o.base):null;}catch(e){}
       if(bb&&plain(cur)&&plain(bb)){const b=bb;const patch={},unset=[];Object.keys(cur).forEach(f=>{if(canon(cur[f])!==canon(b[f]))patch[f]=cur[f];});Object.keys(b).forEach(f=>{if(!(f in cur))unset.push(f);});row={coll:o.coll,id:o.id,patch,unset,by:st.user||null};}
       else if(o.coll==='stock')row={coll:o.coll,id:o.id,patch:cur,unset:[],by:st.user||null};
-      if(o.coll==='stock'&&row.patch){delete row.patch.qty;delete row.patch.qv;if(row.unset)row.unset=row.unset.filter(f=>f!=='qty'&&f!=='qv');} // merge, never replace: keeps the server's count (another phone may have counted it already)
       else row={coll:o.coll,id:o.id,full:cur,by:st.user||null};
+      if(o.coll==='stock'&&row.patch){delete row.patch.qty;delete row.patch.qv;if(row.unset)row.unset=row.unset.filter(f=>f!=='qty'&&f!=='qv');} // merge, never replace: keeps the server's count (another phone may have counted it already)
       ups.push(row);refs.push(o);}}
     const done=(k,o)=>{if(queue[k]===o)delete queue[k];};
-    for(let i=0;i<ups.length;i+=200){const part=ups.slice(i,i+200);const r=await withTO(sb.rpc('save_records',{rows:part}),45000,'save');
+    const isStale=e=>!!e&&(e.code==='40001'||/40001|stale_sched|could not serialize/i.test((e.message||'')+(e.details||'')));
+    let staleHit=false;
+    // Send a group of rows. The database checks each schedule day's revision and refuses the WHOLE call if any one
+    // day is out of date (another phone changed it first). So when that happens, resend the rows one by one: only the
+    // out-of-date day is refused (kept with what the person entered, see keepRej) and every other change still lands.
+    async function sendUps(part,prt){const r=await withTO(sb.rpc('save_records',{rows:part}),45000,'save');
       if(r.error){
-        // a simultaneous edit by another office user: the database rejects the stale write (errcode 40001). treat it
-        // like any other refusal — flag the rows, drop them from the queue so we don't retry a doomed write forever,
-        // and pull the winning version so the board shows what actually saved.
-        const e=r.error;if(e.code==='40001'||/40001|stale_sched|could not serialize/i.test((e.message||'')+(e.details||''))){
-          part.forEach((x,n)=>done(x.coll+'\u0001'+x.id,refs[i+n]));saveQ();
-          myRej.push(...part.map(x=>({coll:x.coll,id:x.id,stale:true})));
-          setTimeout(()=>{try{catchUp();}catch(_){}},0);continue;}
-        throw e;}
-      part.forEach((x,n)=>done(x.coll+'\u0001'+x.id,refs[i+n]));saveQ();adopt(r.data);
+        if(isStale(r.error)){
+          if(part.length>1){for(let n=0;n<part.length;n++)await sendUps([part[n]],[prt[n]]);return;}
+          const x=part[0],o=prt[0];done(x.coll+'\u0001'+x.id,o);saveQ();staleHit=true;
+          myRej.push({coll:x.coll,id:x.id,stale:true,data:o&&o.data!==undefined?o.data:(x.full||x.patch||null)});return;}
+        throw r.error;}
+      part.forEach((x,n)=>done(x.coll+'\u0001'+x.id,prt[n]));saveQ();adopt(r.data);
       const rej=rejectedRows(part,r.data);
       // undo the local optimistic copy of anything the server refused: a denied insert stayed only on this phone,
-      // so drop it (adopt() already reverted denied patches to the server's stored version).
-      rej.forEach(x=>{if(x.absent&&!queue[x.coll+'\u0001'+x.id]){try{delRecord(x.coll,x.id);}catch(e){}if(snap[x.coll])delete snap[x.coll][x.id];}});
+      // so drop it (adopt() already reverted denied patches to the server's stored version). What the person entered
+      // is kept in the refused list (keepRej) so it can be re-applied.
+      rej.forEach(x=>{const n=part.findIndex(p=>p.coll===x.coll&&p.id===x.id);x.data=n>=0&&prt[n]?prt[n].data:null;
+        if(x.absent&&!queue[x.coll+'\u0001'+x.id]){try{delRecord(x.coll,x.id);}catch(e){}if(snap[x.coll])delete snap[x.coll][x.id];}});
       if(rej.length){localSave();try{bump();}catch(e){}}
       myRej.push(...rej);}
+    for(let i=0;i<ups.length;i+=200)await sendUps(ups.slice(i,i+200),refs.slice(i,i+200));
+    if(staleHit)setTimeout(()=>{try{catchUp();}catch(_){}},0); // pull the version that won so the board shows what is really saved
     for(let i=0;i<dels.length;i+=200){const part=dels.slice(i,i+200);const r=await withTO(sb.rpc('save_records',{rows:part.map(o=>({coll:o.coll,id:o.id,deleted:true,full:o.meta||{},by:st.user||null}))}),45000,'save');if(r.error)throw r.error;part.forEach(o=>done(o.coll+'\u0001'+o.id,o));saveQ();adopt(r.data);
       // a delete the server refused comes back still present and not deleted → restore it locally (adopt did) and flag
       // (scoped to 'sched' so other features keep today's behavior)
       const dby={};(Array.isArray(r.data)?r.data:[]).forEach(s=>{dby[s.coll+'\u0001'+s.id]=s;});
-      part.forEach(o=>{if(o.coll!=='sched')return;const s=dby[o.coll+'\u0001'+o.id];if(s&&!s.deleted)myRej.push({coll:o.coll,id:o.id,delRefused:true});});}
+      part.forEach(o=>{if(o.coll!=='sched')return;const s=dby[o.coll+'\u0001'+o.id];if(s&&!s.deleted)myRej.push({coll:o.coll,id:o.id,delRefused:true,del:true});});}
     st.err=skipped?((typeof t==='function'?t('Photo upload failed — will retry'):'Photo upload failed')):'';st.retrying=false;
-    lastReject=myRej;
+    lastReject=myRej;if(myRej.length)keepRej(myRej);
     if(myRej.length){const msg=(typeof t==='function'?t('Some changes could not be saved — showing the saved version.'):'Some changes could not be saved — showing the saved version.');
       try{window.dispatchEvent(new CustomEvent('ex-rejected',{detail:{rows:myRej.slice()}}));}catch(e){}
       if(!suppressRejectToast){try{if(typeof toast==='function')toast(msg,'bad');}catch(e){}}}}
-  catch(e){lastReject=myRej;lastFlushError=(e&&e.message)||'sync error';
+  catch(e){lastReject=myRej;if(myRej.length)keepRej(myRej);lastFlushError=(e&&e.message)||'sync error';
     // a slow/timed-out/offline save is transient: keep the change queued, retry quietly, and show a calm "Saving…" —
     // never the alarming "save timeout" banner (the data is safe on the phone and the retry lands it).
     const _transient=/timeout|failed to fetch|networkerror|network error|load failed|fetch|aborted/i.test(lastFlushError);
     st.err=_transient?'':lastFlushError;st.retrying=_transient;log('flush error',e);}
-  finally{flushing=false;paint();if(Object.keys(queue).length){if(lastFlushError)setTimeout(flush,4000);else schedule();}}}
+  finally{flushing=false;st.flushing=false;paint();if(Object.keys(queue).length){if(lastFlushError)setTimeout(flush,4000);else schedule();}}}
 // Save right now and report the TRUE outcome, so a caller (e.g. the schedule editor) can show a real result
 // instead of an optimistic "saved". Resolves {ok, rejected:[{coll,id,absent?}]}: ok=false when the server
 // refused any row we just sent (no permission, or a concurrent edit / stale revision) or the save errored.
-window.EX_saveNow=async function(){if(!REAL)return {ok:true,rejected:[]};
+// opts.keys: [[coll,id],…] — the records this save is about. The result then reports on exactly those:
+//   ok        — every one of them is stored on the server (sent, accepted, nothing left waiting)
+//   queued    — not sent yet (offline / not connected); kept on the phone (stored=false means storage is full and it
+//               is only in memory — the app must warn and must not reload)
+//   transient — the server could not be reached in time; still kept and retried automatically
+//   rejected  — the server refused it (no permission, or another phone changed the same day first)
+window.EX_saveNow=async function(opts){opts=opts||{};if(!REAL)return {ok:true,rejected:[]};
   try{if(window.EX_afterSave)window.EX_afterSave();}catch(e){}
-  // offline or not yet connected: the change is safely queued and will sync later; if it is then refused, the
-  // background 'ex-rejected' path tells the person at that point. so report "queued OK" rather than a false error.
-  if(!ready||!st.online)return {ok:true,rejected:[],queued:true};
-  const collected=[];let hadError=false;suppressRejectToast=true;
-  try{clearTimeout(timer);await flush();collected.push(...lastReject);if(lastFlushError)hadError=true;
-    let guard=0;while(Object.keys(queue).length&&guard++<3){await new Promise(r=>setTimeout(r,250));await flush();collected.push(...lastReject);if(lastFlushError)hadError=true;}
-  }catch(e){hadError=true;}finally{suppressRejectToast=false;}
-  const seen={},rejected=[];collected.forEach(x=>{const k=x.coll+'\u0001'+x.id;if(!seen[k]){seen[k]=1;rejected.push(x);}});
-  return {ok:!hadError&&rejected.length===0,rejected};};
+  const mine=(opts.keys||[]).map(k=>k[0]+'\u0001'+k[1]);
+  const left=()=>mine.length?mine.filter(k=>queue[k]):Object.keys(queue);
+  if(!ready||!st.online)return {ok:false,queued:true,stored:st.qStored!==false,rejected:[],pending:left()};
+  const collected=[];let hadError=false,errMsg='';suppressRejectToast=true;
+  const work=(async()=>{try{clearTimeout(timer);await flush();collected.push(...lastReject);if(lastFlushError){hadError=true;errMsg=lastFlushError;}
+    let guard=0;while(left().length&&guard++<3){await new Promise(r=>setTimeout(r,300));await flush();collected.push(...lastReject);if(lastFlushError){hadError=true;errMsg=lastFlushError;}}
+  }catch(e){hadError=true;errMsg=(e&&e.message)||'error';}})();
+  let timedOut=false;await Promise.race([work,new Promise(r=>setTimeout(()=>{timedOut=true;r();},opts.waitMs||15000))]);
+  suppressRejectToast=false;
+  const seen={},rejected=[];collected.forEach(x=>{const k=x.coll+'\u0001'+x.id;if(seen[k])return;if(mine.length&&!mine.includes(k))return;seen[k]=1;rejected.push(x);});
+  const pending=left();
+  const transient=timedOut||(hadError&&/timeout|failed to fetch|networkerror|network error|load failed|fetch|aborted/i.test(errMsg));
+  return {ok:!rejected.length&&!pending.length&&!(hadError&&!mine.length),rejected,pending,transient,timedOut,error:hadError?errMsg:'',stored:st.qStored!==false};};
 // take the server's merged version of what we just saved (it may include another phone's changes)
 function adopt(rows){if(!Array.isArray(rows))return;let changed=false;rows.forEach(r=>{const key=r.coll;liveAt[r.coll+'\u0001'+r.id]=Date.now();if(queue[r.coll+'\u0001'+r.id])return;const j=r.deleted?null:canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));
     if(r.deleted){if(snap[key]&&r.id in snap[key]){applyRows([r],{replace:false});delete snap[key][r.id];changed=true;}return;}
@@ -180,7 +214,7 @@ function adopt(rows){if(!Array.isArray(rows))return;let changed=false;rows.forEa
   if(changed){localSave();bump();}}
 function liveRecord(coll,id){const v=D[coll];if(Array.isArray(v))return v.find(x=>x&&x.id===id)||null;return v&&typeof v==='object'?v[id]||null:null;}
 function stripEmp(x){const r=Object.assign({},x);EMP_STRIP.forEach(f=>delete r[f]);r.authEmail=emailFor(x);return r;}
-function localSave(){try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){}}
+function localSave(){try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){}if(Object.keys(queue).length&&st.qStored===false)saveQ();}
 
 // ---------- pull ----------
 async function pullAll(){const rows=[];let from=0;const PAGE=1000;
@@ -232,7 +266,7 @@ function bump(){clearTimeout(renderT);renderT=setTimeout(()=>{const a=document.a
 
 // ---------- status pill ----------
 function paint(){let el=document.getElementById('exSync');if(!el){el=document.createElement('div');el.id='exSync';el.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(64px + env(safe-area-inset-bottom));z-index:900;font-size:12px;padding:5px 11px;border-radius:99px;background:#1F1E2A;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.2);display:none;pointer-events:none';document.body.appendChild(el);}
-  const n=Object.keys(queue).length;let txt='';if(!REAL)txt='';else if(!st.online)txt='📵 '+(typeof t==='function'?t('Offline — saved on this phone'):'Offline')+(n?' ('+n+')':'');else if(st.err)txt='⚠ '+st.err;else if(n&&(flushing||st.retrying))txt='↑ '+(typeof t==='function'?t('Saving…'):'Saving…');
+  const n=Object.keys(queue).length;let txt='';if(!REAL)txt='';else if(st.qLost)txt='⚠ '+(typeof t==='function'?t('Phone storage is full — keep the app open until this finishes sending'):'Phone storage is full — keep the app open until this finishes sending')+(n?' ('+n+')':'');else if(!st.online)txt='📵 '+(typeof t==='function'?t('Offline — saved on this phone'):'Offline')+(n?' ('+n+')':'');else if(st.err)txt='⚠ '+st.err;else if(n&&(flushing||st.retrying))txt='↑ '+(typeof t==='function'?t('Saving…'):'Saving…');
   el.textContent=txt;el.style.display=txt?'block':'none';}
 window.addEventListener('online',()=>{st.online=true;paint();flush();catchUp();});window.addEventListener('offline',()=>{st.online=false;paint();});
 
