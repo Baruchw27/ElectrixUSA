@@ -3925,8 +3925,8 @@ function puPhoto(inp){const f=inp.files&&inp.files[0];if(!f)return;shrink(f,d=>{
      clearly reported — never a false "saved". */
 const STOCKQ_KEY=(typeof KEY!=='undefined'?KEY:'electrix_v29')+'__stockq';
 const stockOutcomes={};
-function stockQ(){try{return JSON.parse(localStorage.getItem(STOCKQ_KEY)||'[]');}catch(e){return [];}}
-function stockQSave(q){try{localStorage.setItem(STOCKQ_KEY,JSON.stringify(q));}catch(e){}}
+function stockQ(){try{return JSON.parse((window.EX_durRead?EX_durRead(STOCKQ_KEY):localStorage.getItem(STOCKQ_KEY))||'[]');}catch(e){return [];}}
+function stockQSave(q){/* unsent stock moves: phone storage + IndexedDB, so a full phone can't lose them */if(window.EX_durPut){EX_durPut(STOCKQ_KEY,JSON.stringify(q));return;}try{localStorage.setItem(STOCKQ_KEY,JSON.stringify(q));}catch(e){}}
 function stockItem(id){return D.stock.find(x=>x.id===id);}
 function stockApplyLocal(moves){moves.forEach(m=>{let s=stockItem(m.id);if(!s){s={id:m.id,name:m.name||m.id,unit:m.unit||'pc',qty:0,min:0};D.stock.push(s);}m._pre=(+s.qty||0);if('set' in m)s.qty=Math.max(0,+m.set||0);else s.qty=Math.max(0,(+s.qty||0)+(+m.delta||0));});}
 function stockRevert(moves){moves.forEach(m=>{const s=stockItem(m.id);if(!s)return;if('_pre' in m)s.qty=Math.max(0,+m._pre||0);else if('delta' in m)s.qty=Math.max(0,(+s.qty||0)-(+m.delta||0));});}
