@@ -39,6 +39,15 @@ async def run():
             net('ok'); await A.evaluate("window.dispatchEvent(new Event('online'))"); await settle(A,20000); await A.wait_for_timeout(1500)
             row=[r for r in srv('/__records?coll=punches') if r['id']==pid2]
             check('… signal back: clock-in reaches the server with its selfie as a file',bool(row) and str(row[0]['data'].get('selfie','')).startswith('http'),row[:1])
+            # weak signal: the selfie upload keeps failing — the clock-in itself must still reach the server on time
+            urllib.request.urlopen(BASE+'/__uploadfail?on=1')
+            pid3=await A.evaluate(f"(()=>{{const id=nid('p');D.punches.push({{id,who:me().id,site:'t32',in:Date.now(),selfie:'{FAKE_JPEG}'}});save();return id}})()")
+            await A.wait_for_timeout(5000)
+            row=[r for r in srv('/__records?coll=punches') if r['id']==pid3]
+            check('selfie upload failing: the clock-in still reaches the server right away (so it is not "late")',bool(row) and not row[0]['data'].get('pending'),row[:1])
+            urllib.request.urlopen(BASE+'/__uploadfail?on=0'); await A.evaluate("window.dispatchEvent(new Event('online'))"); await settle(A,20000); await A.wait_for_timeout(1500)
+            row=[r for r in srv('/__records?coll=punches') if r['id']==pid3]
+            check('… and the selfie follows once uploads work again',bool(row) and str(row[0]['data'].get('selfie','')).startswith('http'),row[:1])
             # a reload after all this: still fine, history window holds
             await A.reload(); await A.wait_for_timeout(1200); await until(A,"EX_ready&&EX_ready()",20000)
             ids=await A.evaluate("D.punches.map(x=>x.id)")

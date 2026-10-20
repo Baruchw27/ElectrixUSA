@@ -96,6 +96,8 @@ http.createServer(async (req,res)=>{
     return send(res,201,{});}
   if(p==='/realtime'){const em=tokens[u.searchParams.get('token')];res.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache','Access-Control-Allow-Origin':'*'});res.write(': ok\n\n');const c={res,email:em};clients.push(c);req.on('close',()=>{clients=clients.filter(x=>x!==c);});return;}
   // ---- storage
+  if(p==='/__uploadfail'){global.UPFAIL=u.searchParams.get('on')==='1';return send(res,200,{UPFAIL:global.UPFAIL});}
+  if(p.startsWith('/storage/upload/')&&global.UPFAIL){return send(res,500,{error:'storage down (test)'});}
   if(p.startsWith('/storage/upload/')){const em=who(req);if(!isMember(em))return send(res,403,{error:'not allowed'});const k=p.slice('/storage/upload/'.length);const chunks=[];req.on('data',c=>chunks.push(c));req.on('end',()=>{blobs[k]={type:req.headers['content-type'],buf:Buffer.concat(chunks)};send(res,200,{Key:k});});return;}
   if(p==='/__private'){PRIVATE=u.searchParams.get('on')==='1';return send(res,200,{PRIVATE});}
   if(p.startsWith('/storage/v1/object/public/files/')){stats.pub=(stats.pub||0)+1;if(PRIVATE)return send(res,400,{error:'Bucket not found'});const k=p.slice('/storage/v1/object/public/files/'.length);const b=blobs[k];if(!b)return send(res,404,{});res.writeHead(200,{'Content-Type':b.type,'Access-Control-Allow-Origin':'*'});return res.end(b.buf);}
