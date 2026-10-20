@@ -14,6 +14,8 @@
 */
 (function(){
 if(typeof D==='undefined'||typeof effectiveAsgs!=='function')return; // main app not loaded (should not happen)
+// a phone that got this file with an older sync.js (slow network, partly updated cache) reloads once to get both new
+if(window.EX_SYNC_V!==21){try{if(!sessionStorage.getItem('sch_vfix')){sessionStorage.setItem('sch_vfix','1');location.reload();return;}}catch(e){}}
 
 // ───────── small helpers ─────────
 const T=s=>(typeof t==='function'?t(s):s);
@@ -23,7 +25,7 @@ const addDays=(k,n)=>{const d=new Date(k+'T12:00');d.setDate(d.getDate()+n);retu
 const todayK=()=>dkey(new Date());
 const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
 function crewDayKey(c,k){return c+'|'+k;}
-function realAsgs(list){return (list||[]).filter(a=>a&&a.site&&a.start!=null).map(a=>({site:a.site,start:a.start,end:a.end==null?null:a.end,note:a.note||''}));}
+function realAsgs(list){return (list||[]).filter(a=>a&&a.site).map(a=>({site:a.site,start:a.start,end:a.end==null?null:a.end,note:a.note||''}));}
 function sig(list){return JSON.stringify(realAsgs(list).map(a=>[a.site,a.start,a.end]).sort());}
 
 // the confirm dialog can show several buttons (e.g. Replace / Only empty days / Cancel)
@@ -37,10 +39,13 @@ function choose(title,html,choices){ask(title,html+'<div style="display:flex;fle
   document.querySelectorAll('#askBody [data-ch]').forEach(b=>{b.onclick=()=>{hide('m-ask');const c=choices[+b.dataset.ch];c&&c.fn&&c.fn();};});}
 
 // ───────── draft safety net (survives a reload / the app being closed mid-save) ─────────
-const DRAFT='ex_sched_draft';
-function draftPut(d){try{localStorage.setItem(DRAFT,JSON.stringify(Object.assign({at:Date.now(),me:(me()||{}).id},d)));}catch(e){}}
-function draftGet(){try{const d=JSON.parse(localStorage.getItem(DRAFT)||'null');return d&&d.me===(me()||{}).id?d:null;}catch(e){return null;}}
-function draftClear(){try{localStorage.removeItem(DRAFT);}catch(e){}}
+const DRAFT='ex_sched_drafts';
+function draftsAll(){try{const d=JSON.parse(localStorage.getItem(DRAFT)||'{}');return d&&typeof d==='object'&&!Array.isArray(d)?d:{};}catch(e){return {};}}
+function draftsWrite(all){try{localStorage.setItem(DRAFT,JSON.stringify(all));}catch(e){}}
+function draftPut(d){const all=draftsAll();all[crewDayKey(d.crew,d.day)]=Object.assign({at:Date.now(),me:(me()||{}).id},d);draftsWrite(all);}
+function draftList(){const id=(me()||{}).id;return Object.keys(draftsAll()).map(k=>Object.assign({key:k},draftsAll()[k])).filter(d=>d.me===id);}
+function draftGet(){return draftList()[0]||null;}
+function draftClear(key){const all=draftsAll();if(key)delete all[key];draftsWrite(all);}
 window.EX_schedDraft=draftGet;
 
 // ───────── the one save path every schedule change goes through ─────────
@@ -50,8 +55,8 @@ let saving=false;
 // One save at a time. A repeat tap of the SAME save while it is running is ignored (no double booking); a DIFFERENT
 // change made meanwhile waits for the running one and then goes ahead — it is never silently dropped.
 let running=null,runningSig='';
-async function commit(keys,apply,o){const sg=JSON.stringify(keys.slice().sort());
-  if(saving&&sg===runningSig)return 'busy';
+async function commit(keys,apply,o){const sg=(o&&o.op)||JSON.stringify(keys.slice().sort());
+  if(saving&&sg===runningSig){toast(T('Already saving — one moment…'));return 'busy';}
   while(saving&&running){try{await running;}catch(e){}}
   runningSig=sg;let done;running=new Promise(r=>done=r);
   try{return await commit1(keys,apply,o);}finally{done();running=null;runningSig='';}}
@@ -60,9 +65,10 @@ async function commit1(keys,apply,o){o=o||{};saving=true;setBusy(o.btn,true);
     apply();save();
     const res=window.EX_saveNow?await window.EX_saveNow({keys:keys.map(SKEY),waitMs:15000}):{ok:true,rejected:[]};
     lastResult=res;
+    if(!res||res.v!==21){toast('⏳ '+T('Sent — reopen the app to confirm it was saved'),'blue');return 'pending';} // older sync code on this phone: never claim "Saved"
     // anything for these days that was refused earlier is settled by this newer save
     if(res.ok||res.queued||res.transient||(res.pending&&res.pending.length&&!(res.rejected||[]).length))keys.forEach(k=>{try{window.EX_dropReject&&EX_dropReject('sched',k);}catch(e){}});
-    if(res.ok){draftClear();if(!o.quiet)toast('✓ '+(o.okMsg||T('Saved')),'green');return 'ok';}
+    if(res.ok){keys.forEach(k=>draftClear(k));if(!o.quiet)toast('✓ '+(o.okMsg||T('Saved')),'green');return 'ok';}
     if(res.rejected&&res.rejected.length){
       const stale=res.rejected.some(x=>x.stale);
       if(stale&&window.EX_catchUp){try{await window.EX_catchUp();}catch(e){}} // show the version that won
@@ -70,12 +76,12 @@ async function commit1(keys,apply,o){o=o||{};saving=true;setBusy(o.btn,true);
       o.onReject?o.onReject(why,res):alertBox(T('Not saved'),why+' '+T('Nothing you entered was lost — you can try again.'));
       return 'rejected';}
     if(res.queued){
-      if(res.stored===false){draftClear();warnStorage();return 'queued';}
-      draftClear();toast('⏳ '+T('Saved on this phone — it will be sent automatically when you are back online'),'blue');return 'queued';}
+      if(res.stored===false){warnStorage();return 'queued';}  // keep the draft: the waiting list is only in memory
+      keys.forEach(k=>draftClear(k));toast('⏳ '+T('Saved on this phone — it will be sent automatically when you are back online'),'blue');return 'queued';}
     if(res.error&&!res.transient){
       alertBox(T('Not saved yet'),T('The server answered with an error')+' ('+res.error+'). '+T('Your change is kept on this phone and will be retried automatically.'));return 'error';}
     if(res.transient||(res.pending&&res.pending.length)){
-      draftClear();toast('⏳ '+T('Still sending — kept on this phone and it will finish automatically. Keep the app open for a moment.'),'blue');return 'pending';}
+      if(res.stored!==false)keys.forEach(k=>draftClear(k));toast('⏳ '+T('Still sending — kept on this phone and it will finish automatically. Keep the app open for a moment.'),'blue');return 'pending';}
     alertBox(T('Not saved yet'),T('The server answered with an error')+(res.error?' ('+res.error+')':'')+'. '+T('Your change is kept on this phone and will be retried automatically.'));
     return 'error';
   }finally{saving=false;setBusy(o.btn,false);try{renderSched();}catch(e){}}}
@@ -114,10 +120,14 @@ slotMovePrompt=function(){const asg=slotOneoffs.filter(a=>a.site&&a.start!=null)
   if(!asg.length){toast(T('No one-off job on this day to move. To change an ongoing job, use “Change / move” above; to change the address, pick a different job site above.'));return;}
   const crew=schedCrew,day=slotDay;
   askPrompt(T('Move this booking to another date'),[{label:T('New date'),value:day,type:'date'}],([dd])=>{if(!dd||dd===day)return;const to=crewDayKey(crew,dd),from=crewDayKey(crew,day);
-    const doMove=()=>{const patch=clone(slotPatch),hasRule=!!ruleOn(crew,day);
-      commit([to,from],()=>{writeSlotRow(to,asg,rowRev(to));const patchActive=patch.cancel.length||Object.keys(patch.replace).length;
+    const doMove=async()=>{const patch=clone(slotPatch),hasRule=!!ruleOn(crew,day);
+      // two steps on purpose: if the new date is refused (someone else changed it), the old date is left untouched
+      const r1=await commit([to],()=>{writeSlotRow(to,asg,rowRev(to));},{quiet:true,onReject:why=>inEditorError(why+' '+T('The booking was NOT moved.'))});
+      if(r1==='rejected'||r1==='busy'||r1==='error')return;
+      const r2=await commit([from],()=>{const patchActive=patch.cancel.length||Object.keys(patch.replace).length;
         if(hasRule||patchActive)D.sched[from]={assignments:[],cancel:patch.cancel,replace:patch.replace,patch:true,rev:rowRev(from)+1,by:me().id,at:Date.now()};else delete D.sched[from];},
-        {okMsg:T('Moved to')+' '+fmtDay(dd),onReject:why=>inEditorError(why)}).then(r=>{if(r!=='rejected'&&r!=='busy')hide('m-slot');});};
+        {okMsg:T('Moved to')+' '+fmtDay(dd),onReject:why=>inEditorError(why+' '+T('The booking is now on BOTH dates — remove it from this day.'))});
+      if(r2!=='rejected'&&r2!=='busy')hide('m-slot');};
     if(slotHasAny(to))askConfirm(T('That date already has a booking for this crew. Replace it with this one?'),doMove,T('Replace'));else doMove();});};
 
 // ongoing ("until reassigned") jobs — previously saved with no confirmation
@@ -126,7 +136,8 @@ slotAddOngoing=function(){const wd=crewWorkday(schedCrew);const site=document.ge
   const write=()=>{const rid=Date.now().toString(36);const keys=['ONG:'+crew+':'+rid];if(cur)keys.push('ONG:'+crew+':'+cur.ruleId);
     commit(keys,()=>{if(cur){D.sched['ONG:'+crew+':'+cur.ruleId]=Object.assign({},D.sched['ONG:'+crew+':'+cur.ruleId],{to:addDays(day,-1),rev:(cur.rev||0)+1,by:me().id,at:Date.now()});}
       D.sched['ONG:'+crew+':'+rid]={site,start:st,end:en,workdays:wd.workdays,from:day,to:null,rev:1,by:me().id,at:Date.now()};},
-      {okMsg:T('Ongoing set — repeats every working day'),onReject:why=>inEditorError(why)}).then(()=>{slotAddMode=null;try{renderSlotEditor();}catch(e){}});};
+      {op:'ong:'+crew,btn:byLabel('#slotBody','Set ongoing'),okMsg:T('Ongoing set — repeats every working day'),onReject:why=>inEditorError(why)}).then(r=>{if(r==='rejected'||r==='busy')return;slotAddMode=null;try{renderSlotEditor();}catch(e){}});};
+function byLabel(scope,txt){return [...document.querySelectorAll(scope+' button')].find(b=>b.textContent.trim().indexOf(T(txt))>=0)||null;}
   if(cur)askConfirm(T('This crew already has an ongoing job')+' ('+siteName(cur.site)+'). '+T('Replace it from this date forward?'),write,T('Replace'));else write();};
 slotEndOngoing=function(){const rule=ruleOn(schedCrew,slotDay);if(!rule)return;const crew=schedCrew,day=slotDay;const rk='ONG:'+crew+':'+rule.ruleId;
   askConfirm(T('End this ongoing job?')+' '+T('It stops repeating from today. Past days stay as they were.'),()=>{
@@ -160,15 +171,25 @@ clearLoanFor=function(empId,k){if(!empId)return;const key=loanKey(empId,k);
 
 // ───────── copy a day ─────────
 // plan what copying `src` onto each target day would do, crew by crew (and individual moves)
+function dayFlags(key){const r=D.sched[key];return !!(r&&((r.cancel&&r.cancel.length)||(r.replace&&Object.keys(r.replace).length)));}
+// plan what copying `src` onto each target day would do, crew by crew (and individual moves)
+// • a target counts as booked if it has ANY job (even one with an unreadable time) or the ongoing job is changed/off there
+// • when source and target are covered by the same ongoing job, only the one-off jobs are copied (the ongoing job stays ongoing)
 function planCopy(src,targets,crewIds,withLoans,srcOver){const out=[];srcOver=srcOver||{};
   targets.forEach(dt=>{if(dt===src)return;
-    crewIds.forEach(c=>{const s=realAsgs(srcOver[c]||effectiveAsgs(c,src));if(!s.length)return;const cur=realAsgs(effectiveAsgs(c,dt));
-      out.push({key:crewDayKey(c,dt),date:dt,crew:c,asg:s,status:!cur.length?'new':sig(cur)===sig(s)?'same':'conflict',label:nameOf(c)});});
+    crewIds.forEach(c=>{const key=crewDayKey(c,dt);const all=srcOver[c]||effectiveAsgs(c,src);
+      const sr=ruleOn(c,src),tr=ruleOn(c,dt);const sameRule=!srcOver[c]&&sr&&tr&&sr.ruleId===tr.ruleId&&!dayFlags(crewDayKey(c,src));
+      if(sameRule){const one=realAsgs(all.filter(a=>!a.ongoing&&!a.exception));if(!one.length)return;
+        const curOne=realAsgs(effectiveAsgs(c,dt).filter(a=>!a.ongoing&&!a.exception));const flags=dayFlags(key);
+        out.push({key,date:dt,crew:c,asg:one,mode:'patch',status:!curOne.length&&!flags?'new':(!flags&&sig(curOne)===sig(one))?'same':'conflict',label:nameOf(c)});return;}
+      const s=realAsgs(all);if(!s.length)return;const cur=realAsgs(effectiveAsgs(c,dt));const flags=dayFlags(key);
+      out.push({key,date:dt,crew:c,asg:s,mode:'full',status:!cur.length&&!flags?'new':(!flags&&sig(cur)===sig(s))?'same':'conflict',label:nameOf(c)});});
     if(withLoans){const seen={};loansForDay(src).forEach(x=>{if(seen[x.emp])return;seen[x.emp]=1;const s=realAsgs(loansFor(x.emp,src));const cur=realAsgs(loansFor(x.emp,dt));
       out.push({key:loanKey(x.emp,dt),date:dt,emp:x.emp,asg:s,status:!cur.length?'new':sig(cur)===sig(s)?'same':'conflict',label:nameOf(x.emp)});});}});
   return out;}
 function writePlanItem(p){const asg=p.asg.map(a=>({id:newAsgId(),site:a.site,start:a.start,end:a.end,note:a.note||''}));
   if(p.emp)D.sched[p.key]={emp:p.emp,assignments:asg,rev:rowRev(p.key)+1,by:me().id,at:Date.now()};
+  else if(p.mode==='patch')D.sched[p.key]={assignments:asg,cancel:[],replace:{},patch:true,rev:rowRev(p.key)+1,by:me().id,at:Date.now()};
   else writeSlotRow(p.key,asg,rowRev(p.key));}
 // run a copy: warn before replacing anything that is already booked, then save and confirm with the server
 function runCopy(src,targets,crewIds,withLoans,extra){extra=extra||{};
@@ -178,7 +199,7 @@ function runCopy(src,targets,crewIds,withLoans,extra){extra=extra||{};
   const go=items=>{const keys=items.map(p=>p.key).concat(extra.keys||[]);const days=[...new Set(items.map(p=>p.date))];
     if(!keys.length){toast(T('Nothing to change — every day was already booked'));return;}
     commit(keys,()=>{if(extra.apply)extra.apply();items.forEach(writePlanItem);},
-      {okMsg:T('Copied')+' '+fmtDay(src)+' → '+days.map(fmtDay).join(', '),onReject:why=>alertBox(T('Not saved'),why+' '+T('Nothing was changed on the other days. Try again.'))}).then(r=>{if(r!=='rejected'&&r!=='busy'&&extra.after)extra.after();});};
+      {okMsg:T('Copied')+' '+fmtDay(src)+' → '+days.map(fmtDay).join(', '),onReject:(why,res)=>{const bad=(res.rejected||[]).map(x=>rowLabel(x.id));alertBox(T('Some days were not saved'),why+'\n\n'+T('Not saved')+': '+bad.join('; ')+'.\n'+T('Every other day was saved. The refused ones are listed on the Schedule screen with “Use my version”.'));}}).then(r=>{if(r!=='rejected'&&r!=='busy'&&extra.after)extra.after();});};
   if(!clash.length)return go(todo);
   const list=clash.map(p=>'<li>'+esc(fmtDay(p.date))+' · '+esc(p.label)+': '+esc(realAsgs(p.emp?loansFor(p.emp,p.date):effectiveAsgs(p.crew,p.date)).map(a=>siteName(a.site)).join(', '))+'</li>').join('');
   const empty=todo.filter(p=>p.status==='new');
@@ -240,27 +261,29 @@ function banners(){const pg=document.getElementById('pg-sched');if(!pg)return;le
   if(!b){b=document.createElement('div');b.id='schBanner';const sw=document.getElementById('schedSwitch');pg.insertBefore(b,sw?sw.nextSibling:pg.firstChild);}
   if(!schedCanEdit()){b.innerHTML='';return;}
   let html='';
-  const rej=(window.EX_rejects?EX_rejects():[]).filter(x=>x.coll==='sched'&&(x.by===((window.EX_SYNC||{}).user||x.by)));
-  rej.forEach((x,i)=>{const lbl=rowLabel(x.id);html+='<div class="card" style="padding:10px 12px;margin-bottom:8px;border-left:4px solid #c0392b"><div style="font-weight:700;font-size:13.5px">⚠ '+esc(T('Not saved'))+': '+esc(lbl)+'</div><div style="font-size:12.5px;color:var(--g4);margin:2px 0 8px">'+esc(x.reason==='stale'?T('Someone else changed this day first. Your version is kept here.'):T('The server refused this change.'))+'</div><div class="sc-acts" style="margin:0"><button type="button" onclick="EX_reapply('+i+')">'+esc(T('Use my version'))+'</button><button type="button" onclick="EX_dismissRej('+i+')">'+esc(T('Keep the saved one'))+'</button></div></div>';});
+  const rej=(window.EX_rejects?EX_rejects():[]).filter(x=>x.coll==='sched');
+  rej.forEach(x=>{const lbl=rowLabel(x.id);const q=esc(JSON.stringify(x.id));html+='<div class="card" style="padding:10px 12px;margin-bottom:8px;border-left:4px solid #c0392b"><div style="font-weight:700;font-size:13.5px">⚠ '+esc(T('Not saved'))+': '+esc(lbl)+'</div><div style="font-size:12.5px;color:var(--g4);margin:2px 0 8px">'+esc(x.reason==='stale'?T('Someone else changed this day first. Your version is kept here.'):T('The server refused this change.'))+'</div><div class="sc-acts" style="margin:0"><button type="button" onclick="EX_reapply('+q+')">'+esc(T('Use my version'))+'</button><button type="button" onclick="EX_dismissRej('+q+')">'+esc(T('Keep the saved one'))+'</button></div></div>';});
   const waiting=window.EX_queuedIn?EX_queuedIn('sched').length:0;
   if(waiting)html+='<div class="card" style="padding:9px 12px;margin-bottom:8px;border-left:4px solid var(--amber);font-size:13px">⏳ '+waiting+' '+esc(T(waiting===1?'schedule change waiting to send':'schedule changes waiting to send'))+(((window.EX_SYNC||{}).online===false)?' — '+esc(T('you are offline')):'')+'</div>';
   // a draft exists only while a save has not finished. It is confirmed (and forgotten) once this phone has the
   // server's copy and that copy matches; until then it is offered back so nothing typed is lost.
-  let dr=draftGet();if(dr&&(Date.now()-dr.at>=3*864e5||dr.kind!=='day')){draftClear();dr=null;}
-  if(dr&&!saving){const ready=!!(window.EX_ready&&EX_ready());const q=window.EX_queued&&EX_queued('sched',crewDayKey(dr.crew,dr.day));
-    if(!draftDiffers(dr)&&ready&&!q){draftClear();dr=null;}}
-  if(dr&&!saving)html+='<div class="card" style="padding:10px 12px;margin-bottom:8px;border-left:4px solid var(--blue)"><div style="font-weight:700;font-size:13.5px">'+esc(T('Unsaved schedule change'))+': '+esc(nameOf(dr.crew)+' — '+fmtDay(dr.day))+'</div><div class="sc-acts" style="margin:8px 0 0"><button type="button" onclick="EX_restoreDraft()">'+esc(T('Open it'))+'</button><button type="button" onclick="EX_dropDraft()">'+esc(T('Discard'))+'</button></div></div>';
+  const ready=!!(window.EX_ready&&EX_ready());
+  draftList().forEach(dr=>{if(Date.now()-dr.at>=3*864e5||dr.kind!=='day'){draftClear(dr.key);return;}
+    if(saving)return;const q=window.EX_queued&&EX_queued('sched',dr.key);
+    if(!draftDiffers(dr)&&ready&&!q){draftClear(dr.key);return;}
+    const k=esc(JSON.stringify(dr.key));
+    html+='<div class="card" style="padding:10px 12px;margin-bottom:8px;border-left:4px solid var(--blue)"><div style="font-weight:700;font-size:13.5px">'+esc(T('Unsaved schedule change'))+': '+esc(nameOf(dr.crew)+' — '+fmtDay(dr.day))+'</div><div class="sc-acts" style="margin:8px 0 0"><button type="button" onclick="EX_restoreDraft('+k+')">'+esc(T('Open it'))+'</button><button type="button" onclick="EX_dropDraft('+k+')">'+esc(T('Discard'))+'</button></div></div>';});
   b.innerHTML=html;}
 function rowLabel(id){if(id.slice(0,2)==='L:'){const r=id.slice(2);const i=r.lastIndexOf('|');return nameOf(r.slice(0,i))+' — '+fmtDay(r.slice(i+1));}
   if(id.slice(0,4)==='ONG:'){const p=id.split(':');return nameOf(p[1])+' — '+T('ongoing job');}const i=id.lastIndexOf('|');return i>0?nameOf(id.slice(0,i))+' — '+fmtDay(id.slice(i+1)):id;}
 function draftDiffers(dr){if(dr.kind!=='day')return false;const r=D.sched[crewDayKey(dr.crew,dr.day)];const want=realAsgs(dr.oneoffs);return sig(r?r.assignments||[]:[])!==sig(want);}
-window.EX_restoreDraft=function(){const dr=draftGet();if(!dr)return;schedCrew=dr.crew;slotDay=dr.day;slotBaseRev=dr.baseRev||0;slotOneoffs=clone(dr.oneoffs)||[];slotPatch=clone(dr.patch)||{cancel:[],replace:{}};slotAddMode=null;
+window.EX_restoreDraft=function(key){const dr=draftList().find(d=>d.key===key)||draftGet();if(!dr)return;schedCrew=dr.crew;slotDay=dr.day;slotBaseRev=dr.baseRev||0;slotOneoffs=clone(dr.oneoffs)||[];slotPatch=clone(dr.patch)||{cancel:[],replace:{}};slotAddMode=null;
   document.getElementById('slotTitle').textContent=nameOf(dr.crew)+' — '+fmtDay(dr.day);renderSlotEditor();show('m-slot');};
-window.EX_dropDraft=function(){draftClear();banners();};
-window.EX_reapply=async function(i){const x=EX_rejects().filter(y=>y.coll==='sched')[i];if(!x)return;
+window.EX_dropDraft=function(key){draftClear(key);banners();};
+window.EX_reapply=async function(id){const x=EX_rejects().find(y=>y.coll==='sched'&&y.id===id);if(!x)return;
   if(window.EX_catchUp){try{await EX_catchUp();}catch(e){}} // build on the newest saved version so it is accepted
   commit([x.id],()=>{if(x.del||!x.data)delete D.sched[x.id];else D.sched[x.id]=Object.assign({},x.data,{rev:rowRev(x.id)+1,by:me().id,at:Date.now()});},{okMsg:T('Saved')}).then(r=>{if(r==='ok'||r==='queued'||r==='pending')EX_dropReject('sched',x.id);banners();});};
-window.EX_dismissRej=function(i){const x=EX_rejects().filter(y=>y.coll==='sched')[i];if(x)EX_dropReject('sched',x.id);banners();};
+window.EX_dismissRej=function(id){EX_dropReject('sched',id);banners();};
 window.addEventListener('ex-rejected',e=>{const rows=(e.detail&&e.detail.rows)||[];if(rows.some(r=>r.coll==='sched')){try{if(document.getElementById('pg-sched'))banners();}catch(x){}}});
 
 // keep the job site you picked when you switch between Full day / Specific hours / Until reassigned
