@@ -1,0 +1,27 @@
+{
+ "app": "/tmp/claude-0/-home-claude/a06c9d9d-3aa1-55dc-9524-944a7304869d/scratchpad/reg/prodnew",
+ "pass": 19,
+ "fail": 0,
+ "ok": [
+  "owner account created and signed in",
+  "wrong password refused",
+  "worker signs in",
+  "new job site reaches the worker",
+  "job assigned to the worker reaches the worker",
+  "worker clock-in reaches the office",
+  "job done on the worker \u2192 office sees done",
+  "put-back screen: 20 in on the server",
+  "worker phone shows 20",
+  "pick-up screen: 20 \u2212 5 = 15 on the server",
+  "office phone shows 15",
+  "history has the put-back and the pick-up",
+  "offline: nothing reached the server yet",
+  "back online: pick-up applied once (12)",
+  "back online: clock-in reached the office",
+  "rename reaches the worker",
+  "count still 12 everywhere after the rename",
+  "sign-out leaves no business data on the phone (only the item/site name list kept for the next sign-in, counts zeroed \u2014 same as before)",
+  "no page errors []"
+ ],
+ "bad": []
+}

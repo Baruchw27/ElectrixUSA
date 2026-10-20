@@ -108,7 +108,8 @@
     'Gotham', 'Dals', 'Wac', 'Nora', 'Halco', 'TCP', 'Westinghouse', 'Hampton Bay', 'Defiant', 'Woods', 'Coleman Cable', 'Utilitech', 'Enerlites',
     'Mircom', 'System Sensor', 'Lutron Caseta', 'Maestro', 'Decora'];
   const BRAND_ALIAS = { 'Square-D': 'Square D', 'Cutler-Hammer': 'Eaton', 'Lutron Caseta': 'Lutron', 'Maestro': 'Lutron', 'Decora': 'Leviton', 'Coleman Cable': 'Southwire' };
-  function canonBrand(b) { return BRAND_ALIAS[b] || b; }
+  // maker names in their usual spelling, whatever case they come in ("LUTRON", "square d" → Lutron, Square D)
+  function canonBrand(b) { const t = String(b == null ? '' : b).trim(); const hit = BRANDS.find(x => x.toLowerCase() === t.toLowerCase()); const c = hit || t; return BRAND_ALIAS[c] || c; }
 
   // ───────────────────────── text distance ─────────────────────────
   // Plain Levenshtein (with adjacent swaps, Damerau-OSA)

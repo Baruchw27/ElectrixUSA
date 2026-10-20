@@ -1,5 +1,5 @@
 {
- "pass": 67,
+ "pass": 70,
  "fail": 0,
  "ok": [
   "V2 scanner is active on staging",
@@ -38,9 +38,11 @@
   "no name invented in the search box",
   "junk words not offered as a name",
   "maker Eaton, part BR120 read from the label",
-  "clear label \u2192 AI not used",
-  "unsure label \u2192 AI asked",
-  "AI answer NOT backed by the label \u2192 warning, marked \"check it\"",
+  "AI asked once, as label reading",
+  "AI and the label agree \u2192 sure, AI shown first",
+  "AI and the label disagree \u2192 \"check it\", the label reading offered too",
+  "unreadable label: AI part shown, never \"sure\"",
+  "AI switched off \u2192 never called",
   "shows \"Pick the right item\" with both",
   "after picking: barcode belongs only to the chosen item",
   "barcode removed from the wrong item",
@@ -67,6 +69,7 @@
   "after confirming: the item",
   "\"Item without a barcode\", offers the existing Luxrite item",
   "goes to \"how many\" (1 piece), no barcode saved",
+  "production build: no field-test logging, no field-test button",
   "V2 texts translated",
   "no page errors []"
  ],

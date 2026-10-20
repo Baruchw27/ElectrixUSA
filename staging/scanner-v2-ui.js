@@ -23,28 +23,51 @@
     '.v2c b{display:block;font-size:14px}.v2c small{color:#666;font-size:12px}.v2c.top{border-color:#2e9e5b;background:#ecfdf3}' +
     '.v2f{display:grid;grid-template-columns:92px 1fr;gap:5px 8px;align-items:center;margin:6px 0}.v2f label{margin:0;font-size:12px;color:#555}.v2f input{margin:0;padding:8px}' +
     '.v2st{font-size:12px;color:#555;margin:2px 0 6px}.v2warn{background:#fff6e5;border:1px solid #f0c36d;border-radius:10px;padding:8px 10px;font-size:13px;margin:6px 0}' +
-    '.v2nocode{position:absolute;right:10px;bottom:10px;z-index:3;border:0;border-radius:18px;background:rgba(0,0,0,.6);color:#fff;font-size:13px;padding:8px 12px}.v2ft{position:absolute;left:10px;top:10px;z-index:3;background:#6a1b9a;color:#fff;font-size:11px;padding:2px 8px;border-radius:8px}' +
+    '.v2nocode{position:absolute;right:10px;bottom:10px;z-index:3;border:0;border-radius:18px;background:rgba(0,0,0,.6);color:#fff;font-size:13px;padding:8px 12px}.v2ft{position:absolute;left:10px;top:10px;z-index:3;background:#6a1b9a;color:#fff;font-size:12px;padding:5px 10px;border-radius:10px;cursor:pointer}' +
     '.v2tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:8px;background:#eef;color:#334;margin-left:4px}.v2tag.lo{background:#fde8e8;color:#922}.v2tag.hi{background:#e3f6ea;color:#185c34}';
   document.head.appendChild(css);
 
-  // ── FIELD TEST (staging only, EX_CFG.fieldtest): log what real phone cameras read, how fast, and what the person
-  //    confirmed, to the staging table scan_field_log. Never on the live app.
+  // ── FIELD TEST (staging only, EX_CFG.fieldtest): one record per scan in the staging table scan_field_log —
+  //    what the camera read and how fast, what the scanner suggested, what the person confirmed, whether AI was used,
+  //    and whether the person had to correct anything. No names, no location; the phone is recorded only as
+  //    "iPhone iOS 18.1"; a small label photo is kept only when a scan failed or was corrected. Never on the live app.
   const FT = !!(window.EX_CFG && window.EX_CFG.fieldtest);
-  const ftQ = []; let ftBusy = false; const ftSess = Math.random().toString(36).slice(2, 10);
-  function ftLog(ev, o) {
-    if (!FT) return; try {
-      const pc = (scM && scM.pc) || {}; const m = (typeof me === 'function' && me()) || {};
-      ftQ.push(Object.assign({ ev, session: ftSess, emp: m.id || null, device: String(navigator.userAgent || '').slice(0, 180), format: pc.type || null, raw: pc.raw ? String(pc.raw).slice(0, 80) : null, ok: pc.ok == null ? null : !!pc.ok, code_key: pc.key || null, level: pc.level || null, via: scM && scM.via || null }, o || {}));
-      ftFlush();
-    } catch (e) { }
+  const ftQ = []; let ftBusy = false; let ftCount = 0;
+  let ftSess = ''; try { ftSess = localStorage.getItem('ex_ft_sess') || ''; } catch (e) { }
+  if (!ftSess) { ftSess = new Date().toISOString().slice(0, 10) + '-' + Math.random().toString(36).slice(2, 7); try { localStorage.setItem('ex_ft_sess', ftSess); } catch (e) { } }
+  window.v2FtNewSession = function () { ftSess = new Date().toISOString().slice(0, 10) + '-' + Math.random().toString(36).slice(2, 7); ftCount = 0; try { localStorage.setItem('ex_ft_sess', ftSess); } catch (e) { } return ftSess; };
+  window.v2FtSession = () => ftSess;
+  window.EX_ftQueue = ftQ; // (read by the staging tests)
+  function devLabel() { const u = navigator.userAgent || ''; let m;
+    if ((m = u.match(/iPhone OS (\d+)[_.](\d+)/))) return 'iPhone iOS ' + m[1] + '.' + m[2];
+    if ((m = u.match(/iPad.*OS (\d+)[_.](\d+)/))) return 'iPad iOS ' + m[1] + '.' + m[2];
+    if ((m = u.match(/Android (\d+(?:\.\d+)?)/))) return 'Android ' + m[1];
+    return /Mac OS X/.test(u) ? 'Mac' : /Windows/.test(u) ? 'Windows' : /Linux/.test(u) ? 'Linux' : 'other'; }
+  function ftRow(o) { if (!FT) return; try { ftQ.push(Object.assign({ ev: 'scan', session: ftSess, device: devLabel() }, o)); ftFlush(); } catch (e) { } }
+  function ftStart(o) { if (!FT || !scM) return; scM.ft = Object.assign({ scan_id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), t0: Date.now(), ai_used: false }, o || {}); }
+  function ftConfirm(o) { if (!FT || !scM || !scM.ft) return; scM.ft.confirmed = Object.assign(scM.ft.confirmed || {}, o); }
+  function ftEnd(outcome) {
+    if (!FT || !scM || !scM.ft) return; const f = scM.ft; scM.ft = null; const pc = scM.pc || {};
+    const sg = f.sugg || null, cf = f.confirmed || null; const pk = (x) => S.partKey(x || '');
+    const corrected = !!(f.wrong || (sg && cf && sg.item && cf.item && sg.item !== cf.item) ||
+      (sg && cf && sg.part && cf.part && pk(sg.part) !== pk(cf.part)) || (sg && cf && sg.pack && cf.pack && +sg.pack !== +cf.pack));
+    ftRow({ scan_id: f.scan_id, engine: f.engine || null, format: pc.type || null, raw: pc.raw ? String(pc.raw).slice(0, 80) : null, ok: f.ok !== false, code_key: pc.key || null, level: pc.level || null,
+      via: f.via || null, status: f.status || null, ms: f.ms || null, total_ms: Date.now() - f.t0, ai_used: !!f.ai_used, ai_ms: f.ai_ms || null,
+      sugg: sg ? Object.assign({}, sg, f.wrong ? { wrong: true } : {}) : (f.wrong ? { wrong: true } : null), confirmed: cf, corrected,
+      note: outcome + (f.ai_err ? ' · AI: ' + f.ai_err : ''), item: cf && cf.item || null, item_name: cf && cf.name || null, pack: cf && cf.pack || null, units: f.units || null,
+      thumb: (outcome !== 'counted' || corrected || f.ok === false) ? (scM.thumb || null) : null });
+    ftCount++; const b = $('v2ftn'); if (b) b.textContent = ftCount;
   }
   async function ftFlush() {
     if (ftBusy || !ftQ.length || !window.EX_sb || (window.EX_SYNC && window.EX_SYNC.online === false)) return; ftBusy = true;
-    try { const rows = ftQ.splice(0, 20); const r = await window.EX_sb.from('scan_field_log').insert(rows); if (r && r.error) { if (ftQ.length < 200) ftQ.unshift(...rows); } } catch (e) { } finally { ftBusy = false; if (ftQ.length) setTimeout(ftFlush, 4000); }
+    let rows = [];
+    try { rows = ftQ.splice(0, 20); const r = await window.EX_sb.from('scan_field_log').insert(rows); if (r && r.error) throw r.error; rows = []; }
+    catch (e) { if (rows.length && ftQ.length < 300) ftQ.unshift(...rows); } // keep them and try again later
+    finally { ftBusy = false; if (ftQ.length) setTimeout(ftFlush, 4000); }
   }
-  window.EX_ftLog = ftLog;
   { const _res = window.scResume; window.scResume = function () { const r = _res.apply(this, arguments); if (scM) scM.readyAt = Date.now(); return r; }; }
-  { const _sk = window.scSkip; window.scSkip = function () { ftLog('outcome', { status: 'skipped' }); return _sk.apply(this, arguments); }; }
+  { const _sk = window.scSkip; window.scSkip = function () { ftEnd('skipped'); return _sk.apply(this, arguments); }; }
+  { const _cl = window.scanClose; window.scanClose = function () { try { if (scM && scM.ft) ftEnd('closed before finishing'); else if (FT && scM && !scM.pausedCode && scM.readyAt && Date.now() - scM.readyAt > 8000) ftRow({ ok: false, status: 'nothing read', note: 'closed the camera without a read', ms: Date.now() - scM.readyAt, total_ms: Date.now() - scM.readyAt }); } catch (e) { } return _cl.apply(this, arguments); }; }
 
   // ── barcode reader: also pass along what kind of barcode it was (UPC-A / UPC-E / EAN / ITF-14 / Code 128)
   const _bcEngine = window.bcEngine;
@@ -79,7 +102,8 @@
     const rd = new ZX.MultiFormatReader(); rd.setHints(hints);
     const cv = document.createElement('canvas'); const cx = cv.getContext('2d', { willReadFrequently: true }); let on = true, n = 0;
     const read = (sx, sy, sw, sh, rot) => {
-      const sc = Math.min(1, (rot ? 720 : 1280) / Math.max(sw, sh)); // full camera detail (1280) for small / far barcodes const w = Math.max(1, Math.round(sw * sc)), hh = Math.max(1, Math.round(sh * sc));
+      // full camera detail (1280) for small / far barcodes
+      const sc = Math.min(1, (rot ? 720 : 1280) / Math.max(sw, sh)); const w = Math.max(1, Math.round(sw * sc)), hh = Math.max(1, Math.round(sh * sc));
       if (rot) { cv.width = hh; cv.height = w; cx.save(); cx.translate(hh, 0); cx.rotate(Math.PI / 2); cx.drawImage(video, sx, sy, sw, sh, 0, 0, w, hh); cx.restore(); } else { cv.width = w; cv.height = hh; cx.drawImage(video, sx, sy, sw, sh, 0, 0, w, hh); }
       const src = new ZX.HTMLCanvasElementLuminanceSource(cv);
       for (const B of [ZX.HybridBinarizer, ZX.GlobalHistogramBinarizer]) { try { const r = rd.decodeWithState(new ZX.BinaryBitmap(new B(src))); if (r && r.getText()) return [r.getText(), fmtName(r)]; } catch (e) { } finally { try { rd.reset(); } catch (e) { } } }
@@ -108,7 +132,7 @@
     if (sig === scM.last && now - scM.lastT < 1800) return;
     scM.last = sig; scM.lastT = now;
     if (!pc.ok) { // failed check digit / unreadable: never guess
-      scM.bad = (scM.bad || 0) + 1; ftLog('decode', { raw: String(raw).slice(0, 80), format: format || null, ok: false, status: 'bad read (' + (pc.reason || '?') + ')', engine: scM.engine || null, ms: scM.decodeMs || null });
+      scM.bad = (scM.bad || 0) + 1; ftRow({ raw: String(raw).slice(0, 80), format: format || null, ok: false, status: 'bad read (' + (pc.reason || '?') + ')', note: 'refused, scanning again', engine: scM.engine || null, ms: scM.decodeMs || null });
       const h = $('scHint'); if (h) h.innerHTML = '⚠️ ' + T('That barcode did not read cleanly — hold steady and scan again');
       try { navigator.vibrate && navigator.vibrate([30, 60, 30]); } catch (e) { }
       return;
@@ -116,7 +140,9 @@
     scBeep(); scM.pausedCode = pc.key; scM.pc = pc; scM.thumb = scThumb(); scM.snap = null; scM.part = '';
     const r = S.identify(pc, ctx());
     scM.idr = r;
-    ftLog('decode', { status: r.status, engine: scM.engine || null, ms: scM.decodeMs || null, item: r.item ? r.item.id : null, item_name: r.item ? r.item.name : null, pack: r.pack || null, thumb: r.status === 'known' ? null : scM.thumb || null });
+    if (scM.ft && scM.ft.pending) Object.assign(scM.ft, { pending: false, status: r.status, ok: true }); // number read from the label print
+    else ftStart({ ok: true, status: r.status, ms: scM.decodeMs || null, engine: scM.engine || null, via: via || 'camera' });
+    if (r.status === 'known' && scM.ft) scM.ft.sugg = { src: 'remembered barcode', conf: 'high', item: r.item.id, name: r.item.name, pack: r.pack || 1 };
     if (r.status === 'known') { v2Qty(r.item, r.pack); return; }
     scM.snap = scSnap();
     if (r.status === 'conflict') { v2Conflict(r); return; }
@@ -174,7 +200,7 @@
     const units = S.unitsFor(scM.q, scM.pack || 1);
     const L = scLines(); const ex = L.find(l => l.id === s.id);
     if (ex) ex.qty += units; else L.push({ id: s.id, name: s.name, unit: s.unit || 'pc', qty: units, code: true });
-    ftLog('outcome', { status: 'counted', item: s.id, item_name: s.name, pack: scM.pack || 1, units });
+    if (scM.ft) { if (!scM.ft.confirmed || !scM.ft.confirmed.item) ftConfirm({ how: 'counted the suggested item', item: s.id, name: s.name }); ftConfirm({ pack: scM.pack || 1 }); scM.ft.units = units; } ftEnd('counted');
     scList(s.name); scResume(); const h = $('scHint'); if (h) h.innerHTML = '✓ ' + units + '× ' + E(s.name);
   };
 
@@ -194,10 +220,10 @@
       '<button type="button" class="btn gr" style="margin-top:10px;padding:13px" onclick="v2PackOk()">✓ ' + T('Save box size') + '</button>' +
       '<button type="button" class="btn sec2" style="margin-top:6px;padding:9px" onclick="scSkip()">' + T('Cancel') + '</button>');
   }
-  window.v2PackOne = function () { const it = stockById(scM && scM.packFor); if (!it) return; v2Link(it.id, 1); ftLog('outcome', { status: 'pack confirmed', item: it.id, pack: 1 }); v2Qty(it, 1); };
+  window.v2PackOne = function () { const it = stockById(scM && scM.packFor); if (!it) return; v2Link(it.id, 1); ftConfirm({ pack: 1 }); v2Qty(it, 1); };
   window.v2ChangePack = function () { const it = stockById(scM && scM.qItem); if (!it || !scM.pc) return; v2AskPack(it, scM.pack, scM.pc.level !== 'box'); };
   window.v2PackStep = function (d) { const i = $('v2pack'); i.value = Math.max(1, (parseInt(i.value) || 0) + d); };
-  window.v2PackOk = function () { const n = parseInt(($('v2pack') || {}).value) || 0; if (n < 1) { toast(T('Type how many are in the box')); return; } const it = stockById(scM.packFor); if (!it) return; v2Link(it.id, n); ftLog('outcome', { status: 'pack confirmed', item: it.id, pack: n }); toast('📦 ' + T('Box of') + ' ' + n + ' — ' + it.name, 'green'); v2Qty(it, n); };
+  window.v2PackOk = function () { const n = parseInt(($('v2pack') || {}).value) || 0; if (n < 1) { toast(T('Type how many are in the box')); return; } const it = stockById(scM.packFor); if (!it) return; v2Link(it.id, n); ftConfirm({ pack: n }); toast('📦 ' + T('Box of') + ' ' + n + ' — ' + it.name, 'green'); v2Qty(it, n); };
 
   // ── same barcode confirmed on two items (two phones, or a past mistake): the person picks
   function v2Conflict(r) {
@@ -206,7 +232,7 @@
       '<button type="button" class="btn sec2" style="margin-top:6px;padding:9px" onclick="v2New()">' + T('None of these') + '</button>');
   }
   window.v2Choose = function (id) {
-    const it = stockById(id); if (!it || !scM) return; const pc = scM.pc;
+    const it = stockById(id); if (!it || !scM) return; const pc = scM.pc; ftConfirm({ how: 'picked from items sharing this barcode', item: id, name: it.name });
     const prev = S.allLinks(D.stock, maps()).find(l => l.key === pc.key && l.item === id);
     v2Link(id, prev ? prev.pack : null);
     // remove the other items' old links to this barcode
@@ -225,7 +251,7 @@
     void c;
   }
   window.v2FamilyYes = function (id) {
-    const it = stockById(id); if (!it) return;
+    const it = stockById(id); if (!it) return; if (scM && scM.ft) { scM.ft.sugg = scM.ft.sugg || { src: 'same number family', conf: 'medium', item: id, name: it.name }; ftConfirm({ how: 'confirmed box/single of a known item', item: id, name: it.name }); }
     if (scM.pc.level === 'box') v2AskPack(it, scM.pc.count || null); else { v2Link(id, 1); v2Qty(it, 1); }
   };
 
@@ -262,24 +288,31 @@
     // c) read the label (photo around the barcode)
     const good = props.find(p => p.conf === 'high' || (p.src !== 'code' && p.part));
     if (!good && scM.snap) {
+      // d) AI (when switched on) starts right away and reads the label while the phone does its own reading
+      const useAI = !!(window.EX_CFG && window.EX_CFG.ai && window.EX_sb && !(window.EX_SYNC && window.EX_SYNC.online === false));
+      const aiP = useAI ? v2AIraw(scM.snap) : Promise.resolve(null);
       step('📷 ' + T('Reading the label…'));
       let lp = null;
       try { lp = await v2ReadLabel(scM.snap, pc, (m) => still(key) && step(m)); } catch (e) { }
       if (!still(key)) return;
       if (lp) { scM.lp = lp; if (lp.name || lp.part) props.push(Object.assign({ src: 'label' }, lp)); }
-      // d) AI, only if the label reading is unsure and AI is switched on
-      if ((!lp || lp.conf === 'low') && window.EX_CFG && window.EX_CFG.ai && window.EX_sb) {
-        step('🤖 ' + T('Asking AI to read the label…'));
-        const a = await v2AI(scM.snap, scM.ocrText, scM.online);
-        if (!still(key)) return;
-        if (a) { scM.ai = a; props.push(Object.assign({ src: 'ai' }, a)); }
+      if (useAI) {
+        step('🤖 ' + T('Checking with AI…'));
+        const raw = await aiP; if (!still(key)) return;
+        const a = raw && raw.json ? await v2MergeAI(raw.json, lp) : null;
+        if (a) { scM.ai = a; props.push(a);
+          // the phone's reading and AI disagree on the part number → neither is "sure"
+          const lab = props.find(p => p.src === 'label');
+          if (lab && lab.conf === 'high' && lab.part && a.part && S.partKey(lab.part) !== S.partKey(a.part)) { lab.conf = 'medium'; lab.why = (lab.why || []).concat('AI read ' + a.part + ' — check'); } }
       }
     }
     step('');
     // the best reading, by confidence (high beats medium; label/online beat a bare code)
     const rank = { high: 3, medium: 2, low: 1 };
-    props.sort((a, b) => (rank[b.conf] || 0) - (rank[a.conf] || 0) || (b.part ? 1 : 0) - (a.part ? 1 : 0));
-    best = props.find(p => p.conf !== 'low' && (p.name || p.part)) || props.find(p => p.src === 'ai' && p.part) || null; // an unverified AI reading is shown only with a warning
+    // equal confidence: AI first (staging photo tests: AI 71/71 part numbers, the phone's own reading 54/71)
+    props.sort((a, b) => (rank[b.conf] || 0) - (rank[a.conf] || 0) || (b.src === 'ai' ? 1 : 0) - (a.src === 'ai' ? 1 : 0) || (b.part ? 1 : 0) - (a.part ? 1 : 0));
+    best = props.find(p => p.conf !== 'low' && (p.name || p.part)) || props.find(p => p.src === 'ai' && p.part) || null;
+    if (scM.ft && !scM.ft.wrong) scM.ft.sugg = best ? { src: best.src, conf: best.conf, brand: best.brand || '', part: best.part || '', name: best.name || best.desc || '', pack: best.pack || null } : { src: 'none' };
     scM.best = best; scM.part = best && best.part || '';
     v2Show(best, props);
   }
@@ -383,14 +416,32 @@
   function rotate(dataUrl, deg) {
     return new Promise(ok => { const im = new Image(); im.onload = () => { const c = document.createElement('canvas'); const q = deg % 180 !== 0; c.width = q ? im.height : im.width; c.height = q ? im.width : im.height; const g = c.getContext('2d'); g.translate(c.width / 2, c.height / 2); g.rotate(deg * Math.PI / 180); g.drawImage(im, -im.width / 2, -im.height / 2); ok(c.toDataURL('image/jpeg', 0.9)); }; im.onerror = () => ok(dataUrl); im.src = dataUrl; });
   }
-  async function v2AI(snap, ocrTxt, online) {
+  // AI label reading through the team's own server function (key stays on the server; daily and monthly limits there).
+  async function v2AIraw(snap) {
+    const t0 = Date.now(); if (scM && scM.ft) scM.ft.ai_used = true;
     try {
       const b64 = String(snap).split(',')[1]; if (!b64) return null;
-      const r = await window.EX_sb.functions.invoke('ai', { body: { messages: [{ role: 'user', content: S.AI_PROMPT }], images: [{ type: 'image/jpeg', data: b64 }], tier: 'quick' } });
-      const txt = r && r.data && r.data.text; if (!txt) return null;
+      const call = window.EX_sb.functions.invoke('ai', { body: { messages: [{ role: 'user', content: S.AI_PROMPT }], images: [{ type: 'image/jpeg', data: b64 }], tier: 'label' } });
+      const r = await Promise.race([call, new Promise(ok => setTimeout(() => ok(null), 20000))]);
+      if (scM && scM.ft) scM.ft.ai_ms = Date.now() - t0;
+      const txt = r && r.data && r.data.text; if (!txt) { if (scM && scM.ft) scM.ft.ai_err = (r && r.error && String(r.error.message || r.error).slice(0, 80)) || (r ? 'no answer' : 'timeout'); return null; }
       const m = String(txt).match(/\{[\s\S]*\}/); if (!m) return null;
-      return S.checkAI(JSON.parse(m[0]), ocrTxt, online);
-    } catch (e) { return null; }
+      return { json: JSON.parse(m[0]), ms: Date.now() - t0 };
+    } catch (e) { if (scM && scM.ft) { scM.ft.ai_ms = Date.now() - t0; scM.ft.ai_err = 'error'; } return null; }
+  }
+  // AI is "sure" only when the phone's own label reading also shows that part number (in its text or as its answer).
+  // A match in the product list alone is not enough: a look-alike sibling (…-WH / …-IV) is in the list too.
+  async function v2MergeAI(j, lp) {
+    const a = S.checkAI(j, scM.ocrText, scM.online); if (!a) return null;
+    const cat = await catalog(); const pk = S.partKey(a.part || '');
+    const known = pk && (cat.list.some(x => S.partKey(x.p) === pk) || D.stock.some(x => x && x.model && S.partKey(x.model) === pk));
+    const agree = !!(lp && lp.part && pk && S.partKey(lp.part) === pk);
+    const sure = !!(a.part && (a.verified || agree));
+    a.conf = a.part ? (sure ? 'high' : 'medium') : (a.desc ? 'medium' : 'low');
+    a.src = 'ai'; a.why = [sure ? 'AI reading, part number also read on the label' : 'AI reading — check the part number'].concat(known ? ['it is a real part number (product list / your items)'] : []);
+    if (lp && lp.part && !agree && a.part) a.nearPart = lp.part;
+    if (!a.pack && lp && lp.pack) a.pack = lp.pack;
+    return a;
   }
 
   // show: matches already in the garage list (tap to confirm), the reading as a new item (editable), or "type it"
@@ -402,10 +453,11 @@
     else if (scM.lp) cands = S.matchInventory({ parts: scM.lp.parts, part: scM.lp.parts[0], brand: scM.lp.brand, desc: scM.lp.desc }, D.stock).filter(c => c.score >= 0.7);
     scM.cands = cands;
     const strong = cands.filter(c => c.score >= 0.85);
+    if (scM.ft && !scM.ft.wrong) { scM.ft.sugg = scM.ft.sugg || { src: 'none' }; if (strong[0]) Object.assign(scM.ft.sugg, { item: strong[0].item.id, item_name: strong[0].item.name, match: Math.round(strong[0].score * 100) }); }
     cb.innerHTML = cands.length ? '<div style="font-size:12px;color:#555;margin:6px 0 2px">' + (strong.length ? T('Is it one of these? (already in your items)') : T('Possible matches — check before tapping:')) + '</div>' +
       cands.slice(0, 4).map((c, i) => '<button type="button" class="v2c' + (c.score >= 0.85 && i === 0 ? ' top' : '') + '" onclick="v2Pick(\'' + J(c.item.id) + '\')"><b>' + E(c.item.name) + '</b><small>' + E(T(c.why)) + ' · ' + Math.round(c.score * 100) + '%</small></button>').join('') : '';
     if (best) {
-      const src = { catalog: '📗 ' + T('product list'), label: '📷 ' + T('read on the label'), online: '🔎 ' + T('online product database'), upcitemdb: '🔎 ' + T('online product database'), ai: '🤖 AI', code: '▦ ' + T('barcode') };
+      const src = { ai: '🤖 ' + T('read by AI'), catalog: '📗 ' + T('product list'), label: '📷 ' + T('read on the label'), online: '🔎 ' + T('online product database'), upcitemdb: '🔎 ' + T('online product database'), code: '▦ ' + T('barcode') };
       const tag = best.conf === 'high' ? '<span class="v2tag hi">' + T('sure') + '</span>' : '<span class="v2tag">' + T('check it') + '</span>';
       const pack = scM.pc.level === 'box' ? (scM.pc.count || best.pack || '') : (best.pack > 1 ? best.pack : 1);
       box.innerHTML = '<div class="scLk on" style="display:block">' + (best.img ? '<img src="' + E(best.img) + '" alt="" referrerpolicy="no-referrer" onerror="this.remove()" style="float:right">' : '') +
@@ -419,7 +471,7 @@
           (scM.pc.level === 'box' ? '' : '<small style="grid-column:1/-1">' + T('1 = the barcode is on one piece. If it is on a box, type how many are in the box.') + '</small>')) +
         '</div>' + (best.nearPart && best.nearPart !== best.part ? '<button type="button" class="chip" style="margin:4px 0" onclick="document.getElementById(\'v2p\').value=\'' + J(best.nearPart) + '\';this.remove()">' + T('Did you mean') + ' <b>' + E(best.nearPart) + '</b>?</button>' : '') +
         (best.why && best.why.length ? '<small>' + E(best.why.join(' · ')) + '</small>' : '') + '</div>' +
-        (best.src === 'ai' && !best.verified ? '<div class="v2warn">' + T('AI could not find this part number printed on the label. Check it before saving.') + '</div>' : '') +
+        (best.src === 'ai' && best.conf !== 'high' ? '<div class="v2warn">' + T('Read by AI — check the part number against the label before saving.') + '</div>' : '') +
         '<button type="button" class="btn gr" style="margin:6px 0 4px;padding:12px" onclick="v2SaveNew()">✓ ' + (strong.length ? T('No, save as a NEW item') : T('Save as new item')) + '</button>';
       const f = $('scFind'); if (f && !f.value) { f.value = [best.brand, best.part].filter(Boolean).join(' ') || (best.desc || ''); }
     } else {
@@ -451,7 +503,7 @@
   // tapping an existing item = the person confirms it
   window.v2Pick = function (id) {
     const it = stockById(id); if (!it || !scM) return;
-    ftLog('outcome', { status: 'picked existing item', item: id, item_name: it.name });
+    ftConfirm({ how: 'picked an item from the list', item: id, name: it.name, part: it.model || '' });
     // fill in a missing part number / maker on the item (only empty fields; staff only, like the server rule)
     const b = scM.best; if (b && staff()) { let ch = false; if (b.part && !it.model) { it.model = b.part; ch = true; } if (b.brand && !it.brand) { it.brand = b.brand; ch = true; } if (ch) try { save(); } catch (e) { } }
     if (scM.pc.label) { v2Qty(it, 1); return; }
@@ -482,7 +534,7 @@
     // still catch duplicates by part number before making a new item
     if (f.part) { const dup = S.matchInventory({ part: f.part, brand: f.brand }, D.stock).find(c => c.score >= 0.97); if (dup && !scM.dupOk) { scM.dupOk = true; const cb = $('v2cands'); if (cb) cb.innerHTML = '<div class="v2warn">' + T('You already have an item with this part number:') + '</div><button type="button" class="v2c top" onclick="v2Pick(\'' + J(dup.item.id) + '\')"><b>' + E(dup.item.name) + '</b><small>' + T('Tap to use it') + '</small></button><div style="font-size:12px;color:#666">' + T('Tap Save again only if it really is a different item.') + '</div>'; return; } }
     const s = createItem(f); const n = parseInt(($('v2n') || {}).value) || null;
-    ftLog('outcome', { status: 'new item saved', item: s.id, item_name: s.name, pack: n || null, note: b.src || null });
+    ftConfirm({ how: 'saved as a new item', item: s.id, name: s.name, brand: f.brand, part: f.part, pack: n || null });
     if (scM.pc.label) { toast('✓ ' + s.name, 'green'); v2Qty(s, 1); return; }
     if (scM.pc.level === 'box') { if (n) { v2Link(s.id, n); v2Qty(s, n); } else v2AskPack(s, scM.pc.count || b.pack || null, false); }
     else { v2Link(s.id, n || 1); toast('✓ ' + s.name, 'green'); v2Qty(s, n || 1); }
@@ -491,7 +543,7 @@
     const q = (($('scFind') || {}).value || '').trim(); if (!q || !scM) return;
     const pcs = S.partCandidates(q); const f = { name: q, unit: 'pc', brand: S.brandFromText(q) || '', part: pcs[0] ? pcs[0].p : '', src: 'typed' };
     const s = createItem(f);
-    ftLog('outcome', { status: 'new item typed', item: s.id, item_name: s.name });
+    ftConfirm({ how: 'typed the item', item: s.id, name: s.name, part: f.part || '' });
     if (scM.pc.label) { v2Qty(s, 1); return; }
     v2AskPack(s, scM.pc.count || (scM.lp && scM.lp.pack) || null, scM.pc.level !== 'box');
   };
@@ -500,7 +552,7 @@
 
   // wrong item: take this barcode off it and identify again
   window.scWrong = function () {
-    if (!scM || !scM.pc) return; const pc = scM.pc; ftLog('outcome', { status: 'wrong item', item: scM.qItem || null });
+    if (!scM || !scM.pc) return; const pc = scM.pc; if (scM.ft) { scM.ft.wrong = true; if (scM.ft.confirmed) delete scM.ft.confirmed.item; }
     Object.keys(maps()).forEach(k => { const m = maps()[k]; if (m && S.parseCode(m.code || '').key === pc.key) delete maps()[k]; });
     D.stock.forEach(x => { if (x && (x.codes || []).some(c => S.parseCode(c).key === pc.key)) x.codes = x.codes.filter(c => S.parseCode(c).key !== pc.key); });
     try { save(); } catch (e) { }
@@ -520,6 +572,7 @@
   window.v2NoCode = async function () {
     if (!scM || scM.pausedCode) return; const snap = scSnap(); if (!snap) { toast(T('Point the camera at the label first')); return; }
     scM.pausedCode = 'label?'; scM.snap = snap; scM.thumb = scThumb();
+    ftStart({ ok: false, pending: true, status: 'barcode not read by the camera', via: 'label print', ms: scM.readyAt ? Date.now() - scM.readyAt : null });
     sheet(head(T('Reading the label…'), '') + '<div id="v2steps" class="v2st">📷 ' + T('Looking for the barcode number printed on the label…') + '</div>' +
       '<button type="button" class="btn sec2" style="margin-top:6px;padding:9px" onclick="scSkip()">' + T('Cancel') + '</button>');
     let a = '', b = '';
@@ -527,7 +580,7 @@
     if (!scM || scM.pausedCode !== 'label?') return;
     const ra = digitRuns(a), rb = digitRuns(b); const both = ra.filter(x => rb.some(y => S.parseCode(y).key === S.parseCode(x).key)); const one = [...new Set(ra.concat(rb))];
     scM.ocrText = a + '\n' + b;
-    if (both.length === 1) { ftLog('decode', { raw: both[0], status: 'number read from label (both passes)', via: 'ocr' }); scM.pausedCode = null; scM.last = ''; window.scHit(both[0], null, 'ocr'); return; }
+    if (both.length === 1) { scM.pausedCode = null; scM.last = ''; window.scHit(both[0], null, 'ocr'); return; }
     if (one.length >= 1 && one.length <= 3) {
       sheet(head(T('Is this the barcode number?'), '') + '<div style="font-size:13px;margin:2px 0 8px">' + T('Compare with the numbers printed under the barcode:') + '</div>' +
         one.map(c => '<button type="button" class="v2c" onclick="v2OcrCode(\'' + J(c) + '\')"><b style="font-family:monospace;font-size:18px;letter-spacing:1px">' + E(c) + '</b></button>').join('') +
@@ -536,10 +589,10 @@
     }
     window.v2LabelOnly();
   };
-  window.v2OcrCode = function (c) { if (!scM) return; ftLog('decode', { raw: c, status: 'number read from label (person confirmed)', via: 'ocr' }); scM.pausedCode = null; scM.last = ''; window.scHit(c, null, 'ocr'); };
+  window.v2OcrCode = function (c) { if (!scM) return; if (scM.ft) scM.ft.via = 'label print (person compared the number)'; scM.pausedCode = null; scM.last = ''; window.scHit(c, null, 'ocr'); };
   window.v2LabelOnly = function () {
     if (!scM) return; const pc = { ok: true, raw: '', type: T('label'), key: 'L:' + Date.now(), gtin: '', level: 'each', family: '', count: null, label: true };
-    scM.pc = pc; scM.pausedCode = pc.key; scM.via = 'label'; scM.idr = { status: 'new', pc }; ftLog('decode', { status: 'no barcode — reading the words', via: 'label' });
+    scM.pc = pc; scM.pausedCode = pc.key; scM.via = 'label'; scM.idr = { status: 'new', pc }; if (scM.ft) Object.assign(scM.ft, { pending: false, status: 'no barcode — identified from the label words', via: 'label words' }); else ftStart({ ok: false, status: 'no barcode — identified from the label words', via: 'label words' });
     window.v2New();
   };
   // the button on the camera screen
@@ -549,8 +602,48 @@
       try { const iv = setInterval(() => { if (!scM) { clearInterval(iv); return; } const h = $('scHint'); if (!h || scM.pausedCode) return;
           const idle = Date.now() - (scM.readyAt || Date.now());
           if (idle > 9000) h.innerHTML = '🏷 ' + T("Still nothing? Tap “Won't scan? Read the label”"); else if (idle > 4500) h.innerHTML = '🔍 ' + T('Hold the phone closer — the barcode should fill the box, and keep it still'); }, 1000); } catch (e) { }
-      if (FT) { try { const cam = document.querySelector('#scanOv .scCam'); if (cam) { const tg = document.createElement('div'); tg.className = 'v2ft'; tg.textContent = '🧪 ' + T('Field test: scans are logged'); cam.appendChild(tg); } } catch (e) { } }
+      if (FT) { try { const cam = document.querySelector('#scanOv .scCam'); if (cam) { const tg = document.createElement('div'); tg.className = 'v2ft'; tg.innerHTML = '🧪 ' + E(T('Field test')) + ' · <span id="v2ftn">' + ftCount + '</span> ' + E(T('scans logged')) + ' ›'; tg.onclick = () => window.v2FtResults(); cam.appendChild(tg); } } catch (e) { } }
       return r; }; }
+
+  // ── FIELD TEST RESULTS (staging): what the scanner suggested vs what the person confirmed, per scan and in total.
+  // Owner / managers only (the database only lets them read the log).
+  window.v2FtResults = async function (sess) {
+    if (!FT) return; sess = sess || ftSess; let ov = $('v2ftr');
+    if (!ov) { ov = document.createElement('div'); ov.id = 'v2ftr'; ov.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:#f6f5f2;overflow:auto;-webkit-overflow-scrolling:touch;font-size:14px;color:#1F1E2A'; document.body.appendChild(ov); }
+    const bar = '<div style="position:sticky;top:0;background:#1F1E2A;color:#fff;display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px"><b style="flex:1">🧪 ' + E(T('Field test results')) + '</b><button type="button" class="btn sec2" style="width:auto;padding:6px 12px" onclick="v2FtResults(\'' + J(sess) + '\')">↻</button><button type="button" class="btn sec2" style="width:auto;padding:6px 12px" onclick="document.getElementById(\'v2ftr\').remove()">✕</button></div>';
+    ov.innerHTML = bar + '<div style="padding:16px">' + E(T('Loading…')) + '</div>';
+    let rows = [], sessions = [];
+    try {
+      const r = await window.EX_sb.from('scan_field_log').select('at,session,scan_id,device,engine,format,raw,ok,status,via,ms,total_ms,ai_used,ai_ms,sugg,confirmed,corrected,note,pack,units,thumb').eq('ev', 'scan').order('at', { ascending: false }).limit(1000);
+      if (r.error) throw r.error; const all = r.data || [];
+      sessions = [...new Set(all.map(x => x.session))]; rows = all.filter(x => x.session === sess);
+    } catch (e) { ov.innerHTML = bar + '<div style="padding:16px">' + E(T('Only the owner or a manager can see the results.')) + '</div>'; return; }
+    const scans = rows.filter(x => !/^bad read/.test(x.status || ''));
+    const misreads = rows.length - scans.length;
+    const wrongMatch = (x) => !!(x.sugg && (x.sugg.wrong || (x.sugg.item && x.confirmed && x.confirmed.item && x.sugg.item !== x.confirmed.item) || (x.sugg.conf === 'high' && x.corrected)));
+    const failed = (x) => !/^counted/.test(x.note || '');
+    const okClean = scans.filter(x => x.ok && !failed(x) && !x.corrected && !wrongMatch(x));
+    const read = scans.filter(x => x.ok);
+    const avg = (a) => a.length ? (a.reduce((p, c) => p + c, 0) / a.length / 1000).toFixed(1) + ' s' : '—';
+    const tile = (n, label, tone) => '<div style="flex:1 1 140px;background:#fff;border-radius:12px;padding:12px;border:1px solid #e3e1db"><div style="font-size:24px;font-weight:700;color:' + (tone || '#1F1E2A') + '">' + n + '</div><div style="font-size:12px;color:#555">' + E(T(label)) + '</div></div>';
+    const pct = (a) => scans.length ? ' (' + Math.round(a.length * 100 / scans.length) + '%)' : '';
+    const descS = (g) => !g ? '—' : g.src === 'none' && !g.item ? E(T('nothing — asked you')) : [g.src && g.src !== 'none' ? '<small style="color:#666">' + E(T(g.src)) + (g.conf ? ' · ' + E(T(g.conf === 'high' ? 'sure' : 'check it')) : '') + '</small>' : '', [g.brand, g.part].filter(Boolean).map(E).join(' '), g.item_name || g.name ? E(g.item_name || g.name) : '', g.match ? '<small>' + g.match + '% ' + E(T('match in your items')) + '</small>' : '', g.pack > 1 ? '📦 ' + g.pack : ''].filter(Boolean).join('<br>');
+    const descC = (c, x) => !c ? '<span style="color:#b00">' + E(T(x.note || 'not finished')) + '</span>' : ['<small style="color:#666">' + E(T(c.how || '')) + '</small>', E(c.name || ''), c.part ? E(c.part) : '', c.pack ? '📦 ' + (c.pack > 1 ? c.pack : '1 ' + T('piece')) : ''].filter(Boolean).join('<br>');
+    const badge = (x) => !x.ok && failed(x) ? ['#fde8e8', '#922', 'Failed'] : wrongMatch(x) ? ['#fde8e8', '#922', 'Wrong match'] : failed(x) ? ['#fff3e0', '#8a4b00', 'Not finished'] : x.corrected ? ['#fff3e0', '#8a4b00', 'Corrected'] : ['#e3f6ea', '#185c34', 'OK'];
+    ov.innerHTML = bar + '<div style="padding:12px 12px 40px;max-width:900px;margin:0 auto">' +
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><select id="v2fts" style="flex:1;min-width:180px" onchange="v2FtResults(this.value)">' + (sessions.includes(sess) ? sessions : [sess].concat(sessions)).map(x => '<option' + (x === sess ? ' selected' : '') + '>' + E(x) + '</option>').join('') + '</select>' +
+      '<button type="button" class="btn gr" style="width:auto;padding:8px 14px" onclick="v2FtResults(v2FtNewSession())">' + E(T('Start a new test')) + '</button></div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px">' + tile(scans.length, 'scans') + tile(okClean.length + pct(okClean), 'right with no changes', '#185c34') + tile(scans.filter(x => x.corrected && !wrongMatch(x)).length, 'needed a correction', '#8a4b00') +
+        tile(scans.filter(wrongMatch).length, 'wrong product suggested', '#922') + tile(scans.filter(failed).length, 'failed or not finished', '#922') + tile(read.length + pct(read), 'barcode read by the camera') +
+        tile(avg(read.filter(x => x.ms).map(x => x.ms)), 'average time to read the barcode') + tile(avg(scans.filter(x => !failed(x)).map(x => x.total_ms || 0)), 'average time, scan to confirmed') +
+        tile(scans.filter(x => x.ai_used).length, 'used AI') + tile(avg(scans.filter(x => x.ai_ms).map(x => x.ai_ms)), 'average AI time') + '</div>' +
+      (misreads ? '<div class="v2st" style="margin-top:8px">' + misreads + ' ' + E(T('unclear barcode reads were refused and scanned again (not counted as scans).')) + '</div>' : '') +
+      '<div style="margin-top:14px;display:grid;gap:8px">' + (scans.length ? scans.map(x => { const bd = badge(x); return '<div style="background:#fff;border:1px solid #e3e1db;border-radius:12px;padding:10px">' +
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span style="background:' + bd[0] + ';color:' + bd[1] + ';border-radius:8px;padding:1px 8px;font-size:12px;font-weight:600">' + E(T(bd[2])) + '</span><small style="color:#666">' + E(new Date(x.at).toLocaleTimeString()) + ' · ' + E(x.format || x.via || '') + ' ' + E(x.raw || '') + (x.ms ? ' · ' + T('read in') + ' ' + (x.ms / 1000).toFixed(1) + ' s' : '') + (x.ai_used ? ' · 🤖 AI' + (x.ai_ms ? ' ' + (x.ai_ms / 1000).toFixed(1) + ' s' : '') : '') + ' · ' + E(x.device || '') + '</small></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px"><div><div style="font-size:11px;color:#888;text-transform:uppercase">' + E(T('Scanner suggested')) + '</div>' + descS(x.sugg) + '</div><div><div style="font-size:11px;color:#888;text-transform:uppercase">' + E(T('You confirmed')) + '</div>' + descC(x.confirmed, x) + '</div></div>' +
+        (x.thumb ? '<img src="' + E(x.thumb) + '" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:8px;margin-top:6px">' : '') + '</div>'; }).join('') : '<div class="v2st">' + E(T('No scans in this test yet. Open the scanner and scan your products.')) + '</div>') + '</div></div>';
+  };
+  window.addEventListener('load', () => { if (FT && /#fieldtest/.test(location.hash)) { const t = setInterval(() => { if (window.EX_sb && typeof me === 'function' && me()) { clearInterval(t); window.v2FtResults(); } }, 500); setTimeout(() => clearInterval(t), 60000); } });
 
   // the old lookup/label steps are replaced
   window.scLookup = function () { };
@@ -577,7 +670,12 @@
       'product list': 'lista de productos', 'One scan counts': 'Un escaneo cuenta', '1 = the barcode is on one piece. If it is on a box, type how many are in the box.': '1 = el código está en una pieza. Si está en una caja, escribe cuántos hay en la caja.',
       'Item without a barcode': 'Artículo sin código', 'Which item is this? Pick it from your items or save it as new.': '¿Qué artículo es? Elígelo de tus artículos o guárdalo como nuevo.', 'Point the camera at the label first': 'Primero apunta la cámara a la etiqueta',
       'Reading the label…': 'Leyendo la etiqueta…', 'Looking for the barcode number printed on the label…': 'Buscando el número del código impreso en la etiqueta…', 'Is this the barcode number?': '¿Es este el número del código?', 'Compare with the numbers printed under the barcode:': 'Compara con los números impresos bajo el código:',
-      'None of these — read the words': 'Ninguno — leer las palabras', 'Did you mean': '¿Quisiste decir', "Still nothing? Tap “Won't scan? Read the label”": '¿Nada todavía? Toca “¿No escanea? Leer la etiqueta”', 'Hold the phone closer — the barcode should fill the box, and keep it still': 'Acerca el teléfono — el código debe llenar el cuadro, y no lo muevas', "Won't scan? Read the label": '¿No escanea? Leer la etiqueta', 'Field test: scans are logged': 'Prueba de campo: se registran los escaneos', 'label': 'etiqueta',
+      'None of these — read the words': 'Ninguno — leer las palabras', 'Did you mean': '¿Quisiste decir', "Still nothing? Tap “Won't scan? Read the label”": '¿Nada todavía? Toca “¿No escanea? Leer la etiqueta”', 'Hold the phone closer — the barcode should fill the box, and keep it still': 'Acerca el teléfono — el código debe llenar el cuadro, y no lo muevas', "Won't scan? Read the label": '¿No escanea? Leer la etiqueta', 'Field test': 'Prueba de campo', 'scans logged': 'escaneos registrados', 'Field test results': 'Resultados de la prueba', 'Loading…': 'Cargando…', 'Only the owner or a manager can see the results.': 'Solo el dueño o un gerente puede ver los resultados.',
+      'Start a new test': 'Empezar una prueba nueva', 'scans': 'escaneos', 'right with no changes': 'correctos sin cambios', 'needed a correction': 'necesitaron corrección', 'wrong product suggested': 'producto equivocado sugerido', 'failed or not finished': 'fallidos o sin terminar',
+      'barcode read by the camera': 'código leído por la cámara', 'average time to read the barcode': 'tiempo promedio para leer el código', 'average time, scan to confirmed': 'tiempo promedio, de escanear a confirmar', 'used AI': 'usaron IA', 'average AI time': 'tiempo promedio de IA',
+      'unclear barcode reads were refused and scanned again (not counted as scans).': 'lecturas poco claras fueron rechazadas y escaneadas otra vez (no cuentan).', 'Scanner suggested': 'El escáner sugirió', 'You confirmed': 'Tú confirmaste', 'Failed': 'Falló', 'Wrong match': 'Coincidencia equivocada', 'Not finished': 'Sin terminar', 'Corrected': 'Corregido', 'OK': 'OK',
+      'read in': 'leído en', 'nothing — asked you': 'nada — te preguntó', 'match in your items': 'coincidencia en tus artículos', 'piece': 'pieza', 'No scans in this test yet. Open the scanner and scan your products.': 'Aún no hay escaneos en esta prueba. Abre el escáner y escanea tus productos.',
+      'Checking with AI…': 'Revisando con IA…', 'Read by AI — check the part number against the label before saving.': 'Leído por IA — revisa el número de parte con la etiqueta antes de guardar.', 'read by AI': 'leído por IA', 'label': 'etiqueta',
       'same part number': 'mismo número de parte', 'same part number (OCR look-alike letters)': 'mismo número de parte (letras parecidas)', 'part number 1 character apart': 'número de parte con 1 carácter distinto', 'part number 2 characters apart': 'número de parte con 2 caracteres distintos', 'matches another part number on the label': 'coincide con otro número de la etiqueta' };
     if (typeof ES === 'object' && ES) Object.assign(ES, ES2);
   } catch (e) { }
