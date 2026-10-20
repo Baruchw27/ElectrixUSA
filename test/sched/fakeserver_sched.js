@@ -52,7 +52,7 @@ const stats={upserts:0,rows:0,pulls:0};
 http.createServer(async (req,res)=>{
   const u=new URL(req.url,'http://x');const p=u.pathname;
   if(p==='/__net'){NET=u.searchParams.get('mode')||'ok';return send(res,200,{NET});}
-  if(NET!=='ok'&&(p.startsWith('/auth')||p.startsWith('/rpc')||p.startsWith('/records')||p.startsWith('/realtime'))){if(NET==='down')return;await new Promise(r=>setTimeout(r,+NET||0));}
+  if(NET!=='ok'&&(p.startsWith('/auth')||p.startsWith('/rpc')||p.startsWith('/records')||p.startsWith('/realtime'))){if(NET==='down')return;if(NET==='refuse'){try{req.socket.destroy();}catch(e){}return;}await new Promise(r=>setTimeout(r,+NET||0));}
   if(req.method==='OPTIONS')return send(res,204,{});
   // ---- auth
   if(p==='/auth/signup'){const b=await body(req);const em=b.email.toLowerCase();if(users[em])return send(res,400,{error:'User already registered'});users[em]={id:crypto.randomUUID(),pass:b.password};const tk=crypto.randomUUID();tokens[tk]=em;return send(res,200,{user:{id:users[em].id,email:em,identities:[{}]},token:tk});}

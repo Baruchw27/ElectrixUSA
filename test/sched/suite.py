@@ -238,4 +238,4 @@ async def run():
             await b.close()
     finally: sp.kill()
     print(f"\n{sum(1 for x in R if x[0])} passed, {sum(1 for x in R if not x[0])} failed")
-asyncio.run(run())
+if __name__=="__main__": asyncio.run(run())

@@ -47,7 +47,15 @@ window.EX_schedDraft=draftGet;
 let saving=false;
 // keys: schedule record ids this change writes/deletes. apply(): makes the change in D.sched.
 // Resolves 'ok' | 'queued' | 'pending' | 'rejected' | 'error'.
-async function commit(keys,apply,o){o=o||{};if(saving)return 'busy';saving=true;setBusy(o.btn,true);
+// One save at a time. A repeat tap of the SAME save while it is running is ignored (no double booking); a DIFFERENT
+// change made meanwhile waits for the running one and then goes ahead — it is never silently dropped.
+let running=null,runningSig='';
+async function commit(keys,apply,o){const sg=JSON.stringify(keys.slice().sort());
+  if(saving&&sg===runningSig)return 'busy';
+  while(saving&&running){try{await running;}catch(e){}}
+  runningSig=sg;let done;running=new Promise(r=>done=r);
+  try{return await commit1(keys,apply,o);}finally{done();running=null;runningSig='';}}
+async function commit1(keys,apply,o){o=o||{};saving=true;setBusy(o.btn,true);
   try{
     apply();save();
     const res=window.EX_saveNow?await window.EX_saveNow({keys:keys.map(SKEY),waitMs:15000}):{ok:true,rejected:[]};
