@@ -1,0 +1,4 @@
+-- Regression for db/audit_a5b_review_fixes.sql (staging, rolled back). Expected 10/10 PASS (run 2026-10-20: 10/10).
+-- 1 whole-entry re-send without "pending" keeps the clock-out + break and stays waiting; 2 managers / non-Payroll office
+-- cannot clock someone else out (manager "not approved" answer to a clock-me-in request still works); 3 removing an
+-- already removed entry keeps its data.  (Same statements as the run recorded in evidence/AUDIT_PROGRESS.md.)

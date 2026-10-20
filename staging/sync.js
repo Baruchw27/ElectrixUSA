@@ -160,10 +160,13 @@ function rejectedRows(sent,server){const out=[];if(!Array.isArray(server))return
     const s=by[row.coll+'\u0001'+row.id];
     // A denied INSERT comes back absent. We flag that only for 'sched' (the Schedule feature this fix targets), to
     // keep every other feature's save behavior exactly as it is today — no new surprises outside scheduling.
-    if(!s||s.deleted){if(row.coll==='sched')out.push({coll:row.coll,id:row.id,absent:true});return;}
+    if(!s||s.deleted){if(row.coll==='sched'||row.coll==='punches')out.push({coll:row.coll,id:row.id,absent:true});return;}
     const d=s.data||{};
     const own=SERVER_OWNED[row.coll]||[];   // fields the server works out itself (it is not a refusal when they differ)
-    if(row.patch&&typeof row.patch==='object'){for(const f in row.patch){if(own.indexOf(f)>=0)continue;if(canon(d[f])!==canon(row.patch[f])){out.push({coll:row.coll,id:row.id});break;}}}});
+    const sentObj=(row.patch&&typeof row.patch==='object')?row.patch:(row.coll==='punches'&&row.full&&typeof row.full==='object'?row.full:null);
+    if(sentObj){let bad=false;for(const f in sentObj){if(own.indexOf(f)>=0)continue;if(canon(d[f])!==canon(sentObj[f])){bad=true;break;}}
+      if(!bad&&row.coll==='punches'&&Array.isArray(row.unset))bad=row.unset.some(f=>own.indexOf(f)<0&&(f in d));
+      if(bad)out.push({coll:row.coll,id:row.id});}});
   return out;}
 let lastReject=[];          // rows rejected by the most recent flush (read by EX_saveNow)
 let lastFlushError=null;    // hard error (network/auth) from the most recent flush, else null
@@ -179,7 +182,10 @@ async function _flush(){const keys=Object.keys(queue);if(!keys.length){lastRejec
     for(const k of keys){const o=queue[k];if(o.del)dels.push(o);else{
       // offload big blobs; the live object in D is the same reference for arrays, so update it too
       const live=o.coll==='_'?null:liveRecord(o.coll,o.id);const target=live||o.data;
-      try{const ch=await offloadBlobs(o.coll,o.id,target);if(ch&&live){o.data=(o.coll==='emps')?stripEmp(live):upStrip(o.coll,live);snap[o.coll][o.id]=canon(o.data);localSave();}}catch(e){skipped++;continue;}
+      try{const ch=await offloadBlobs(o.coll,o.id,target);if(ch&&live){o.data=(o.coll==='emps')?stripEmp(live):upStrip(o.coll,live);snap[o.coll][o.id]=canon(o.data);localSave();}}catch(e){skipped++;
+        if(o.coll==='punches'){const strip=JSON.parse(JSON.stringify(target));Object.keys(strip).forEach(f=>{if(typeof strip[f]==='string'&&strip[f].startsWith('data:'))strip[f]='';});
+          ups.push({coll:o.coll,id:o.id,patch:strip,unset:[],by:st.user||null});refs.push({});}   // stays queued: the full entry with its photo goes again next time
+        continue;}
       // stock qty is NEVER sent by the normal sync (only apply_stock_txn changes it) — the live record carries the phone's local qty
       const cur=JSON.parse(JSON.stringify(live?(o.coll==='emps'?stripEmp(live):upStrip(o.coll,live)):upStrip(o.coll,o.data)));let row;
       const plain=v=>!!v&&typeof v==='object'&&!Array.isArray(v);let bb=null;try{bb=o.base?JSON.parse(o.base):null;}catch(e){}

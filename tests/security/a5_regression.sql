@@ -69,7 +69,8 @@ do $s$ begin
   perform pg_temp.t('u4','Payroll''s own late clock-in also waits', format($q$insert into public.records(coll,id,data,deleted) values('punches','zzL3',jsonb_build_object('who','u4','site','s1','in',%s),false)$q$, pg_temp.ms(90)), 'ok',
     $c$(select (data->'pending')='true'::jsonb from public.records where coll='punches' and id='zzL3')$c$);
   perform pg_temp.t('u4','Payroll cannot approve their own late entry', $q$update public.records set data = data || jsonb_build_object('pending',false,'approvedBy','u4') where coll='punches' and id='zzL3'$q$, 'refused');
-  perform pg_temp.t('u1','Owner approves it', $q$update public.records set data = data || jsonb_build_object('pending',false,'approvedBy','u1') where coll='punches' and id='zzL3'$q$, 'ok');
+  perform pg_temp.t('u1','Owner approves it', $q$update public.records set data = data || jsonb_build_object('pending',false,'approvedBy','u1') where coll='punches' and id='zzL3'$q$, 'ok',
+    $c$(select data->'hist'->-1->>'act'='approved' and data->'hist'->-1->>'by'='u1' from public.records where coll='punches' and id='zzL3')$c$);
   -- existing "ask the office to clock me in" (not late) still approved by a manager
   perform pg_temp.t('u7','worker asks the office to clock them in (outside the fence, now)', format($q$insert into public.records(coll,id,data,deleted) values('punches','zzS1',jsonb_build_object('who','u7','site','s1','in',%s,'pending',true,'semi',true),false)$q$, pg_temp.ms(0)), 'ok');
   perform pg_temp.t('u2','manager approves that request (unchanged behaviour), recorded', $q$update public.records set data = data || jsonb_build_object('pending',false,'approvedBy','u2') where coll='punches' and id='zzS1'$q$, 'ok',
