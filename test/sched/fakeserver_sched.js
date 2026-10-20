@@ -103,6 +103,7 @@ http.createServer(async (req,res)=>{
     const em=hit&&(hit.authEmail||'').toLowerCase();const x=em&&users[em];if(!x||x.pass!==b.password)return send(res,200,{session:null});const tk=crypto.randomUUID();tokens[tk]=em;return send(res,200,{session:{access_token:tk,refresh_token:'r'+tk}});}
   // ---- stock transactions (stand-in for apply_stock_txn: atomic, idempotent by id, shortage refused)
   if(p==='/rpc/apply_stock_txn'){const em=who(req);if(!em||!isMember(em))return send(res,403,{error:'not allowed'});const b=await body(req);const txn=b.txn||{};
+    if(global.STOCKFAIL){const c=global.STOCKFAIL;global.STOCKFAIL=null;return send(res,400,{message:'txn id required',code:c});}
     global.__applied=global.__applied||{};const fp=JSON.stringify([txn.kind,txn.moves]);stats.stockTxn=(stats.stockTxn||0)+1;
     const qtys=()=>[...new Set((txn.moves||[]).map(m=>m.id))].map(id=>{const r=records.get('stock\u0001'+id);return {id,qty:r&&!r.deleted?(+r.data.qty||0):0,qv:r&&!r.deleted?(+r.data.qv||0):0};});
     if(global.__applied[txn.id]){if(global.__applied[txn.id]!==fp)return send(res,400,{error:'txn_reuse_conflict'});stats.stockDup=(stats.stockDup||0)+1;return send(res,200,{duplicate:true,qtys:qtys()});}
@@ -117,6 +118,7 @@ http.createServer(async (req,res)=>{
   if(p==='/functions/v1/upc'){const em=who(req);if(!isMember(em))return send(res,401,{error:'not allowed'});stats.upc=(stats.upc||0)+1;return send(res,200,{found:false});}
   // ---- test hooks
   if(p==='/__deny'){global.DENY=u.searchParams.get('coll')||'';return send(res,200,{DENY:global.DENY});}
+  if(p==='/__stockfail'){global.STOCKFAIL=u.searchParams.get('code')||'22023';return send(res,200,{ok:1});}
   if(p==='/__dropresp'){global.DROPRESP=+(u.searchParams.get('n')||1);return send(res,200,{ok:1});}
   if(p==='/__fail'){global.FAILMSG=u.searchParams.get('msg')||'';global.FAIL=+(u.searchParams.get('code')||0);return send(res,200,{FAIL:global.FAIL});}
   if(p==='/__payloads'){const out=global.PAY||[];if(u.searchParams.get('clear'))global.PAY=[];return send(res,200,out);}

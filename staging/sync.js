@@ -294,13 +294,17 @@ window.EX_turnedOff=turnedOff;
 // after the phone slept: fetch only what changed meanwhile, and reconnect the live feed
 async function catchUp(){if(!REAL||!ready||catching||!st.online)return;catching=true;
   try{if(await turnedOff())return;
+    // open the new live feed before fetching: any change from now on arrives live, anything earlier is in the fetch
+    const old=chan;let nu=null;if(sb.removeChannel){try{nu=subscribe();const w0=Date.now();while(!nu._ok&&Date.now()-w0<4000)await new Promise(r=>setTimeout(r,100));}catch(e){}}
     const since=new Date((lastPull||Date.now())-3*60000).toISOString();const t0=Date.now();const rows=[];let from=0;
     while(true){const r=await withTO(sb.from('records').select('coll,id,data,deleted').gt('updated_at',since).range(from,from+999),20000,'catch-up');if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<1000)break;from+=1000;}
     lastPull=t0;try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}rows.forEach(r=>{if(r.coll==='stock'&&!r.deleted&&r.data&&queue[r.coll+'\u0001'+r.id]&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,r.data.qty,null,r.data.qv);});
     // a record that arrived live while this catch-up was in flight is newer than what the catch-up fetched: keep it
     const fresh=rows.filter(r=>!queue[r.coll+'\u0001'+r.id]&&!((liveAt[r.coll+'\u0001'+r.id]||0)>=t0));
     if(fresh.length){applyRows(fresh,{replace:false});fresh.forEach(r=>{const k=r.coll;if(r.deleted){if(snap[k])delete snap[k][r.id];}else{(snap[k]=snap[k]||{})[r.id]=canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));}});localSave();bump();}
-    try{if(sb.removeAllChannels)await withTO(sb.removeAllChannels(),3000,'reconnect');}catch(e){}subscribe();flush();st.err='';paint();}
+    if(nu){try{if(old&&old!==nu)await withTO(sb.removeChannel(old),3000,'reconnect');}catch(e){}}
+    else{try{if(sb.removeAllChannels)await withTO(sb.removeAllChannels(),3000,'reconnect');}catch(e){}subscribe();}
+    flush();st.err='';paint();}
   catch(e){log('catch-up',e);}finally{catching=false;}}
 window.EX_catchUp=catchUp;
 document.addEventListener('visibilitychange',()=>{if(document.hidden){hiddenSince=Date.now();return;}if(hiddenSince&&Date.now()-hiddenSince>60000)catchUp();hiddenSince=0;});
@@ -315,7 +319,8 @@ function applyRows(rows,{replace}){applying=true;try{
 function applyPendingQueue(){Object.values(queue).forEach(o=>{applying=true;try{if(o.coll==='_'){if(o.del)delete D[o.id];else D[o.id]=o.data.v;}else if(o.del)delRecord(o.coll,o.id);else setRecord(o.coll,o.id,o.data);}finally{applying=false;}});}
 
 // ---------- realtime ----------
-function subscribe(){sb.channel('records').on('postgres_changes',{event:'*',schema:'public',table:'records'},p=>{const r=p.new&&p.new.coll?p.new:null;if(!r)return;
+let chan=null;
+function subscribe(){const ch=sb.channel('records-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6));chan=ch;return ch.on('postgres_changes',{event:'*',schema:'public',table:'records'},p=>{const r=p.new&&p.new.coll?p.new:null;if(!r)return;
     const key=r.coll;const j=r.deleted?null:canon(r.coll==='_'?r.data.v:upStrip(r.coll,r.data));
     // stock count belongs to the server: always take it (plus this phone's unsent moves), even when other fields are mid-edit
     if(r.coll==='stock'&&!r.deleted&&r.data&&window.EX_stockFromServer&&window.EX_stockFromServer(r.id,r.data.qty,null,r.data.qv)){localSave();bump();}
@@ -324,7 +329,7 @@ function subscribe(){sb.channel('records').on('postgres_changes',{event:'*',sche
     if(!r.deleted&&snap[key]&&snap[key][r.id]===j)return;          // already have it
     if(r.deleted&&!(snap[key]&&r.id in snap[key]))return;
     applyRows([r],{replace:false});if(r.deleted){if(snap[key])delete snap[key][r.id];}else{(snap[key]=snap[key]||{})[r.id]=j;}
-    localSave();bump();}).subscribe(s=>{log('realtime',s);st.live=s==='SUBSCRIBED';paint();});}
+    localSave();bump();}).subscribe(s=>{log('realtime',s);if(chan===ch){st.live=s==='SUBSCRIBED';paint();}ch._ok=s==='SUBSCRIBED';});}
 function bump(){clearTimeout(renderT);renderT=setTimeout(()=>{const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)&&a.value){renderT=setTimeout(bump,1500);return;}try{renderAll();}catch(e){log(e);}try{if(typeof renderBell==='function')renderBell();}catch(e){}},250);}
 
 // ---------- status pill ----------

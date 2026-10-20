@@ -26,7 +26,8 @@ function createClient(url,key,opts){const base=url.replace(/\/$/,'');const persi
   const storage={from(bucket){return {async upload(path,blob,o){const r=await fetch(base+'/storage/upload/'+path,{method:'POST',headers:Object.assign({'Content-Type':(o&&o.contentType)||'application/octet-stream'},sess?{Authorization:'Bearer '+sess.access_token}:{}),body:blob});return r.ok?{data:{path},error:null}:{data:null,error:{message:'upload failed'}};},getPublicUrl(path){return {data:{publicUrl:base+'/storage/v1/object/public/files/'+path}};}};}};
   const chans=[];const ch0=channel;channel=function(){const c=ch0();chans.push(c);return c;};
   async function removeAllChannels(){chans.splice(0).forEach(c=>{try{c._es&&c._es.close();}catch(e){}});return [];}
+  async function removeChannel(c){const i=chans.indexOf(c);if(i>=0)chans.splice(i,1);try{c&&c._es&&c._es.close();}catch(e){}return 'ok';}
   const functions={async invoke(name,o){return call('/functions/v1/'+name,(o&&o.body)||{});}};
-  return {auth,from,rpc,functions,get channel(){return channel;},storage,removeAllChannels};}
+  return {auth,from,rpc,functions,get channel(){return channel;},storage,removeAllChannels,removeChannel};}
 window.supabase={createClient};
 })();

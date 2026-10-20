@@ -4017,7 +4017,10 @@ async function flushStockQ(){if(stockFlushing)return;
       // A movement already rejected but whose recovery record wasn't durably saved yet: finish recording it; never re-apply.
       if(txn.rej){if(stockCaptureReject(txn,txn.rej.reason,txn.rej.serverError)){q=stockQ().filter(x=>x.id!==txn.id);stockQSave(q);changed=true;}continue;}
       let r;try{r=await sb.rpc('apply_stock_txn',{txn:{id:txn.id,kind:txn.kind,by:txn.by,site:txn.site,ts:txn.ts,reason:txn.reason,moves:txn.moves.map(m=>{const o={id:m.id,name:m.name,unit:m.unit};if('set'in m){o.set=m.set;if('expect'in m)o.expect=m.expect;}else o.delta=m.delta;return o;})}});}catch(e){break;}
-      if(r&&r.error){const perm=stockErrMsg(r.error);
+      if(r&&r.error){const _c=String((r.error&&r.error.code)||'');let perm=stockErrMsg(r.error);
+        // a refusal the app has no wording for (bad data, failed check) is permanent too — record it for the office instead
+        // of retrying forever and blocking every later move on this phone. Network/auth/server-down errors stay queued.
+        if(!perm&&/^(22|23|P0)/.test(_c))perm=t('This stock change was refused by the server')+' ('+String(r.error.message||_c).slice(0,80)+').';
         if(perm){stockUndo(txn);changed=true;const raw=(r.error&&(r.error.message||''))||'';
           const li=D.stockLog.find(x=>x.id===txn.id);if(li){li.pending=false;li.rejected=true;}
           // CAPTURE-THEN-DEQUEUE: remove from the offline queue ONLY after the recovery record is confirmed saved;
