@@ -73,6 +73,13 @@ http.createServer(async (req,res)=>{
     for(const r of rows){const k=r.coll+'\u0001'+r.id;const old=records.get(k);let data;
       if(r.deleted)data=r.full||{};else if('full' in r)data=r.full;else if(old&&!old.deleted&&(old.data===null||typeof old.data!=='object'||Array.isArray(old.data)))data=old.data;else{data=old&&!old.deleted?Object.assign({},old.data,r.patch||{}):Object.assign({},r.patch||{});(r.unset||[]).forEach(f=>delete data[f]);}
       if(r.coll==='stock'&&data&&typeof data==='object'){data=Object.assign({},data);delete data.qv;if(old&&old.data&&typeof old.data==='object'&&'qty' in old.data){data.qty=old.data.qty;if('qv' in old.data)data.qv=old.data.qv;}else data.qty=0;} // same rule as guard_stock_qty on the server
+      // same late-entry rule as guard_punch on the server (db/audit_a5_payroll.sql): a new punch received more than 30 min
+      // after its clock-in waits for Payroll; the server keeps the original and writes its own history
+      if(r.coll==='punches'&&data&&typeof data==='object'&&!r.deleted){const er=emps().find(e=>e.id===myEmp(em));const me=er?Object.assign({},er.data,{id:er.id}):{};const ok=me.role==='owner'||(me.role==='office'&&me.title==='Payroll');data=Object.assign({},data);
+        if(old&&old.data&&typeof old.data==='object'){if('hist' in old.data)data.hist=old.data.hist;else delete data.hist;if('lateEntry' in old.data)data.lateEntry=old.data.lateEntry;else delete data.lateEntry;}
+        else{delete data.hist;delete data.lateEntry;const late=(+data.in||Date.now())<Date.now()-30*60000;
+          if(late&&!(ok&&data.who!==me.id)){data.pending=true;data.lateEntry={srvIn:Date.now(),in:data.in,out:data.out||null,site:data.site,by:me.id};data.hist=[{act:'late',by:me.id,at:Date.now()}];stats.late=(stats.late||0)+1;}
+          else data.hist=[{act:'created',by:me.id,at:Date.now()}];}}
       const row={coll:r.coll,id:r.id,data:pg(data),deleted:!!r.deleted,updated_by:r.by||null,updated_at:now()};
       if(old&&!canSee(em,old))continue; // existing row this person can't see: skipped (like the real server)
       if(global.DENY&&r.coll===global.DENY){stats.blocked=(stats.blocked||0)+1;continue;}

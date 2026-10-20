@@ -62,8 +62,8 @@ reset role;
 -- Payroll keeps full control
 select set_config('request.jwt.claims', json_build_object('sub',(select data->>'authUid' from records where coll='emps' and id='u4'),'role','authenticated')::text, true);
 set local role authenticated;
-select pg_temp.expect('Payroll can still remove a wrong break', $q$update records set data = data - 'breaks' where coll='punches' and id='zzA2open'$q$, 'ok');
-select pg_temp.expect('Payroll can still bring back a deleted punch', $q$update records set deleted = false where coll='punches' and id='zzA2del'$q$, 'ok');
+select pg_temp.expect('Payroll can still remove a wrong break (with a reason, A5)', $q$update records set data = (data - 'breaks') || jsonb_build_object('edits', coalesce(data->'edits','[]'::jsonb) || '[{"by":"u4","at":1,"why":"break was entered twice"}]'::jsonb) where coll='punches' and id='zzA2open'$q$, 'ok');
+select pg_temp.expect('Payroll can still bring back a deleted punch (with a reason, A5)', $q$update records set deleted = false, data = data || '{"edits":[{"by":"u4","at":1,"why":"deleted by mistake"}]}'::jsonb where coll='punches' and id='zzA2del'$q$, 'ok');
 select pg_temp.expect('Payroll can still count stock', $q$select apply_stock_txn(jsonb_build_object('id','zzA2s7','kind','set','by','u4','moves',jsonb_build_array(jsonb_build_object('id','s_2','name','x','set',20))))$q$, 'ok');
 reset role;
 
