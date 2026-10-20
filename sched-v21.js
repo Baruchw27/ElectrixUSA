@@ -43,7 +43,7 @@ const DRAFT='ex_sched_drafts';
 function draftsAll(){try{const d=JSON.parse(localStorage.getItem(DRAFT)||'{}');return d&&typeof d==='object'&&!Array.isArray(d)?d:{};}catch(e){return {};}}
 function draftsWrite(all){try{localStorage.setItem(DRAFT,JSON.stringify(all));}catch(e){}}
 function draftPut(d){const all=draftsAll();all[crewDayKey(d.crew,d.day)]=Object.assign({at:Date.now(),me:(me()||{}).id},d);draftsWrite(all);}
-function draftList(){const id=(me()||{}).id;return Object.keys(draftsAll()).map(k=>Object.assign({key:k},draftsAll()[k])).filter(d=>d.me===id);}
+function draftList(){const id=(me()||{}).id;const all=draftsAll();let ch=false;Object.keys(all).forEach(k=>{if(!all[k]||Date.now()-(all[k].at||0)>=3*864e5){delete all[k];ch=true;}});if(ch)draftsWrite(all);return Object.keys(draftsAll()).map(k=>Object.assign({key:k},draftsAll()[k])).filter(d=>d.me===id);}
 function draftGet(){return draftList()[0]||null;}
 function draftClear(key){const all=draftsAll();if(key)delete all[key];draftsWrite(all);}
 window.EX_schedDraft=draftGet;
@@ -69,6 +69,7 @@ async function commit1(keys,apply,o){o=o||{};saving=true;setBusy(o.btn,true);
     // anything for these days that was refused earlier is settled by this newer save
     if(res.ok||res.queued||res.transient||(res.pending&&res.pending.length&&!(res.rejected||[]).length))keys.forEach(k=>{try{window.EX_dropReject&&EX_dropReject('sched',k);}catch(e){}});
     if(res.ok){keys.forEach(k=>draftClear(k));if(!o.quiet)toast('✓ '+(o.okMsg||T('Saved')),'green');return 'ok';}
+    if(res.error==='not signed in'){alertBox(T('Not saved'),T('You are signed out on this phone. Sign in and make the change again.'));return 'error';}
     if(res.rejected&&res.rejected.length){
       const stale=res.rejected.some(x=>x.stale);
       if(stale&&window.EX_catchUp){try{await window.EX_catchUp();}catch(e){}} // show the version that won
@@ -77,7 +78,7 @@ async function commit1(keys,apply,o){o=o||{};saving=true;setBusy(o.btn,true);
       return 'rejected';}
     if(res.queued){
       if(res.stored===false){warnStorage();return 'queued';}  // keep the draft: the waiting list is only in memory
-      keys.forEach(k=>draftClear(k));toast('⏳ '+T('Saved on this phone — it will be sent automatically when you are back online'),'blue');return 'queued';}
+      keys.forEach(k=>draftClear(k));if(!o.quiet)toast('⏳ '+T('Saved on this phone — it will be sent automatically when you are back online'),'blue');return 'queued';}
     if(res.error&&!res.transient){
       alertBox(T('Not saved yet'),T('The server answered with an error')+' ('+res.error+'). '+T('Your change is kept on this phone and will be retried automatically.'));return 'error';}
     if(res.transient||(res.pending&&res.pending.length)){
@@ -87,7 +88,7 @@ async function commit1(keys,apply,o){o=o||{};saving=true;setBusy(o.btn,true);
   }finally{saving=false;setBusy(o.btn,false);try{renderSched();}catch(e){}}}
 let lastResult=null;window.EX_schedLastResult=()=>lastResult;
 function setBusy(btn,on){const b=typeof btn==='string'?document.querySelector(btn):btn;if(!b)return;b.disabled=on;if(on){b.dataset.lbl=b.textContent;b.textContent=T('Saving…');b.style.opacity='.7';}else{if(b.dataset.lbl)b.textContent=b.dataset.lbl;b.style.opacity='';}}
-function alertBox(title,msg){ask(title,'<div style="font-size:14px;line-height:1.45">'+esc(msg)+'</div>',null,'OK');}
+function alertBox(title,msg){ask(title,'<div style="font-size:14px;line-height:1.45">'+esc(msg).replace(/\n/g,'<br>')+'</div>',null,'OK');}
 function warnStorage(){alertBox(T('Phone storage is full'),T('Your change is saved in the app but the phone has no room to keep it if the app is closed. Keep the app open until you are back online and the “Saving…” badge disappears.'));}
 function inEditorError(msg){const el=document.getElementById('slotConf');if(!el)return alertBox(T('Not saved'),msg);
   el.innerHTML='<div id="slotErr" style="background:#fdecea;color:#8a1c12;border-radius:8px;padding:9px;margin-top:8px;font-size:13.5px;line-height:1.4"><b>⚠ '+esc(T('Not saved'))+'</b><br>'+esc(msg)+'<br>'+esc(T('Everything you entered is still here. Tap Save to try again, or Cancel to keep the saved version.'))+'</div>';
@@ -124,6 +125,7 @@ slotMovePrompt=function(){const asg=slotOneoffs.filter(a=>a.site&&a.start!=null)
       // two steps on purpose: if the new date is refused (someone else changed it), the old date is left untouched
       const r1=await commit([to],()=>{writeSlotRow(to,asg,rowRev(to));},{quiet:true,onReject:why=>inEditorError(why+' '+T('The booking was NOT moved.'))});
       if(r1==='rejected'||r1==='busy'||r1==='error')return;
+      if(r1!=='ok'){hide('m-slot');alertBox(T('Added to')+' '+fmtDay(dd),T('The booking was added to the new date but is still waiting to be sent, so it was NOT taken off')+' '+fmtDay(day)+'. '+T('Once you are back online, open that day and clear it.'));return;}
       const r2=await commit([from],()=>{const patchActive=patch.cancel.length||Object.keys(patch.replace).length;
         if(hasRule||patchActive)D.sched[from]={assignments:[],cancel:patch.cancel,replace:patch.replace,patch:true,rev:rowRev(from)+1,by:me().id,at:Date.now()};else delete D.sched[from];},
         {okMsg:T('Moved to')+' '+fmtDay(dd),onReject:why=>inEditorError(why+' '+T('The booking is now on BOTH dates — remove it from this day.'))});
@@ -178,7 +180,7 @@ function dayFlags(key){const r=D.sched[key];return !!(r&&((r.cancel&&r.cancel.le
 function planCopy(src,targets,crewIds,withLoans,srcOver){const out=[];srcOver=srcOver||{};
   targets.forEach(dt=>{if(dt===src)return;
     crewIds.forEach(c=>{const key=crewDayKey(c,dt);const all=srcOver[c]||effectiveAsgs(c,src);
-      const sr=ruleOn(c,src),tr=ruleOn(c,dt);const sameRule=!srcOver[c]&&sr&&tr&&sr.ruleId===tr.ruleId&&!dayFlags(crewDayKey(c,src));
+      const sr=ruleOn(c,src),tr=ruleOn(c,dt);const srcFlag=srcOver[c]?!!(srcOver.flags&&srcOver.flags[c]):dayFlags(crewDayKey(c,src));const sameRule=sr&&tr&&sr.ruleId===tr.ruleId&&!srcFlag;
       if(sameRule){const one=realAsgs(all.filter(a=>!a.ongoing&&!a.exception));if(!one.length)return;
         const curOne=realAsgs(effectiveAsgs(c,dt).filter(a=>!a.ongoing&&!a.exception));const flags=dayFlags(key);
         out.push({key,date:dt,crew:c,asg:one,mode:'patch',status:!curOne.length&&!flags?'new':(!flags&&sig(curOne)===sig(one))?'same':'conflict',label:nameOf(c)});return;}
@@ -199,9 +201,9 @@ function runCopy(src,targets,crewIds,withLoans,extra){extra=extra||{};
   const go=items=>{const keys=items.map(p=>p.key).concat(extra.keys||[]);const days=[...new Set(items.map(p=>p.date))];
     if(!keys.length){toast(T('Nothing to change — every day was already booked'));return;}
     commit(keys,()=>{if(extra.apply)extra.apply();items.forEach(writePlanItem);},
-      {okMsg:T('Copied')+' '+fmtDay(src)+' → '+days.map(fmtDay).join(', '),onReject:(why,res)=>{const bad=(res.rejected||[]).map(x=>rowLabel(x.id));alertBox(T('Some days were not saved'),why+'\n\n'+T('Not saved')+': '+bad.join('; ')+'.\n'+T('Every other day was saved. The refused ones are listed on the Schedule screen with “Use my version”.'));}}).then(r=>{if(r!=='rejected'&&r!=='busy'&&extra.after)extra.after();});};
+      {okMsg:T('Copied')+' '+fmtDay(src)+' → '+days.map(fmtDay).join(', '),onReject:(why,res)=>{const bad=(res.rejected||[]).map(x=>rowLabel(x.id));alertBox(T('Some days were not saved'),why+'\n\n'+T('Not saved')+': '+bad.join('; ')+'.\n'+T('Every other day was saved or is still sending. The refused ones are listed on the Schedule screen with “Use my version”.'));}}).then(r=>{if(r!=='rejected'&&r!=='busy'&&extra.after)extra.after();});};
   if(!clash.length)return go(todo);
-  const list=clash.map(p=>'<li>'+esc(fmtDay(p.date))+' · '+esc(p.label)+': '+esc(realAsgs(p.emp?loansFor(p.emp,p.date):effectiveAsgs(p.crew,p.date)).map(a=>siteName(a.site)).join(', '))+'</li>').join('');
+  const list=clash.map(p=>'<li>'+esc(fmtDay(p.date))+' · '+esc(p.label)+': '+esc((realAsgs(p.emp?loansFor(p.emp,p.date):effectiveAsgs(p.crew,p.date)).map(a=>siteName(a.site)).join(', ')||T('ongoing job changed or off that day')))+'</li>').join('');
   const empty=todo.filter(p=>p.status==='new');
   choose(T('Some of these are already booked'),'<div style="font-size:13.5px;line-height:1.45">'+T('Copying would replace:')+'<ul style="margin:6px 0 0 18px;padding:0">'+list+'</ul></div>',
     [{label:T('Replace them')+' ('+clash.length+')',fn:()=>go(todo)},
@@ -240,7 +242,7 @@ slotCopyPrompt=function(){const crew=schedCrew,src=slotDay;
     // the day on screen has unsaved edits: save it and the copies together, so what you see is what gets copied
     const key=crewDayKey(crew,src);const oneoffs=editorOneoffs();const patch=clone(slotPatch);const hasRule=!!ruleOn(crew,src);
     hide('m-slot');
-    runCopy(src,targets,[crew],false,{keys:[key],srcOver:{[crew]:asgNow},apply:()=>{const r=dayRow(oneoffs,key,rowRev(key),hasRule,patch);if(r)D.sched[key]=r;else delete D.sched[key];}});});};
+    runCopy(src,targets,[crew],false,{keys:[key],srcOver:{[crew]:slotEffNow(),flags:{[crew]:!!(patch.cancel.length||Object.keys(patch.replace).length)}},apply:()=>{const r=dayRow(oneoffs,key,rowRev(key),hasRule,patch);if(r)D.sched[key]=r;else delete D.sched[key];}});});};
 
 // day board: the whole day (every crew + individual moves)
 function prevBookedDay(k){for(let i=1;i<=7;i++){const p=addDays(k,-i);if(D.crews.some(c=>realAsgs(effectiveAsgs(c.id,p)).length)||loansForDay(p).length)return p;}return null;}
@@ -277,7 +279,7 @@ function banners(){const pg=document.getElementById('pg-sched');if(!pg)return;le
 function rowLabel(id){if(id.slice(0,2)==='L:'){const r=id.slice(2);const i=r.lastIndexOf('|');return nameOf(r.slice(0,i))+' — '+fmtDay(r.slice(i+1));}
   if(id.slice(0,4)==='ONG:'){const p=id.split(':');return nameOf(p[1])+' — '+T('ongoing job');}const i=id.lastIndexOf('|');return i>0?nameOf(id.slice(0,i))+' — '+fmtDay(id.slice(i+1)):id;}
 function draftDiffers(dr){if(dr.kind!=='day')return false;const r=D.sched[crewDayKey(dr.crew,dr.day)];const want=realAsgs(dr.oneoffs);return sig(r?r.assignments||[]:[])!==sig(want);}
-window.EX_restoreDraft=function(key){const dr=draftList().find(d=>d.key===key)||draftGet();if(!dr)return;schedCrew=dr.crew;slotDay=dr.day;slotBaseRev=dr.baseRev||0;slotOneoffs=clone(dr.oneoffs)||[];slotPatch=clone(dr.patch)||{cancel:[],replace:{}};slotAddMode=null;
+window.EX_restoreDraft=function(key){const dr=draftList().find(d=>d.key===key);if(!dr){banners();return;}schedCrew=dr.crew;slotDay=dr.day;slotBaseRev=dr.baseRev||0;slotOneoffs=clone(dr.oneoffs)||[];slotPatch=clone(dr.patch)||{cancel:[],replace:{}};slotAddMode=null;
   document.getElementById('slotTitle').textContent=nameOf(dr.crew)+' — '+fmtDay(dr.day);renderSlotEditor();show('m-slot');};
 window.EX_dropDraft=function(key){draftClear(key);banners();};
 window.EX_reapply=async function(id){const x=EX_rejects().find(y=>y.coll==='sched'&&y.id===id);if(!x)return;
