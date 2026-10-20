@@ -114,6 +114,7 @@ async def main():
             chk('sending again does not double count (still 50)', q2 == 50, q2)
             chk('phone A sees 50', await until(A, f"(D.stock.find(x=>x.id==='{iid}')||{{}}).qty===50", 8000))
             print('5. Taking out more than is in the garage is refused')
+            srv(f'/__counted?id={iid}')   # S1: shortages are only refused for counted items — this one is counted
             await A.evaluate("scanQuick('out');0"); await A.wait_for_timeout(1500)
             await A.evaluate(f"_scan('{BX}','itf');0"); await A.wait_for_timeout(400)
             await A.evaluate("scQ(0,9);scQOk();0")

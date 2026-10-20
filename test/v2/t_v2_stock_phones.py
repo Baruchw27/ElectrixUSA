@@ -67,6 +67,7 @@ async def main():
             for pg in (A, B, C): await until(pg, "D.stock.some(x=>x.id==='s_race1')&&D.sites.some(s=>s.id==='site_t1')", 10000)
             await ev(O, f"({TX})(['in','s_race1',50,'site_t1'])"); await until(O, "!stockQ().length", 8000)
             chk('owner put 50 in', sq('s_race1') == 50, sq('s_race1'))
+            srv('/__counted?id=s_race1')   # S1: shortages are only refused for counted items — this one is counted
             print('1. Three phones at the same moment: take 10, return 5, take 20')
             await asyncio.gather(ev(A, f"({TX})(['out','s_race1',10,'site_t1'])"), ev(B, f"({TX})(['in','s_race1',5,'site_t1'])"), ev(C, f"({TX})(['out','s_race1',20,'site_t1'])"))
             await asyncio.gather(*[until(pg, "!stockQ().length", 8000) for pg in (A, B, C)])
@@ -124,6 +125,17 @@ async def main():
             await B.evaluate("const s=D.stock.find(x=>x.id==='s_race1');s.qty=999;s.note='edited';save();0"); await B.wait_for_timeout(1500)
             chk('a phone saving its own wrong count leaves the server at 15', sq('s_race1') == 15, sq('s_race1'))
             chk('the other fields still sync', [x for x in srv('/__records?coll=stock') if x['id'] == 's_race1'][0]['data'].get('note') == 'edited')
+            print('9. S1: an item that was never counted — the pick-up is recorded, the count stays at 0, no error')
+            await O.evaluate("D.stock.push({id:'s_unc1',name:'Leviton item never counted',unit:'pc',qty:0,min:0});save();0")
+            await until(A, "D.stock.some(x=>x.id==='s_unc1')", 10000); await A.evaluate("window._t=[];0")
+            await ev(A, f"({TX})(['out','s_unc1',4,'site_t1'])"); await until(A, "!stockQ().length", 8000)
+            chk('server keeps 0 (never negative)', sq('s_unc1') == 0, sq('s_unc1'))
+            chk('the phone shows 0 and gets no "Not enough" / error message', await until(A, "D.stock.find(x=>x.id==='s_unc1').qty===0", 8000) and not await A.evaluate("_t.some(x=>/Not enough|not saved|Could not/.test(x))"), await A.evaluate("_t"))
+            chk('nothing set aside for the office', not await A.evaluate("(D.rejq||[]).some(x=>JSON.stringify(x).includes('s_unc1'))"))
+            lg = [i for x in srv('/__records?coll=stockLog') for i in (x['data'].get('items') or []) if i.get('id') == 's_unc1']
+            chk('history marks it uncounted with the real amount (−4)', len(lg) == 1 and lg[0].get('uncounted') is True and lg[0].get('change') == -4, lg)
+            srv('/__counted?id=s_unc1'); await ev(A, f"({TX})(['out','s_unc1',2,'site_t1'])"); await A.wait_for_timeout(2500)
+            chk('once counted, the same shortage is refused with "Not enough in the garage"', sq('s_unc1') == 0 and await until(A, "_t.some(x=>/Not enough/.test(x))", 8000), await A.evaluate("_t"))
             errs = eA + eB + eC + eo
             chk(f'no page errors {errs[:2]}', not errs)
             st = srv('/__state')['stats']; print('   server stats:', {k: st.get(k) for k in ('stockTxn', 'stockDup', 'droppedAnswers')})

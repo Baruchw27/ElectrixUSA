@@ -41,6 +41,7 @@ async def run():
             check('tapping a phone notification opens that message (job opens)',await Y.evaluate("(()=>{const id=D.inbox.find(x=>x.link&&x.link.job)?.id;if(!id)return 'none';return openFromPush(id)})()") is True)
             # ── inventory ──
             sid=await Y.evaluate("D.stock.find(x=>x.qty>0&&x.qty<100).id")
+            srv('/__counted?id='+sid)   # S1: shortages are only refused for counted items — this one is counted
             base=await Y.evaluate(f"stockItem('{sid}').qty")
             await Y.evaluate(f"openPickup();puLines=[{{id:'{sid}',name:stockItem('{sid}').name,unit:'pc',qty:{base+50}}}];puRender();document.getElementById('puSite').value='t32';window._t=[]")
             await Y.evaluate("savePickup()"); await Y.wait_for_timeout(2500)
