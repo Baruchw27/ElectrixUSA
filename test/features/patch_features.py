@@ -48,4 +48,12 @@ rep('white-space:pre-line">\'+esc(x.items)+\'</div>', 'white-space:pre-wrap">\'+
 rep('white-space:pre-line">\'+esc(x.text)+\'</div>', 'white-space:pre-wrap">\'+esc(x.text)+\'</div>')
 rep('white-space:pre-line"></div>', 'white-space:pre-wrap"></div>')
 
+# saving: exact text (".trim()" also removed the first line's indentation); only empty lines at the start/end go
+rep("function clockReq(e){", "function exTxt(s){s=String(s==null?'':s).replace(/\\r\\n?/g,'\\n');return s.replace(/^(?:[ \\t]*\\n)+/,'').replace(/\\s+$/,'');}\nfunction clockReq(e){")
+for fid in ['jDesc','esText','svIssue','irNote','smWhy']:
+    rep("document.getElementById('%s').value.trim()" % fid, "exTxt(document.getElementById('%s').value)" % fid)
+rep("p.check.injury={what:document.getElementById('poInjWhat').value.trim()", "p.check.injury={what:exTxt(document.getElementById('poInjWhat').value)")
+rep("(ta.value.trim()?'\\n'+ta.value.trim():'')", "(ta.value.trim()?'\\n'+exTxt(ta.value):'')")
+rep("let items=document.getElementById('mtItems').value.trim()", "let items=exTxt(document.getElementById('mtItems').value)")
+
 open(p, 'w').write(s); print('patched', p)

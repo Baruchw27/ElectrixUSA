@@ -42,7 +42,9 @@ async def run():
             n0=len(srv('/__records?coll=punches'))
             await P.evaluate("openPunchEdit(null)"); await P.fill('#peWhy',''); await P.evaluate("savePunchEdit()"); await settle(P)
             check('Adding a missed punch without a reason is not saved',len(srv('/__records?coll=punches'))==n0)
-            await P.evaluate("openPunchEdit(null)"); await P.fill('#peWhy','paper timesheet'); await P.evaluate("savePunchEdit()"); await settle(P)
+            await P.evaluate("openPunchEdit(null)"); await P.fill('#peWhy','paper timesheet')
+            if await P.evaluate("!!window.EX_jobPick"): await P.evaluate("EX_jobPick(document.getElementById('peSite')).pick(D.sites[0].id)")  # Features v1: a new punch's job starts blank and must be picked
+            await P.evaluate("savePunchEdit()"); await settle(P)
             check('… with a reason it is saved',len(srv('/__records?coll=punches'))==n0+1)
             # remove = void with reason; restore with reason
             await P.evaluate("openPunchEdit(D.punches.findIndex(x=>x.id==='zzN1'))"); await P.wait_for_timeout(200)

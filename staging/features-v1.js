@@ -101,7 +101,7 @@ window.EX_fuzzy={nrm,toks,hay,score,dl};
 // ═════════ 3. text exactly as typed ═════════
 // keeps every line break, blank line and indentation; only removes empty lines at the very start/end and trailing spaces
 // at the very end (what "trim" did before, but without eating the first line's indentation). Windows line ends → \n.
-function txt(s){s=String(s==null?'':s).replace(/\r\n?/g,'\n');return s.replace(/^(?:[ \t]*\n)+/,'').replace(/\s+$/,'');}
+function txt(s){if(typeof exTxt==='function')return exTxt(s);s=String(s==null?'':s).replace(/\r\n?/g,'\n');return s.replace(/^(?:[ \t]*\n)+/,'').replace(/\s+$/,'');}
 window.EX_txt=txt;
 const ptx=s=>'<span class="ptx">'+esc(s)+'</span>';
 window.EX_ptx=ptx;
@@ -139,7 +139,7 @@ window.parseVoice=function(text,typed){
   $('jDesc').value=d.charAt(0).toUpperCase()+d.slice(1);};
 
 // material dictation adds to what was typed instead of replacing it
-wrap('matRec',orig=>function(){const ta=$('mtItems');const base=ta?ta.value:'';const r=orig.apply(this,arguments);
+wrap('matRec',orig=>function(){const ta=$('mtItems');const base=ta?ta.value:'';const was=typeof mOn!=='undefined'&&mOn;const r=orig.apply(this,arguments);if(was)return r;
   try{if(typeof mrec!=='undefined'&&mrec&&base.trim()){const h=mrec.onresult;mrec.onresult=e=>{h(e);const said=ta.value;ta.value=txt(base)+(said?'\n'+said:'');};}}catch(e){}return r;});
 
 // saving: exact text (was .trim(), which also removed the first line's indentation)
@@ -156,6 +156,7 @@ wrap('applyTabs',orig=>function(){const r=orig.apply(this,arguments);safe(()=>{c
   if(want&&b.dataset.allowed!=='1'){b.dataset.allowed='1';const prim=primaryFor(m);b.style.display=prim.includes('punch')?'':'none';const mb=document.querySelector('.tab[onclick*="\'more\'"]');if(mb&&!prim.includes('punch'))mb.style.display='';}
   const cur=document.querySelector('.tab.on');if(cur&&cur.style.display==='none'){const first=[...document.querySelectorAll('.tab')].find(x=>x.style.display!=='none'&&x.dataset.allowed==='1');if(first)first.click();}
   if(typeof renderMore==='function')safe(renderMore);});return r;});
+wrap('goTab',orig=>function(n){if(n==='punch'){const b=document.querySelector('.tab[onclick*="\'punch\'"]');const m=me();if(m&&b&&b.dataset.allowed==='0'&&!CR(m)){const alt=['home','jobs','mat','exp','more'].find(x=>{const y=document.querySelector('.tab[onclick*="\''+x+'\'"]');return y&&y.dataset.allowed==='1';});return alt?orig.call(this,alt):undefined;}}return orig.apply(this,arguments);});
 wrap('doPunch',orig=>function(){const m=me();if(m&&!CR(m)&&!D.punches.some(p=>p.who===m.id&&!p.out)){toast(T('Your time is not tracked on the clock.'));return;}return orig.apply(this,arguments);});
 wrap('finishPunchIn',orig=>function(){const m=me();if(m&&!CR(m)){toast(T('Your time is not tracked on the clock.'));return;}return orig.apply(this,arguments);});
 wrap('startWatch',orig=>function(){const m=me();if(m&&!CR(m)&&!D.punches.some(p=>p.who===m.id&&!p.out))return; // no "you're at a site but not punched in" reminders
@@ -164,24 +165,26 @@ wrap('attField',orig=>function(){return orig.apply(this,arguments).filter(CR);})
 wrap('punchState',orig=>function(e){if(e&&!CR(e)){const today=new Date().toDateString();if(!D.punches.some(x=>x.who===e.id&&new Date(x.in).toDateString()===today))return {dot:'var(--g3)',txt:T('No time clock'),sub:'',h:0};}return orig.apply(this,arguments);});
 wrap('renderHours',orig=>function(){const r=orig.apply(this,arguments);safe(()=>{const w=$('hrWho');if(!w)return;[...w.options].forEach(o=>{const e=D.emps.find(x=>x.id===o.value);if(e&&!CR(e)&&!D.punches.some(p=>p.who===e.id))o.remove();});});return r;});
 // employee sheet: Time Clock Required YES / NO
-let clockSel=null;
+let clockSel=null,clockTouched=false;
+const rawClock=e=>e&&e.clock===false?false:e&&e.clock===true?true:!!e&&(e.role==='worker'||e.role==='manager');
 function canSetClock(m,e){if(!m)return false;if(m.role==='owner')return true;if(e&&e.id===m.id)return false;            // nobody changes their own
   const priv=x=>x&&(x.role==='owner'||x.role==='manager'||x.role==='office'||!!x.all);
   return isBoss(m)&&!priv(e);}                                                                                            // same rule the database enforces
 function clockBox(){let w=$('exClockWrap');if(w)return w;const after=$('eActiveWrap')||$('eCrewWrap');w=document.createElement('div');w.id='exClockWrap';w.style.marginTop='12px';
   w.innerHTML='<label style="margin-bottom:4px" data-i18n="Time Clock Required">'+T('Time Clock Required')+'</label><div class="exclock"><button type="button" id="exClockY" onclick="EX_setClockSel(true)">'+T('YES')+'</button><button type="button" id="exClockN" onclick="EX_setClockSel(false)">'+T('NO')+'</button></div><div style="font-size:11.5px;color:var(--g4);margin-top:4px">'+T('NO = paid monthly: no Clock In / Clock Out, no punch reminders, not counted as missing. Old punches are kept.')+'</div>';
   after.parentNode.insertBefore(w,after.nextSibling);return w;}
-window.EX_setClockSel=function(v){clockSel=v;$('exClockY').classList.toggle('on',v===true);$('exClockN').classList.toggle('on',v===false);};
+window.EX_setClockSel=function(v,quiet){clockSel=v;if(!quiet)clockTouched=true;$('exClockY').classList.toggle('on',v===true);$('exClockN').classList.toggle('on',v===false);};
 wrap('openEmp',orig=>function(id){const r=orig.apply(this,arguments);safe(()=>{const ex=id?D.emps.find(x=>x.id===id):null;const w=clockBox();const m=me();
-  const can=canSetClock(m,ex||{role:'worker'});const cur=ex?CR(ex):true;EX_setClockSel(cur);clockSel=cur;
-  $('exClockY').disabled=$('exClockN').disabled=!can;w.style.display=(ex&&ex.role==='owner')?'none':'';w.dataset.orig=String(cur);});return r;});
-wrap('saveEmp',orig=>function(){const id=empEditId;const before=D.emps.length;const want=clockSel;const w=$('exClockWrap');const changed=w&&w.dataset.orig!==String(want);
+  const can=canSetClock(m,ex||{role:'worker'});const cur=ex?rawClock(ex):rawClock({role:$('eRole').value||'worker'});clockTouched=false;EX_setClockSel(cur,true);
+  $('exClockY').disabled=$('exClockN').disabled=!can;w.style.display=(ex&&ex.role==='owner')?'none':'';w.dataset.orig=String(cur);
+  const rs=$('eRole');if(rs&&!rs._exClock){rs._exClock=1;rs.addEventListener('change',()=>{if(!clockTouched){const e2=empEditId?D.emps.find(x=>x.id===empEditId):null;EX_setClockSel(e2&&e2.clock!==undefined?rawClock(e2):rawClock({role:rs.value}),true);}});}});return r;});
+wrap('saveEmp',orig=>function(){const id=empEditId;const before=D.emps.length;const want=clockSel;const w=$('exClockWrap');const changed=clockTouched&&w&&w.dataset.orig!==String(want);
   const r=orig.apply(this,arguments);
   safe(()=>{if(!$('m-emp').classList.contains('hid'))return; // not saved (missing name, bad password…)
     const e=id?D.emps.find(x=>x.id===id):(D.emps.length>before?D.emps[D.emps.length-1]:null);if(!e||e.role==='owner')return;
     if(!canSetClock(me(),e))return;
-    if(id&&!changed)return;
-    if(!id&&want===true){return;} // new person, default YES — nothing to store
+    if(!changed)return;                    // untouched: keep the role's normal rule (nothing stored)
+    if(e.clock===want)return;
     e.clock=want;save();renderAll();});return r;});
 
 // ═════════ 5. job fields start blank; type to search ═════════
@@ -197,9 +200,11 @@ function jp(sel,o){if(!sel)return null;o=o||{};if(sel._jp){sel._jp.o=Object.assi
   sel.insertAdjacentElement('afterend',box);sel.classList.add('exjp-sel');sel.setAttribute('aria-hidden','true');sel.tabIndex=-1;
   const inp=box.querySelector('input'),x=box.querySelector('.exjp-x'),list=box.querySelector('.exjp-list'),sugw=box.querySelector('.exjp-sugw');
   const api={sel,box,inp,o,open:false,items:[],cur:0};sel._jp=api;
-  const items=()=>{const out=[];[...sel.options].forEach(op=>{if(op.disabled&&!op.value)return;const g=op.parentElement&&op.parentElement.tagName==='OPTGROUP'?op.parentElement.label:'';out.push({v:op.value,l:op.textContent,g,h:hay([op.textContent,op.value?siteExtra(op.value):''])});});return out;};
-  const labelOf=v=>{const op=[...sel.options].find(z=>z.value===v);return op?op.textContent:'';};
-  api.refresh=()=>{const v=VSET.get.call(sel);const isNone=!v||v==='__none';inp.value=isNone?'':labelOf(v);x.hidden=isNone;box.classList.remove('exjp-req');if(api.open)render();};
+  const clean=l=>String(l||'').replace(/\s+—\s+—\s*$/,''); // "12 Main St — —" (no manager) → "12 Main St"
+  const items=()=>{const out=[];[...sel.options].forEach(op=>{if(op.disabled&&!op.value)return;const g=op.parentElement&&op.parentElement.tagName==='OPTGROUP'?op.parentElement.label:'';out.push({v:op.value,l:clean(op.textContent),g,h:hay([op.textContent,op.value?siteExtra(op.value):''])});});return out;};
+  const labelOf=v=>{const op=[...sel.options].find(z=>z.value===v);return op?clean(op.textContent):'';};
+  const canNone=()=>[...sel.options].some(z=>z.value===''&&!z.hidden&&!z.disabled);
+  api.refresh=()=>{const v=VSET.get.call(sel);const isNone=!v||v==='__none';inp.value=isNone?'':labelOf(v);x.hidden=isNone||!canNone();box.classList.remove('exjp-req');if(api.open)render();};
   function render(){const q=inp.value;const all=items();const sameAsSel=labelOf(VSET.get.call(sel))===q&&q;const tk=toks(sameAsSel?'':q);let html='';api.items=[];
     if(!tk.length){const seen=new Set();const add=(v,lab)=>{const it=all.find(z=>z.v===v);if(!it||seen.has(v))return;seen.add(v);html+=(lab?'<div class="exjp-gh">'+esc(lab)+'</div>':'')+row(it,'');};
       const tj=todayJob();if(tj)add(tj,'📍 '+T('Your job today'));const nb=nearIds().filter(v=>v!==tj);nb.forEach((v,i)=>add(v,i?'':'📍 '+T('Near you')));
@@ -220,7 +225,7 @@ function jp(sel,o){if(!sel)return null;o=o||{};if(sel._jp){sel._jp.o=Object.assi
   inp.addEventListener('input',()=>{box.classList.remove('exjp-req');render();});
   inp.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){api.cur=Math.min(api.items.length-1,api.cur+1);hl();e.preventDefault();}else if(e.key==='ArrowUp'){api.cur=Math.max(0,api.cur-1);hl();e.preventDefault();}
     else if(e.key==='Enter'){if(api.open&&api.items[api.cur]){pick(api.items[api.cur].v);e.preventDefault();}}else if(e.key==='Escape'){close();}});
-  inp.addEventListener('blur',()=>setTimeout(()=>{close();const v=VSET.get.call(sel);const l=v?labelOf(v):'';if(inp.value!==l){if(!inp.value)pick('');else inp.value=l;}},180));
+  inp.addEventListener('blur',()=>setTimeout(()=>{close();const v=VSET.get.call(sel);const l=v?labelOf(v):'';if(inp.value!==l)inp.value=l;},180)); // typing without picking never changes the job
   x.addEventListener('mousedown',e=>e.preventDefault());x.addEventListener('click',()=>{pick('');inp.focus();});
   // keep the box in step when the app sets the job in code (sel.value=…, selectedIndex, new options)
   Object.defineProperty(sel,'value',{configurable:true,get(){return VSET.get.call(sel);},set(v){VSET.set.call(sel,v);api.refresh();}});
@@ -237,7 +242,6 @@ function jpRequire(sel,msg){if(!sel)return true;const v=VSET.get.call(sel);if(v&
 window.EX_jobRequire=jpRequire;
 // [opener, field id, blank on new?(args)=>bool]
 const OPENERS=[
- ['openJob','jSite',()=>true],
  ['openFix','fxSite',()=>true],
  ['openPunchEdit','peSite',a=>a[0]===null||a[0]===undefined],
  ['openExp','exSite',()=>true],
@@ -248,10 +252,12 @@ const OPENERS=[
  ['renderTravel','tvSite',()=>false],
 ];
 OPENERS.forEach(([fn,id,blank])=>wrap(fn,orig=>function(){const a=arguments;const r=orig.apply(this,a);safe(()=>{const sel=$(id);if(!sel)return;if(blank(a))jpBlank(sel);jp(sel);});return r;}));
+wrap('openJob',orig=>function(){const r=orig.apply(this,arguments);safe(()=>{const sel=$('jSite');jpBlank(sel);jp(sel);
+  document.querySelectorAll('#jAssign input[type=checkbox]').forEach(b=>{b.checked=(typeof jobFilter!=='undefined'&&b.value===jobFilter);});if(typeof jobWord==='function')jobWord();});return r;});
 ['openMeet'].forEach(fn=>wrap(fn,orig=>function(){const r=orig.apply(this,arguments);safe(()=>jp($('meSite')));return r;}));
 wrap('openLoan',orig=>function(k,empId){const r=orig.apply(this,arguments);safe(()=>{const sel=$('loanSite');const who=$('loanEmp').value;const ex=who&&typeof loansFor==='function'?loansFor(who,k)[0]:null;if(!ex)jpBlank(sel);jp(sel);
   // switching the person shows that person's existing move (or a blank job)
-  $('loanEmp').addEventListener('change',()=>{const e2=typeof loansFor==='function'?loansFor($('loanEmp').value,k)[0]:null;if(e2)sel.value=e2.site;else jpBlank(sel);},{once:false});});return r;});
+  $('loanEmp').onchange=()=>openLoan(k,$('loanEmp').value);});return r;});
 // material request: its own address search box — just start it empty
 wrap('openMat',orig=>function(){const r=orig.apply(this,arguments);safe(()=>{const sel=$('mtSite');if(sel)VSET.set.call(sel,'');const sf=$('mtSiteFind');if(sf){sf.value='';sf.placeholder=T('Search or select a job');}});return r;});
 // schedule "Add a job": blank until picked, and kept while switching Full day / Specific hours / Until reassigned
@@ -264,8 +270,9 @@ const REQ=[
  ['sendFix','fxSite'],['saveEst','esSite'],['savePickup','puSite'],
  ['slotAddFull','slotAddSite'],['slotAddSpecific','slotAddSite'],['slotAddOngoing','slotAddSite'],['saveLoan','loanSite'],
 ];
+wrap('saveExp',orig=>function(){if(typeof exType!=='undefined'&&exType==='material'&&exFile&&!jpRequire($('exSite')))return;return orig.apply(this,arguments);});
 REQ.forEach(([fn,id])=>wrap(fn,orig=>function(){if(!jpRequire($(id)))return;return orig.apply(this,arguments);}));
-wrap('savePunchEdit',orig=>function(){if(typeof peIdx!=='undefined'&&peIdx===null&&!jpRequire($('peSite')))return;return orig.apply(this,arguments);});
+wrap('savePunchEdit',orig=>function(){if(!jpRequire($('peSite')))return;return orig.apply(this,arguments);});
 wrap('saveStockIn',orig=>function(){const ss=$('siSite');const rs=typeof siRetSite!=='undefined'?siRetSite:null;if(!rs&&ss&&!VSET.get.call(ss)&&!($('siSrc').value||'').trim()){jpRequire(ss,T('Pick the job, or type the supplier'));return;}return orig.apply(this,arguments);});
 // scanner finish sheet: the job starts blank (nearby jobs are one tap away at the top of the list)
 wrap('scanFinish',orig=>function(){const r=orig.apply(this,arguments);safe(()=>{const sel=$('scJob');if(sel){jpBlank(sel);jp(sel);}});return r;});
@@ -290,7 +297,7 @@ function buildIndex(){const m=me();const I=[];const add=(cat,ic,title,sub,go,par
   // site folder notes
   safe(()=>visSites().forEach(s=>(s.notes||[]).forEach(n=>{if(!n||!n.text)return;add('msgs','🗒',String(n.text).split('\n')[0].slice(0,80),nameOf(n.by)+' · '+s.name.split(',')[0],()=>{openSiteSafe(s.id);setTimeout(()=>safe(()=>fdJump('fdNotes')),250);},[n.text,nameOf(n.by),s.name],n.ts);})));
   // schedule
-  safe(()=>{const canAll=m.role!=='worker';const today=new Date();today.setHours(12,0,0,0);const from=canAll?-21:0,to=canAll?60:1;
+  safe(()=>{const canAll=tabOk('sched');const today=new Date();today.setHours(12,0,0,0);const from=canAll?-21:0,to=canAll?60:1;
     for(let i=from;i<=to;i++){const d=new Date(today);d.setDate(d.getDate()+i);const k=dkey(d);const dw=dayWords(k);
       D.crews.forEach(c=>{if(!canAll&&c.id!==m.crew)return;const as=safe(()=>effectiveAsgs(c.id,k),[])||[];if(!as.length)return;const people=D.emps.filter(e=>e.crew===c.id&&!e.inactive).map(e=>e.name);
         add('sched','📅',c.name+' — '+dayLabel(k),as.map(a=>siteName(a.site).split(',')[0]+(a.start!=null&&typeof fMin==='function'?' '+fMin(a.start):'')).join(' · '),()=>openSchedSafe(c.id,k),[c.name,dw,people.join(' '),as.map(a=>siteName(a.site)+' '+(a.note||'')).join(' ')],d.getTime());});
@@ -348,6 +355,11 @@ function openStockSafe(id){if(typeof mhStaff==='function'&&mhStaff()){openMatHis
 function openHistSafe(x){const one=(x.items||[]).length===1?x.items[0].id:null;if(one&&D.stock.some(s=>s.id===one))openMatHist({item:one});else if(x.site)openMatHist({site:x.site});else openMatHist({by:x.by});}
 function openPunchSafe(id,all){if(all){const i=typeof id==='number'?id:D.punches.findIndex(p=>p.id===id);if(i>=0){if(tabOk('hours'))goTab('hours');openPunchEdit(i);return;}}if(tabOk('punch'))goTab('punch');}
 window.EX_openSite=openSiteSafe;window.EX_openTask=openTaskSafe;window.EX_openSched=openSchedSafe;
+// person cards: hours, punch status and time off only for people allowed to see them (Owner, all-access, Payroll,
+// site managers, and a crew leader for his own crew); everyone else gets name, job title and crew
+const seesPersonTime=(m,e)=>!!m&&!!e&&(m.id===e.id||canEditHours(m)||m.role==='owner'||!!m.all||m.role==='manager'||(!!m.lead&&!!m.crew&&e.crew===m.crew));
+wrap('personCard',orig=>function(e){const m=me();if(seesPersonTime(m,e))return orig.apply(this,arguments);
+  return '<div class="card" style="padding:12px"><div style="font-weight:700;font-size:16px">👤 '+esc(e.name)+'</div><div style="font-size:12.5px;color:var(--g4);margin-top:2px">'+esc(T(e.title||ROLE_LABEL[e.role]||''))+(e.crew?' · '+esc(nameOf(e.crew)):'')+'</div></div>';});
 // detail sheet (material list, person)
 function sheet(html){let o=$('m-exd');if(!o){o=document.createElement('div');o.className='ov hid';o.id='m-exd';o.innerHTML='<div class="md"><div class="hd"></div><div id="exdBody"></div><button class="btn sec2" style="margin-top:12px" onclick="hide(\'m-exd\')">'+T('Close')+'</button></div>';document.body.appendChild(o);o.addEventListener('click',e=>{if(e.target===o)hide('m-exd');});}
   $('exdBody').innerHTML=html;show('m-exd');}
@@ -374,7 +386,7 @@ wrap('kRender',orig=>function(){const r=orig.apply(this,arguments);safe(()=>{con
 // ═════════ 4. notifications: bell, history, read / unread, open the exact item ═════════
 let nView='all',nTab='n';
 const myN=()=>{const m=me();return m?D.inbox.filter(x=>x.to===m.id).sort((a,b)=>(b.ts||0)-(a.ts||0)):[];};
-const nIcon=x=>x.kind==='pri'?'🔴':x.kind==='mat'?'📦':x.kind==='warn'?'⚠️':'🔔';
+const nIcon=x=>/^\s*\p{Extended_Pictographic}/u.test(x.msg||'')?'':(x.kind==='pri'?'🔴':x.kind==='mat'?'📦':x.kind==='warn'?'⚠️':'🔔');
 // dedupe: the very same alert to the same person within a minute (double tap, retry) is sent once — nothing else is held back
 wrap('pushTo',orig=>function(ids,msg,kind,link){const now=Date.now();const lk=JSON.stringify(link||null);
   const ex=new Set(D.inbox.filter(n=>n.msg===msg&&JSON.stringify(n.link||null)===lk&&now-(n.ts||0)<60000).map(n=>n.to));
@@ -384,11 +396,11 @@ wrap('pushTo',orig=>function(ids,msg,kind,link){const now=Date.now();const lk=JS
 // note shared → opens that note (was a screen that does not exist)
 wrap('kCollab',orig=>function(id,on){const n=kGet&&kGet();const before=D.inbox.length;const r=orig.apply(this,arguments);safe(()=>{if(!n)return;for(let i=0;i<D.inbox.length-before;i++){const x=D.inbox[i];if(x&&x.to===id&&x.link&&x.link.tab==='notes'){x.link={note:n.id};}}save();});return r;});
 // a note changed by one person → the others it is shared with get one notice (per 10 minutes per note)
-let kSnap=null;
+let kSnap=null;const kNoticeAt={};
 wrap('kOpen',orig=>function(id){const r=orig.apply(this,arguments);safe(()=>{const n=kGet();kSnap=n?{id:n.id,s:JSON.stringify([n.title,n.body,n.items])}:null;});return r;});
 wrap('kClose',orig=>function(){let n=null,changed=false;safe(()=>{n=kGet();changed=!!(n&&kSnap&&kSnap.id===n.id&&JSON.stringify([n.title,n.body,n.items])!==kSnap.s);});const r=orig.apply(this,arguments);
   safe(()=>{if(!changed||!n||!D.keep.some(x=>x.id===n.id))return;const m=me();const to=[n.owner,...(n.collab||[])].filter(x=>x&&x!==m.id);if(!to.length)return;
-    const recent=D.inbox.some(x=>x.link&&x.link.note===n.id&&x.from===m.id&&Date.now()-(x.ts||0)<600000);if(recent)return;
+    if(Date.now()-(kNoticeAt[n.id]||0)<600000)return;kNoticeAt[n.id]=Date.now();
     pushTo(to,'📝 '+nameOf(m.id)+' '+T('updated the note')+': '+(n.title||String(n.body||'').split('\n')[0].slice(0,40)||T('Untitled')),'info',{note:n.id});});kSnap=null;return r;});
 // crew leader / crew manager changes tell the person
 wrap('toggleLead',orig=>function(id){const r=orig.apply(this,arguments);safe(()=>{const e=D.emps.find(x=>x.id===id);if(e)pushTo([id],e.lead?'★ '+T('You are now a crew leader — you get tasks for your crew'):'★ '+T('You are no longer a crew leader'),'info',{tab:'jobs'});});return r;});
@@ -450,7 +462,8 @@ function myTasks(){const m=me();if(!m)return {html:'',attn:0};const secs=[];let 
   if(m.crew){const ks=[0,1].map(i=>{const d=new Date();d.setDate(d.getDate()+i);return dkey(d);});const rows=[];ks.forEach(k=>{const as=safe(()=>effectiveAsgs(m.crew,k),[])||[];const lo=typeof loansFor==='function'?safe(()=>loansFor(m.id,k),[]):[];[...as,...lo].forEach(a=>rows.push(it('📅',dayLabel(k)+': '+siteName(a.site).split(',')[0],a.start!=null&&typeof fMin==='function'?fMin(a.start):'',"hide('m-inbox');EX_openSched('"+jsq(m.crew)+"','"+k+"')")));});sec('📅 '+T('My schedule'),rows);}
   sec('📝 '+T('Notes shared with me'),(D.keep||[]).filter(n=>!n.trashed&&!n.archived&&n.owner!==m.id&&(n.collab||[]).includes(m.id)).sort((a,b)=>(b.edited||0)-(a.edited||0)).slice(0,8).map(n=>it('📝',n.title||String(n.body||'').split('\n')[0].slice(0,40)||T('Untitled'),nameOf(n.owner),"hide('m-inbox');kOpen('"+jsq(n.id)+"')")));
   sec('✅ '+T('Completed'),mine.filter(j=>j.status==='done'&&now-(j.doneAt||j.ts||0)<14*86400000).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0)).map(j=>it('✅',jobText(j).split('\n')[0].slice(0,60),j.site?siteName(j.site).split(',')[0]:'',"hide('m-inbox');EX_openTask('"+jsq(j.id)+"')")));
-  return {attn,html:secs.length?secs.join(''):'<div class="empty">✓ '+T('All clear')+'</div>'};}
+  const extra=(!CR(m)&&typeof reqTimeOff==='function'&&m.role!=='owner')?'<div style="margin-top:14px"><button class="btn sec2" onclick="hide(\'m-inbox\');reqTimeOff()">🏖 '+T('Request time off')+'</button></div>':'';
+  return {attn,html:(secs.length?secs.join(''):'<div class="empty">✓ '+T('All clear')+'</div>')+extra};}
 window.EX_myTasks=myTasks;
 // bell count + app-icon badge; a toast when notifications arrive after being offline
 let lastUn=null;
@@ -466,12 +479,19 @@ function openFromPush(id,link){if(!id)return;let tries=0;const go=()=>{if(!me()|
   const x=D.inbox.find(n=>n.id===id);if(x){nGo(id);return;}
   if(++tries===3&&window.EX_catchUp)safe(()=>EX_catchUp());
   if(tries<20)return setTimeout(go,600);
-  if(link){D.inbox.unshift({id,to:me().id,msg:'',kind:'info',ts:Date.now(),read:true,link});nGo(id);D.inbox=D.inbox.filter(n=>!(n.id===id&&!n.msg));}else openInbox('n');};go();}
+  openInbox('n');};go();} // not this person's alert (or not arrived): show their own list, never someone else's item
 function hashN(){const h=location.hash||'';const mm=h.match(/[#&]n=([A-Za-z0-9_-]+)/);if(!mm)return;let link=null;const lm=h.match(/[#&]l=([^&]+)/);if(lm)try{link=JSON.parse(decodeURIComponent(lm[1]));}catch(e){}
   try{history.replaceState(history.state,'',location.pathname+location.search);}catch(e){}openFromPush(mm[1],link);}
 window.addEventListener('hashchange',hashN);setTimeout(hashN,0);
 if(navigator.serviceWorker)navigator.serviceWorker.addEventListener('message',e=>{const d=e.data||{};if(d.type==='ex-open-n')openFromPush(d.id,d.link||null);});
 window.EX_openFromPush=openFromPush;
+// the person using this phone now is the one it notifies: refresh the phone's sign-up time on start (at most hourly),
+// so if someone else used this phone before, the server sends to the newest person only
+if(typeof window.EX_pushOn==='function')wrap('EX_pushOn',orig=>async function(){const r=await orig.apply(this,arguments);try{if(r==='granted'){const m=me();const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();const ep=sub&&sub.endpoint;
+  const row=ep&&(D.push||[]).find(x=>x.who===m.id&&x.sub&&x.sub.endpoint===ep);if(row&&Date.now()-(row.ts||0)>3600000){row.ts=Date.now();save();}}}catch(e){}return r;});
+// signing out: this phone stops getting the person's notifications (the next person signs it up for themselves)
+if(typeof window.EX_logout==='function')wrap('EX_logout',orig=>async function(){try{const m=me();if(m&&navigator.serviceWorker&&D.push&&D.push.length){const reg=await navigator.serviceWorker.ready;const sub=reg&&reg.pushManager?await reg.pushManager.getSubscription():null;
+  const ep=sub&&sub.endpoint;if(ep){const n0=D.push.length;D.push=D.push.filter(x=>!(x.who===m.id&&x.sub&&x.sub.endpoint===ep));if(D.push.length!==n0)save();}}}catch(e){}return orig.apply(this,arguments);});
 
 // ═════════ More screen + home: a way into My Tasks ═════════
 wrap('renderMore',orig=>function(){const r=orig.apply(this,arguments);safe(()=>{const g=document.querySelector('#pg-more .grid, #moreGrid, #pg-more');if(!g||$('exMoreMine'))return;const b=document.createElement('div');b.id='exMoreMine';b.className='card';b.style.cssText='padding:12px 14px;cursor:pointer;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center';b.innerHTML='<b>✅ '+T('My Tasks & Notifications')+'</b><span style="color:var(--blue-mid)">›</span>';b.onclick=()=>openInbox('t');g.prepend(b);});return r;});

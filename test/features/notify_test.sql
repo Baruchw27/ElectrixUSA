@@ -35,7 +35,11 @@ select 'N4 moved person|'||string_agg(to_emp||':'||msg,',')||'|zu7:📅 Schedule
 -- N5 the day is cleared → crew told "no job booked"
 delete from private.notify_queue;
 update records set deleted = true where coll='sched' and id=(select 'zc1|'||today from k);
-select 'N5 cleared day|'||count(*)||'|2' from private.notify_queue where msg like '%no job booked';
+select 'N5 cleared day says open the app|'||count(*)||'|2' from private.notify_queue where msg like '%open the app to see it';
+-- N5b an exception to the ongoing job (patch row) never lists a guessed job
+delete from private.notify_queue;
+update records set deleted=false, data='{"patch":true,"cancel":["ONG"],"assignments":[{"site":"zs2","start":600}]}'::jsonb where coll='sched' and id=(select 'zc1|'||today from k);
+select 'N5b exception row says open the app|'||count(*) filter (where msg like '%open the app to see it')||'/'||count(*)||'|2/2' from private.notify_queue;
 -- N6 ongoing job that applies today → crew; one ending last month → nobody
 delete from private.notify_queue;
 insert into records(coll,id,data,deleted,updated_by,updated_at) select 'sched','ONG:zc1:r1',jsonb_build_object('site','zs2','from',today-10,'start',420),false,'t',now() from k;

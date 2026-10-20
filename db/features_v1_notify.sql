@@ -80,11 +80,13 @@ begin
       crew := split_part(k, '|', 1); d := nullif(split_part(k, '|', 2), '')::date;
     end if;
     if d is not null and (d < today or d > today + 1) then return null; end if;
-    jobs := nullif(case when n is null then '' else private.fv1_site_list(n) end, '');
+    -- list the jobs only when this row IS the whole day; an exception to an ongoing job, or a removed day (the ongoing
+    -- job may still apply), says "open the app" instead of guessing — a wrong job in a notice is worse than none
+    jobs := case when n is null or n ? 'patch' or n ? 'cancel' or n ? 'replace' then null else nullif(private.fv1_site_list(n), '') end;
     msg := '📅 ' || case when d is null then 'Your crew''s ongoing job changed' when d = today then 'Schedule changed for today' else 'Schedule changed for tomorrow' end
-           || ': ' || coalesce(jobs, 'no job booked');
+           || coalesce(': ' || jobs, ' — open the app to see it');
     msg_es := '📅 ' || case when d is null then 'Cambió el trabajo fijo de tu cuadrilla' when d = today then 'Cambió el horario de hoy' else 'Cambió el horario de mañana' end
-           || ': ' || coalesce(jobs, 'sin trabajo asignado');
+           || coalesce(': ' || jobs, ' — abre la app para verlo');
     for who, wlang in
       select r.id, r.data->>'lang' from records r where r.coll = 'emps' and not r.deleted and coalesce((r.data->>'inactive')::boolean, false) = false
         and ((emp is not null and r.id = emp) or (crew is not null and r.data->>'crew' = crew))
