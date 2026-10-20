@@ -160,7 +160,8 @@ function rejectedRows(sent,server){const out=[];if(!Array.isArray(server))return
     const s=by[row.coll+'\u0001'+row.id];
     // A denied INSERT comes back absent. We flag that only for 'sched' (the Schedule feature this fix targets), to
     // keep every other feature's save behavior exactly as it is today — no new surprises outside scheduling.
-    if(!s||s.deleted){if(row.coll==='sched'||row.coll==='punches')out.push({coll:row.coll,id:row.id,absent:true});return;}
+    // B2: for every kind of record — except bell messages to other people (the sender may not read those back)
+    if(!s||s.deleted){if(row.coll!=='inbox'&&row.coll!=='push')out.push({coll:row.coll,id:row.id,absent:true});return;}
     const d=s.data||{};
     const own=SERVER_OWNED[row.coll]||[];   // fields the server works out itself (it is not a refusal when they differ)
     const sentObj=(row.patch&&typeof row.patch==='object')?row.patch:(row.coll==='punches'&&row.full&&typeof row.full==='object'?row.full:null);
@@ -230,7 +231,7 @@ async function _flush(){const keys=Object.keys(queue);if(!keys.length){lastRejec
       // a delete the server refused comes back still present and not deleted → restore it locally (adopt does) and flag
       // (scoped to 'sched' so other features keep today's behavior)
       const dby={};(Array.isArray(r.data)?r.data:[]).forEach(s=>{dby[s.coll+'\u0001'+s.id]=s;});
-      const refused=part.filter(o=>{if(o.coll!=='sched')return false;const s=dby[o.coll+'\u0001'+o.id];return !!(s&&!s.deleted);}).map(o=>({coll:o.coll,id:o.id,delRefused:true,del:true}));
+      const refused=part.filter(o=>{if(o.coll==='inbox')return false;const s=dby[o.coll+'\u0001'+o.id];return !!(s&&!s.deleted);}).map(o=>({coll:o.coll,id:o.id,delRefused:true,del:true}));
       if(refused.length)keepRej(refused);
       part.forEach(o=>{done(o.coll+'\u0001'+o.id,o);mark(o.coll,o.id,refused.some(x=>x.id===o.id&&x.coll===o.coll)?'rej':'ok');});saveQ();adopt(r.data);
       myRej.push(...refused);}
@@ -291,13 +292,15 @@ function localSave(){try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){}
 // History the phone keeps only for a while (see pruneOld in the app): download just the recent part, so the start-up
 // download (and the phone copy) does not keep growing month after month. Everything stays on the server.
 const HIST_COLLS=['punches','travel','stockLog','inbox','goHomeLog'],HIST_DAYS=130;
+// the newest change time the SERVER reported (its clock, not this phone's) — the next catch-up starts from there
+function srvTime(rows,fallback){let mx=0;for(const r of rows){const v=r&&r.updated_at?Date.parse(r.updated_at):0;if(v>mx)mx=v;}return mx||fallback;}
 async function pullAll(){const rows=[];const PAGE=1000;
   const t0=Date.now();const since=new Date(t0-HIST_DAYS*864e5).toISOString();
   // pages are read in a fixed order (coll, id); without an order a row changed mid-download could be missed or doubled
   async function pages(mk){let from=0;while(true){const r=await withTO(mk().order('coll').order('id').range(from,from+PAGE-1),20000,'download');if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<PAGE)break;from+=PAGE;}}
-  await pages(()=>sb.from('records').select('coll,id,data,deleted').not('coll','in','('+HIST_COLLS.join(',')+')'));
-  await pages(()=>sb.from('records').select('coll,id,data,deleted').in('coll',HIST_COLLS).gt('updated_at',since));
-  lastPull=t0;try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}return rows;}
+  await pages(()=>sb.from('records').select('coll,id,data,deleted,updated_at').not('coll','in','('+HIST_COLLS.join(',')+')'));
+  await pages(()=>sb.from('records').select('coll,id,data,deleted,updated_at').in('coll',HIST_COLLS).gt('updated_at',since));
+  lastPull=srvTime(rows,t0);try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}return rows;}
 // signed in but the server no longer lets this person in (turned off by the office): wipe this phone's copy and go to sign-in
 async function turnedOff(){let member=true;try{const r=await withTO(sb.rpc('is_member'),6000,'access check');if(r&&!r.error&&r.data===false){const t=await withTO(sb.rpc('no_team_yet'),6000,'team check');member=!!(t&&t.data===true);}}catch(e){return false;}
   if(member)return false;
@@ -318,8 +321,8 @@ async function catchUp1(){if(!REAL||!ready||catching||!st.online)return;catching
     // open the new live feed before fetching: any change from now on arrives live, anything earlier is in the fetch
     const old=chan;let nu=null;if(sb.removeChannel){try{nu=subscribe();const w0=Date.now();while(!nu._ok&&Date.now()-w0<4000)await new Promise(r=>setTimeout(r,100));}catch(e){}}
     const since=new Date((lastPull||Date.now())-3*60000).toISOString();const t0=Date.now();const rows=[];let from=0;
-    while(true){const r=await withTO(sb.from('records').select('coll,id,data,deleted').gt('updated_at',since).range(from,from+999),20000,'catch-up');if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<1000)break;from+=1000;}
-    lastPull=t0;try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}rows.forEach(r=>{if(r.coll==='stock'&&!r.deleted&&r.data&&queue[r.coll+'\u0001'+r.id]&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,r.data.qty,null,r.data.qv);});
+    while(true){const r=await withTO(sb.from('records').select('coll,id,data,deleted,updated_at').gt('updated_at',since).order('updated_at').range(from,from+999),20000,'catch-up');if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<1000)break;from+=1000;}
+    lastPull=rows.length?srvTime(rows,t0):(lastPull||t0);try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}rows.forEach(r=>{if(r.coll==='stock'&&!r.deleted&&r.data&&queue[r.coll+'\u0001'+r.id]&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,r.data.qty,null,r.data.qv);});
     // a record that arrived live while this catch-up was in flight is newer than what the catch-up fetched: keep it
     const fresh=rows.filter(r=>!queue[r.coll+'\u0001'+r.id]&&!((liveAt[r.coll+'\u0001'+r.id]||0)>=t0));
     if(fresh.length){applyRows(fresh,{replace:false});fresh.forEach(r=>{const k=r.coll;if(r.deleted){if(snap[k])delete snap[k][r.id];}else{(snap[k]=snap[k]||{})[r.id]=canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));}});localSave();bump();}
@@ -536,16 +539,16 @@ const SEEDABLE=['sites','stock'];
 window.EX_start=async function(){if(!REAL||ready)return;const local={};SEEDABLE.forEach(k=>{if(D[k])local[k]=JSON.parse(JSON.stringify(D[k]));});
   const rows=await pullAll();
   if(!rows.length&&await turnedOff())return;
-  if(rows.length){applyRows(rows,{replace:true});
+  if(rows.length){applyRows(rows,{replace:true});applyPendingQueue();takeSnap();   // B2: unsent work back on top at once — no wait in between
     // stock history is not cleared by the full download (it is server-written): drop the id-less copies older versions of
     // the app piled up on every start, keeping this phone's own moves that are still waiting or were refused
     try{const srvIds=new Set(rows.filter(r=>r.coll==='stockLog'&&!r.deleted).map(r=>r.id));
       if(Array.isArray(D.stockLog))D.stockLog=D.stockLog.filter(x=>x&&x.id&&(srvIds.has(x.id)||x.pending||x.rejected));}catch(e){log('stockLog tidy',e);}}
   const present=new Set(rows.filter(r=>!r.deleted).map(r=>r.coll));const seeded=[];
-  if(rows.length){try{const u=(await sb.auth.getUser()).data.user;const meRec=u&&(D.emps||[]).find(e=>e.authUid===u.id);
+  if(rows.length){try{const u=(await withTO(sb.auth.getUser(),6000,'who')).data.user;const meRec=u&&(D.emps||[]).find(e=>e.authUid===u.id);
     if(meRec&&meRec.role==='owner')SEEDABLE.forEach(k=>{const v=local[k];if(present.has(k)||!v||!(Array.isArray(v)?v.length:Object.keys(v).length))return;
       if(k==='stock')v.forEach(x=>{x.qty=0;x.min=0;delete x.photo;});if(k==='sites')v.forEach(s=>{s.notes=[];delete s.fenceReq;delete s.trip;});D[k]=v;seeded.push(k);});}catch(e){log('seed check',e);}}
-  applyPendingQueue();takeSnap();
+  if(!rows.length){applyPendingQueue();takeSnap();}
   seeded.forEach(k=>{const cur=recordsOf(k);Object.keys(cur).forEach(id=>{queue[k+'\u0001'+id]={coll:k,id,data:cur[id]};});});if(seeded.length)saveQ();
   if(!rows.length&&window.EX_allowSeed){Object.keys(queue).length||(function(){const ops=[];colls().forEach(k=>{const cur=recordsOf(k);Object.keys(cur).forEach(id=>ops.push({coll:k,id,data:cur[id]}));});const sc=scalars();Object.keys(sc).forEach(id=>ops.push({coll:'_',id,data:{v:sc[id]}}));ops.forEach(o=>queue[o.coll+'\u0001'+o.id]=o);saveQ();})();}
   try{if(typeof pruneOld==='function'&&pruneOld())localSave();}catch(e){log('prune',e);}
