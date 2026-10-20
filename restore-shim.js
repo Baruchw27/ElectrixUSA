@@ -9,7 +9,9 @@
   r.onsuccess=()=>{const db=r.result;let changed=false,left=KEYS.length;
     KEYS.forEach(k=>{try{const g=db.transaction('kv','readonly').objectStore('kv').get(k);
       g.onsuccess=()=>{const rec=g.result;const ls=+(localStorage.getItem('ex_dseq__'+k)||0);
-        if(rec&&typeof rec.v==='string'&&rec.seq>ls){try{localStorage.setItem(k,rec.v);localStorage.setItem('ex_dseq__'+k,String(rec.seq));changed=true;}catch(e){}}
+        if(rec&&typeof rec.v==='string'&&rec.seq>ls){let ok=false;try{localStorage.setItem(k,rec.v);ok=true;}catch(e){}
+          if(!ok){try{localStorage.removeItem('electrix_v29');localStorage.setItem(k,rec.v);ok=true;}catch(e){}} // phone full: drop the re-downloadable cache, never the work
+          if(ok){try{localStorage.setItem('ex_dseq__'+k,String(rec.seq));}catch(e){}changed=true;}}
         if(--left===0)done();};
       g.onerror=()=>{if(--left===0)done();};}catch(e){if(--left===0)done();}});
     function done(){if(changed){try{if(!sessionStorage.getItem('ex_rb_restored')){sessionStorage.setItem('ex_rb_restored','1');location.reload();}}catch(e){}}}};
