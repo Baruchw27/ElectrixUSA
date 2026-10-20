@@ -328,8 +328,10 @@ function applyRows(rows,{replace}){applying=true;try{
   rows.forEach(r=>{if(r.deleted){if(r.coll==='_')delete D[r.id];else delRecord(r.coll,r.id);return;}
     if(r.coll==='_'){D[r.id]=r.data&&'v' in r.data?r.data.v:r.data;return;}
     if(!(r.coll in D))D[r.coll]=/^[a-z]+$/.test(r.coll)&&!['sched','mylist','punchlists','keepLabels','base'].includes(r.coll)?[]:{};
-    const data=r.data;if(r.coll==='emps'){const old=liveRecord('emps',r.id);if(old&&old.pass)data.pass=old.pass;}
-    setRecord(r.coll,r.id,data);if(r.coll==='stock'&&data&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,data.qty,null,data.qv);});
+    // stock history rows are written by the server without an id inside: keep the id, or the phone's copy loses it
+    let data=r.data;if(r.coll==='stockLog'&&data&&typeof data==='object'&&!Array.isArray(data)&&!data.id)data=Object.assign({id:r.id},data);if(r.coll==='emps'){const old=liveRecord('emps',r.id);if(old&&old.pass)data.pass=old.pass;}
+    setRecord(r.coll,r.id,data);if(r.coll==='stock'&&data&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,data.qty,null,data.qv);
+    if(r.coll==='stockLog'&&window.EX_stockLogSeen){try{window.EX_stockLogSeen(r.id);}catch(e){}}});
   }finally{applying=false;}}
 function applyPendingQueue(){Object.values(queue).forEach(o=>{applying=true;try{if(o.coll==='_'){if(o.del)delete D[o.id];else D[o.id]=o.data.v;}else if(o.del)delRecord(o.coll,o.id);else setRecord(o.coll,o.id,o.data);}finally{applying=false;}});}
 
@@ -522,7 +524,11 @@ const SEEDABLE=['sites','stock'];
 window.EX_start=async function(){if(!REAL||ready)return;const local={};SEEDABLE.forEach(k=>{if(D[k])local[k]=JSON.parse(JSON.stringify(D[k]));});
   const rows=await pullAll();
   if(!rows.length&&await turnedOff())return;
-  if(rows.length){applyRows(rows,{replace:true});}
+  if(rows.length){applyRows(rows,{replace:true});
+    // stock history is not cleared by the full download (it is server-written): drop the id-less copies older versions of
+    // the app piled up on every start, keeping this phone's own moves that are still waiting or were refused
+    try{const srvIds=new Set(rows.filter(r=>r.coll==='stockLog'&&!r.deleted).map(r=>r.id));
+      if(Array.isArray(D.stockLog))D.stockLog=D.stockLog.filter(x=>x&&x.id&&(srvIds.has(x.id)||x.pending||x.rejected));}catch(e){log('stockLog tidy',e);}}
   const present=new Set(rows.filter(r=>!r.deleted).map(r=>r.coll));const seeded=[];
   if(rows.length){try{const u=(await sb.auth.getUser()).data.user;const meRec=u&&(D.emps||[]).find(e=>e.authUid===u.id);
     if(meRec&&meRec.role==='owner')SEEDABLE.forEach(k=>{const v=local[k];if(present.has(k)||!v||!(Array.isArray(v)?v.length:Object.keys(v).length))return;

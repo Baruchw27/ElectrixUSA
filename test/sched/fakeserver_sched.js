@@ -112,8 +112,8 @@ http.createServer(async (req,res)=>{
     global.__applied[txn.id]=fp;const me=myEmp(em);
     for(const x of plan){const data=x.r&&!x.r.deleted?Object.assign({},x.r.data,{qty:x.nq,qv:(+x.r.data.qv||0)+1}):{id:x.m.id,name:x.m.name||x.m.id,unit:x.m.unit||'pc',min:0,qty:x.nq,qv:1};const row={coll:'stock',id:x.m.id,data:pg(data),deleted:false,updated_by:me,updated_at:now()};records.set(x.k,row);
       const msg='data: '+JSON.stringify({eventType:'UPDATE',new:row})+'\n\n';clients.forEach(c=>{if(isMember(c.email))c.res.write(msg);});}
-    const lg={coll:'stockLog',id:txn.id,data:pg({kind:txn.kind,by:me,site:txn.site,items:plan.map(x=>({id:x.m.id,name:x.m.name,before:x.cur,after:x.nq})),ts:txn.ts,applied:true,auth:true}),deleted:false,updated_at:now()};records.set('stockLog\u0001'+txn.id,lg);
-    if(global.__dropTxn>0){global.__dropTxn--;stats.droppedAnswers=(stats.droppedAnswers||0)+1;try{req.socket.destroy();}catch(e){}return;} // applied, but the phone never hears back
+    const lg={coll:'stockLog',id:txn.id,data:pg({kind:txn.kind,by:me,site:txn.site,items:plan.map(x=>({id:x.m.id,name:x.m.name,before:x.cur,after:x.nq})),ts:txn.ts,applied:true,auth:true}),deleted:false,updated_at:now()};records.set('stockLog\u0001'+txn.id,lg);{const msg='data: '+JSON.stringify({eventType:'INSERT',new:lg})+'\n\n';clients.forEach(c=>{if(isMember(c.email))c.res.write(msg);});}
+    if(global.__dropTxn>0){global.__dropTxn--;if(global.__dropThen){NET=global.__dropThen;global.__dropThen=null;}stats.droppedAnswers=(stats.droppedAnswers||0)+1;try{req.socket.destroy();}catch(e){}return;} // applied, but the phone never hears back
     return send(res,200,{duplicate:false,qtys:qtys()});}
   if(p==='/functions/v1/upc'){const em=who(req);if(!isMember(em))return send(res,401,{error:'not allowed'});stats.upc=(stats.upc||0)+1;return send(res,200,{found:false});}
   // ---- test hooks
@@ -125,7 +125,7 @@ http.createServer(async (req,res)=>{
   if(p==='/__state'){return send(res,200,{users:Object.keys(users),records:records.size,colls:[...new Set([...records.values()].map(r=>r.coll))],stats});}
   if(p==='/__records'){const c=u.searchParams.get('coll');return send(res,200,[...records.values()].filter(r=>!c||r.coll===c));}
   if(p==='/__seed'){const b=await body(req);(b.users||[]).forEach(u=>{users[u.email]={id:u.id,pass:u.pass};});(b.rows||[]).forEach(r=>records.set(r.coll+'\u0001'+r.id,{coll:r.coll,id:r.id,data:pg(r.data),deleted:false,updated_at:r.updated_at||now()}));return send(res,200,{ok:1});}
-  if(p==='/__droptxn'){global.__dropTxn=+u.searchParams.get('n')||1;return send(res,200,{ok:1});}
+  if(p==='/__droptxn'){global.__dropTxn=+u.searchParams.get('n')||1;global.__dropThen=u.searchParams.get('then')||null;return send(res,200,{ok:1});}
   if(p==='/__reset'){Object.keys(users).forEach(k=>delete users[k]);records.clear();return send(res,200,{ok:1});}
   // ---- static app files
   let f=path.join(ROOT,p==='/'?'index.html':decodeURIComponent(p));if(!f.startsWith(ROOT)||!fs.existsSync(f)||fs.statSync(f).isDirectory())return send(res,404,{error:'nf'});

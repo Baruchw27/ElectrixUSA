@@ -3968,7 +3968,9 @@ function stockItem(id){return D.stock.find(x=>x.id===id);}
 // What a phone shows = the server's last known count + this phone's own moves that haven't reached the server yet.
 // (Counts from other phones arrive as server counts; nothing is ever added twice or lost when a move is refused.)
 let stockSrv={};try{stockSrv=JSON.parse(localStorage.getItem(STOCKQ_KEY+'_srv')||'{}')||{};}catch(e){stockSrv={};}
-function stockShown(id,skip){let v=+stockSrv[id]||0;stockQ().forEach(t=>{if(t.rej||t.id===skip)return;(t.moves||[]).forEach(m=>{if(m.id!==id)return;if('set' in m)v=Math.max(0,+m.set||0);else v=Math.max(0,v+(+m.delta||0));});});return v;}
+// a move whose server history row has already arrived is already inside the server count: adding it again would show it twice
+function stockDone(t){return (D.stockLog||[]).some(x=>x&&x.id===t.id&&x.applied===true&&!x.pending);}
+function stockShown(id,skip){let v=+stockSrv[id]||0;stockQ().forEach(t=>{if(t.rej||t.id===skip||stockDone(t))return;(t.moves||[]).forEach(m=>{if(m.id!==id)return;if('set' in m)v=Math.max(0,+m.set||0);else v=Math.max(0,v+(+m.delta||0));});});return v;}
 // qv = the server's version of that count (only goes up): an older count arriving after a newer one is ignored.
 let stockSrvV={};try{stockSrvV=JSON.parse(localStorage.getItem(STOCKQ_KEY+'_srvv')||'{}')||{};}catch(e){stockSrvV={};}
 function stockFromServer(id,q,skip,qv){if(q==null||isNaN(+q))return false;
@@ -3977,6 +3979,8 @@ function stockFromServer(id,q,skip,qv){if(q==null||isNaN(+q))return false;
     stockSrv[id]=+q;try{localStorage.setItem(STOCKQ_KEY+'_srv',JSON.stringify(stockSrv));}catch(e){}}
   const s=stockItem(id);if(!s)return false;const v=stockShown(id,skip);if(s.qty!==v){s.qty=v;return true;}return false;}
 window.EX_stockFromServer=stockFromServer;
+// the server's history row for one of this phone's waiting moves arrived (applied there, its answer may still be on the way): refresh those counts
+window.EX_stockLogSeen=function(id){const t=stockQ().find(x=>x.id===id);if(!t)return false;let ch=false;(t.moves||[]).forEach(m=>{const s=stockItem(m.id);if(!s)return;const v=stockShown(m.id);if(s.qty!==v){s.qty=v;ch=true;}});return ch;};
 function stockUndo(txn){const known=(txn.moves||[]).every(m=>m.id in stockSrv);if(!known)return stockRevert(txn.moves);
   (txn.moves||[]).forEach(m=>{const s=stockItem(m.id);if(s)s.qty=stockShown(m.id,txn.id);});}
 function stockApplyLocal(moves){moves.forEach(m=>{let s=stockItem(m.id);if(!s){s={id:m.id,name:m.name||m.id,unit:m.unit||'pc',qty:0,min:0};D.stock.push(s);}m._pre=(+s.qty||0);if('set' in m)s.qty=Math.max(0,+m.set||0);else s.qty=Math.max(0,(+s.qty||0)+(+m.delta||0));});}
