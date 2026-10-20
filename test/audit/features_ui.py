@@ -1,6 +1,6 @@
 """Features F1 — the five new requests, on simulated phones with the stand-in server.
-(The server side — notifications in each person's language, schedule messages gathered, "paid monthly" only by
-Owner/Payroll — is tested on the real staging database by tests/security/f1_regression.sql.)"""
+(The server side — notifications in each person's language, schedule messages gathered, "Time clock" only by
+Owner/all-access/Payroll — is tested on the real staging database by tests/security/f1_regression.sql.)"""
 import sys,os
 sys.path.insert(0,os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','sched'))
 from suite import *
@@ -33,6 +33,11 @@ async def run():
             r=await search(A,'kangaroo'); check('search: finds notifications','notifications' in r,r[:200])
             r=(await A.evaluate("(()=>{D.keep.push({id:'knS2',owner:'u7',type:'text',title:'Carlos private',body:'zebra secret',items:[],color:'0',labels:[],collab:[],created:Date.now(),edited:Date.now()});openSearch();document.getElementById('sqInput').value='zebra';doSearch();const r=document.getElementById('sqRes').innerText;D.keep=D.keep.filter(n=>n.id!=='knS2');return r})()")).lower(); check('search: does not show someone else\'s private note','carlos private' not in r and 'nothing found' in r,r[:200])
             r=await search(A,'carlos'); check('search: still finds people (and the answer card)','people' in r and 'carlos' in r,r[:200])
+            r=await search(A,'porcupnie'); check('search: forgives a small misspelling','porcupine' in r,r[:200])
+            await A.evaluate("D.sites.push({id:'zzU1',name:'254 Union Rd, Monsey',phase:'rough'})")
+            r=await search(A,'255 union'); check('search: a house number must match exactly (255 Union does not find 254 Union)','254 union' not in r,r[:200])
+            r=await search(A,'254 union'); check('… 254 Union is found','254 union' in r,r[:200])
+            await A.evaluate("D.sites=D.sites.filter(s=>s.id!=='zzU1')")
             r=await search(A,'qqqzzzxx'); check('search: says nothing found','nothing found' in r,r[:200])
             check('search: no errors',not ea,ea)
             # ── 3. exact note formatting ──
@@ -68,28 +73,33 @@ async def run():
             check('new task saved',bool(jb),[[ (x['id'],(x['data'] or {}).get('desc')) for x in srv('/__records?coll=jobs')],await A.evaluate("JSON.stringify(EX_SYNC)"),await A.evaluate("window._t||[]"),await A.evaluate("document.getElementById('m-job').className")])
             check('… and the phone did not add its own bell message (the server sends it in the worker\'s language)',len(srv('/__records?coll=inbox'))==i0,len(srv('/__records?coll=inbox'))-i0)
             check('… demo mode (no server) still sends from the phone',await A.evaluate("(()=>{const r=window.EX_REAL;window.EX_REAL=false;const n=D.inbox.length;assignPush(['u7'],'x','info',null);const ok=D.inbox.length===n+1;D.inbox.shift();window.EX_REAL=r;return ok})()"))
-            # ── 2. paid monthly — no clock-in ──
+            # ── 2. Time Clock YES/NO (Baruch: no time clock for some people; Owner / all-access / Payroll only) ──
             c3,M,em,_=await login(b,'Miriam','Testpass123','desktop'); await ready(M); await settle(M)
             await M.evaluate("openEmp('u7')"); await M.wait_for_timeout(150)
-            check('Payroll sees the "Paid monthly — no clock-in" switch',await M.evaluate("document.getElementById('ePayMWrap').style.display!=='none'"))
-            await M.evaluate("document.getElementById('ePayM').classList.add('on');saveEmp()"); await settle(M)
-            check('… turning it on is saved',(emp('u7') or {}).get('payMonthly') is True,emp('u7'))
+            check('Payroll sees the "Time clock" switch, on by default',await M.evaluate("document.getElementById('ePayMWrap').style.display!=='none'&&document.getElementById('ePayM').classList.contains('on')"))
+            et=(await M.evaluate("document.getElementById('m-emp').innerText")).lower()
+            check('… no pay wording anywhere on the employee screen',not any(w in et for w in ['paid','monthly','salary']),et[:200])
+            await M.evaluate("document.getElementById('ePayM').classList.remove('on');saveEmp()"); await settle(M)
+            check('… switching it off is saved as Time clock: NO',(emp('u7') or {}).get('clock') is False,emp('u7'))
             await Y.evaluate("openEmp('u7')"); await Y.wait_for_timeout(150)
             check('a manager does not see the switch',await Y.evaluate("document.getElementById('ePayMWrap').style.display==='none'"))
             await Y.evaluate("hide('m-emp')")
             await settle(Y); await Y.wait_for_timeout(600)
             await M.evaluate("goTab('hours');renderHours()"); await M.wait_for_timeout(300)
             at=await M.evaluate("document.getElementById('attWrap').innerText")
-            check('Hours: not listed as "not punched in"; shown under "Paid monthly"','Paid monthly' in at and 'Carlos' in at.split('Paid monthly')[1][:80] and not await M.evaluate("[...document.querySelectorAll('#attGrid .card')].some(x=>x.innerText.includes('Carlos'))"),at[:300])
-            check('crew status says paid monthly instead of "not punched in"',await M.evaluate("punchState(D.emps.find(e=>e.id==='u7')).txt.includes('Paid monthly')"))
-            c4,W,ew,_=await login(b,'Carlos','Testpass123','iphone'); await ready(W); await settle(W)
+            check('Hours: not listed as "not punched in"; shown under "No time clock"','No time clock' in at and 'Carlos' in at.split('No time clock')[1][:80] and not await M.evaluate("[...document.querySelectorAll('#attGrid .card')].some(x=>x.innerText.includes('Carlos'))"),at[:300])
+            check('crew status says "No time clock" instead of "not punched in"',await M.evaluate("punchState(D.emps.find(e=>e.id==='u7')).txt.includes('No time clock')"))
+            check('old clock entries are kept (nothing removed)',not any(x['deleted'] for x in srv('/__records?coll=punches') if (x['data'] or {}).get('who')=='u7'))
+            c4,W,ew,_=await login(b,'Carlos','Testpass123','iphone'); await ready(W); await settle(W); await W.wait_for_timeout(500)
+            check('Carlos (Time clock: NO) does not open on the clock screen after signing in',await W.evaluate("(document.querySelector('.pg.on')||{}).id")!='pg-punch',await W.evaluate("(document.querySelector('.pg.on')||{}).id"))
+            check('… and can still request time off from More',await W.evaluate("goTab('more');renderMore();document.getElementById('moreGrid').innerText.includes('Request time off')"))
             await W.evaluate("goTab('punch');renderPunch()"); await W.wait_for_timeout(250)
             st=await W.evaluate("[!document.getElementById('payMNote').hidden,getComputedStyle(document.querySelector('#pg-punch .punch-big')).display]")
-            check('Carlos\'s Clock screen: "You\'re paid monthly — no need to clock in", no punch button',st[0] and st[1]=='none',st)
+            check('his Clock screen says he doesn\'t need to clock in, no punch button',st[0] and st[1]=='none',st)
             await W.evaluate("me().lang='es';applyLang&&applyLang();renderPunch()"); await W.wait_for_timeout(150)
-            check('… in Spanish too','mensual' in (await W.evaluate("document.getElementById('payMNote').innerText")).lower())
-            await M.evaluate("openEmp('u7')"); await M.wait_for_timeout(100); await M.evaluate("document.getElementById('ePayM').classList.remove('on');saveEmp()"); await settle(M)
-            check('Payroll turns it off again: saved',(emp('u7') or {}).get('payMonthly') is False,emp('u7'))
+            check('… in Spanish too','reloj' in (await W.evaluate("document.getElementById('payMNote').innerText")).lower())
+            await M.evaluate("openEmp('u7')"); await M.wait_for_timeout(100); await M.evaluate("document.getElementById('ePayM').classList.add('on');saveEmp()"); await settle(M)
+            check('Payroll switches it back on: saved',(emp('u7') or {}).get('clock') is True,emp('u7'))
             await settle(W); await W.wait_for_timeout(800); await W.evaluate("renderPunch()"); await W.wait_for_timeout(150)
             check('… and Carlos gets his punch button back',await W.evaluate("document.getElementById('payMNote').hidden&&getComputedStyle(document.querySelector('#pg-punch .punch-big')).display!=='none'"))
             for nm,errs in [('owner',ea),('manager',ey),('payroll',em),('worker',ew)]: check(f'no errors on the {nm}\'s phone',not errs,errs[:3])

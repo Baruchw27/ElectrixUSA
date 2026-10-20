@@ -110,20 +110,31 @@ begin
   perform pg_temp.age_queue();
   perform public.notify_flush();
   perform pg_temp.check('changed and changed back: no extra message', pg_temp.inb('u7','📅%')=1 and (select count(*) from private.notify_queue where sent is null)=0);
-  -- PAID MONTHLY
-  perform pg_temp.t('u2','a manager cannot turn on "paid monthly" (his change is ignored, the rest of his edit saves)',
-    $q$update public.records set data = data || '{"payMonthly":true,"phone":"555-7777"}' where coll='emps' and id='u11'$q$, 'ok',
-    $c$(select not coalesce((data->>'payMonthly')::boolean,false) and data->>'phone'='555-7777' from public.records where coll='emps' and id='u11')$c$);
-  perform pg_temp.t('u3','office (not Payroll) cannot turn it on', $q$update public.records set data = data || '{"payMonthly":true}' where coll='emps' and id='u11'$q$, 'refused',
-    $c$(select not coalesce((data->>'payMonthly')::boolean,false) from public.records where coll='emps' and id='u11')$c$);
-  perform pg_temp.t('u4','Payroll turns it on', $q$update public.records set data = data || '{"payMonthly":true}' where coll='emps' and id='u11'$q$, 'ok',
-    $c$(select (data->>'payMonthly')::boolean from public.records where coll='emps' and id='u11')$c$);
-  perform pg_temp.t('u2','manager saves an older copy without it: it stays on',
-    $q$update public.records set data = (data - 'payMonthly') || '{"phone":"555-8888"}' where coll='emps' and id='u11'$q$, 'ok',
-    $c$(select (data->>'payMonthly')::boolean and data->>'phone'='555-8888' from public.records where coll='emps' and id='u11')$c$);
-  perform pg_temp.t('u1','owner turns it off', $q$update public.records set data = data || '{"payMonthly":false}' where coll='emps' and id='u11'$q$, 'ok',
-    $c$(select not (data->>'payMonthly')::boolean from public.records where coll='emps' and id='u11')$c$);
-  -- MEETING REMINDER IN SPANISH
+
+  -- TIME CLOCK YES/NO (B6): only Owner, all-access or Payroll
+  perform pg_temp.t('u2','a manager cannot switch someone''s time clock off (his change is ignored, the rest of his edit saves)',
+    $q$update public.records set data = data || '{"clock":false,"phone":"555-7777"}' where coll='emps' and id='u11'$q$, 'ok',
+    $c$(select data->'clock' is null and data->>'phone'='555-7777' from public.records where coll='emps' and id='u11')$c$);
+  perform pg_temp.t('u3','office (not Payroll) cannot either', $q$update public.records set data = data || '{"clock":false}' where coll='emps' and id='u11'$q$, 'refused',
+    $c$(select data->'clock' is null from public.records where coll='emps' and id='u11')$c$);
+  perform pg_temp.t('u4','Payroll switches it off (Time clock: NO)', $q$update public.records set data = data || '{"clock":false}' where coll='emps' and id='u11'$q$, 'ok',
+    $c$(select data->>'clock'='false' from public.records where coll='emps' and id='u11')$c$);
+  perform pg_temp.t('u2','manager saves an older copy without it: it stays NO',
+    $q$update public.records set data = (data - 'clock') || '{"phone":"555-8888"}' where coll='emps' and id='u11'$q$, 'ok',
+    $c$(select data->>'clock'='false' and data->>'phone'='555-8888' from public.records where coll='emps' and id='u11')$c$);
+  perform pg_temp.t('u1','owner switches it back on', $q$update public.records set data = data || '{"clock":true}' where coll='emps' and id='u11'$q$, 'ok',
+    $c$(select data->>'clock'='true' from public.records where coll='emps' and id='u11')$c$);
+  -- schedule notices never name a guessed job (B6)
+  perform pg_temp.t('u2','an exception day (ongoing job changed for one day) says "open the app", no job named',
+    format($q$insert into public.records(coll,id,data,deleted) values('sched','c2|%s','{"rev":200,"site":"s2","time":"7:00 AM","replace":{"ONG":{"site":"s3"}}}',false) on conflict (coll,id) do update set data = excluded.data, deleted = false$q$, d3), 'ok');
+  perform pg_temp.t('u2','a removed day says "schedule changed", not "no job"',
+    format($q$update public.records set deleted = true, data = '{}' where coll='sched' and id='c1|%s'$q$, d1), 'ok');
+  perform pg_temp.age_queue();
+  perform public.notify_flush();
+  perform pg_temp.check('… both messages say the schedule changed and to open the app, never a guessed job',
+    pg_temp.inb('u8','%' || 'schedule changed — open the app' || '%')=1 and pg_temp.inb('u7','%el horario cambió — abre la app%')=1
+    and pg_temp.inb('u8','%300 Demo Blvd 8:00%')=1,
+    (select string_agg(data->>'to'||': '||(data->>'msg'),' || ') from public.records where coll='inbox' and data->>'msg' like '📅%' and id not in (select id from _pre)));
   perform pg_temp.t('u1','meeting in 10 minutes', format($q$insert into public.records(coll,id,data,deleted) values('meets','zzM1',jsonb_build_object('title','Walk','by','u1','with',jsonb_build_array('u7','u8'),'at',%s),false)$q$,
     ((extract(epoch from now())+600)*1000)::bigint), 'ok');
 end $s$;
