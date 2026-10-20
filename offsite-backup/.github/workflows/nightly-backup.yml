@@ -1,0 +1,73 @@
+# Nightly encrypted backup of the Electrix USA app — runs on GitHub's servers (free), stores the copies in THIS
+# private repository. No passwords are stored anywhere: the app's server checks GitHub's signed identity token for
+# this exact repository. Every file is already encrypted by the server with the owner's public key; only the owner's
+# private key (kept offline) can open them. Keeps: every night for 35 days, the 1st of each month for 24 months, and
+# every uploaded photo/receipt once. A failed night opens an Issue here (GitHub emails the owner) and the app itself
+# alerts the owner if no good copy arrived in 30 hours.
+name: Nightly encrypted backup
+on:
+  schedule:
+    - cron: '17 7 * * *'        # 3:17 AM New York in summer, 2:17 AM in winter
+  workflow_dispatch: {}
+permissions:
+  contents: write
+  id-token: write
+  issues: write
+concurrency:
+  group: nightly-backup
+  cancel-in-progress: false
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Proof of identity from GitHub (no stored password)
+        id: oidc
+        run: |
+          set -euo pipefail
+          T=$(curl -fsS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=electrix-backup" | jq -r .value)
+          echo "::add-mask::$T"; echo "token=$T" >> "$GITHUB_OUTPUT"
+      - name: Download the encrypted backups
+        env:
+          TOKEN: ${{ steps.oidc.outputs.token }}
+        run: |
+          set -euo pipefail
+          DAY=$(TZ=America/New_York date +%F); MON=$(TZ=America/New_York date +%Y-%m); NOW=$(date -u +%Y%m%dT%H%M%SZ)
+          check() { head -1 "$1" | jq -e '.format=="electrix-backup-enc-1"' >/dev/null && [ "$(stat -c%s "$1")" -gt 500 ]; }
+          while read -r SITE URL; do
+            [ -z "${SITE:-}" ] && continue; case "$SITE" in \#*) continue;; esac
+            mkdir -p "daily/$SITE" "monthly/$SITE" "files/$SITE" state
+            # 1) all records + database rules
+            curl -fsS --retry 3 --retry-delay 20 --max-time 600 -H "Authorization: Bearer $TOKEN" "$URL" -o rec.tmp
+            check rec.tmp || { echo "::error::$SITE records backup is not a valid encrypted backup"; exit 1; }
+            mv rec.tmp "daily/$SITE/$DAY.enc"; cp "daily/$SITE/$DAY.enc" "monthly/$SITE/$MON.enc"   # the month keeps its last good copy
+            # 2) photos / receipts / voice notes added since last time (each file stored once)
+            SINCE=$(cat "state/$SITE-files-upto.txt" 2>/dev/null || echo 1970-01-01T00:00:00Z)
+            curl -fsS --retry 3 --retry-delay 20 --max-time 900 -G --data-urlencode "since=$SINCE" -H "Authorization: Bearer $TOKEN" -D hdr.txt "$URL?part=files" -o files.tmp
+            check files.tmp || { echo "::error::$SITE files backup is not a valid encrypted backup"; exit 1; }
+            N=$(grep -i '^x-files:' hdr.txt | tr -d '\r' | awk '{print $2}'); UPTO=$(grep -i '^x-upto:' hdr.txt | tr -d '\r' | cut -d' ' -f2-)
+            if [ "${N:-0}" != "0" ]; then mv files.tmp "files/$SITE/$NOW.enc"; else rm -f files.tmp; fi
+            [ -n "${UPTO:-}" ] && echo "$UPTO" > "state/$SITE-files-upto.txt"
+            echo "$SITE: records $(stat -c%s daily/$SITE/$DAY.enc) bytes, $N new files" | tee -a "$GITHUB_STEP_SUMMARY"
+          done < sites.txt
+      - name: Keep 35 nights + 24 months
+        run: |
+          set -euo pipefail
+          for d in daily/*/; do ls -1 "$d" | sort | head -n -35 | while read -r f; do rm -f "$d$f"; done; done
+          for d in monthly/*/; do ls -1 "$d" | sort | head -n -24 | while read -r f; do rm -f "$d$f"; done; done
+      - name: Save (one compact snapshot, so the repository does not grow forever)
+        run: |
+          set -euo pipefail
+          git config user.name "electrix-backup"; git config user.email "backup@users.noreply.github.com"
+          B="snap-$(date +%s%N)"; git checkout -q --orphan "$B"
+          git add -A
+          git commit -q -m "Backup $(TZ=America/New_York date '+%F %H:%M %Z')"
+          git push -q -f origin "$B:main"
+      - name: Tell the owner if anything failed
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Backup FAILED $(TZ=America/New_York date +%F)" \
+            --body "Last night's Electrix backup did not finish. Open the run for details: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID — the previous good copies are untouched." || true

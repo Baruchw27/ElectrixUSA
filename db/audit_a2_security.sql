@@ -62,7 +62,7 @@ begin
     rate := coalesce((select coalesce(public._num(r.data->>'v'), public._num(r.data #>> '{}')) from public.records r where r.coll = '_' and r.id = 'travelRate' and not r.deleted), 0);
     pay := round(rate * mins / 60, 2);
   end if;
-  return n || jsonb_build_object('minutes', mins, 'pay', pay, 'auto', true, 'status', 'approved');
+  return n || jsonb_build_object('minutes', mins::float8, 'pay', pay::float8, 'auto', true, 'status', 'approved');   -- plain numbers, like the app writes
 end $$;
 revoke all on function private.travel_checked(jsonb, text) from public, anon;
 revoke all on function private.punch_breaks_kept(jsonb, jsonb) from public, anon;

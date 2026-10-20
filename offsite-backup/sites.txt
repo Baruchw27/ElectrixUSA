@@ -1,0 +1,3 @@
+# name   address of the backup service (one per line)
+staging  https://rkkxykdkjgdsgkujanau.supabase.co/functions/v1/backup-export
+# live   https://lnbcrptcdufnmqsvsisv.supabase.co/functions/v1/backup-export     ← turned on after approval
