@@ -152,6 +152,7 @@ window.EX_uploadBlob=async function(blob,folder){if(!REAL||!sb||!st.online)retur
 //   • an existing row whose patch was denied → it comes back with the old values (our fields not applied).
 // either way the person must be told and the local optimistic copy undone — never a false "saved".
 // returns the list of rejected {coll,id,absent} so the caller can revert and surface a clear error.
+const SERVER_OWNED={travel:['pay','minutes','auto','status'],punches:['srvIn']};
 function rejectedRows(sent,server){const out=[];if(!Array.isArray(server))return out;
   const by={};server.forEach(s=>{by[s.coll+'\u0001'+s.id]=s;});
   sent.forEach(row=>{if(row.coll==='emps')return; // emps are transformed server-side (stripEmp), so skip to avoid false alarms
@@ -160,7 +161,8 @@ function rejectedRows(sent,server){const out=[];if(!Array.isArray(server))return
     // keep every other feature's save behavior exactly as it is today — no new surprises outside scheduling.
     if(!s||s.deleted){if(row.coll==='sched')out.push({coll:row.coll,id:row.id,absent:true});return;}
     const d=s.data||{};
-    if(row.patch&&typeof row.patch==='object'){for(const f in row.patch){if(canon(d[f])!==canon(row.patch[f])){out.push({coll:row.coll,id:row.id});break;}}}});
+    const own=SERVER_OWNED[row.coll]||[];   // fields the server works out itself (it is not a refusal when they differ)
+    if(row.patch&&typeof row.patch==='object'){for(const f in row.patch){if(own.indexOf(f)>=0)continue;if(canon(d[f])!==canon(row.patch[f])){out.push({coll:row.coll,id:row.id});break;}}}});
   return out;}
 let lastReject=[];          // rows rejected by the most recent flush (read by EX_saveNow)
 let lastFlushError=null;    // hard error (network/auth) from the most recent flush, else null
