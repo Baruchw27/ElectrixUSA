@@ -4129,7 +4129,7 @@ async function _flushStockQ(){if(stockFlushing)return;
           // otherwise keep it queued (marked, never re-applied) so the movement can never be silently lost.
           if(stockCaptureReject(txn,perm,raw)){q=stockQ().filter(x=>x.id!==txn.id);stockQSave(q);}
           else{const cur=stockQ();const i=cur.findIndex(x=>x.id===txn.id);if(i>=0){cur[i].rej={reason:perm,serverError:raw.slice(0,160)};stockQSave(cur);}}
-          stockOutcomes[txn.id]={status:'rejected',reason:perm};try{toast('⚠ '+perm,'bad');}catch(e){}continue;}
+          stockOutcomes[txn.id]={status:'rejected',reason:perm};try{window.EX_report&&EX_report('stock',perm,txn.kind);}catch(e){}try{toast('⚠ '+perm,'bad');}catch(e){}continue;}
         break;} // transient (network/server): keep queued, retry later
       const res=(r&&r.data)||{};
       q=stockQ().filter(x=>x.id!==txn.id);stockQSave(q);   // off the queue first, so the server count isn't added to it twice
