@@ -2799,6 +2799,7 @@ Object.assign(ES,{'Paid monthly — no clock-in':'Pago mensual — sin marcar','
 Object.assign(ES,{'Turn on notifications to hear about new jobs and schedule changes.':'Active las notificaciones para enterarse de trabajos nuevos y cambios de horario.','Turn on':'Activar','Not now':'Ahora no','from':'de','is not on the garage list. Put it in (or count it) first.':'no está en la lista del garaje. Primero regístrelo (o cuéntelo).','Not saved — the server refused this stock change. The office can see it.':'No se guardó — el servidor rechazó este cambio. La oficina puede verlo.','more — type more of the name':'más — escriba más del nombre'});
 Object.assign(ES,{'Only the owner can change this person.':'Solo el dueño puede cambiar a esta persona.'});
 Object.assign(ES,{'Your own time off is approved by the owner.':'Su propio tiempo libre lo aprueba el dueño.'});
+Object.assign(ES,{'Meeting':'Reunión'});
 function t(s){return lang()==='es'&&ES[s]?ES[s]:s;}
 const tr=t;const t_=t;
 function toggleLang(){const m=me();m.lang=lang()==='es'?'en':'es';save();renderAll();}
@@ -2870,8 +2871,8 @@ function matRec(){const SR=window.SpeechRecognition||window.webkitSpeechRecognit
 function assignPush(ids,msg,kind,link){if(window.EX_REAL)return;pushTo(ids,msg,kind,link);}
 // one bell + phone message per person, written in THAT person's language; never to people who are turned off, and not to
 // yourself unless it is only for you. idBase (optional) gives the same message the same id on every phone (no doubles).
-function pushTo(ids,msg,kind,link,idBase){const m=me();const list=[];(ids||[]).forEach(id=>{const c=crewOf(id);if(c){D.emps.filter(e=>e.crew===c.id).forEach(e=>list.push(e.id));}else list.push(id);});
-  const onlyMe=!!m&&(ids||[]).length===1&&ids[0]===m.id;
+function pushTo(ids,msg,kind,link,idBase,keepMe){const m=me();const list=[];(ids||[]).forEach(id=>{const c=crewOf(id);if(c){D.emps.filter(e=>e.crew===c.id).forEach(e=>list.push(e.id));}else list.push(id);});
+  const onlyMe=(!!m&&(ids||[]).length===1&&ids[0]===m.id)||!!idBase||!!keepMe;   // timers/reminders reach the sender too
   const L=[...new Set(list)].filter(id=>{const e=D.emps.find(x=>x.id===id);return !(e&&e.inactive)&&(onlyMe||!m||id!==m.id);});
   const txt=id=>{if(typeof msg!=='function')return msg;const e=D.emps.find(x=>x.id===id);return inLang((e&&e.lang)||'en',msg);};
   L.forEach(id=>{const nid_=idBase?String(idBase)+'_'+id:nid('n');if(idBase&&D.inbox.some(x=>x.id===nid_))return;D.inbox.unshift({id:nid_,to:id,from:m?m.id:undefined,msg:txt(id),kind:kind||'info',ts:Date.now(),read:false,link:link||null});});
@@ -3910,10 +3911,10 @@ async function scanOpen(mode){if(scM)return;try{mHush&&mHush();}catch(e){}
   const v=document.getElementById('scVid');
   // closed while the camera was still starting: release it right away
   const gone=()=>{if(scM===S)return false;try{S.stream&&S.stream.getTracks().forEach(x=>x.stop());}catch(e){}try{S.stop&&S.stop();}catch(e){}return true;};
-  try{const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});S.stream=st;if(gone())return;v.srcObject=st;try{const tr=scM.stream.getVideoTracks&&scM.stream.getVideoTracks()[0];tr&&tr.applyConstraints&&tr.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{});}catch(e){}try{await Promise.race([v.play(),new Promise(r=>setTimeout(r,1500))]);}catch(e){}}
+  try{const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});S.stream=st;if(gone())return;if(S.hiddenOff){st.getTracks().forEach(x=>x.stop());S.stream=null;return;}v.srcObject=st;try{const tr=scM.stream.getVideoTracks&&scM.stream.getVideoTracks()[0];tr&&tr.applyConstraints&&tr.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(()=>{});}catch(e){}try{await Promise.race([v.play(),new Promise(r=>setTimeout(r,1500))]);}catch(e){}}
   catch(e){if(gone())return;const h=document.getElementById('scHint');if(h)h.innerHTML=t('Allow the camera for this app in your phone settings.');return;}
   if(gone())return;
-  try{S.stop=await bcEngine(v,scHit);if(gone())return;}catch(e){if(gone())return;const h=document.getElementById('scHint');if(h)h.innerHTML=t('The scanner could not start. Type the item in the box instead.');}}
+  try{S.stop=await bcEngine(v,scHit);if(gone())return;if(S.hiddenOff){try{S.stop&&S.stop();}catch(e){}S.stop=null;return;}}catch(e){if(gone())return;const h=document.getElementById('scHint');if(h)h.innerHTML=t('The scanner could not start. Type the item in the box instead.');}}
 // app hidden (screen locked, another app): the camera is switched off; it comes back when the app is opened again
 try{document.addEventListener('visibilitychange',()=>{const S=scM;if(!S)return;
   if(document.hidden){try{S.stop&&S.stop();}catch(e){}S.stop=null;try{S.stream&&S.stream.getTracks().forEach(x=>x.stop());}catch(e){}S.stream=null;S.hiddenOff=true;}
@@ -4122,8 +4123,8 @@ async function _flushStockQ(){if(stockFlushing)return;
         if(!perm&&/^(22|23|P0)/.test(_c))perm=t('This stock change was refused by the server')+' ('+String(r.error.message||_c).slice(0,80)+').';
         // any other answer FROM the server (not a lost connection): after 3 tries it is set aside for the office instead of
         // blocking every later move on this phone
-        if(!perm&&_c&&!/^(08|53|57|PGRST3)/.test(_c)&&!/fetch|network|timeout|jwt|load failed/i.test(String(r.error.message||''))){
-          const cq=stockQ();const ci=cq.findIndex(x=>x.id===txn.id);if(ci>=0){cq[ci].tries=(+cq[ci].tries||0)+1;stockQSave(cq);if(cq[ci].tries>=3)perm=t('Not saved — the server refused this stock change. The office can see it.')+' ('+String(r.error.message||_c).slice(0,60)+')';}}
+        if(!perm&&_c&&!/^(08|40|53|57|PGRST0|PGRST3)/.test(_c)&&!/fetch|network|timeout|jwt|load failed/i.test(String(r.error.message||''))){
+          const cq=stockQ();const ci=cq.findIndex(x=>x.id===txn.id);if(ci>=0&&Date.now()-(+cq[ci].lastTry||0)>60000){cq[ci].tries=(+cq[ci].tries||0)+1;cq[ci].lastTry=Date.now();stockQSave(cq);if(cq[ci].tries>=3)perm=t('Not saved — the server refused this stock change. The office can see it.')+' ('+String(r.error.message||_c).slice(0,60)+')';}}
         if(perm){stockUndo(txn);changed=true;const raw=(r.error&&(r.error.message||''))||'';
           const li=D.stockLog.find(x=>x.id===txn.id);if(li){li.pending=false;li.rejected=true;}
           // CAPTURE-THEN-DEQUEUE: remove from the offline queue ONLY after the recovery record is confirmed saved;
@@ -4150,7 +4151,8 @@ try{window.addEventListener('online',()=>setTimeout(flushStockQ,600));document.a
 let stockSaving=false; // one pick-up / put-back at a time: a double tap or a second click can never send it twice
 async function savePickup(){if(stockSaving)return;if(!puLines.length){toast(t('Add at least one item'));return;}
   const site=document.getElementById('puSite').value;
-  const unk=puLines.filter(l=>(+l.qty||0)>0&&!(l.id?stockItem(l.id):stockFind(l.name)));
+  puLines=puLines.filter(l=>(+l.qty||0)>0);
+  const unk=puLines.filter(l=>!(l.id?stockItem(l.id):stockFind(l.name)));
   if(unk.length){toast('⚠ '+unk.map(l=>'“'+l.name+'”').join(', ')+' '+t('is not on the garage list. Put it in (or count it) first.'),'bad');return;}
   const lines=puLines.map(l=>{const s=l.id?stockItem(l.id):stockFind(l.name);return {id:s.id,name:s.name,unit:s.unit,qty:Math.abs(+l.qty||0)};}).filter(l=>l.qty>0);
   if(!lines.length){toast(t('Add at least one item'));return;}
@@ -4417,7 +4419,7 @@ function notifBanner(){let b=document.getElementById('notifBan');const ok=window
   b.innerHTML='<span style="font-size:22px">🔔</span><span style="flex:1;font-size:13px">'+t('Turn on notifications to hear about new jobs and schedule changes.')+'</span><button class="bs b" onclick="exNotif().then(()=>notifBanner())">'+t('Turn on')+'</button><span style="cursor:pointer;color:var(--g4);font-size:12px" onclick="try{localStorage.setItem(\'ex_notif_later\',Date.now()+3*86400000)}catch(e){};notifBanner()">'+t('Not now')+'</span>';}
 function openFromPush(id){if(!id||typeof me!=='function'||!me())return false;const x=D.inbox.find(n=>n.id===id);if(!x)return false;try{nGo(id);}catch(e){}return true;}
 try{if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',e=>{const d=e.data||{};if(d.type==='ex-open'&&d.id){let n=0;const go=()=>{if(!openFromPush(d.id)&&n++<20)setTimeout(go,500);};go();}});}catch(e){}
-try{const _n=new URLSearchParams(location.search).get('n');if(_n){let k=0;const go=()=>{if(!openFromPush(_n)&&k++<40)setTimeout(go,500);};setTimeout(go,800);}}catch(e){}
+try{const _n=new URLSearchParams(location.search).get('n');if(_n){try{history.replaceState(null,'',location.pathname);}catch(e){}let k=0;const go=()=>{if(!openFromPush(_n)&&k++<40)setTimeout(go,500);};setTimeout(go,800);}}catch(e){}
 async function exNotif(){const r=await EX_pushOn(true);toast(r==='granted'?'🔔 '+t('Notifications are on for this phone'):r==='denied'?t('Notifications are blocked. Turn them on in the phone settings for this app.'):r==='unsupported'?t('On iPhone: first tap Share → Add to Home Screen, then open the app from there.'):t('Could not turn on notifications'));}
 function exGenPw(){const w=['volt','amp','wire','pipe','box','fuse','breaker','panel','spark','ohm','conduit','relay'];const r=new Uint32Array(2);try{crypto.getRandomValues(r);}catch(e){r[0]=Math.random()*1e9;r[1]=Math.random()*1e9;}return w[r[0]%w.length]+String(100000+r[1]%900000);}
 function exportData(){const d=JSON.stringify(D);const blob=new Blob([d],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='electrix-data-'+dkey(new Date())+'.json';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);toast('⬇ '+t('Data file saved'),'green');}
@@ -4498,7 +4500,7 @@ function weeklySummaryCheck(){const mm=me();if(!mm||mm.role!=='owner')return;con
   const field=D.emps.filter(e=>e.role==='worker'&&e.active!==false);let totH=0,totOT=0,totMi=0;
   field.forEach(e=>{const w=weekStats(e.id);const mi=travelWeek(e.id).reduce((q,x)=>q+x.miles,0);const trips=travelWeek(e.id).length;totH+=w.total;totOT+=w.ot;totMi+=mi;if(w.total||trips)pushTo([e.id],()=>('📊 '+t('This week')+': '+w.total.toFixed(1)+' '+t('hrs')+(w.ot?' · '+w.ot.toFixed(1)+' OT':'')+(trips?' · '+trips+' '+t('trips')+', '+mi.toFixed(0)+' mi':'')),'info',{tab:'punch'});});
   const bosses=D.emps.filter(e=>e.role==='owner'||e.role==='manager'||e.all||(e.role==='office'&&/payroll|hours/i.test(e.title||''))).map(e=>e.id);
-  pushTo(bosses,()=>('📊 '+t('Company this week')+': '+totH.toFixed(1)+' '+t('hrs')+' · '+totOT.toFixed(1)+' OT · '+totMi.toFixed(0)+' mi · '+field.length+' '+t('people')),'info',{tab:'hours'});save();}
+  pushTo(bosses,()=>('📊 '+t('Company this week')+': '+totH.toFixed(1)+' '+t('hrs')+' · '+totOT.toFixed(1)+' OT · '+totMi.toFixed(0)+' mi · '+field.length+' '+t('people')),'info',{tab:'hours'},null,true);save();}
 try{weeklySummaryCheck();setInterval(weeklySummaryCheck,10*60*1000);}catch(e){}
 // ===== search in every long list (jobs, people…): tap the list → a search box with the whole list
 (function(){

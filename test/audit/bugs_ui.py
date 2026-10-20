@@ -63,8 +63,11 @@ async def run():
             # an unknown server error: after 3 tries it is set aside, later moves go through
             await Y.evaluate("""(()=>{const sb=window.EX_sb;window._rpc0=sb.rpc.bind(sb);let n=0;sb.rpc=function(name,args){if(name==='apply_stock_txn'&&args&&args.txn&&args.txn.reason==='zz-bad'){n++;window._badTries=n;return Promise.resolve({data:null,error:{code:'42883',message:'function x does not exist'}});}return window._rpc0(name,args);};})()""")
             await Y.evaluate(f"window._t=[];commitStockTxn('in',[{{id:'{sid}',name:'x',unit:'pc',qty:1}}],null,{{reason:'zz-bad'}});commitStockTxn('in',[{{id:'{sid}',name:'x',unit:'pc',qty:1}}],null,{{reason:'zz-good'}})")
-            for _ in range(4):
-                await Y.evaluate("flushStockQ()"); await Y.wait_for_timeout(700)
+            for _ in range(3):
+                await Y.evaluate("flushStockQ()"); await Y.wait_for_timeout(500)
+            check('a short hiccup (several quick retries within a minute) counts as ONE try — the move is not set aside',await Y.evaluate("stockQ().some(x=>x.reason==='zz-bad'&&x.tries===1)"),await Y.evaluate("stockQ().map(x=>[x.reason,x.tries])"))
+            for _ in range(3):
+                await Y.evaluate("(()=>{const q=stockQ();q.forEach(x=>x.lastTry=0);stockQSave(q)})()"); await Y.evaluate("flushStockQ()"); await Y.wait_for_timeout(700)
             q=await Y.evaluate("stockQ().map(x=>x.reason)")
             check('a move the server refuses with an unknown error is set aside after 3 tries (kept for the office) and does not block the next one',q==[] and await Y.evaluate("(D.rejq||[]).some(x=>x.src==='stock')"),[q,await Y.evaluate("window._badTries")])
             await Y.evaluate("window.EX_sb.rpc=window._rpc0")
