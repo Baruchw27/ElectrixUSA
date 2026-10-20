@@ -1,6 +1,6 @@
 -- 10_forward.sql  --  Electrix USA release: bring PRODUCTION (lnbcrptcdufnmqsvsisv) database objects to STAGING (rkkxykdkjgdsgkujanau)
--- Generated 2026-10-20 from read-only catalog queries. NOT APPLIED. Review DIFF_REPORT.md first (production has stock-move
--- validation in apply_stock_txn that staging's version removes).
+-- Generated 2026-10-20 from read-only catalog queries (regenerated after staging migration audit_b4_stock_input). NOT APPLIED to
+-- production. Review DIFF_REPORT.md first (apply_stock_txn: staging now carries production's input checks; see the one nuance there).
 -- One transaction, idempotent (safe to run twice). Function bodies are byte-exact copies of staging pg_get_functiondef (md5-verified).
 -- Deliberately NOT included: staging-only test objects (public.scan_field_log + its seq/index/policies, public.zz_bc_* tables),
 -- cron jobs daily-backup (already on production, identical) and backup-health (see 20_backups_optional.sql).
@@ -441,7 +441,7 @@ grant execute on function public.apply_stock_moves(moves jsonb) to anon;
 grant execute on function public.apply_stock_moves(moves jsonb) to authenticated;
 grant execute on function public.apply_stock_moves(moves jsonb) to service_role;
 
--- public.apply_stock_txn  [REPLACES production version]  staging md5 dad5618df00db4ddef4617307d16c89e
+-- public.apply_stock_txn  [REPLACES production version]  staging md5 6a0c1f0cc2466a6a174414fbc754c22c
 CREATE OR REPLACE FUNCTION public.apply_stock_txn(txn jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -475,6 +475,11 @@ begin
 
   perform set_config('app.stock_txn','1', true);
   for m in select value from jsonb_array_elements(coalesce(txn->'moves','[]'::jsonb)) order by value->>'id' loop
+    -- B4 input checks (as in production's security fix)
+    if jsonb_typeof(m) <> 'object' or coalesce(m->>'id','') = '' then raise exception 'bad move' using errcode = '22023'; end if;
+    if (m ? 'set' and public._num(m->>'set') is null) or (m ? 'expect' and public._num(m->>'expect') is null) then
+      raise exception 'count must be a number' using errcode = '22023'; end if;
+    if (m ? 'delta') and public._num(m->>'delta') is null then raise exception 'amount must be a number' using errcode = '22023'; end if;
     -- A2 signs: a pick-up only takes out, a return only brings in, a count only sets
     if (kind = 'set') <> (m ? 'set') then raise exception 'bad move for this kind of change' using errcode = '22023'; end if;
     if kind = 'out' and coalesce(public._num(m->>'delta'), 0) >= 0 then raise exception 'a pick-up must take items out' using errcode = '22023'; end if;
@@ -1491,7 +1496,7 @@ with expected(fn, md5) as (values
   ('public.can_see2', 'bb52dde12643dc2d42d29486317569c9'),
   ('public.save_records', '4eb565356a50caa8c9b5e73eaf140b2f'),
   ('public.apply_stock_moves', '31d1b5735e1f5f4d69a6febd3daec083'),
-  ('public.apply_stock_txn', 'dad5618df00db4ddef4617307d16c89e'),
+  ('public.apply_stock_txn', '6a0c1f0cc2466a6a174414fbc754c22c'),
   ('public.history_records', '81569f348f9bd75ff3aa3feb4ad13658'),
   ('public.stock_item_history', 'ba9945af43029ba7e41b9855b1eae22c'),
   ('public.stock_site_history', '779c2d207a41fc5da7abd0a627ab61bd'),

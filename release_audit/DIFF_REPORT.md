@@ -1,29 +1,37 @@
 # Release audit: staging → production (database)
 
-Staging `rkkxykdkjgdsgkujanau` (target) vs production `lnbcrptcdufnmqsvsisv` (live). Captured 2026-10-20 using read-only catalog queries only. Nothing was applied.
-Every function body in `10_forward.sql` / `90_rollback.sql` is checked against the source `md5(pg_get_functiondef)`: 48 of 48 match. I also ran a dry run on a throwaway local PostgreSQL 16 with a mock of production: forward ×2, rollback ×2, forward again. All passed, and the 40 function md5s plus the 5 trigger md5s matched staging.
+Staging `rkkxykdkjgdsgkujanau` (target) vs production `lnbcrptcdufnmqsvsisv` (live). Captured 2026-10-20 using read-only catalog queries only, and **regenerated after staging migration `audit_b4_stock_input`**. Nothing was applied.
+Every function body in `10_forward.sql` / `90_rollback.sql` is checked against the source `md5(pg_get_functiondef)`: 48 of 48 match. I also ran a dry run on a throwaway local PostgreSQL 16 with a mock of production: forward ×2, rollback, forward again. All passed, and the 40 function md5s plus the 5 trigger md5s matched staging.
 
-## ⚠ Read this before you release: production logic that staging's version would REMOVE
+Re-check at regeneration time:
+- On staging, the only object that changed is `public.apply_stock_txn`: md5 `dad5618d…` → **`6a0c1f0cc2466a6a174414fbc754c22c`**, grants unchanged. Every other function, trigger, cron job, policy and table matches the first capture.
+- Production has not changed: all 41 function md5s and grants match the first capture (aggregate `a720ec33…`), and so do its triggers, cron jobs and policies.
 
-**`public.apply_stock_txn`**: production has a "SEC moves" input check that staging's version does not have:
+## Production logic that staging lacks: now resolved, with one small difference
 
-```
-- if coalesce(jsonb_typeof(m),'') <> 'object' or coalesce(m->>'id','') = '' then raise exception 'bad move' ...
-- if kind = 'set' and (coalesce(jsonb_typeof(m->'set'),'') <> 'number' or (m ? 'expect' and coalesce(jsonb_typeof(m->'expect'),'') <> 'number')) then raise exception 'count must be a number' ...
-- if kind <> 'set' and coalesce(jsonb_typeof(m->'delta'),'') <> 'number' then raise exception 'amount must be a number' ...
-```
-Staging only checks the sign, using `coalesce(public._num(delta),0)`. Here is what happens after the release:
-- A **count** (`kind='set'`) whose `set` is a string goes straight through `(m->>'set')::numeric`. The string `"NaN"` would store `qty = NaN`, because `greatest(0, NaN)` = NaN. A non-numeric `expect` gets the same treatment. Only owner, manager and office users can do counts.
-- A `delta` sent as a JSON string such as `"5"` is now accepted. Production rejects it today.
-- A move that is not an object, or has an empty `id`, no longer gets the clean `bad move` error. It fails later with a less clear error or a not-null violation.
+**`public.apply_stock_txn`**: staging now has production's three "SEC moves" checks, labelled "B4 input checks":
 
-**Recommendation:** add the three production checks to staging's `apply_stock_txn` (keep staging's new `order by value->>'id'`, `qv`, `src` and B1 re-add logic), re-test on staging, then regenerate. Alternatively, release as-is and accept the change. Nothing else that production has is missing from staging. In every other function, staging only adds logic or rewrites it without losing anything.
+| production check | staging (B4) | result |
+|---|---|---|
+| move must be an object with a non-empty `id` → `bad move` | same (`jsonb_typeof(m) <> 'object' or coalesce(m->>'id','') = ''`) | identical |
+| `set` / `expect` must be numbers → `count must be a number` | `public._num(m->>'set')` / `_num(m->>'expect')` must be non-null | same error; `"NaN"`, `"abc"`, `null` and `true` are rejected |
+| `delta` must be a number → `amount must be a number` | `(m ? 'delta') and _num(m->>'delta') is null`. A missing delta is still rejected by the sign checks or by `move needs delta or set` | same error; `"NaN"` and `"abc"` are rejected |
+
+I tested this on the local copy, against what production does today:
+- `"NaN"`, `"abc"`, `[1]`, an empty `id`, set `"NaN"` and expect `"x"` are all rejected with the same messages as production.
+- `5` and `1e3` are accepted, as on production.
+
+**The one remaining difference:** production's test is a JSON *type* check (`jsonb_typeof = 'number'`). Staging's is a *text* check (`_num`, regex `^-?[0-9]+(\.[0-9]+)?$`). Because of that, staging still **accepts plain numbers sent as JSON strings**, such as `"delta":"5"` or `"set":"7"`, which production rejects with `amount/count must be a number`.
+- This is low risk: NaN, Infinity, exponent strings and non-numeric text are all still blocked, so no bad quantity can be stored.
+- It is still looser than production. If you want an exact match, use `jsonb_typeof(m->'delta') = 'number'` (and the same for `set` and `expect`) on staging.
+
+Apart from that, production's version of every function has nothing that staging lacks. In all 8 functions that differ, staging only adds logic or rewrites it without losing anything.
 
 ## Functions on both sides that differ (8). All are replaced by forward and restored by rollback.
 
 | function | what staging changes (prod → staging) | prod-only lines lost? |
 |---|---|---|
-| `apply_stock_txn` | `bad kind` check moved before the duplicate check; moves are processed in `id` order, which avoids deadlocks; new `qv` version counter on stock rows and in the returned `qtys`; B1: a positive delta brings a deleted stock item back; `move needs delta or set`; `src` is stored in the stockLog | **YES: the SEC moves type checks above** |
+| `apply_stock_txn` | `bad kind` check moved before the duplicate check; moves are processed in `id` order, which avoids deadlocks; production's SEC input checks are carried over as B4 (`_num`-based); new `qv` version counter on stock rows and in the returned `qtys`; B1: a positive delta brings a deleted stock item back; `move needs delta or set`; `src` is stored in the stockLog | no (only nuance: numeric *strings* such as `"5"` are accepted, see above) |
 | `guard_record` | punches: server receive time `srvIn` is set once; A5b keeps `pending/approvedBy/rejected/rejectWhy` when a phone re-sends an old copy; only Payroll can un-delete a punch or change breaks (`punch_breaks_kept`); sites: `travelPay` is protected like lat/lng; a boss cannot approve or deny their own time off; travel: new or restored rows by non-bosses **and bosses' own rows** now go through `private.travel_checked` (server computes minutes and pay, rejects bad dates, duplicates and local jobs) | no |
 | `can_see2` | adds visibility rules for `incidents`, `fixes`, `msgs`, `apps`, `invites`. Today these fall into "visible to everyone" | no |
 | `guard_stock_qty` | also protects the new `qv` field from phone writes | no |

@@ -14,7 +14,8 @@ for f in index.html sync.js extras.js scanner-v2.js scanner-v2-ui.js catalog-rea
 # staging-only phone self-test is not shipped
 sed -i -E 's#<script src="selftest\.js\?[a-z0-9]+"></script>##' "$OUT/index.html"
 grep -q 'selftest.js' "$OUT/index.html" && { echo "ERROR: selftest still referenced"; exit 1; }
-sed -i -E "s/\?vsch21a/?$VER/g" "$OUT/index.html"
+sed -i -E "s/\?vsch21a/?$VER/g; s/EX_VER='vsch21a'/EX_VER='$VER'/" "$OUT/index.html"
+grep -q "EX_VER='$VER'" "$OUT/index.html" || { echo 'ERROR: EX_VER not set'; exit 1; }
 echo "{\"v\":\"$VER\"}" > "$OUT/version.json"
 # service worker: the staging one (notification tap → right screen) with the production cache name and clean-up rule
 cp "$REPO/staging/sw.js" "$OUT/sw.js"
