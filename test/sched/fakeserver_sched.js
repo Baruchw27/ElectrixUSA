@@ -109,6 +109,11 @@ http.createServer(async (req,res)=>{
     const hit=e.find(d=>d.name.toLowerCase()===q)||e.find(d=>(d.email||'').toLowerCase()===q||(d.authEmail||'').toLowerCase()===q||(dig.length>=7&&(d.phone||'').replace(/\D/g,'')===dig)||d.name.toLowerCase().split(' ')[0]===q);
     const em=hit&&(hit.authEmail||'').toLowerCase();const x=em&&users[em];if(!x||x.pass!==b.password)return send(res,200,{session:null});const tk=crypto.randomUUID();tokens[tk]=em;return send(res,200,{session:{access_token:tk,refresh_token:'r'+tk}});}
   // ---- stock transactions (stand-in for apply_stock_txn: atomic, idempotent by id, shortage refused)
+  if(p==='/rpc/history_records'){const em=who(req);if(!em||!isMember(em))return send(res,403,{error:'not allowed'});const b=await body(req);stats.history=(stats.history||0)+1;
+    const dk=ms=>{const d=new Date(+ms);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+    const out=[...records.values()].filter(r=>['punches','travel'].includes(b.p_coll)&&r.coll===b.p_coll&&!r.deleted&&canSee(em,r)&&(!b.p_who||r.data.who===b.p_who)&&(!b.p_site||r.data.site===b.p_site)
+      &&(b.p_coll==='punches'?(+r.data.in>=+b.p_from&&+r.data.in<+b.p_to):(r.data.date>=dk(b.p_from)&&r.data.date<dk(b.p_to)))).slice(0,b.p_limit||3000).map(r=>({coll:r.coll,id:r.id,data:r.data,deleted:false}));
+    return send(res,200,out);}
   if(p==='/rpc/apply_stock_txn'){const em=who(req);if(!em||!isMember(em))return send(res,403,{error:'not allowed'});const b=await body(req);const txn=b.txn||{};
     if(global.STOCKFAIL){const c=global.STOCKFAIL;global.STOCKFAIL=null;return send(res,400,{message:'txn id required',code:c});}
     global.__applied=global.__applied||{};const fp=JSON.stringify([txn.kind,txn.moves]);stats.stockTxn=(stats.stockTxn||0)+1;

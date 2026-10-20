@@ -540,7 +540,17 @@ window.EX_start=async function(){if(!REAL||ready)return;const local={};SEEDABLE.
   localSave();ready=true;subscribe();flush();paint();};
 window.EX_ready=()=>ready;
 // safe to forget a record from the phone only when the server already has exactly this version and nothing is waiting
-window.EX_canForget=function(coll,rec){if(!rec||!rec.id)return false;if(queue[coll+'\u0001'+rec.id])return false;const s=snap[coll]&&snap[coll][rec.id];return !!s&&s===canon(upStrip(coll,rec));};
+// older history asked for on purpose (Hours / Job hours for a past period): load it from the server and keep it on the
+// phone for a few hours so it does not disappear while someone is looking at it. It is a normal server copy (in snap),
+// so it is never uploaded again and can be forgotten safely later.
+const holdUntil={};
+window.EX_loadRange=async function(coll,from,to,opts){opts=opts||{};if(!REAL||!sb||!ready||!st.online)return {ok:false,offline:true};
+  try{const r=await withTO(sb.rpc('history_records',{p_coll:coll,p_from:Math.floor(from),p_to:Math.ceil(to),p_who:opts.who||null,p_site:opts.site||null,p_limit:opts.limit||3000}),20000,'history');
+    if(r.error)return {ok:false,error:r.error.message||'error'};const rows=(r.data||[]).filter(x=>x&&x.coll===coll&&!queue[x.coll+'\u0001'+x.id]);
+    const until=Date.now()+4*3600000;rows.forEach(x=>{holdUntil[x.coll+'\u0001'+x.id]=until;});
+    if(rows.length){applyRows(rows,{replace:false});rows.forEach(x=>{(snap[x.coll]=snap[x.coll]||{})[x.id]=canon(upStrip(x.coll,x.data));});localSave();}
+    return {ok:true,n:rows.length,full:(r.data||[]).length>=(opts.limit||3000)};}catch(e){return {ok:false,error:(e&&e.message)||'error'};}};
+window.EX_canForget=function(coll,rec){if(!rec||!rec.id)return false;if((holdUntil[coll+'\u0001'+rec.id]||0)>Date.now())return false;if(queue[coll+'\u0001'+rec.id])return false;const s=snap[coll]&&snap[coll][rec.id];return !!s&&s===canon(upStrip(coll,rec));};
 // the phone keeps only recent history (the server keeps everything): forget old rows here without deleting them anywhere
 window.EX_forget=function(coll,ids){const m=snap[coll];if(!m)return;ids.forEach(id=>{delete m[id];});};
 window.EX_openLocal=function(){if(ready||localReady)return;takeSnap();localReady=true;paint();};
