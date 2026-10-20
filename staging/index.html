@@ -1143,7 +1143,7 @@ function sortSites(){D.sites.sort((a,b)=>_stRank(a)-_stRank(b)||cmpSite(a.name,b
 // ===== the phone keeps recent history only (keeps the app fast and inside the phone's storage limit); the server keeps everything
 function pruneOld(){const now=Date.now(),day=864e5;const old=(t,d)=>(+t||0)>0&&(+t)<now-d*day;
   const rules={punches:p=>old(p.out||p.in,120),inbox:x=>old(x.ts,45),jobs:j=>j.status==='done'&&old(j.doneAt||j.ts,90),exps:x=>old(x.ts,200)&&!(x.src==='personal'&&!x.paid),travel:x=>old(new Date((x.date||'')+'T12:00').getTime(),120),stockLog:x=>old(x.ts,120),goHomeLog:x=>old(x.ts,60)};
-  let n=0;for(const k in rules){if(!Array.isArray(D[k]))continue;const keep=[],drop=[];D[k].forEach(x=>(x&&rules[k](x)?drop:keep).push(x));if(drop.length){D[k]=keep;n+=drop.length;try{if(window.EX_forget)EX_forget(k,drop.map(x=>x.id).filter(Boolean));}catch(e){}}}
+  let n=0;for(const k in rules){if(!Array.isArray(D[k]))continue;const keep=[],drop=[];D[k].forEach(x=>(x&&rules[k](x)&&(!window.EX_canForget||EX_canForget(k,x))?drop:keep).push(x));if(drop.length){D[k]=keep;n+=drop.length;try{if(window.EX_forget)EX_forget(k,drop.map(x=>x.id).filter(Boolean));}catch(e){}}}
   return n;}
 function save(){if(!save._p||Date.now()-save._p>3600000){save._p=Date.now();try{if(pruneOld()&&window.EX_forget){}}catch(e){}}sortSites();let _st=false;try{localStorage.setItem(KEY,JSON.stringify(D));_st=true;}catch(e){try{if(pruneOld()){localStorage.setItem(KEY,JSON.stringify(D));_st=true;}}catch(e3){}if(!_st){const old=Date.now()-14*86400000;D.jobs.forEach(j=>{if(j.status==='done'&&(j.doneAt||0)<old&&j.photos&&j.photos.length>1)j.photos=j.photos.slice(-1);});try{localStorage.setItem(KEY,JSON.stringify(D));_st=true;}catch(e2){}}}window.EX_localStored=_st;/* always hand the change to the sync layer — even when the phone copy could not be written (it used to return early here and the change never reached the server) */try{if(window.EX_afterSave)window.EX_afterSave();}catch(e){console.warn(e);}}
 function nid(p){D.nextId=(D.nextId||1)+1;return p+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
@@ -2201,7 +2201,7 @@ function onLeave(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out&&
   notify('You left '+siteName(p.site)+' — punched out at '+fmtT(p.away)+'. Come back within 1 hour and you\'re punched back in automatically.');
   setTimeout(()=>{const q=D.punches.find(x=>x===p);if(q&&q.away&&!q.out){q.out=q.away;delete q.away;save();renderPunch();notify('1 hour passed — punch-out at '+fmtT(q.out)+' is now final.');}},60*60*1000);
 }
-function onReturn(){const m=me();const p=D.punches.find(x=>x.who===m.id&&x.away&&!x.out);if(!p)return;
+function onReturn(){const m=me();finalizeAway(m.id);const p=D.punches.find(x=>x.who===m.id&&x.away&&!x.out);if(!p)return;
   const gap=Date.now()-p.away;
   if(gap<=60*60*1000){p.trips=p.trips||[];p.trips.push({left:p.away,back:Date.now()});delete p.away;save();renderPunch();notify('Back on site — punched back in. The '+Math.round(gap/60000)+' min away was kept on your clock (material run).');}
 }
@@ -2290,7 +2290,7 @@ function checkGPS(){
   },err=>{box.className='gps no';const c=err&&err.code;box.innerHTML=(c===1?'🚫 '+t('Your phone is not giving the app its location.')+'<div style="font-size:12px;margin-top:4px">'+t('Turn on Location for this app / browser in phone settings. Inside the Claude app, location can be blocked by Claude itself.')+'</div>':c===3?'⏳ '+t('GPS took too long. Step outside or near a window and tap the job again.'):'📡 '+t('No GPS signal right now. Try again in a moment.'))+fenceHelpBtn(s.id);gpsOk=false;},c=>distFt(c.latitude,c.longitude,s.lat,s.lng)<=fenceFt(c));
 }
 function doPunch(){
-  const m=me();const open=D.punches.find(p=>p.who===m.id&&!p.out);
+  const m=me();finalizeAway(m.id);const open=D.punches.find(p=>p.who===m.id&&!p.out);
   if(open){openPunchOut(open);return;}
   if(!gpsOk){toast(t('You need to be at the job site to punch in.'));return;}
   if(D.selfie){const i=document.getElementById('punchSelfie');i.value='';i.click();toast('📷 '+t('Quick selfie, then you are in'));return;}
@@ -2307,7 +2307,7 @@ function poSet(k,v){poAns[k]=v;if(k==='inj'){document.getElementById('poInjNo').
   else{document.getElementById('poBrkYes').className=v?'btn gr':'btn sec2';document.getElementById('poBrkNo').className=v?'btn sec2':'btn';document.getElementById('poBrk').style.display=v?'none':'block';}
   document.getElementById('poDone').disabled=!(poAns.inj!==null&&poAns.brk!==null);}
 function poInjPhoto(inp){[...(inp.files||[])].forEach(f=>shrink(f,d=>{poPhotos.push(d);document.getElementById('poInjPrev').innerHTML=poPhotos.map(d=>'<img src="'+safeSrc(d)+'">').join('');}));}
-function poFinish(){const p=poPunch;if(!p)return;const m=me();if(poAns.inj&&!document.getElementById('poInjWhat').value.trim()){toast(t('Tell us what happened'));document.getElementById('poInjWhat').focus();return;}
+function poFinish(){const p=poPunch;if(!p)return;const m=me();if(p.away&&!p.out&&Date.now()-p.away>3600000){finalizeAway(m.id);hide('m-pout');renderPunch();toast(t('You were already punched out at')+' '+fmtT(p.out)+' '+t('when you left the site.'));return;}if(poAns.inj&&!document.getElementById('poInjWhat').value.trim()){toast(t('Tell us what happened'));document.getElementById('poInjWhat').focus();return;}
   if(p.breakStart)endBreak(p);p.out=Date.now();if(navigator.onLine===false){p.offline=true;p.synced=false;}p.check={injured:!!poAns.inj,mealBreak:!!poAns.brk,noBreakWhy:poAns.brk?null:document.getElementById('poBrkWhy').value,ts:Date.now()};
   if(poAns.inj){const told=document.getElementById('poInjTold').value;p.check.injury={what:document.getElementById('poInjWhat').value.trim(),time:document.getElementById('poInjTime').value,part:document.getElementById('poInjPart').value.trim(),told,care:document.getElementById('poInjCare').value,photos:poPhotos.slice()};
     (D.incidents=D.incidents||[]).push({id:nid('inc'),who:m.id,site:p.site,date:dkey(new Date()),...p.check.injury,ts:Date.now(),status:'open'});
@@ -2932,11 +2932,21 @@ const canEditHours=m=>m.role==='owner'||(m.role==='office'&&m.title==='Payroll')
 let hrRange='day',peIdx=null;
 const hrs=(a,b)=>((b-a)/3600000);
 
-// ───────────── WEEK HOURS + OVERTIME (over 40 h, Monday–Sunday week) ─────────────
+// ───────────── WEEK HOURS + OVERTIME (over 40 h, Sunday–Saturday week) ─────────────
+// One rule for every screen: a punch counts toward pay only when it is not rejected and not waiting for approval.
+function payCounts(p){return !!p&&!p.rejected&&!p.pending;}
+// an open punch older than 14 h is a forgotten punch-out: shown as "missing", never counted live
+const STALE_OPEN_MS=14*3600000;
+function staleOpen(p){return !p.out&&!p.away&&Date.now()-p.in>STALE_OPEN_MS;}
+// calendar-safe day/week steps (a day is 23 or 25 hours when the clocks change)
+function addDaysMs(ms,n){const d=new Date(ms);d.setDate(d.getDate()+n);return d.getTime();}
+function dayIndex(ms,ws){const d=new Date(ms);d.setHours(0,0,0,0);return Math.round((d.getTime()-ws)/86400000);}
+// an automatic punch-out (left the site) becomes final after 60 minutes even if the phone was asleep or the app closed
+function finalizeAway(who){let ch=false;(D.punches||[]).forEach(p=>{if((!who||p.who===who)&&p.away&&!p.out&&Date.now()-p.away>3600000){p.out=p.away;delete p.away;p.autoOut=true;ch=true;}});if(ch){try{save();}catch(e){}}return ch;}
 const OT_AFTER=40;
-function punchDur(p){const end=p.out||p.away||Date.now();let d=(end-p.in)/3600000;(p.trips||[]).forEach(tr=>{if(tr.back)d-=(tr.back-tr.left)/3600000;});(p.breaks||[]).forEach(b=>{d-=(b.e-b.s)/3600000;});if(p.breakStart)d-=(Date.now()-p.breakStart)/3600000;return Math.max(0,d);}
+function punchDur(p){const end=p.out||p.away||Date.now();let d=(end-p.in)/3600000;const clip=(a,b)=>Math.max(0,Math.min(b,end)-Math.max(a,p.in))/3600000;(p.trips||[]).forEach(tr=>{if(tr.back)d-=clip(tr.left,tr.back);});(p.breaks||[]).forEach(b=>{d-=clip(b.s,b.e);});if(p.breakStart&&!p.out&&!p.away)d-=clip(p.breakStart,Date.now());return Math.max(0,d);}
 function weekStart(d){const x=new Date(d||Date.now());x.setHours(0,0,0,0);x.setDate(x.getDate()-x.getDay());return x;}
-function weekStats(who,ref){const ws=weekStart(ref).getTime(),we=ws+7*86400000;const days=[0,0,0,0,0,0,0];D.punches.filter(p=>p.who===who&&p.in>=ws&&p.in<we&&!p.pending&&!p.rejected).forEach(p=>{days[Math.floor((p.in-ws)/86400000)]+=punchDur(p);});const total=days.reduce((a,b)=>a+b,0);return {ws,days,total,reg:Math.min(total,OT_AFTER),ot:Math.max(0,total-OT_AFTER)};}
+function weekStats(who,ref){const ws=weekStart(ref).getTime(),we=addDaysMs(ws,7);const days=[0,0,0,0,0,0,0];D.punches.filter(p=>p.who===who&&p.in>=ws&&p.in<we&&payCounts(p)&&!staleOpen(p)).forEach(p=>{const i=dayIndex(p.in,ws);if(i>=0&&i<7)days[i]+=punchDur(p);});const total=days.reduce((a,b)=>a+b,0);return {ws,days,total,reg:Math.min(total,OT_AFTER),ot:Math.max(0,total-OT_AFTER)};}
 function weekCard(who,compact,ref,title){const s=weekStats(who,ref);const DL=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];const today=Math.floor((new Date().setHours(0,0,0,0)-s.ws)/86400000);
   const bars=s.days.map((v,i)=>'<div style="flex:1;text-align:center"><div style="height:34px;display:flex;align-items:flex-end;justify-content:center"><div style="width:70%;height:'+Math.min(34,v*3)+'px;background:'+(i===today?'var(--blue-mid)':'var(--g3)')+';border-radius:3px 3px 0 0"></div></div><div style="font-size:10px;color:'+(i===today?'var(--blue-mid)':'var(--g4)')+';font-weight:'+(i===today?'700':'400')+'">'+t(DL[i])+'</div><div style="font-size:10px;color:var(--g4)">'+(v?v.toFixed(1):'')+'</div></div>').join('');
   return '<div class="card" style="padding:10px 13px"><div class="row" style="align-items:baseline"><b>'+(compact?esc(nameOf(who)):t(title||'This week'))+'</b><span style="font-size:12px;color:var(--g4)">'+new Date(s.ws).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' – '+new Date(s.ws+6*86400000).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+'</span></div><div style="display:flex;gap:4px;margin:8px 0 6px">'+bars+'</div><div style="display:flex;gap:10px;font-size:13px"><span><b style="font-size:18px">'+s.total.toFixed(1)+'</b> h</span><span style="color:var(--g4)">'+t('Regular')+' <b>'+s.reg.toFixed(1)+'</b></span><span style="color:'+(s.ot?'#c0392b':'var(--g4)')+'">'+t('Overtime')+' <b>'+s.ot.toFixed(1)+'</b></span>'+(!s.ot&&s.total<OT_AFTER?'<span style="color:var(--g3);font-size:11px;align-self:center">'+(OT_AFTER-s.total).toFixed(1)+' '+t('to OT')+'</span>':'')+'</div>'+(()=>{const tw=travelWeek(who,ref);const pay=tw.reduce((q,x)=>q+travelPayOf(x),0);return tw.length?'<div style="font-size:12.5px;margin-top:6px;padding-top:6px;border-top:1px solid var(--g1)">🚗 '+t('Travel bonus')+' <b style="color:var(--green)">'+money(pay)+'</b> <span style="color:var(--g4)">· '+tw.length+' '+t('trips')+' · '+t('not counted in hours or OT')+'</span></div>':'';})()+'</div>';}
@@ -2947,8 +2957,8 @@ function renderHours(){
   const wEl=document.getElementById('hrWho');if(!wEl.options.length)wEl.innerHTML='<option value="">'+t('Everyone')+'</option>'+D.emps.filter(e=>e.role!=='office'&&e.role!=='owner').map(e=>'<option value="'+e.id+'">'+esc(e.name)+'</option>').join('');
   const sEl=document.getElementById('hrSite');if(sEl&&!sEl.options.length)sEl.innerHTML='<option value="">'+t('All jobs')+'</option>'+D.sites.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');
   document.getElementById('hrChips').innerHTML=[['day',t('Day')],['week',t('Week')],['missing',t('Missing punch-out')]].map(([k,l])=>'<div class="chip '+(hrRange===k?'on':'')+'" onclick="hrRange=\''+jsq(k)+'\';renderHours()">'+l+'</div>').join('');
-  const base=new Date(dEl.value+'T12:00');base.setHours(0,0,0,0);let from=base.getTime(),to=from+86400000;
-  if(hrRange==='week'){from=base.getTime()-base.getDay()*86400000;to=from+7*86400000;}
+  const base=new Date(dEl.value+'T12:00');base.setHours(0,0,0,0);let from=base.getTime(),to=addDaysMs(from,1);
+  if(hrRange==='week'){from=weekStart(base).getTime();to=addDaysMs(from,7);}
   let rows=D.punches.map((p,i)=>({p,i})).filter(({p})=>hrRange==='missing'?(!p.out&&!p.away&&Date.now()-p.in>14*3600000):(p.in>=from&&p.in<to));
   const siteFilter=sEl&&sEl.value;
   if(wEl.value)rows=rows.filter(({p})=>p.who===wEl.value);
@@ -2960,14 +2970,14 @@ function renderHours(){
   const by={};rows.forEach(r=>{(by[r.p.who]=by[r.p.who]||[]).push(r);});
   let grand=0;
   el.innerHTML=(siteFilter?'<div class="note" style="margin-bottom:6px">'+t('Showing hours at this job only. Overtime is figured on the full week across all jobs.')+'</div>':'')+Object.keys(by).map(who=>{const rs=by[who];let tot=0;
-    const items=rs.map(({p,i})=>{const end=p.out||(p.away?p.away:null);const dur=end?punchDur(p):null;if(dur)tot+=dur;const open=!end;const stale=open&&Date.now()-p.in>14*3600000;
+    const items=rs.map(({p,i})=>{const end=p.out||(p.away?p.away:null);const dur=end?punchDur(p):null;const counts=payCounts(p);if(dur&&counts)tot+=dur;const open=!end;const stale=open&&Date.now()-p.in>14*3600000;
       const trips=(p.trips||[]).map(tr=>'<div style="font-size:11px;color:var(--g4);padding-left:8px">↳ '+t('off site')+' '+fmtT(tr.left)+'–'+fmtT(tr.back)+' ('+Math.round((tr.back-tr.left)/60000)+' min)</div>').join('');
       const ed=(p.edits&&p.edits.length?'<div style="font-size:11px;color:var(--amber);padding-left:8px">✎ '+t('edited by')+' '+esc(nameOf(p.edits[p.edits.length-1].by))+' — '+esc(p.edits[p.edits.length-1].why||'')+'</div>':'')+((p.breaks||[]).length?'<div style="font-size:11px;color:var(--g4);padding-left:8px">☕ '+(p.breaks||[]).map(b=>fmtT(b.s)+'–'+fmtT(b.e)).join(', ')+' ('+Math.round((p.breaks||[]).reduce((q,b)=>q+(b.e-b.s),0)/60000)+' min '+t('off the clock')+')</div>':'')+(p.transfer?'<div style="font-size:11px;color:var(--g4);padding-left:8px">↔ '+t('switched sites')+'</div>':'')+(p.check?'<div style="font-size:11px;padding-left:8px;color:'+(p.check.injured?'#c0392b':'var(--g4)')+'">'+(p.check.injured?'🚑 '+t('INJURED')+' — '+esc((p.check.injury||{}).what||'')+(p.check.injury&&p.check.injury.told?' · '+t('told')+' '+esc(nameOf(p.check.injury.told)):'')+(p.check.injury&&p.check.injury.care&&p.check.injury.care!=='no'?' · '+esc(p.check.injury.care):''):'✓ '+t('not injured'))+' · '+(p.check.mealBreak?'✓ '+t('meal break'):'⚠ '+t('no meal break')+' ('+t({chose:'chose to',told:'was told to skip',short:'short day'}[p.check.noBreakWhy]||'')+')')+'</div>':'')+(p.selfie?'<img src="'+safeSrc(p.selfie)+'" onclick="event.stopPropagation();document.getElementById(\'photoWrap\').innerHTML=\'<img src=&quot;'+safeSrc(p.selfie)+'&quot; style=&quot;max-width:100%;max-height:70vh;border-radius:10px&quot;>\';show(\'m-photo\')" style="width:34px;height:34px;border-radius:17px;object-fit:cover;margin:4px 0 0 8px;border:2px solid var(--g2)">':p.noSelfie?'<div style="font-size:11px;color:#c0392b;padding-left:8px">⚠ '+t('no selfie')+'</div>':'');
-      return '<div class="plog" style="flex-direction:column;align-items:stretch;cursor:pointer;'+(stale?'background:var(--red-bg);margin:0 -13px;padding:8px 13px':'')+'" onclick="openPunchEdit('+i+')"><div style="display:flex;justify-content:space-between"><span>'+new Date(p.in).toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'})+' · '+esc(siteName(p.site))+'</span><span><b>'+fmtT(p.in)+'</b> – '+(end?'<b>'+fmtT(end)+'</b>':'<span style="color:#c0392b;font-weight:600">'+(stale?t('NO PUNCH OUT'):t('on site'))+'</span>')+(dur!==null?' <span style="color:var(--g4)">('+dur.toFixed(2)+'h)</span>':'')+'</span></div>'+trips+ed+'</div>';}).join('');
+      return '<div class="plog" style="flex-direction:column;align-items:stretch;cursor:pointer;'+(stale?'background:var(--red-bg);margin:0 -13px;padding:8px 13px':'')+'" onclick="openPunchEdit('+i+')"><div style="display:flex;justify-content:space-between"><span>'+new Date(p.in).toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'})+' · '+esc(siteName(p.site))+'</span><span><b>'+fmtT(p.in)+'</b> – '+(end?'<b>'+fmtT(end)+'</b>':'<span style="color:#c0392b;font-weight:600">'+(stale?t('NO PUNCH OUT'):t('on site'))+'</span>')+(dur!==null?' <span style="color:var(--g4)">('+dur.toFixed(2)+'h)</span>':'')+'</span></div>'+(!counts?'<div style="font-size:11px;color:var(--amber);padding-left:8px">'+(p.rejected?t('Rejected — not counted'):t('Waiting for approval — not counted yet'))+'</div>':'')+trips+ed+'</div>';}).join('');
     grand+=tot;
-    const ot=(hrRange==='week'&&!siteFilter)?Math.max(0,tot-OT_AFTER):0;return '<div class="card"><div class="row" style="margin-bottom:6px"><b>'+esc(nameOf(who))+'</b><span>'+((hrRange==='week'&&!siteFilter)?'<span class="badge b-open">'+Math.min(tot,OT_AFTER).toFixed(2)+' '+t('reg')+'</span> '+(ot?'<span class="badge b-ov">'+ot.toFixed(2)+' '+t('OT')+'</span>':''):'<span class="badge b-open">'+tot.toFixed(2)+' h</span>')+'</span></div>'+items+'</div>';}).join('')+((hrRange==='week'&&!siteFilter)?(()=>{const reg=Object.keys(by).reduce((a,w)=>{const tt=by[w].reduce((q,{p})=>q+((p.out||p.away)?punchDur(p):0),0);return a+Math.min(tt,OT_AFTER);},0);return '<div class="card" style="text-align:right;font-weight:700">'+t('Week total')+': '+grand.toFixed(2)+' h · '+t('Regular')+' '+reg.toFixed(2)+' · <span style="color:#c0392b">'+t('Overtime')+' '+(grand-reg).toFixed(2)+'</span></div>';})():(siteFilter?'<div class="card" style="text-align:right;font-weight:700">'+t('Total at this job')+': '+grand.toFixed(2)+' h</div>':''));
+    const ot=(hrRange==='week'&&!siteFilter)?Math.max(0,tot-OT_AFTER):0;return '<div class="card"><div class="row" style="margin-bottom:6px"><b>'+esc(nameOf(who))+'</b><span>'+((hrRange==='week'&&!siteFilter)?'<span class="badge b-open">'+Math.min(tot,OT_AFTER).toFixed(2)+' '+t('reg')+'</span> '+(ot?'<span class="badge b-ov">'+ot.toFixed(2)+' '+t('OT')+'</span>':''):'<span class="badge b-open">'+tot.toFixed(2)+' h</span>')+'</span></div>'+items+'</div>';}).join('')+((hrRange==='week'&&!siteFilter)?(()=>{const reg=Object.keys(by).reduce((a,w)=>{const tt=by[w].reduce((q,{p})=>q+((p.out||p.away)&&payCounts(p)?punchDur(p):0),0);return a+Math.min(tt,OT_AFTER);},0);return '<div class="card" style="text-align:right;font-weight:700">'+t('Week total')+': '+grand.toFixed(2)+' h · '+t('Regular')+' '+reg.toFixed(2)+' · <span style="color:#c0392b">'+t('Overtime')+' '+(grand-reg).toFixed(2)+'</span></div>';})():(siteFilter?'<div class="card" style="text-align:right;font-weight:700">'+t('Total at this job')+': '+grand.toFixed(2)+' h</div>':''));
 }
-function openPunchEdit(i){peIdx=i;const m=me();const p=i===null?null:D.punches[i];
+function openPunchEdit(i){const p0=i===null?null:D.punches[i];if(p0&&!p0.id)p0.id=nid('p');peIdx=p0?p0.id:null;const m=me();const p=p0;
   document.getElementById('peTitle').textContent=p?t('Edit punch'):t('Add missed punch');
   document.getElementById('peWho').innerHTML=D.emps.filter(e=>e.role!=='office'&&e.role!=='owner').map(e=>'<option value="'+e.id+'">'+esc(e.name)+'</option>').join('');
   document.getElementById('peSite').innerHTML=D.sites.map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');
@@ -2982,10 +2992,10 @@ function savePunchEdit(){const d=document.getElementById('peDate').value,ti=docu
   const inT=new Date(d+'T'+ti).getTime();let outT=to?new Date(d+'T'+to).getTime():null;if(outT&&outT<inT)outT+=86400000;
   const who=document.getElementById('peWho').value,site=document.getElementById('peSite').value;
   if(peIdx===null){D.punches.push({who,site,in:inT,out:outT,edits:[{by:me().id,at:Date.now(),why:why||t('added manually'),from:{in:inT,out:outT},to:{in:inT,out:outT}}]});pushTo([who],'🕒 '+t('Hours added by')+' '+nameOf(me().id)+': '+new Date(inT).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' '+fmtT(inT)+'–'+(outT?fmtT(outT):'—'));}
-  else{if(!why){toast(t('Write a reason for the change'));return;}const p=D.punches[peIdx];(p.edits=p.edits||[]).push({by:me().id,at:Date.now(),why,from:{in:p.in,out:p.out||p.away||null},to:{in:inT,out:outT}});p.who=who;p.site=site;p.in=inT;p.out=outT;delete p.away;
+  else{if(!why){toast(t('Write a reason for the change'));return;}const p=D.punches.find(x=>x.id===peIdx);if(!p){toast(t('That punch was changed or removed meanwhile — open it again.'));hide('m-pe');renderHours();return;}(p.edits=p.edits||[]).push({by:me().id,at:Date.now(),why,from:{in:p.in,out:p.out||p.away||null},to:{in:inT,out:outT}});p.who=who;p.site=site;p.in=inT;p.out=outT;delete p.away;delete p.breakStart;const inR=(a,b)=>a>=inT&&(outT==null||b<=outT);if(p.breaks)p.breaks=p.breaks.filter(b=>inR(b.s,b.e));if(p.trips)p.trips=p.trips.filter(tr=>tr.back&&inR(tr.left,tr.back));
     pushTo([who],'🕒 '+t('Your hours were changed by')+' '+nameOf(me().id)+': '+new Date(inT).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' '+fmtT(inT)+'–'+(outT?fmtT(outT):'—')+' — '+why);}
   save();hide('m-pe');renderHours();renderPunch();toast('✓ '+t('Saved'),'green');}
-function delPunch(){askConfirm(t('Delete this punch?'),()=>{D.punches.splice(peIdx,1);save();hide('m-pe');renderHours();renderPunch();},t('Delete'));}
+function delPunch(){askConfirm(t('Delete this punch?'),()=>{const i=D.punches.findIndex(x=>x.id===peIdx);if(i<0){hide('m-pe');renderHours();return;}D.punches.splice(i,1);save();hide('m-pe');renderHours();renderPunch();},t('Delete'));}
 
 // ───────────── JOB HOURS DASHBOARD — owner + Payroll only (gated by canEditHours; data is RLS-limited) ─────────────
 // Reuses punchDur (breaks, off-site trips and manual corrections are already inside it) and weekStart (Sun–Sat).
@@ -2993,17 +3003,17 @@ let dashRange='tw',dashFrom='',dashTo='',jhSiteRange='all',jhSiteFrom='',jhSiteT
 let _dsFocus=false,_dsPos=0; // keep the job-site search focused across background re-renders
 function monthStartMs(ref){const x=new Date(ref||Date.now());return new Date(x.getFullYear(),x.getMonth(),1).getTime();}
 function rangeBounds(kind,fromStr,toStr){const now=Date.now();
-  if(kind==='tw'){const f=weekStart(now).getTime();return [f,f+7*86400000,t('This week')];}
-  if(kind==='lw'){const f=weekStart(now).getTime()-7*86400000;return [f,f+7*86400000,t('Last week')];}
+  if(kind==='tw'){const f=weekStart(now).getTime();return [f,addDaysMs(f,7),t('This week')];}
+  if(kind==='lw'){const f=addDaysMs(weekStart(now).getTime(),-7);return [f,addDaysMs(f,7),t('Last week')];}
   if(kind==='tm'){const f=monthStartMs(now);const d=new Date(f);const e=new Date(d.getFullYear(),d.getMonth()+1,1).getTime();return [f,e,t('This month')];}
-  if(kind==='all')return [0,now+86400000,t('All time')];
+  if(kind==='all')return [0,now+86400000,t('Last 120 days')];
   const f=fromStr?new Date(fromStr+'T00:00').getTime():0;
   const tt=toStr?new Date(toStr+'T00:00').getTime()+86400000:now+86400000;
   return [f,tt,t('Custom')];}
 // Punches that count toward hours — payroll-consistent with the Hours screen: has an end (out or break-start), not rejected, clock-in inside the range. Overnight shifts keep their full length (punchDur = out−in); each punch is bucketed by its clock-in day.
-function hrPunches(from,to,filterFn){return D.punches.filter(p=>!p.rejected&&(p.out||p.away)&&p.in>=from&&p.in<to&&(!filterFn||filterFn(p)));}
+function hrPunches(from,to,filterFn){return D.punches.filter(p=>payCounts(p)&&(p.out||p.away)&&p.in>=from&&p.in<to&&(!filterFn||filterFn(p)));}
 function sumDur(ps){return ps.reduce((a,p)=>a+punchDur(p),0);}
-function rangeChips(cur,setter){return [['tw',t('This week')],['lw',t('Last week')],['tm',t('This month')],['all',t('All time')],['custom',t('Custom')]].map(([k,l])=>'<div class="chip '+(cur===k?'on':'')+'" onclick="'+setter+'(\''+k+'\')">'+l+'</div>').join('');}
+function rangeChips(cur,setter){return [['tw',t('This week')],['lw',t('Last week')],['tm',t('This month')],['all',t('Last 120 days')],['custom',t('Custom')]].map(([k,l])=>'<div class="chip '+(cur===k?'on':'')+'" onclick="'+setter+'(\''+k+'\')">'+l+'</div>').join('');}
 function punchRowsHtml(ps){return ps.slice().sort((a,b)=>a.in-b.in).map(p=>{const end=p.out||p.away;const dur=end?punchDur(p):null;const open=!end;const idx=D.punches.indexOf(p);
   return '<div class="plog" style="cursor:pointer;gap:10px;align-items:flex-start" onclick="openPunchEdit('+idx+')"><span style="flex:1;min-width:0;word-break:break-word;line-height:1.35">'+new Date(p.in).toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'})+' · '+esc(siteName(p.site))+(p.edits&&p.edits.length?' <span style="display:inline-block;background:#fff3cd;color:#8a6d0b;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600;white-space:nowrap">✎ '+t('corrected')+'</span>':'')+'<br><span style="font-size:12px;color:var(--g4)">'+fmtT(p.in)+'–'+(end?fmtT(end):t('still in'))+'</span></span><b style="white-space:nowrap;flex-shrink:0;text-align:right">'+(open?'<span style="color:#c0392b">'+t('open')+'</span>':dur.toFixed(2)+' h')+'</b></div>';}).join('');}
 // Company-wide overview (pg-hours)
@@ -4367,7 +4377,7 @@ exBootstrap();
 (function(){if(window.EX_REAL)return;let seen=false;try{seen=!!localStorage.getItem('electrix_welcome');}catch(e){}if(!seen){const w=()=>{if(!document.getElementById('m-login').classList.contains('hid')){setTimeout(w,800);return;}show('m-welcome');navStack.pop();navUpdate();};setTimeout(w,400);}})();
 
 // ───────────── WEEKLY SUMMARY ─────────────
-function weeklySummaryCheck(){const now=new Date();const day=now.getDay(),hr=now.getHours();if(!(day===6||(day===5&&hr>=17)||day===0&&false))return;const wk=dkey(weekStart(now));if(D.wkSum===wk)return;D.wkSum=wk;
+function weeklySummaryCheck(){const mm=me();if(!mm||mm.role!=='owner')return;const now=new Date();const day=now.getDay(),hr=now.getHours();if(!(day===6||(day===5&&hr>=17)||day===0&&false))return;const wk=dkey(weekStart(now));if(D.wkSum===wk)return;D.wkSum=wk;
   const field=D.emps.filter(e=>e.role==='worker'&&e.active!==false);let totH=0,totOT=0,totMi=0;
   field.forEach(e=>{const w=weekStats(e.id);const mi=travelWeek(e.id).reduce((q,x)=>q+x.miles,0);const trips=travelWeek(e.id).length;totH+=w.total;totOT+=w.ot;totMi+=mi;if(w.total||trips)pushTo([e.id],'📊 '+t('This week')+': '+w.total.toFixed(1)+' '+t('hrs')+(w.ot?' · '+w.ot.toFixed(1)+' OT':'')+(trips?' · '+trips+' '+t('trips')+', '+mi.toFixed(0)+' mi':''),'info',{tab:'punch'});});
   const bosses=D.emps.filter(e=>e.role==='owner'||e.role==='manager'||e.all||(e.role==='office'&&/payroll|hours/i.test(e.title||''))).map(e=>e.id);

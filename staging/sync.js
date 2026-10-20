@@ -513,6 +513,8 @@ window.EX_start=async function(){if(!REAL||ready)return;const local={};SEEDABLE.
   try{if(typeof pruneOld==='function'&&pruneOld())localSave();}catch(e){log('prune',e);}
   localSave();ready=true;subscribe();flush();paint();};
 window.EX_ready=()=>ready;
+// safe to forget a record from the phone only when the server already has exactly this version and nothing is waiting
+window.EX_canForget=function(coll,rec){if(!rec||!rec.id)return false;if(queue[coll+'\u0001'+rec.id])return false;const s=snap[coll]&&snap[coll][rec.id];return !!s&&s===canon(upStrip(coll,rec));};
 // the phone keeps only recent history (the server keeps everything): forget old rows here without deleting them anywhere
 window.EX_forget=function(coll,ids){const m=snap[coll];if(!m)return;ids.forEach(id=>{delete m[id];});};
 window.EX_openLocal=function(){if(ready||localReady)return;takeSnap();localReady=true;paint();};

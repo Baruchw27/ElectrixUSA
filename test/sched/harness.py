@@ -13,6 +13,7 @@ def srvpost(path,obj):
 VIEW={'iphone':dict(viewport={'width':390,'height':844},user_agent='Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.2 Mobile/15E148 Safari/604.1',is_mobile=True,has_touch=True),
       'android':dict(viewport={'width':412,'height':915},user_agent='Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Mobile Safari/537.36',is_mobile=True,has_touch=True),
       'desktop':dict(viewport={'width':1366,'height':900})}
+for _v in VIEW.values(): _v['timezone_id']='America/New_York'   # the company's time zone (DST changes matter for hours)
 async def phone(b,name,kind='iphone',appfile='index.html'):
     ctx=await b.new_context(service_workers='block',permissions=['geolocation'],geolocation={'latitude':41.1287,'longitude':-74.1046,'accuracy':8},**VIEW[kind])
     pg=await ctx.new_page(); errs=[]
