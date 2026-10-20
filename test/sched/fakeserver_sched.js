@@ -36,8 +36,28 @@ function guardOk(email,c,o,n,del,exists){if(!emps().length)return true;if(isBoss
 function strip(x){const y=Object.assign({},x||{});delete y.lang;delete y.phone;return y;}
 function canonEq(a,b){const k=o=>JSON.stringify(Object.keys(o).sort().map(x=>[x,o[x]]));return k(a)===k(b);}
 function ownEmp(email,o){return o&&o.authUid===uidOf(email);}
+// L2: same merge rule as public.guard_lists (db/audit_l2_lists.sql): items/comments never deleted, a change made from
+// an older version of an item is kept next to the newer one (li_<id>~<who>~<base>), server stamps rev/who/when,
+// only the people on the list may change it (assignees: tick their own items + comment). Returns null when refused.
+function listMerge(email,coll,o,n){o=o&&typeof o==='object'?o:{};if(!n||typeof n!=='object')return n;const me=meData(email);const actor=me.id||'server';const now=Date.now();
+  const lk=x=>/^l[ic]_/.test(x);if(!Object.keys(n).some(lk)&&!Object.keys(o).some(lk)&&!(coll==='mats'&&(JSON.stringify(n.to)!==JSON.stringify(o.to))))return n;
+  const base0=Object.keys(o).length?o:n;const editor=!me.id||(coll==='keep'?(base0.owner===me.id||(base0.collab||[]).includes(me.id)):(base0.from===me.id||base0.to===me.id||(base0.collab||[]).includes(me.id)||['owner','manager'].includes(me.role)||me.all||(me.role==='office'&&['Material','Payroll'].includes(me.title))));
+  n=Object.assign({},n);Object.keys(o).filter(lk).forEach(k=>{if(!(k in n))n[k]=o[k];});const J=JSON.stringify;const strip=(x,fs)=>{const c=Object.assign({},x);fs.forEach(f=>delete c[f]);return J(c);};let touched=false;
+  for(const k of Object.keys(n).filter(lk)){const ov=o[k],nv=n[k];if(J(nv)===J(ov))continue;touched=true;if(!nv||typeof nv!=='object'){if(ov===undefined)delete n[k];else n[k]=ov;continue;}
+    if(/^lc_/.test(k)){if(ov!==undefined){n[k]=ov;continue;}if(!(editor||(coll==='keep'&&(o.assign||[]).includes(me.id))))return null;n[k]=Object.assign({},nv,{by:actor,ts:+nv.ts||now});continue;}
+    if(k.indexOf('~')>0){if(ov===undefined)delete n[k];else n[k]=editor?Object.assign({},ov,{gone:!!nv.gone}):ov;continue;}
+    if(ov===undefined){if(!editor)return null;const x=Object.assign({},nv);delete x.base;n[k]=Object.assign(x,{rev:1,by:actor,ts:+nv.ts||now,eby:actor,eat:now});continue;}
+    const orev=+ov.rev||0;const base=nv.base==null?null:+nv.base;
+    if(base==null&&(+nv.rev||0)<=orev){n[k]=ov;continue;}
+    if(!editor&&!(ov.to===me.id&&strip(nv,['done','doneBy','doneAt','rev','base','eby','eat'])===strip(ov,['done','doneBy','doneAt','rev','base','eby','eat'])))return null;
+    if(base!=null&&base<orev){const x=Object.assign({},nv);delete x.base;n[k]=ov;n[k+'~'+actor+'~'+base]=Object.assign(x,{conflict:true,of:k,eby:actor,eat:now,rev:orev});(stats.conflicts=(stats.conflicts||0)+1);continue;}
+    const x=Object.assign({},nv);delete x.base;n[k]=Object.assign(x,{rev:orev+1,eby:actor,eat:now,by:ov.by||actor,ts:ov.ts||now});}
+  if(coll==='mats'&&Object.keys(o).length&&J(n.to)!==J(o.to)&&!editor)return null;
+  const a=[...new Set(Object.keys(n).filter(k=>/^li_/.test(k)&&k.indexOf('~')<0&&n[k]&&n[k].to&&!n[k].gone).map(k=>n[k].to))].sort();if(touched||J(n.assign)!==J(a))n.assign=a;
+  if(!editor&&Object.keys(o).length){for(const f of new Set([...Object.keys(n),...Object.keys(o)])){if(lk(f)||['assign','edited','order'].includes(f))continue;if(J(n[f])!==J(o[f]))return null;}}
+  return n;}
 function canSee(email,row){const d=row.data||{};const me=meData(email);const c=row.coll;
-  if(c==='keep')return d.owner===me.id||(d.collab||[]).includes(me.id);
+  if(c==='keep')return d.owner===me.id||(d.collab||[]).includes(me.id)||(Array.isArray(d.assign)&&d.assign.includes(me.id));
   if(c==='inbox')return d.to===me.id;
   if(c==='push')return d.who===me.id;
   if(c==='meets')return me.role==='owner'||d.by===me.id||(d.with||[]).includes(me.id);
@@ -80,6 +100,7 @@ http.createServer(async (req,res)=>{
         else{delete data.hist;delete data.lateEntry;const late=(+data.in||Date.now())<Date.now()-30*60000;
           if(late&&!(ok&&data.who!==me.id)){data.pending=true;data.lateEntry={srvIn:Date.now(),in:data.in,out:data.out||null,site:data.site,by:me.id};data.hist=[{act:'late',by:me.id,at:Date.now()}];stats.late=(stats.late||0)+1;}
           else data.hist=[{act:'created',by:me.id,at:Date.now()}];}}
+      if((r.coll==='keep'||r.coll==='mats')&&!r.deleted&&data&&typeof data==='object'&&emps().length){const mg=listMerge(em,r.coll,old&&!old.deleted?old.data:null,data);if(mg===null){stats.blocked=(stats.blocked||0)+1;continue;}data=mg;}
       const row={coll:r.coll,id:r.id,data:pg(data),deleted:!!r.deleted,updated_by:r.by||null,updated_at:now()};
       if(old&&!canSee(em,old))continue; // existing row this person can't see: skipped (like the real server)
       if(global.DENY&&r.coll===global.DENY){stats.blocked=(stats.blocked||0)+1;continue;}
