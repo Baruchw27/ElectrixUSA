@@ -89,7 +89,7 @@ begin
     format($q$insert into public.records(coll,id,data,deleted) values('sched','c2|%s','{"site":"s2","time":"7:00 AM","rev":99}',false),('sched','c2|%s','{"site":"s2","time":"7:00 AM","rev":99}',false),('sched','c2|%s','{"site":"s3","time":"8:00 AM","rev":99}',false)
              on conflict (coll,id) do update set data = excluded.data, deleted = false$q$, d1, d2, d3), 'ok');
   perform pg_temp.t('u2','one person moved to another job for a day: he is told',
-    format($q$insert into public.records(coll,id,data,deleted) values('sched','L:u7|%s',jsonb_build_object('emp','u7','assignments',jsonb_build_array(jsonb_build_object('id','l9','site','s2','start',720,'end',960,'note','help')))),false)
+    format($q$insert into public.records(coll,id,data,deleted) values('sched','L:u7|%s',jsonb_build_object('emp','u7','assignments',jsonb_build_array(jsonb_build_object('id','l9','site','s2','start',720,'end',960,'note','help'))),false)
              on conflict (coll,id) do update set data = excluded.data, deleted = false$q$, d2), 'ok');
   perform pg_temp.t('u2','ongoing job set for crew 1',
     format($q$insert into public.records(coll,id,data,deleted) values('sched','ONG:c1:zz1',jsonb_build_object('from','%s','to',null,'site','s3','start',420,'end',930,'workdays','[1,2,3,4,5]'::jsonb),false)$q$, d1), 'ok');
