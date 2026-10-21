@@ -153,10 +153,14 @@ window.EX_uploadBlob=async function(blob,folder){if(!REAL||!sb||!st.online)retur
 //   • an existing row whose patch was denied → it comes back with the old values (our fields not applied).
 // either way the person must be told and the local optimistic copy undone — never a false "saved".
 // returns the list of rejected {coll,id,absent} so the caller can revert and surface a clear error.
-const SERVER_OWNED={travel:['pay','minutes','auto','status'],punches:['srvIn','hist','lateEntry']};
+const SERVER_OWNED={travel:['pay','minutes','auto','status'],punches:['srvIn','hist','lateEntry'],mats:['st','status','stAt','stBy','readyAt','from']};
 // L2 lists: the server stamps each item (rev, who, when) and, when two phones changed the same item at once, keeps the
 // newer one in place and this phone's version next to it (li_<id>~…) — neither is a refusal.
-const LIST_SET=['rev','base','eby','eat','by','ts'];function listSame(a,b){if(!a||!b||typeof a!=='object'||typeof b!=='object')return canon(a)===canon(b);const x=Object.assign({},a),z=Object.assign({},b);LIST_SET.forEach(f=>{delete x[f];delete z[f];});return canon(x)===canon(z);}
+const LIST_SET=['rev','base','eby','eat','by','ts'];
+// M2 material lists: the server works out the preparation fields (done only when the full quantity is prepared, who/when,
+// the recheck flag, picked-up quantity) — a difference there is the server's rule, not a refused change
+const MAT_SET=['done','doneBy','doneAt','pq','pqBy','pqAt','rck','pk'];
+function listSame(a,b,coll){if(!a||!b||typeof a!=='object'||typeof b!=='object')return canon(a)===canon(b);const x=Object.assign({},a),z=Object.assign({},b);LIST_SET.forEach(f=>{delete x[f];delete z[f];});if(coll==='mats')MAT_SET.forEach(f=>{delete x[f];delete z[f];});return canon(x)===canon(z);}
 function rejectedRows(sent,server){const out=[];if(!Array.isArray(server))return out;
   const by={};server.forEach(s=>{by[s.coll+'\u0001'+s.id]=s;});
   sent.forEach(row=>{if(row.coll==='emps')return; // emps are transformed server-side (stripEmp), so skip to avoid false alarms
@@ -169,7 +173,7 @@ function rejectedRows(sent,server){const out=[];if(!Array.isArray(server))return
     const own=SERVER_OWNED[row.coll]||[];   // fields the server works out itself (it is not a refusal when they differ)
     const sentObj=(row.patch&&typeof row.patch==='object')?row.patch:(row.coll==='punches'&&row.full&&typeof row.full==='object'?row.full:null);
     if(sentObj){let bad=false;for(const f in sentObj){if(own.indexOf(f)>=0)continue;if((row.coll==='keep'||row.coll==='mats')&&f==='assign')continue;
-      if((row.coll==='keep'||row.coll==='mats')&&/^l[ic]_/.test(f)){if(listSame(d[f],sentObj[f])||Object.keys(d).some(k=>k.indexOf(f+'~')===0))continue;bad=true;break;}
+      if((row.coll==='keep'||row.coll==='mats')&&/^l[ic]_/.test(f)){if(listSame(d[f],sentObj[f],row.coll)||Object.keys(d).some(k=>k.indexOf(f+'~')===0))continue;bad=true;break;}
       if(canon(d[f])!==canon(sentObj[f])){bad=true;break;}}
       if(!bad&&row.coll==='punches'&&Array.isArray(row.unset))bad=row.unset.some(f=>own.indexOf(f)<0&&(f in d));
       if(bad)out.push({coll:row.coll,id:row.id});}});
