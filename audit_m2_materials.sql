@@ -60,11 +60,13 @@ declare me jsonb; mgr boolean; o jsonb; n jsonb := new.data; f text; changed boo
 begin
   if current_user not in ('authenticated','anon') or auth.uid() is null then return new; end if;
   if coalesce(current_setting('app.stock_txn', true), '') = '1' then return new; end if;   -- receiving stock (apply_stock_txn) may add an item
-  if jsonb_typeof(n) <> 'object' then
-    if new.deleted then return new; end if;
-    raise exception 'not allowed' using errcode = '42501'; end if;
   me := public.my_emp_data();
   mgr := private.catalog_mgr(me);
+  if new.deleted and new.coll = 'stock' then                                 -- removing a material: catalog managers only (soft, kept in history)
+    if not mgr and tg_op = 'UPDATE' and not old.deleted then
+      raise exception 'only the people who manage the material list can remove materials — hide it instead' using errcode = '42501'; end if;
+    return new; end if;
+  if jsonb_typeof(n) <> 'object' then raise exception 'not allowed' using errcode = '42501'; end if;
   o := case when tg_op = 'UPDATE' and not old.deleted and jsonb_typeof(old.data) = 'object' then old.data end;
   if new.coll = 'mtpl' then
     if not mgr then raise exception 'only the people who manage the material list can change templates' using errcode = '42501'; end if;
@@ -72,9 +74,7 @@ begin
     new.data := n || jsonb_build_object('id', new.id, 'eby', me->>'id', 'eat', nowms);
     return new;
   end if;
-  if new.deleted then                                                      -- removing a material: catalog managers only (soft, kept in history)
-    if not mgr and o is not null then raise exception 'only the people who manage the material list can remove materials — hide it instead' using errcode = '42501'; end if;
-    return new; end if;
+  if new.deleted then return new; end if;
   if o is null then                                                        -- a new material
     if not mgr then raise exception 'only the people who manage the material list can add materials' using errcode = '42501'; end if;
     nm := lower(btrim(coalesce(n->>'name','')));
