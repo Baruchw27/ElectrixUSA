@@ -329,6 +329,9 @@ begin
       if ov is not null then n := n || jsonb_build_object(k, ov);
       elsif not (editor or (new.coll = 'keep' and jsonb_typeof(o->'assign') = 'array' and o->'assign' ? (me->>'id'))) then
         raise exception 'only the people on this list can comment' using errcode = '42501';
+      elsif mats and not prep and not exists (select 1 from jsonb_each(o) e where e.key like 'lc\_%' and coalesce(e.value->>'by','') <> actor) then
+        -- material requests: the material office asks, the others answer (Baruch 2026-10-21)
+        raise exception 'Menachem starts the conversation on a material request — you can answer him' using errcode = '42501';
       else n := n || jsonb_build_object(k, (nv - 'by') || jsonb_build_object('by', actor, 'ts', coalesce(public._num(nv->>'ts')::bigint, nowms))); end if;
       continue; end if;
     if position('~' in k) > 0 then                           -- a kept copy: only the server makes them; editors may dismiss
@@ -409,8 +412,9 @@ begin
   pkk := 'pu_' || p_txn;
   select data into d from public.records where coll = 'mats' and id = p_id and not deleted for update;
   if d is null then raise exception 'that material list is not there' using errcode = '22023'; end if;
-  if not (private.list_editor('mats', d, me) or coalesce((me->>'lead')::boolean, false)) then
-    raise exception 'only the people on this list can confirm a pickup' using errcode = '42501'; end if;
+  -- only the material office (Menachem) takes material out of the garage count (Baruch 2026-10-21); the owner can too
+  if not (me->>'role' = 'owner' or (me->>'role' = 'office' and me->>'title' = 'Material')) then
+    raise exception 'only Menachem (material office) can confirm a pickup or delivery' using errcode = '42501'; end if;
   if d ? pkk then return jsonb_build_object('ok', true, 'duplicate', true); end if;
   for ln in select value from jsonb_array_elements(p_lines) loop
     k := ln->>'k'; it := d->k; qn := public._num(ln->>'n');
