@@ -75,7 +75,9 @@ async def run():
             check('two phones editing different items at once: both changes kept',md[k1].get('q')=='30' and md[kb].get('t')=='3-Way Switches (Leviton)' and any(v.get('t')=='GFCI Outlets' and v.get('q')=='5' for k,v in mi2),[(v.get('q'),v.get('t')) for k,v in mi2])
             await until(B,f"(liRec('mats','{mid}')||{{}})['{kb}']&&liRec('mats','{mid}')['{kb}'].t==='3-Way Switches (Leviton)'",10000)
             await until(M,f"(liRec('mats','{mid}')||{{}})['{k1}']&&liRec('mats','{mid}')['{k1}'].q==='30'",10000)
-            check('… and each phone shows the other\'s change',await B.evaluate(f"liItems(liRec('mats','{mid}')).length")==4 and await M.evaluate(f"liRec('mats','{mid}')['{k1}'].q")=='30')
+            await until(B,f"liItems(liRec('mats','{mid}')).length===4",10000)
+            sb_=await B.evaluate(f"[liItems(liRec('mats','{mid}')).length,EX_SYNC.pending]");sm_=await M.evaluate(f"[liRec('mats','{mid}')['{k1}'].q,EX_SYNC.pending]")
+            check('… and each phone shows the other\'s change',sb_[0]==4 and sm_[0]=='30',[sb_,sm_])
             # the same item at the same moment → nothing lost, flagged
             await until(B,f"liRec('mats','{mid}')['{k1}'].rev===(+(liRec('mats','{mid}')['{k1}'].rev))&&!('base' in liRec('mats','{mid}')['{k1}'])",8000)
             await until(M,f"!('base' in liRec('mats','{mid}')['{k1}'])&&liRec('mats','{mid}')['{k1}'].rev===2",8000)
@@ -85,7 +87,8 @@ async def run():
             vals=sorted([md[k1].get('q')]+[c.get('q') for c in cps])
             check('the same item changed on two phones at once: both values are kept (one in place, one flagged)',vals==['35','40'] and len(cps)==1 and cps[0].get('conflict') is True,(md[k1],cps))
             ok=await until(B,"(liDraw(),document.querySelectorAll('#liBox .licf').length===1)",10000) and await until(M,"(liDraw(),document.querySelectorAll('#liBox .licf').length===1)",10000)
-            check('… both phones show the clash so someone can pick the right one',ok)
+            dbg=[await P.evaluate(f"(()=>{{const r=liRec('mats','{mid}');return [Object.keys(r).filter(k=>k.indexOf('~')>0),JSON.stringify(r['{k1}']),EX_SYNC.pending,document.querySelectorAll('#liBox .licf').length,!document.getElementById('m-list').classList.contains('hid')];}})()") for P in (B,M)]
+            check('… both phones show the clash so someone can pick the right one',ok,dbg)
             nr=[await P.evaluate("!(D.rejq||[]).some(x=>JSON.stringify(x).includes('"+mid+"'))&&!EX_SYNC.pending") for P in (B,M)]
             check('… and neither phone is told its save was refused (nothing set aside, nothing stuck)',all(nr),nr)
             pick=cps[0].get('q')

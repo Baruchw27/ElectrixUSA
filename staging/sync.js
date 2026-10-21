@@ -283,11 +283,18 @@ window.EX_saveNow=async function(opts){opts=opts||{};if(!REAL)return {v:21,ok:tr
   const ok=!rejected.length&&!pending.length&&!unknown.length&&!(hadError&&!mine.length);
   return {v:21,ok,rejected,pending:pending.concat(unknown),transient,timedOut,error:hadError?errMsg:'',stored:st.qStored!==false};};
 // take the server's merged version of what we just saved (it may include another phone's changes)
-function adopt(rows){if(!Array.isArray(rows))return;let changed=false;rows.forEach(r=>{const key=r.coll;liveAt[r.coll+'\u0001'+r.id]=Date.now();if(queue[r.coll+'\u0001'+r.id])return;const j=r.deleted?null:canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));
+// L2: a live update for a list that this phone is still saving is held, then merged (newest item wins) once the save is done
+const heldList={};
+function adopt(rows){if(!Array.isArray(rows))return;let changed=false;rows.forEach(r=>{const key=r.coll;liveAt[r.coll+'\u0001'+r.id]=Date.now();if(queue[r.coll+'\u0001'+r.id]){if((r.coll==='keep'||r.coll==='mats')&&!r.deleted)heldList[r.coll+'\u0001'+r.id]=r;return;}const j=r.deleted?null:canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));
     if(r.deleted){if(snap[key]&&r.id in snap[key]){applyRows([r],{replace:false});delete snap[key][r.id];changed=true;}return;}
     const mine=r.coll==='emps'?(snap[key]||{})[r.id]:null;if(snap[key]&&snap[key][r.id]===j)return;
     if(r.coll==='emps'){const live=liveRecord('emps',r.id);if(live&&canon(stripEmp(live))===j)return;}
-    applyRows([r],{replace:false});(snap[key]=snap[key]||{})[r.id]=r.coll==='emps'?canon(recordsOf('emps')[r.id]):j;changed=true;});
+    applyRows([r],{replace:false});(snap[key]=snap[key]||{})[r.id]=r.coll==='emps'?canon(recordsOf('emps')[r.id]):(r.coll==='keep'||r.coll==='mats')?canon(upStrip(r.coll,liveRecord(r.coll,r.id))):j;changed=true;});
+  // only the list items are taken from the held row (newer version of each item wins); the rest of the record stays as saved
+  Object.keys(heldList).forEach(hk=>{if(queue[hk])return;const h=heldList[hk];delete heldList[hk];const live=liveRecord(h.coll,h.id);if(!live||!h.data||typeof h.data!=='object')return;
+    let m=null;for(const k in h.data){if(!/^l[ic]_/.test(k))continue;const a=live[k],b=h.data[k];if(!b||typeof b!=='object')continue;
+      if(a===undefined||(/^li_/.test(k)&&a&&typeof a==='object'&&!('base' in a)&&(+b.rev||0)>(+a.rev||0)))(m=m||Object.assign({},live))[k]=b;}
+    if(!m)return;applying=true;try{setRecord(h.coll,h.id,m);}finally{applying=false;}(snap[h.coll]=snap[h.coll]||{})[h.id]=canon(upStrip(h.coll,m));changed=true;});
   if(changed){localSave();bump();}}
 function liveRecord(coll,id){const v=D[coll];if(Array.isArray(v))return v.find(x=>x&&x.id===id)||null;return v&&typeof v==='object'?v[id]||null:null;}
 function stripEmp(x){const r=Object.assign({},x);EMP_STRIP.forEach(f=>delete r[f]);r.authEmail=emailFor(x);return r;}
@@ -337,6 +344,14 @@ async function catchUp1(){if(!REAL||!ready||catching||!st.online)return;catching
   catch(e){log('catch-up',e);}finally{catching=false;}}
 window.EX_catchUp=catchUp;
 document.addEventListener('visibilitychange',()=>{if(document.hidden){hiddenSince=Date.now();return;}if(hiddenSince&&Date.now()-hiddenSince>60000)catchUp();hiddenSince=0;});
+// L2 lists: answers can arrive out of order (this phone's own save answer after another phone's newer change). The
+// server never deletes a list item and every server change raises the item's rev, so a list item (or kept copy /
+// comment) the server already stamped that is missing or older in an incoming row means that row is the older one.
+function listKeepNewer(old,inc){if(!old||typeof old!=='object'||!inc||typeof inc!=='object'||Array.isArray(inc))return inc;let out=null;
+  for(const k in old){if(!/^l[ic]_/.test(k))continue;const a=old[k],b=inc[k];if(!a||typeof a!=='object'||('base' in a))continue;
+    const stamped=/^lc_/.test(k)?!!a.by:((+a.rev||0)>=1&&!!a.eat);if(!stamped)continue;
+    if(b===undefined||(/^li_/.test(k)&&b&&typeof b==='object'&&(+a.rev||0)>(+b.rev||0))){(out=out||Object.assign({},inc))[k]=a;}}
+  return out||inc;}
 function applyRows(rows,{replace}){applying=true;try{
   if(replace){colls().forEach(k=>{if(k==='_')return;D[k]=Array.isArray(D[k])?[]:{};});}
   rows.forEach(r=>{if(r.deleted){if(r.coll==='_')delete D[r.id];else delRecord(r.coll,r.id);return;}
@@ -344,6 +359,7 @@ function applyRows(rows,{replace}){applying=true;try{
     if(!(r.coll in D))D[r.coll]=/^[a-z]+$/.test(r.coll)&&!['sched','mylist','punchlists','keepLabels','base'].includes(r.coll)?[]:{};
     // stock history rows are written by the server without an id inside: keep the id, or the phone's copy loses it
     let data=r.data;if(r.coll==='stockLog'&&data&&typeof data==='object'&&!Array.isArray(data)&&!data.id)data=Object.assign({id:r.id},data);if(r.coll==='emps'){const old=liveRecord('emps',r.id);if(old&&old.pass)data.pass=old.pass;}
+    if(!replace&&(r.coll==='keep'||r.coll==='mats'))data=listKeepNewer(liveRecord(r.coll,r.id),data);
     setRecord(r.coll,r.id,data);if(r.coll==='stock'&&data&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,data.qty,null,data.qv);
     if(r.coll==='stockLog'&&window.EX_stockLogSeen){try{window.EX_stockLogSeen(r.id);}catch(e){}}});
   }finally{applying=false;}}
