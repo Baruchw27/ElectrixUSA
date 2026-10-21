@@ -56,6 +56,10 @@ select pg_temp.check('new material stamped (version 1, by u2), garage count 0', 
 select pg_temp.who('u7'); set local role authenticated;
 select pg_temp.expect('worker un-hides it', $q$update records set data = data || '{"hidden":false,"crev":2}' where coll='stock' and id='zzM2b'$q$, 'ok');
 select pg_temp.expect('worker cannot merge materials', $q$select public.catalog_merge('zzM2d','zzM2a')$q$, 'blocked');
+select pg_temp.expect('worker cannot remove a material', $q$update records set deleted = true where coll='stock' and id='zzM2b'$q$, 'blocked');
+reset role;
+select pg_temp.who('u4'); set local role authenticated;
+select pg_temp.expect('Payroll office (not a catalog manager) cannot remove a material either', $q$update records set deleted = true where coll='stock' and id='zzM2b'$q$, 'blocked');
 reset role;
 select pg_temp.check('… still hidden', (select (data->>'hidden')::boolean from records where coll='stock' and id='zzM2b'), null);
 select pg_temp.who('u1'); set local role authenticated;

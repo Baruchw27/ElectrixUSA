@@ -72,7 +72,9 @@ begin
     new.data := n || jsonb_build_object('id', new.id, 'eby', me->>'id', 'eat', nowms);
     return new;
   end if;
-  if new.deleted then return new; end if;                                  -- removing stays as before (guard_record decides)
+  if new.deleted then                                                      -- removing a material: catalog managers only (soft, kept in history)
+    if not mgr and o is not null then raise exception 'only the people who manage the material list can remove materials — hide it instead' using errcode = '42501'; end if;
+    return new; end if;
   if o is null then                                                        -- a new material
     if not mgr then raise exception 'only the people who manage the material list can add materials' using errcode = '42501'; end if;
     nm := lower(btrim(coalesce(n->>'name','')));
