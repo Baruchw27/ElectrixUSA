@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connect your Trello · Electrix USA</title>
+<script src="config.js"></script>
+<style>
+  :root{--blue:#1a4fa0;--green:#1e8e3e;--red:#c0392b;--g4:#6b7280;--g2:#e5e7eb;--bg:#f5f7fb;--card:#fff;--ink:#111827}
+  @media (prefers-color-scheme: dark){:root{--bg:#0f1115;--card:#1a1d24;--ink:#f3f4f6;--g2:#2a2f3a;--g4:#9ca3af}}
+  *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  main{max-width:560px;margin:0 auto;padding:24px 16px 48px}h1{font-size:22px;margin:0 0 4px}p{margin:8px 0}
+  .card{background:var(--card);border:1px solid var(--g2);border-radius:14px;padding:16px;margin:14px 0}
+  .step{font-weight:700;color:var(--blue);font-size:14px;text-transform:uppercase;letter-spacing:.04em}
+  .btn{display:block;width:100%;text-align:center;border:0;border-radius:12px;padding:15px 14px;font:600 17px system-ui,sans-serif;background:var(--blue);color:#fff;text-decoration:none;cursor:pointer;margin-top:10px}
+  .btn[disabled]{opacity:.5}textarea{width:100%;min-height:90px;border:1px solid var(--g2);border-radius:10px;padding:10px;font:15px ui-monospace,Menlo,monospace;background:var(--card);color:var(--ink)}
+  .ok{color:var(--green);font-weight:600}.err{color:var(--red);font-weight:600}.muted{color:var(--g4);font-size:14px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Connect your Trello to Electrix</h1>
+  <p class="muted" id="hello">Checking your link…</p>
+  <div id="steps" hidden>
+    <div class="card">
+      <div class="step">Step 1</div>
+      <p>Press the button. Trello opens. If it asks, <b>sign in with your own Trello account</b>. Then press the green <b>Allow</b> button.</p>
+      <a class="btn" id="allow" href="#" target="_blank" rel="noopener">Open Trello and press Allow</a>
+    </div>
+    <div class="card">
+      <div class="step">Step 2</div>
+      <p>Trello now shows a long code. <b>Copy the whole code</b>, come back to this page, paste it below and press <b>Connect</b>.</p>
+      <textarea id="tok" placeholder="Paste the Trello code here" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+      <button class="btn" id="go">Connect</button>
+      <p id="msg"></p>
+    </div>
+    <p class="muted">Your Trello stays private: only you see your Trello tasks in Electrix. The code is saved on the Electrix server only — please don't email or text it to anyone. You can disconnect any time in Trello → Settings → Applications → Electrix USA → Revoke.</p>
+  </div>
+  <div id="done" class="card" hidden>
+    <p class="ok" id="doneMsg"></p>
+    <p>Open the Electrix app → <b>Tasks</b> → <b>📋 My Trello</b>. Your cards show up within a few minutes. Ticking a task off in Electrix also ticks it off in Trello.</p>
+  </div>
+</main>
+<script>
+(function(){
+  var cfg=window.EX_CFG||{};var url=(cfg.url||'')+'/functions/v1/trello-connect';
+  var c=new URLSearchParams(location.search).get('c')||'';
+  function call(body){return fetch(url,{method:'POST',headers:{'Content-Type':'application/json','apikey':cfg.anonKey||'','Authorization':'Bearer '+(cfg.anonKey||'')},body:JSON.stringify(Object.assign({c:c},body))}).then(function(r){return r.json().catch(function(){return {ok:false,error:'Something went wrong — please try again.'};});});}
+  var hello=document.getElementById('hello');
+  if(!c){hello.innerHTML='<span class="err">This link is missing its code. Please open the link from the email again.</span>';return;}
+  call({action:'info'}).then(function(r){
+    if(!r.ok){hello.innerHTML='<span class="err"></span>';hello.firstChild.textContent=r.error||'This link is not valid.';return;}
+    hello.textContent='Hi '+(r.name||'')+' — two quick steps (about a minute).';
+    document.getElementById('allow').href=r.allow;document.getElementById('steps').hidden=false;
+  }).catch(function(){hello.innerHTML='<span class="err">No connection. Please check your internet and open the link again.</span>';});
+  document.getElementById('go').onclick=function(){
+    var tok=(document.getElementById('tok').value||'').replace(/\s+/g,'');var msg=document.getElementById('msg');var b=this;
+    if(!tok){msg.className='err';msg.textContent='Paste the code from Trello first.';return;}
+    b.disabled=true;msg.className='muted';msg.textContent='Connecting…';
+    call({action:'connect',token:tok}).then(function(r){b.disabled=false;
+      if(!r.ok){msg.className='err';msg.textContent=r.error||'Could not connect.';return;}
+      document.getElementById('steps').hidden=true;document.getElementById('done').hidden=false;
+      document.getElementById('doneMsg').textContent='✓ Connected — your Trello ('+(r.trello||'')+') is now linked to Electrix.';
+      hello.textContent='All set, '+(r.name||'')+'.';
+    }).catch(function(){b.disabled=false;msg.className='err';msg.textContent='No connection. Please try again.';});
+  };
+})();
+</script>
+</body>
+</html>
