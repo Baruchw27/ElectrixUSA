@@ -4,7 +4,8 @@
 --   1) every new material request becomes a card on job Name's, in that job's list (a new list is made for a job
 --      that has none); the card follows the request while it is open and is ticked when the request is completed.
 --   2) the owner (or the person himself, for his own tasks) can send an app task to job Name's the same way.
---   3) a card can be moved to another list from the app (used to move a day mirror from Monday to Tuesday).
+--   3) a card can be moved to any list on any of his boards from the app (a day mirror Monday → Tuesday, a card to
+--      another job, to orders …); it moves in Trello too.
 -- Config: server_config 'mat_trello' = {"emp":"o2","board":"<job Name's id>","boardName":"job Name's"}.
 -- Cards are created through the existing ptask/push path (trello-personal function, every 5 minutes or "Sync now").
 -- Nothing here reads or returns an access code. Nothing is deleted.
@@ -160,10 +161,10 @@ end $function$;
 revoke all on function public.task_to_trello(text, text, text) from public, anon;
 grant execute on function public.task_to_trello(text, text, text) to authenticated;
 
--- 3) personal task guard (T1) + a card may be moved to another list of the SAME board (mv:true → the sync moves it)
+-- 3) personal task guard (T1) + a card may be moved to any list on the owner's boards (mv:true → the sync moves it)
 create or replace function public.guard_ptask()
  returns trigger language plpgsql set search_path to 'public' as $function$
-declare me jsonb; o jsonb; n jsonb := new.data; nowms bigint := (extract(epoch from now())*1000)::bigint; ch boolean; mv boolean;
+declare me jsonb; o jsonb; n jsonb := new.data; nowms bigint := (extract(epoch from now())*1000)::bigint; ch boolean; mv boolean; tb jsonb; tl jsonb;
 begin
   if current_user not in ('authenticated','anon') or auth.uid() is null then return new; end if;
   if jsonb_typeof(n) <> 'object' then raise exception 'not allowed' using errcode = '42501'; end if;
@@ -180,15 +181,19 @@ begin
     return new;
   end if;
   if o->>'owner' is distinct from me->>'id' and me->>'role' <> 'owner' then raise exception 'not allowed' using errcode = '42501'; end if;
-  mv := o->>'card' is not null and n ? 'list' and coalesce(n->>'list','') <> '' and n->'list' is distinct from o->'list'
-        and coalesce(n->>'board', o->>'board') = o->>'board';
+  -- a move: to a list that is really on one of the card owner's boards (any board — job Name's, orders, …)
+  if o->>'card' is not null and n ? 'list' and coalesce(n->>'list','') <> '' and n->'list' is distinct from o->'list' then
+    select bb, ll into tb, tl from public.records r, jsonb_array_elements(coalesce(r.data->'boards','[]'::jsonb)) bb, jsonb_array_elements(coalesce(bb->'lists','[]'::jsonb)) ll
+     where r.coll = 'ptask' and r.id = 'ptmeta_' || (o->>'owner') and not r.deleted and ll->>'id' = n->>'list' limit 1;
+  end if;
+  mv := tl is not null;
   ch := n->'t' is distinct from o->'t' or n->'desc' is distinct from o->'desc' or n->'done' is distinct from o->'done' or n->'due' is distinct from o->'due'
         or (o->>'card' is null and n->'list' is distinct from o->'list') or mv;
   if not ch then new.data := o || jsonb_build_object('id', new.id); return new; end if;
   new.data := o || jsonb_build_object('t', left(coalesce(n->>'t', o->>'t'), 500), 'desc', left(coalesce(n->>'desc', o->>'desc', ''), 4000),
       'done', coalesce(n->'done', o->'done', 'false'::jsonb), 'due', n->'due', 'push', true, 'eat', nowms, 'eby', me->>'id')
     || case when o->>'card' is null and n ? 'list' then jsonb_build_object('list', n->'list', 'listName', n->'listName', 'board', n->'board', 'boardName', n->'boardName') else '{}'::jsonb end
-    || case when mv then jsonb_build_object('list', n->'list', 'listName', n->'listName', 'mv', true) else '{}'::jsonb end;
+    || case when mv then jsonb_build_object('list', tl->'id', 'listName', tl->'name', 'board', tb->'id', 'boardName', tb->'name', 'mv', true) else '{}'::jsonb end;
   new.data := (new.data - 'pushErr') || jsonb_build_object('id', new.id);
   return new;
 end $function$;
