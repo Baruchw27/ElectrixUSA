@@ -53,7 +53,7 @@ create or replace trigger records_guard_jobs_chain before insert or update on pu
 -- 3) done → tell everyone who sent it along (and whoever made it), not the one who did it, not the holders
 create or replace function private.notify_task_done()
  returns trigger language plpgsql security definer set search_path to 'public' as $function$
-declare me jsonb; actor text; aname text; n jsonb := new.data; o jsonb := '{}'::jsonb; who text; site text; d text;
+declare me jsonb; actor text; aname text; n jsonb := new.data; o jsonb := '{}'::jsonb; who text; site text; d text; des text;
 begin
   if auth.uid() is null or new.deleted or jsonb_typeof(n) <> 'object' then return null; end if;
   if tg_op = 'UPDATE' and not old.deleted and jsonb_typeof(old.data) = 'object' then o := old.data; end if;
@@ -61,6 +61,7 @@ begin
   begin
     me := public.my_emp_data(); actor := me->>'id'; aname := coalesce(nullif(private.emp_row(actor)->>'name',''), 'Office');
     site := private.short_site(n->>'site'); d := left(coalesce(n->>'desc',''), 60);
+    des := left(case when coalesce(n->>'descLang','en') <> 'es' and coalesce(n->>'descTr','') <> '' then n->>'descTr' else coalesce(n->>'desc','') end, 60);
     for who in
       select distinct x from (select jsonb_array_elements_text(coalesce(n->'sentBy','[]'::jsonb)) x
                               union select n->>'from') s
@@ -69,7 +70,7 @@ begin
     loop
       perform private.notify_now(who,
         '✓ Done by ' || aname || ': ' || case when site <> '' then site || ' — ' else '' end || d,
-        '✓ Hecho por ' || aname || ': ' || case when site <> '' then site || ' — ' else '' end || d,
+        '✓ Hecho por ' || aname || ': ' || case when site <> '' then site || ' — ' else '' end || des,
         'info', jsonb_build_object('tab', 'jobs'), actor);
     end loop;
   exception when others then raise warning 'notify_task_done %: %', new.id, sqlerrm;
