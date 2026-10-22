@@ -153,7 +153,7 @@ window.EX_uploadBlob=async function(blob,folder){if(!REAL||!sb||!st.online)retur
 //   • an existing row whose patch was denied → it comes back with the old values (our fields not applied).
 // either way the person must be told and the local optimistic copy undone — never a false "saved".
 // returns the list of rejected {coll,id,absent} so the caller can revert and surface a clear error.
-const SERVER_OWNED={travel:['pay','minutes','auto','status'],punches:['srvIn','hist','lateEntry'],mats:['st','status','stAt','stBy','readyAt','from']};
+const SERVER_OWNED={jobs:['sentBy'],travel:['pay','minutes','auto','status'],punches:['srvIn','hist','lateEntry'],mats:['st','status','stAt','stBy','readyAt','from']};
 // L2 lists: the server stamps each item (rev, who, when) and, when two phones changed the same item at once, keeps the
 // newer one in place and this phone's version next to it (li_<id>~…) — neither is a refusal.
 const LIST_SET=['rev','base','eby','eat','by','ts'];
@@ -161,6 +161,8 @@ const LIST_SET=['rev','base','eby','eat','by','ts'];
 // the recheck flag, picked-up quantity) — a difference there is the server's rule, not a refused change
 const MAT_SET=['done','doneBy','doneAt','pq','pqBy','pqAt','rck','pk'];
 function listSame(a,b,coll){if(!a||!b||typeof a!=='object'||typeof b!=='object')return canon(a)===canon(b);const x=Object.assign({},a),z=Object.assign({},b);LIST_SET.forEach(f=>{delete x[f];delete z[f];});if(coll==='mats')MAT_SET.forEach(f=>{delete x[f];delete z[f];});return canon(x)===canon(z);}
+function handedOff(row){try{const d=row.full||row.patch||{};if(!('to' in d))return false;const to=Array.isArray(d.to)?d.to:[d.to];
+  const me=window.EX_ME;const e=(window.D&&D.emps||[]).find(x=>x&&x.id===me)||{};return !!me&&!to.includes(me)&&!(e.crew&&to.includes(e.crew));}catch(e){return false;}}
 function rejectedRows(sent,server){const out=[];if(!Array.isArray(server))return out;
   const by={};server.forEach(s=>{by[s.coll+'\u0001'+s.id]=s;});
   sent.forEach(row=>{if(row.coll==='emps')return; // emps are transformed server-side (stripEmp), so skip to avoid false alarms
@@ -168,7 +170,8 @@ function rejectedRows(sent,server){const out=[];if(!Array.isArray(server))return
     // A denied INSERT comes back absent. We flag that only for 'sched' (the Schedule feature this fix targets), to
     // keep every other feature's save behavior exactly as it is today — no new surprises outside scheduling.
     // B2: for every kind of record — except bell messages to other people (the sender may not read those back)
-    if(!s||s.deleted){if(row.coll!=='inbox'&&row.coll!=='push'&&row.coll!=='_')out.push({coll:row.coll,id:row.id,absent:true});return;}
+    if(!s||s.deleted){if(row.coll==='jobs'&&handedOff(row))return;   // B1: a task made for / sent to someone else is theirs now — we may not see it
+      if(row.coll!=='inbox'&&row.coll!=='push'&&row.coll!=='_')out.push({coll:row.coll,id:row.id,absent:true});return;}
     const d=s.data||{};
     const own=SERVER_OWNED[row.coll]||[];   // fields the server works out itself (it is not a refusal when they differ)
     const sentObj=(row.patch&&typeof row.patch==='object')?row.patch:(row.coll==='punches'&&row.full&&typeof row.full==='object'?row.full:null);
@@ -302,6 +305,8 @@ function adopt(rows){if(!Array.isArray(rows))return;let changed=false;rows.forEa
   if(changed){localSave();bump();}}
 function liveRecord(coll,id){const v=D[coll];if(Array.isArray(v))return v.find(x=>x&&x.id===id)||null;return v&&typeof v==='object'?v[id]||null:null;}
 function stripEmp(x){const r=Object.assign({},x);EMP_STRIP.forEach(f=>delete r[f]);r.authEmail=emailFor(x);return r;}
+// B1: rows the server handed back from an action (e.g. send_task) — take them as the truth, nothing to send
+window.EX_adopt=function(rows){try{adopt(rows);localSave();bump();}catch(e){log(e);}};
 function localSave(){try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){}if(Object.keys(queue).length&&st.qStored===false)saveQ();}
 
 // ---------- pull ----------
