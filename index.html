@@ -5,10 +5,10 @@
 <meta name="theme-color" content="#ffffff"><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Electrix Field</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
-<script>window.EX_VER='vmat1021';</script><script src="config.js"></script>
+<script>window.EX_VER='vtr21021';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vmat1021"></script>
-<script src="extras.js?vmat1021"></script>
+<script src="sync.js?vtr21021"></script>
+<script src="extras.js?vtr21021"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -292,6 +292,7 @@ html[data-theme=dark] .sc-av.in{background:#173B2A;color:#7EE0AE}html[data-theme
 @media (prefers-reduced-motion:no-preference){.sc-more{animation:scIn .18s ease-out}@keyframes scIn{from{opacity:0;transform:translateY(-4px)}}}
 .sc button:focus-visible,.sc a:focus-visible,.sc-row:focus-visible{outline:2px solid var(--sc-red);outline-offset:2px}
 .fmt{white-space:pre-wrap;overflow-wrap:anywhere}
+#m-folder.fdlim .md>*:not(.hd):not(#fdTitle):not(#fdOverview):not(.fdclose){display:none!important}
 </style>
 </head>
 <body>
@@ -314,12 +315,19 @@ html[data-theme=dark] .sc-av.in{background:#173B2A;color:#7EE0AE}html[data-theme
   <div class="more-grid" id="moreGrid"></div>
 </div>
 
+<!-- MY TRELLO (T2) -->
+<div class="pg" id="pg-trello">
+  <h2 style="margin:0 0 8px">📋 <span data-i18n="My Trello">My Trello</span></h2>
+  <div class="chips" id="ptChips"></div>
+  <div id="ptPage"></div>
+</div>
+
 <!-- JOBS -->
 <div class="pg on" id="pg-jobs">
   <div id="myListJobs"></div>
   <div class="row" style="margin-bottom:10px;align-items:center"><h2 id="jobsH2" style="margin:0">Jobs</h2><div style="display:flex;gap:6px"><button class="btn gr" id="addSiteTop" style="width:auto;padding:9px 12px" onclick="openNewJob()">🏗 <span data-i18n="New job">New job</span></button><button class="btn" id="addJobTop" style="width:auto;padding:9px 12px" onclick="openJob()">+ New</button></div></div>
   <div class="stats"><div class="st"><b id="s-open" style="color:var(--blue-mid)">0</b><span data-i18n="Open">Open</span></div><div class="st"><b id="s-done" style="color:var(--green)">0</b><span data-i18n="Done">Done</span></div><div class="st"><b id="s-ov" style="color:#c0392b">0</b><span data-i18n="Overdue">Overdue</span></div></div>
-  <div style="display:flex;gap:6px;margin-bottom:10px;background:#fff;border:1px solid var(--g2);border-radius:10px;padding:4px"><button class="chip" id="vOpen" style="flex:1;border:none;text-align:center" onclick="jobView='open';renderJobs()"><span data-i18n="Open">Open</span></button><button class="chip" id="vDone" style="flex:1;border:none;text-align:center" onclick="jobView='done';doneDays=7;renderJobs()">✓ <span data-i18n="Done">Done</span></button><button class="chip" id="vTrello" style="flex:1;border:none;text-align:center;display:none" onclick="jobView='trello';renderJobs()">📋 <span data-i18n="My Trello">My Trello</span></button></div>
+  <div style="display:flex;gap:6px;margin-bottom:10px;background:#fff;border:1px solid var(--g2);border-radius:10px;padding:4px"><button class="chip" id="vOpen" style="flex:1;border:none;text-align:center" onclick="jobView='open';renderJobs()"><span data-i18n="Open">Open</span></button><button class="chip" id="vDone" style="flex:1;border:none;text-align:center" onclick="jobView='done';doneDays=7;renderJobs()">✓ <span data-i18n="Done">Done</span></button></div>
   <div class="chips" id="jobChips"></div>
   <div style="position:relative;margin:4px 0 10px;display:none"><input id="jobFind" type="search" placeholder="🔍 Search address — 400+ jobs" oninput="renderJobs()" autocomplete="off" style="padding-left:14px;font-size:16px;border-radius:12px"></div>
   <div id="jobFindRes"></div>
@@ -569,6 +577,7 @@ html[data-theme=dark] .sc-av.in{background:#173B2A;color:#7EE0AE}html[data-theme
 <div class="tabs">
   <button class="tab" onclick="tab('home',this)" data-prim="1"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/></svg><span data-i18n="Home">Home</span></button>
   <button class="tab" onclick="tab('sites',this)"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><span data-i18n="Sites">Sites</span></button><button class="tab on" onclick="tab('jobs',this)"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span data-i18n="Jobs">Jobs</span></button>
+  <button class="tab" onclick="tab('trello',this)" style="display:none"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="6.5" y="6.5" width="4" height="10" rx="1"/><rect x="13.5" y="6.5" width="4" height="6" rx="1"/></svg><span data-i18n="My Trello">My Trello</span></button>
   <button class="tab" onclick="tab('msg',this)" style="position:relative"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span data-i18n="Messages">Messages</span><span id="msgN" style="position:absolute;top:4px;right:14px;background:#c0392b;color:#fff;font-size:10px;border-radius:9px;padding:1px 5px;display:none"></span></button>
   <button class="tab" onclick="tab('cal',this)"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/><path d="M8 2h8"/></svg><span data-i18n="Meetings">Meetings</span></button>
   <button class="tab" onclick="tab('sched',this)"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span data-i18n="Schedule">Schedule</span></button>
@@ -1011,7 +1020,7 @@ html[data-theme=dark] .sc-av.in{background:#173B2A;color:#7EE0AE}html[data-theme
   <div id="fdLinkAdd" style="display:flex;gap:6px;margin-top:8px"><input id="fdLinkUrl" placeholder="https://…" style="flex:2"><input id="fdLinkTitle" placeholder="Name" style="flex:1"><button class="btn sec2" style="width:auto;padding:0 12px" onclick="fdLink()">+</button></div>
   <div class="sec" data-i18n="Site settings">Site settings</div>
   <div id="fdSettings"></div>
-  <button class="btn sec2" style="margin-top:14px" onclick="hide('m-folder')" data-i18n="Close">Close</button>
+  <button class="btn sec2 fdclose" style="margin-top:14px" onclick="hide('m-folder')" data-i18n="Close">Close</button>
 </div></div>
 
 <div class="ov hid" id="m-stage" style="z-index:260"><div class="md"><div class="hd"></div><h2 style="margin-bottom:2px" data-i18n="Move job to">Move job to</h2><div id="stgTitle" style="font-size:13px;color:var(--g4);margin-bottom:10px"></div><div class="pick" id="stgList"></div><button class="btn sec2" style="margin-top:12px" onclick="hide('m-stage')" data-i18n="Cancel">Cancel</button></div></div>
@@ -1279,7 +1288,7 @@ function renderJobs(){setTimeout(()=>{markGot();markSeenOnScreen();},700);{const
   const targets=[{id:'all',label:t('All')},...assignTargets()];
   document.getElementById('jobChips').innerHTML=(m.role==='worker'||(m.role==='office'&&!m.all))?'':targets.filter(t=>!/★/.test(t.label)).map(t=>`<div class="chip ${jobFilter===t.id?'on':''}" onclick="jobFilter='${jsq(t.id)}';renderJobs()">${esc(t.label.split(' (')[0].split(' · ')[0])}</div>`).join('');
   let list=jobFilter==='all'?jobs:jobs.filter(j=>has(j,jobFilter)||(crewOf(jobFilter)&&D.emps.filter(e=>e.crew===jobFilter).some(e=>has(j,e.id))));
-  document.getElementById('vOpen').className='chip'+(jobView==='open'?' on':'');document.getElementById('vDone').className='chip'+(jobView==='done'?' on':'');{const vt=document.getElementById('vTrello');const okT=ptAvail();if(vt){vt.style.display=okT?'':'none';vt.className='chip'+(jobView==='trello'?' on':'');}if(jobView==='trello'){if(okT){renderPT();return;}jobView='open';document.getElementById('vOpen').className='chip on';}}
+  document.getElementById('vOpen').className='chip'+(jobView==='open'?' on':'');document.getElementById('vDone').className='chip'+(jobView==='done'?' on':'');if(jobView==='trello'){jobView='open';document.getElementById('vOpen').className='chip on';}
   const more=document.getElementById('moreDone');more.style.display='none';
   if(jobView==='open'){list=list.filter(j=>j.status!=='done');list=[...list].sort((a,b)=>(b.pri?1:0)-(a.pri?1:0)||(b.top||0)-(a.top||0));}
   else{const cutoff=Date.now()-doneDays*86400000;const allDone=list.filter(j=>j.status==='done').sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));list=allDone.filter(j=>(j.doneAt||0)>=cutoff);
@@ -1499,6 +1508,7 @@ function openJobDetail(id){const j=D.jobs.find(x=>x.id===id);if(!j)return;const 
     +(m.role!=='worker'&&j.status!=='done'?'<div style="margin-top:8px"><button class="bs b" style="margin-right:6px" onclick="hide(\'m-jobd\');pinTop(\''+jsq(j.id)+'\')">'+(j.top?'⬇ '+t('Back in order'):'⬆ '+t('Move to top'))+'</button><button class="bs '+(j.pri?'r':'')+'" onclick="hide(\'m-jobd\');togglePri(\''+jsq(j.id)+'\')">'+(j.pri?'⚪ '+t('Remove priority'):'🔴 '+t('Make priority'))+'</button></div>':'')
     +(j.photos&&j.photos.length?'<div class="thumbs" onclick="viewJobPhotos(\''+jsq(j.id)+'\')">'+j.photos.map(p=>p.d?'<img src="'+safeSrc(p.d)+'">':'📎').join('')+'</div>':'')
     +(canSpeak()?'<div style="margin-top:8px">'+speakBtn('task:'+j.id)+'</div>':'')
+    +jtHtml(j)
     +rcptLines(j)
     +'<div class="chat" id="jdChat"></div>'+(canChat(j,m)?composerHtml(j):'');
   show('m-jobd');chatRefresh(true);}
@@ -2054,6 +2064,7 @@ const isBoss=m=>!!m&&(m.role==='owner'||m.role==='manager'||!!m.all||(m.role==='
 function siteVisible(s,m){m=m||me();if(!s)return false;if(isBoss(m))return true;if(m.crew&&s.crew===m.crew)return true;if((s.share||[]).some(x=>x===m.id||x===m.crew))return true;
   const k=dkey(new Date());if(m.crew&&(D.sched[m.crew+'|'+k]||{}).site===s.id)return true;if(D.jobs.some(j=>j.site===s.id&&j.status!=='done'&&(j.to===m.id||j.to===m.crew||(j.tos||[]).includes(m.id))))return true;return false;}
 function visSites(){const m=me();return D.sites.filter(s=>siteVisible(s,m));}
+function matAllJobs(m){m=m||me();return !!m&&m.role==='office'&&m.title==='Material';}
 function fileVisible(f,m){m=m||me();return isBoss(m)||f.by===m.id||(f.share||[]).some(x=>x===m.id||x===m.crew);}
 const isAdmin=m=>m.role==='owner'||m.role==='manager'||!!m.all||(m.role==='office'&&m.title==='Material');
 const canDelPL=x=>isAdmin(me());
@@ -2144,7 +2155,7 @@ function removeEmp(id){const _tg=D.emps.find(e=>e.id===id);if(_tg&&!empEditable(
 function addCrew(){askPrompt(t('+ Add crew'),[{label:t('Name'),value:'Crew '+(D.crews.length+1)},{label:t('Phase'),options:[{v:'rough',l:t('Rough')},{v:'finish',l:t('Finishing')}]}],([n,ty])=>{if(!n.trim())return;D.crews.push({id:nid('c'),name:n.trim(),type:ty,managers:[]});save();renderAll();});}
 
 // ───────────── SITES ─────────────
-function renderSites(){{const fq=document.getElementById('siteFind');if(fq&&fq.value.trim()){const out=findHtml(fq.value);document.getElementById('siteList').innerHTML=out;return;}}const mm=me();const ab=document.getElementById('addSiteBtn');if(ab)ab.style.display='none';const abt=document.getElementById('addSiteBtnTop');if(abt)abt.style.display=canNewJob(mm)?'':'none';document.getElementById('siteList').innerHTML=STAGE_ORDER.map((st,i)=>{const L=visSites().filter(s=>(s.stage||'active')===st);return L.length?(i===1?'<div class="sec" style="margin-top:20px">'+t('Other jobs')+'</div>':'')+stSec(st,L.length)+(stOpen.has(st)?'':'<!--')+L.map(s=>`<div class="card" style="padding:10px 13px;cursor:pointer" onclick="openFolder('${jsq(s.id)}')"><div class="row"><div><b>${esc(s.name)}</b><div style="font-size:12px;color:var(--g4)">${s.crew?'👷 '+esc(nameOf(s.crew)):'<span style="color:#c0392b">❓ '+t('Crew not decided yet')+'</span>'} · ${t(s.phase==='finish'?'Finishing':'Rough')} · ${(s.files||[]).length?'<b style="color:var(--blue-mid)">📎 '+s.files.length+' '+t('files')+'</b>':t('no files')}</div></div><span style="display:flex;align-items:center;gap:8px">${stageBadge(s)}<span style="color:var(--g3);font-size:18px">›</span></span></div></div>`).join('')+(stOpen.has(st)?'':'-->'):'';}).join('');}
+function renderSites(){{const fq=document.getElementById('siteFind');if(fq&&fq.value.trim()){const out=findHtml(fq.value);document.getElementById('siteList').innerHTML=out;return;}}const mm=me();const ab=document.getElementById('addSiteBtn');if(ab)ab.style.display='none';const abt=document.getElementById('addSiteBtnTop');if(abt)abt.style.display=canNewJob(mm)?'':'none';document.getElementById('siteList').innerHTML=STAGE_ORDER.map((st,i)=>{const L=(matAllJobs(mm)?D.sites:visSites()).filter(s=>(s.stage||'active')===st);return L.length?(i===1?'<div class="sec" style="margin-top:20px">'+t('Other jobs')+'</div>':'')+stSec(st,L.length)+(stOpen.has(st)?'':'<!--')+L.map(s=>`<div class="card" style="padding:10px 13px;cursor:pointer" onclick="openFolder('${jsq(s.id)}')"><div class="row"><div><b>${esc(s.name)}</b><div style="font-size:12px;color:var(--g4)">${s.crew?'👷 '+esc(nameOf(s.crew)):'<span style="color:#c0392b">❓ '+t('Crew not decided yet')+'</span>'} · ${t(s.phase==='finish'?'Finishing':'Rough')} · ${(s.files||[]).length?'<b style="color:var(--blue-mid)">📎 '+s.files.length+' '+t('files')+'</b>':t('no files')}</div></div><span style="display:flex;align-items:center;gap:8px">${stageBadge(s)}<span style="color:var(--g3);font-size:18px">›</span></span></div></div>`).join('')+(stOpen.has(st)?'':'-->'):'';}).join('');}
 function openSite(){['sName','sLat','sLng'].forEach(i=>document.getElementById(i).value='');document.getElementById('sRad').value=300;document.getElementById('sMgr').innerHTML=D.emps.filter(e=>e.role==='manager').map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('');document.getElementById('sCrew').innerHTML='<option value="">— '+t('none')+' —</option>'+D.crews.map(c=>`<option value="${c.id}">${esc(crewLabel(c))}</option>`).join('');show('m-site');}
 function useMyLoc(){gpsOnce(p=>{document.getElementById('sLat').value=p.coords.latitude.toFixed(5);document.getElementById('sLng').value=p.coords.longitude.toFixed(5);},()=>toast('Could not get location — allow location access.'));}
 function saveSite(){const n=document.getElementById('sName').value.trim();if(!n){toast('Enter site name');return;}
@@ -3485,7 +3496,7 @@ const canEditFolder=m=>isBoss(m);
 const mySites=m=>m.role==='worker'?D.sites.filter(s=>s.crew===m.crew||(m.crew&&(D.sched[m.crew+'|'+dkey(new Date())]||{}).site===s.id)):D.sites;
 const fileIcon=f=>f.kind==='img'?'🖼':f.kind==='pdf'?'📕':f.kind==='doc'?'📘':f.kind==='sheet'?'📗':'📎';
 function fdJump(id){const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
-function openFolder(id){const _s=D.sites.find(x=>x.id===id);if(_s&&!siteVisible(_s)){toast(t('This job is not assigned to you.'));return;}fdSite=id;const s=D.sites.find(x=>x.id===id);const m=me();if(!s)return;if(s.lat&&!s.trip&&typeof roadTrip==='function')roadTrip(s).then(()=>{if(fdSite===id&&!document.getElementById('m-folder').classList.contains('hid')){const el=document.getElementById('fdTitle');if(el)openFolder(id);}}).catch(()=>{});if(!s.lat&&!s.geoTried)setTimeout(()=>{try{geocodeMissing();}catch(e){}},50);const ed=canEditFolder(m);
+function openFolder(id){const _s=D.sites.find(x=>x.id===id);if(_s&&!siteVisible(_s)&&!matAllJobs()){toast(t('This job is not assigned to you.'));return;}fdSite=id;const s=D.sites.find(x=>x.id===id);const m=me();if(!s)return;if(s.lat&&!s.trip&&typeof roadTrip==='function')roadTrip(s).then(()=>{if(fdSite===id&&!document.getElementById('m-folder').classList.contains('hid')){const el=document.getElementById('fdTitle');if(el)openFolder(id);}}).catch(()=>{});if(!s.lat&&!s.geoTried)setTimeout(()=>{try{geocodeMissing();}catch(e){}},50);const ed=canEditFolder(m);
   const mapsUrl=gmapsDir(s);
   const mapHtml=s.lat?'<a href="'+esc(safeHref(mapsUrl))+'" target="_blank" rel="noopener" style="display:block;position:relative;height:110px;border-radius:12px;overflow:hidden;margin:10px 0 8px;background:var(--g1)"><iframe tabindex="-1" style="width:100%;height:100%;border:0;pointer-events:none;filter:saturate(.7)" loading="lazy" src="https://www.openstreetmap.org/export/embed.html?bbox='+(s.lng-0.006)+','+(s.lat-0.003)+','+(s.lng+0.006)+','+(s.lat+0.003)+'&layer=mapnik&marker='+s.lat+','+s.lng+'"></iframe><span style="position:absolute;right:8px;bottom:8px;background:rgba(255,255,255,.92);color:var(--g5);font-size:11px;font-weight:600;padding:4px 8px;border-radius:8px">🧭 '+t('Directions')+'</span></a>':'';
   document.getElementById('fdTitle').innerHTML='<div class="row" style="align-items:center"><div style="font-size:11px;color:var(--g4);text-transform:uppercase;letter-spacing:.5px">'+t('Job')+(s.trelloList?' · Trello: '+esc(s.trelloList):'')+'</div>'+stageBadge(s)+'</div><div style="font-size:22px;font-weight:700;letter-spacing:-.4px;line-height:1.15">'+esc(s.name)+'</div>'+(s.client?'<div style="font-size:13px;font-weight:400;color:var(--g4);margin-top:3px">'+esc(s.client)+(s.phone?' · <a href="tel:'+esc(s.phone)+'" style="color:var(--blue-mid)">📞 '+esc(s.phone)+'</a>':'')+'</div>':'')+(s.note?'<div class="fmt" style="display:block;font-size:13px;color:var(--g5);margin-top:4px">'+esc(fmtClean(s.note))+'</div>':'')
@@ -3494,7 +3505,7 @@ function openFolder(id){const _s=D.sites.find(x=>x.id===id);if(_s&&!siteVisible(
    +((isAdmin(me())||canEditHours(me())||me().role==='office')?'<div style="font-size:12.5px;margin-top:4px;cursor:pointer;color:'+(s.lat&&s.fenceOk?'var(--green)':'#c0392b')+'" onclick="openFence(\''+jsq(s.id)+'\')">📍 '+t('Geofence')+': '+(!s.lat?t('not set — nobody can punch in'):s.fenceOk?t('checked ✓')+(s.fenceOkBy?' ('+esc(nameOf(s.fenceOkBy))+')':''):t('found from address — not checked yet'))+(s.fenceReq?' · <b>'+esc(nameOf(s.fenceReq.who))+' '+t('can\'t punch in')+'</b>':'')+' · <u>'+t('edit')+'</u></div>':'')
    +mapHtml
    +'<div style="display:flex;gap:6px;margin:8px 0 2px"><button class="btn sec2" style="flex:1;padding:10px 4px;font-size:13px" onclick="fdJump(\'fdFilesHdr\')">📎 '+t('Files')+' <span style="color:var(--g4);font-weight:500">'+((s.files||[]).length||'')+'</span></button><button class="btn sec2" style="flex:1;padding:10px 4px;font-size:13px" onclick="fdJump(\'fdNotes\')">🗒 '+t('Notes')+' <span style="color:var(--g4);font-weight:500">'+((typeof kMine==='function'?kMine().filter(n=>n.site===s.id&&!n.trashed).length:0)||'')+'</span></button></div>';
-  {const sp=document.getElementById('fdSpeak');if(sp)sp.innerHTML=speakBtn('job:'+s.id,t('Read this job to me'));}document.getElementById('fdOverview').innerHTML=fdTasks(s)+plSummary(s.id)+sharedForSite(s.id)+(isBoss(m)?folderOverview(s):'')+((isBoss(m)||m.role==='office')?crewsAtSiteHtml(s.id):'')+(canEditHours(m)?'<div id="jobHoursBox"></div>':'');renderFdNotes(s);if(canEditHours(m))renderJobHours(s.id);fdNoteImg=null;document.getElementById('fdNotePrev').innerHTML='';
+  {const sp=document.getElementById('fdSpeak');if(sp)sp.innerHTML=speakBtn('job:'+s.id,t('Read this job to me'));}document.getElementById('fdOverview').innerHTML=(typeof ptForSite==='function'?ptForSite(s):'')+fdTasks(s)+plSummary(s.id)+sharedForSite(s.id)+(isBoss(m)?folderOverview(s):'')+((isBoss(m)||m.role==='office')?crewsAtSiteHtml(s.id):'')+(canEditHours(m)?'<div id="jobHoursBox"></div>':'');renderFdNotes(s);if(canEditHours(m))renderJobHours(s.id);fdNoteImg=null;document.getElementById('fdNotePrev').innerHTML='';
   const insps=D.insp.filter(i=>i.site===id).sort((a,b)=>b.ts-a.ts);const openInsp=insps.find(i=>i.status==='requested'||i.status==='booked');
   document.getElementById('fdInsp').innerHTML='<div class="sec">'+t('Inspections')+'</div>'+(insps.length?insps.map(i=>inspCard(i,true)).join(''):'<div style="font-size:13px;color:var(--g3);padding:4px 0 8px">'+t('None yet.')+'</div>')+(canReqInsp(m)&&!openInsp?'<button class="btn" style="background:#6b3fa0;margin-bottom:6px" onclick="reqInsp(\''+jsq(id)+'\')">🏛 '+t('Ready for')+' '+inspKindLabel(s.phase==='finish'?'final':'rough').toLowerCase()+'</button>':'');
   document.getElementById('fdAssign').innerHTML='<div class="card" style="padding:10px 13px;background:var(--blue-light);border-color:#b8ccee"><div class="row"><div><div style="font-size:11px;color:var(--g4);text-transform:uppercase">'+t('Assigned crew')+'</div><b style="font-size:16px;color:var(--blue)">'+(s.crew?esc(nameOf(s.crew))+' <span style="font-size:12px;font-weight:400">· '+t((crewOf(s.crew)||{}).type==='finish'?'Finishing':'Rough')+'</span>':'<span style="color:#c0392b">❓ '+t('Crew not decided yet')+'</span>')+(s.manager?'':' <span style="font-size:12px;font-weight:400;color:#c0392b">· '+t('no site manager yet')+'</span>')+'</b></div><span class="badge '+(s.phase==='finish'?'b-done':'b-prog')+'">'+t(s.phase==='finish'?'Finishing':'Rough')+'</span></div>'+(ed?'<div style="display:flex;gap:6px;margin-top:8px"><select id="fdCrew" style="flex:1" onchange="fdSetCrew(this.value)"><option value="">— '+t('none')+' —</option>'+D.crews.map(c=>'<option value="'+c.id+'" '+(s.crew===c.id?'selected':'')+'>'+esc(crewLabel(c))+'</option>').join('')+'</select><select id="fdPhase" style="flex:1" onchange="fdSetPhase(this.value)"><option value="rough" '+(s.phase==='rough'?'selected':'')+'>'+t('Rough')+'</option><option value="finish" '+(s.phase==='finish'?'selected':'')+'>'+t('Finishing')+'</option></select></div><div style="font-size:11px;color:var(--g4);margin-top:6px">'+t('Change the crew and the whole folder moves with it — every guy in that crew sees these files.')+'</div>':'')+'</div>';
@@ -3502,6 +3513,9 @@ function openFolder(id){const _s=D.sites.find(x=>x.id===id);if(_s&&!siteVisible(
   document.getElementById('fdLinks').innerHTML=(s.links||[]).filter(f=>fileVisible(f,m)).length?s.links.filter(f=>fileVisible(f,m)).map(l=>'<div class="plog" style="align-items:center"><a href="'+esc(safeHref(l.url))+'" rel="noopener" target="_blank" style="flex:1;color:var(--blue-mid);text-decoration:none">🔗 '+esc(l.title||l.url)+'<div style="font-size:11px;color:var(--g4)">'+esc(l.url.slice(0,48))+'</div></a>'+(ed?'<span class="x" style="color:var(--g3);cursor:pointer;font-size:18px" onclick="fdDelLink(\''+jsq(l.id)+'\')">×</span>':'')+'</div>').join(''):'<div style="font-size:13px;color:var(--g3);padding:6px 0">'+t('No links yet.')+'</div>';
   document.getElementById('fdUpload').style.display=ed?'flex':'none';document.getElementById('fdLinkAdd').style.display=ed?'flex':'none';
   document.getElementById('fdSettings').innerHTML=(s.lat?'':'<button class="btn" style="margin-bottom:8px" onclick="setSiteHere(\''+jsq(s.id)+'\')">📍 '+t('Set location here')+' <span style="font-weight:400;font-size:12px">('+t('tap this standing at the site')+')</span></button>')+(ed?'<div style="font-size:13px;color:var(--g4)">'+esc(nameOf(s.manager))+' · '+(s.lat?t('GPS fence')+' '+s.rad+' ft':t('No GPS set'))+'</div>'+(m.role==='owner'?'<button class="bs r" style="margin-top:8px" onclick="hide(\'m-folder\');askConfirm(t(\'Remove site?\'),()=>{D.sites=D.sites.filter(x=>x.id!==\''+jsq(s.id)+'\');save();renderAll();},t(\'Remove\'))">'+t('Remove site')+'</button>':''):'<div style="font-size:13px;color:var(--g4)">'+esc(nameOf(s.manager))+'</div>');
+  {const lim=matAllJobs(m)&&!siteVisible(s,m);document.getElementById('m-folder').classList.toggle('fdlim',lim);
+   if(lim){document.getElementById('fdTitle').innerHTML='<div style="font-size:11px;color:var(--g4);text-transform:uppercase;letter-spacing:.5px">'+t('Job')+'</div><div style="font-size:22px;font-weight:700;letter-spacing:-.4px;line-height:1.15">'+esc(s.name)+'</div>';
+     document.getElementById('fdOverview').innerHTML=(typeof ptForSite==='function'?ptForSite(s):'')+fdTasks(s);}}
   show('m-folder');}
 function fdSetCrew(cid){const s=D.sites.find(x=>x.id===fdSite);const old=s.crew;s.crew=cid||null;save();openFolder(fdSite);renderSites();
   if(cid){const nN=(s.notes||[]).length,nP=((D.punchlists[s.id]||{})[s.phase==='finish'?'finish':'rough']||[]).filter(x=>!x.done).length;assignPush([cid],()=>('📁 '+t('Your crew now has')+' '+s.name+' — '+t('plans and files are in your site folder')+(nN?' · '+nN+' '+t('notes'):'')+(nP?' · '+nP+' '+t('open punch items'):'')),'info',{site:s.id});if(old&&old!==cid)assignPush([old],()=>('📁 '+s.name+' '+t('moved to')+' '+nameOf(cid)),'info',{tab:'sites'});}}
@@ -3595,8 +3609,8 @@ function viewMsgImg(id){const x=D.msgs.find(y=>y.id===id);document.getElementByI
 function renderMsgBadge(){const m=me();const gk=myGroups(m).map(g=>'g:'+g.id);const n=D.msgs.filter(x=>(x.to===m.id&&!x.read)||(gk.includes(x.k)&&x.from!==m.id&&!(x.readBy||[]).includes(m.id))).length;const b=document.getElementById('msgN');if(b){b.textContent=n;b.style.display=n?'block':'none';}}
 
 // ───────────── HOME — one glance for owner / all-access. Primary tabs + "More" for the rest ─────────────
-const PRIMARY={owner:['home','hours','sites','jobs','sched','mat','code','more'],all:['home','sites','jobs','sched','hours','code','more'],manager:['home','sites','jobs','sched','punch','code','more'],office:['jobs','mat','exp','cal','code','more'],lead:['punch','jobs','mat','van','code','exp','more'],worker:['punch','mat','van','code','exp','more']};
-const TABMETA={van:['🚐','Van'],code:['🧮','Code'],home:['🏠','Home'],jobs:['📋','Jobs'],msg:['💬','Messages'],cal:['🕑','Meetings'],sched:['📅','Schedule'],team:['👥','Team'],punch:['⏱','Punch'],hours:['🕒','Hours'],mat:['📦','Material'],exp:['💵','Money'],tools:['🔧','Garage'],est:['📐','Estimates'],svc:['🔧','Service'],rep:['📊','Reports'],sites:['📁','Jobs'],more:['⋯','More']};
+const PRIMARY={owner:['home','hours','sites','jobs','sched','mat','code','more'],all:['home','sites','jobs','sched','hours','code','more'],manager:['home','sites','jobs','sched','punch','code','more'],office:['jobs','trello','mat','exp','cal','code','more'],lead:['punch','jobs','mat','van','code','exp','more'],worker:['punch','mat','van','code','exp','more']};
+const TABMETA={trello:['📋','My Trello'],van:['🚐','Van'],code:['🧮','Code'],home:['🏠','Home'],jobs:['📋','Jobs'],msg:['💬','Messages'],cal:['🕑','Meetings'],sched:['📅','Schedule'],team:['👥','Team'],punch:['⏱','Punch'],hours:['🕒','Hours'],mat:['📦','Material'],exp:['💵','Money'],tools:['🔧','Garage'],est:['📐','Estimates'],svc:['🔧','Service'],rep:['📊','Reports'],sites:['📁','Jobs'],more:['⋯','More']};
 function goTab(n){const b=document.querySelector('.tab[onclick*="\''+jsq(n)+'\'"]');if(b){b.style.display='';b.click();}}
 function primaryFor(m){if(m.role==='owner'||m.all)return m.role==='owner'?PRIMARY.owner:PRIMARY.all;if(m.role==='manager')return PRIMARY.manager;if(m.role==='office')return PRIMARY.office;if(m.lead)return PRIMARY.lead;return PRIMARY.worker;}
 function renderMore(){const m=me();const prim=primaryFor(m);const allowed=[...document.querySelectorAll('.tab')].filter(b=>b.dataset.allowed==='1').map(b=>b.getAttribute('onclick').match(/'([a-z]+)'/)[1]);
@@ -4522,15 +4536,15 @@ function openNewTool(){ntFile=null;document.getElementById('ntName').value='';do
 function ntPhoto(inp){const f=inp.files&&inp.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const max=900;let w=img.width,h2=img.height;if(w>h2&&w>max){h2=h2*max/w;w=max;}else if(h2>max){w=w*max/h2;h2=max;}const c=document.createElement('canvas');c.width=w;c.height=h2;c.getContext('2d').drawImage(img,0,0,w,h2);ntFile=c.toDataURL('image/jpeg',0.7);document.getElementById('ntPrev').innerHTML='<img src="'+safeSrc(ntFile)+'" style="max-width:100%;max-height:160px;border-radius:8px">';};img.src=r.result;};r.readAsDataURL(f);}
 function saveNewTool(){const n=document.getElementById('ntName').value.trim();if(!n){toast(t('Enter a name'));return;}const loc=parseLoc(document.getElementById('ntLoc').value);D.tools.push({id:nid('t'),name:n,cat:document.getElementById('ntCat').value,photo:ntFile||'',loc,by:me().id,ts:Date.now(),hist:[]});try{save();}catch(e){D.tools.pop();toast(t('Phone storage is full — photo not saved. Live app stores photos in the cloud.'));return;}hide('m-newtool');renderTools();toast('✓ '+n,'green');}
 // ───────────── NAV ─────────────
-function tab(n,el){navPush({t:n});document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));document.getElementById('pg-'+n).classList.add('on');if(_dirty.has(n)&&!['home','more','punch','code','van','mat','cal','hours','exp','rep','tools','est','svc','msg'].includes(n))renderPage(n);_dirty.delete(n);const prim=primaryFor(me());document.querySelectorAll('.tab').forEach(b=>{b.classList.remove('on');const nn=b.getAttribute('onclick').match(/'([a-z]+)'/)[1];if(b.dataset.allowed==='1')b.style.display=(prim.includes(nn)||nn===n)?'':'none';});el.classList.add('on');window.scrollTo(0,0);if(n==='home')renderHome();if(n==='more')renderMore();if(n==='punch'){renderPunch();startWatch();}try{notifBanner();}catch(e){}if(n==='code')renderCode();if(n==='van')renderVan();if(n==='mat'){renderMat();const _m=me();if(_m.role==='worker'&&!_m.lead)setTimeout(openMat,60);}if(n==='cal')renderCal();if(n==='hours')renderHours();if(n==='exp')renderExp();if(n==='rep')renderRep();if(n==='tools')renderTools();if(n==='est')renderEst();if(n==='svc')renderSvc();if(n==='msg')renderMsg();}
+function tab(n,el){navPush({t:n});document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));document.getElementById('pg-'+n).classList.add('on');if(_dirty.has(n)&&!['home','more','punch','code','van','mat','cal','hours','exp','rep','tools','est','svc','msg','trello'].includes(n))renderPage(n);_dirty.delete(n);const prim=primaryFor(me());document.querySelectorAll('.tab').forEach(b=>{b.classList.remove('on');const nn=b.getAttribute('onclick').match(/'([a-z]+)'/)[1];if(b.dataset.allowed==='1')b.style.display=(prim.includes(nn)||nn===n)?'':'none';});el.classList.add('on');window.scrollTo(0,0);if(n==='home')renderHome();if(n==='more')renderMore();if(n==='punch'){renderPunch();startWatch();}try{notifBanner();}catch(e){}if(n==='code')renderCode();if(n==='van')renderVan();if(n==='mat'){renderMat();const _m=me();if(_m.role==='worker'&&!_m.lead)setTimeout(openMat,60);}if(n==='cal')renderCal();if(n==='trello')renderTrello();if(n==='hours')renderHours();if(n==='exp')renderExp();if(n==='rep')renderRep();if(n==='tools')renderTools();if(n==='est')renderEst();if(n==='svc')renderSvc();if(n==='msg')renderMsg();}
 function applyTabs(){const m=me();try{const mb=document.querySelector('.tab[onclick*="\'mat\'"] span');if(mb)mb.textContent=(m.role==='worker'&&!m.lead)?t('Request'):t('Material');}catch(e){}const show=(n,v)=>{const b=document.querySelector(`.tab[onclick*="'${jsq(n)}'"]`);if(b){b.dataset.allowed=v?'1':'0';b.style.display=v?'':'none';}};
   show('home',m.role==='owner'||!!m.all||m.role==='manager');
-  const w=m.role==='worker',o=m.role==='office',lim=o&&m.title==='Accountant';show('jobs',o||!w||getsTasks(m));show('sched',!w&&!lim);show('team',(!w&&!o)||!!m.all);show('sites',!w&&!lim);show('punch',!o&&m.role!=='owner');show('mat',seesMat(m)&&!lim);show('exp',true);show('cal',canBook(m)&&!lim);show('hours',canEditHours(m));show('exp',seesExp(m));show('rep',seesRep(m));show('tools',!(m.role==='office'&&m.title==='Accountant'));show('est',seesEst(m));show('svc',seesSvc(m)&&!lim);show('msg',canMsg(m));show('code',true);show('van',canVan(m));show('more',true);
+  const w=m.role==='worker',o=m.role==='office',lim=o&&m.title==='Accountant';show('jobs',o||!w||getsTasks(m));show('sched',!w&&!lim);show('team',(!w&&!o)||!!m.all);show('sites',!w&&!lim);show('punch',!o&&m.role!=='owner');show('mat',seesMat(m)&&!lim);show('exp',true);show('cal',canBook(m)&&!lim);show('hours',canEditHours(m));show('exp',seesExp(m));show('rep',seesRep(m));show('tools',!(m.role==='office'&&m.title==='Accountant'));show('est',seesEst(m));show('svc',seesSvc(m)&&!lim);show('msg',canMsg(m));show('code',true);show('trello',typeof ptAvail==='function'&&ptAvail());show('van',canVan(m));show('more',true);
   const prim=primaryFor(m);[...document.querySelectorAll('.tab')].forEach(b=>{const n=b.getAttribute('onclick').match(/'([a-z]+)'/)[1];if(b.dataset.allowed==='1'&&!prim.includes(n))b.style.display='none';});
   const anyAllowedHidden=[...document.querySelectorAll('.tab')].some(b=>b.dataset.allowed==='1'&&b.style.display==='none');if(!anyAllowedHidden){const mb=document.querySelector(`.tab[onclick*="'more'"]`);if(mb)mb.style.display='none';}
   const cur=document.querySelector('.tab.on');if(cur&&cur.style.display==='none'){const first=(m.role==='owner'||m.all||m.role==='manager')?document.querySelector(`.tab[onclick*="'home'"]`):(w&&!o&&!noClock(me()))?document.querySelector(`.tab[onclick*="'punch'"]`):document.querySelector(`.tab[onclick*="'jobs'"]`);first.click();}}
 // redraw only the screen you're looking at; the others redraw when you open them (keeps big companies fast)
-const PAGE_R={jobs:()=>renderJobs(),sched:()=>renderSched(),team:()=>renderTeam(),sites:()=>renderSites(),punch:()=>renderPunch(),mat:()=>renderMat(),cal:()=>renderCal(),hours:()=>renderHours(),exp:()=>renderExp(),rep:()=>renderRep(),tools:()=>renderTools(),est:()=>renderEst(),svc:()=>renderSvc(),home:()=>renderHome(),msg:()=>renderMsg()};
+const PAGE_R={trello:()=>renderTrello(),jobs:()=>renderJobs(),sched:()=>renderSched(),team:()=>renderTeam(),sites:()=>renderSites(),punch:()=>renderPunch(),mat:()=>renderMat(),cal:()=>renderCal(),hours:()=>renderHours(),exp:()=>renderExp(),rep:()=>renderRep(),tools:()=>renderTools(),est:()=>renderEst(),svc:()=>renderSvc(),home:()=>renderHome(),msg:()=>renderMsg()};
 const _dirty=new Set();
 function curPage(){const p=document.querySelector('.pg.on');return p?p.id.slice(3):'';}
 function renderPage(n){if(!PAGE_R[n])return;_dirty.delete(n);try{PAGE_R[n]();}catch(e){console.warn('render '+n,e);}}
@@ -4752,55 +4766,164 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vmat1021"></script><script src="scanner-v2-ui.js?vmat1021"></script><script src="sched-v21.js?vmat1021"></script>
+<script src="scanner-v2.js?vtr21021"></script><script src="scanner-v2-ui.js?vtr21021"></script><script src="sched-v21.js?vtr21021"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
 // who can switch to it). Ticking off / editing / adding here goes back to their Trello within seconds (server sync).
-let ptWho=null,ptShowDone=false,ptEdit=null,ptAdding=false,ptSyncT=null;
-function ptAvail(){const m=me();return !!m&&(D.ptask||[]).some(x=>x&&x.meta&&(x.owner===m.id||m.role==='owner'));}
-function ptOwners(){const m=me();return [...new Set((D.ptask||[]).filter(x=>x&&x.meta&&(x.owner===m.id||m.role==='owner')).map(x=>x.owner))];}
+let ptWho=null,ptShowDone=false,ptEdit=null,ptAdding=false,ptSyncT=null,ptView='job',ptQ='',ptDayOpen=null,ptOpenL={},ptDate=null,ptMoveOpen=null;
+// whose Trello is organised how: the board with the real cards (one list per job) and the board with the day mirrors
+const PT_CFG={o2:{main:'69b8547f289d0bc27e1ae4df',daily:'69b81ac4ca472d409d18ff0f'}};
+function ptCfgFor(o){const c=PT_CFG[o];const meta=c&&ptGet('ptmeta_'+o);return c&&meta&&(meta.boards||[]).some(b=>b.id===c.main)?c:null;}
+// a person's Trello is ONLY his (Baruch 2026-10-21): nobody else — not even the owner — sees it
+function ptAvail(){const m=me();return !!m&&(D.ptask||[]).some(x=>x&&x.meta&&x.owner===m.id);}
+function ptOwners(){const m=me();return m&&ptAvail()?[m.id]:[];}
+// who is connected (names only) — for the owner's "Send to …'s Trello" button
+let PT_PEOPLE=null,PT_PEOPLE_T=0;
+function ptPeople(){const m=me();if(!m||m.role!=='owner')return [];if((!PT_PEOPLE||Date.now()-PT_PEOPLE_T>600000)&&window.EX_sb&&navigator.onLine&&!ptPeople.busy){ptPeople.busy=true;window.EX_sb.rpc('trello_people').then(r=>{PT_PEOPLE=((r&&r.data)||[]).map(x=>x.emp).filter(Boolean);PT_PEOPLE_T=Date.now();}).catch(()=>{}).finally(()=>{ptPeople.busy=false;});}return PT_PEOPLE||[];}
 function ptGet(id){return (D.ptask||[]).find(x=>x&&x.id===id);}
-function ptRow(x){const id=jsq(x.id);const url=/^https:\/\/trello\.com\//.test(x.url||'')?safeHref(x.url):'';
-  const ed=ptEdit===x.id;
+function ptYmd(d){const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}
+// billing cards and the Stock list (quotes for stock) are every-day work, not priority
+function ptEvery(x,cfg){return (cfg&&x.board===cfg.main&&/^\s*stock\s*$/i.test(x.listName||''))||(x.labels||[]).some(l=>/bill/i.test(l))||/\bbilling\b/i.test(x.t||'')||(/bill/i.test(x.boardName||'')&&!ptIsMirror(x));}
+// does the card belong on day D? from its start date until its due date; only a due date → that day; late → today
+function ptRange(x,D,today){const s=x.start?ptYmd(x.start):null,d=x.due?ptYmd(x.due):null;if(d&&d<today)return D===today?'late':null;
+  if(s&&d)return s<=D&&D<=d?'in':null;if(d)return d===D?'in':null;if(s)return s<=D?'in':null;return null;}
+function renderTrello(){if(!document.getElementById('pg-trello'))return;if(!ptAvail()){document.getElementById('ptChips').innerHTML='';document.getElementById('ptPage').innerHTML='<div class="empty">'+t('Trello is not connected.')+'</div>';return;}renderPT();}
+// a card named with the link of another card is a MIRROR of it (Trello shows the real card there)
+let PT_LK=null,PT_MI=null,PT_LKN=-1;
+function ptShort(u){const m=/^https:\/\/trello\.com\/c\/([A-Za-z0-9]+)/.exec(String(u||'').trim());return m?m[1]:'';}
+function ptIsMirror(x){return /^https:\/\/trello\.com\/c\/[A-Za-z0-9]+\S*$/.test(String(x.t||'').trim());}
+function ptMaps(){const a=D.ptask||[];if(PT_LK&&PT_LKN===a.length&&!ptMaps.dirty)return;const lk={},mi={};
+  a.forEach(x=>{if(!x||x.meta)return;const k=ptShort(x.url);if(k)lk[k]=x;});
+  a.forEach(x=>{if(!x||x.meta||x.gone||!ptIsMirror(x))return;const k=ptShort(x.t);(mi[k]=mi[k]||[]).push(x);});
+  PT_LK=lk;PT_MI=mi;PT_LKN=a.length;ptMaps.dirty=false;}
+function ptTarget(x){if(!ptIsMirror(x))return null;ptMaps();const y=PT_LK[ptShort(x.t)];return y&&y!==x?y:null;}
+function ptMirrorsOf(x){ptMaps();const k=ptShort(x.url);return k?(PT_MI[k]||[]).filter(m=>m.owner===x.owner):[];}
+function ptTitle(x){if(!ptIsMirror(x))return x.t||'';const y=ptTarget(x);return y?(y.t||''):'🔗 '+t('Linked Trello card');}
+function ptRow(x,withJob){const id=jsq(x.id);const url=/^https:\/\/trello\.com\//.test(x.url||'')?safeHref(x.url):'';const m=me();const cfg=ptCfgFor(x.owner);
+  const ed=ptEdit===x.id,mine=x.owner===m.id;const mir=cfg?ptMirrorsOf(x):[];
+  const badges=mir.map(y=>'<span class="ptbd" style="display:inline-block;font-size:12px;padding:2px 8px;border-radius:10px;margin:4px 4px 0 0;background:var(--g1,#eef2f7);color:var(--blue-mid)">'+(cfg&&y.board===cfg.daily?'📅 '+esc(y.listName||''):esc(String(y.boardName||'').trim())+': '+esc(y.listName||''))+'</span>').join('');
+  let day='';
+  if(ptDayOpen===x.id&&cfg){const meta=ptGet('ptmeta_'+x.owner)||{boards:[]};const db=(meta.boards||[]).find(b=>b.id===cfg.daily)||{lists:[]};const cur=(mir.find(y=>y.board===cfg.daily)||{}).list||'';
+    day='<div class="card" style="padding:8px 10px;margin-top:6px"><div style="font-size:13px;color:var(--g5);margin-bottom:6px">📅 '+t('Which day?')+'</div><select id="ptDaySel" style="margin-bottom:6px">'+(db.lists||[]).map(l=>'<option value="'+esc(l.id)+'"'+(l.id===cur?' selected':'')+'>'+esc(l.name)+'</option>').join('')+'</select><div style="display:flex;gap:6px"><button class="btn" style="padding:9px" onclick="ptDay(\''+id+'\')">'+t('Save')+'</button><button class="btn sec2" style="padding:9px" onclick="ptDayOpen=null;renderTrello()">'+t('Cancel')+'</button></div></div>';}
+  if(ptMoveOpen===x.id){const meta=ptGet('ptmeta_'+x.owner)||{boards:[]};
+    day+='<div class="card ptmovebox" style="padding:8px 10px;margin-top:6px"><div style="font-size:13px;color:var(--g5);margin-bottom:6px">⇄ '+t('Move to')+'</div><select id="ptMoveSel" style="margin-bottom:6px">'+(meta.boards||[]).map(b=>'<optgroup label="'+esc(String(b.name||'').trim())+'">'+(b.lists||[]).map(l=>'<option value="'+esc(l.id)+'"'+(l.id===x.list?' selected':'')+'>'+esc(l.name)+'</option>').join('')+'</optgroup>').join('')+'</select><div style="display:flex;gap:6px"><button class="btn" style="padding:9px" onclick="ptMove(\''+id+'\')">'+t('Move')+'</button><button class="btn sec2" style="padding:9px" onclick="ptMoveOpen=null;renderTrello()">'+t('Cancel')+'</button></div></div>';}
   return '<div class="card ptrow" data-id="'+esc(x.id)+'" style="padding:10px 12px;display:flex;gap:12px;align-items:flex-start;margin-bottom:8px">'
    +'<input type="checkbox" class="ptchk" '+(x.done?'checked':'')+' onchange="ptDone(\''+id+'\',this.checked)" aria-label="'+t('Done')+'" style="width:28px;height:28px;flex:0 0 28px;margin-top:2px;box-shadow:none">'
    +'<div style="flex:1;min-width:0">'
-   +(ed?'<input id="ptEt" value="'+esc(x.t||'')+'" style="margin-bottom:6px"><textarea id="ptEd" rows="4" placeholder="'+t('Notes')+'" style="white-space:pre-wrap">'+esc(x.desc||'')+'</textarea><div style="display:flex;gap:6px;margin-top:6px"><button class="btn" style="padding:10px" onclick="ptSave(\''+id+'\')">'+t('Save')+'</button><button class="btn sec2" style="padding:10px" onclick="ptEdit=null;renderJobs()">'+t('Cancel')+'</button></div>'
-      :'<div class="ptt" style="font-weight:600;white-space:pre-wrap;word-break:break-word'+(x.done?';text-decoration:line-through;color:var(--g4)':'')+'">'+esc(x.t||'')+'</div>'
+   +(ed?'<input id="ptEt" value="'+esc(x.t||'')+'" style="margin-bottom:6px"><textarea id="ptEd" rows="4" placeholder="'+t('Notes')+'" style="white-space:pre-wrap">'+esc(x.desc||'')+'</textarea><div style="display:flex;gap:6px;margin-top:6px"><button class="btn" style="padding:10px" onclick="ptSave(\''+id+'\')">'+t('Save')+'</button><button class="btn sec2" style="padding:10px" onclick="ptEdit=null;renderTrello()">'+t('Cancel')+'</button></div>'
+      :'<div class="ptt" style="font-weight:600;white-space:pre-wrap;word-break:break-word'+(x.done?';text-decoration:line-through;color:var(--g4)':'')+'">'+esc(ptTitle(x))+'</div>'
+       +(withJob&&x.listName?'<div class="ptjob" style="font-size:13px;color:var(--blue-mid);margin-top:2px">📍 '+esc(x.listName)+'</div>':'')
        +(x.desc?'<div class="ptd" style="font-size:13px;color:var(--g5);white-space:pre-wrap;word-break:break-word;margin-top:4px">'+esc(x.desc)+'</div>':'')
-       +'<div style="font-size:12px;color:var(--g4);margin-top:4px">'+[esc(x.listName||''),x.due?'📅 '+new Date(x.due).toLocaleDateString(LOC(),{month:'short',day:'numeric'}):'',x.push?'⏳ '+t('sending to Trello…'):'',x.pushErr?'<span style="color:#c0392b">⚠ '+t('Trello did not take this change yet — it will try again')+'</span>':''].filter(Boolean).join(' · ')+'</div>')
-   +'</div><div style="display:flex;flex-direction:column;gap:4px">'+(ed?'':'<button class="bs" onclick="ptEdit=\''+id+'\';renderJobs()" aria-label="'+t('Edit')+'">✎</button>')+(url?'<a class="bs" href="'+url+'" target="_blank" rel="noopener" aria-label="Trello">↗</a>':'')+'</div></div>';}
+       +(badges?'<div class="ptbds">'+badges+'</div>':'')
+       +((x.start||x.due||x.push||x.pushErr)?'<div class="ptdates" style="font-size:12px;color:var(--g4);margin-top:4px">'+[x.start?'▶ '+new Date(x.start).toLocaleDateString(LOC(),{month:'short',day:'numeric'}):'',x.due?'🏁 '+new Date(x.due).toLocaleDateString(LOC(),{month:'short',day:'numeric'}):'',x.push?'⏳ '+t('sending to Trello…'):'',x.pushErr?'<span style="color:#c0392b">⚠ '+t('Trello did not take this change yet — it will try again')+'</span>':''].filter(Boolean).join(' · ')+'</div>':'')
+       +day)
+   +'</div><div style="display:flex;flex-direction:column;gap:4px">'+(ed?'':'<button class="bs" onclick="ptEdit=\''+id+'\';renderTrello()" aria-label="'+t('Edit')+'">✎</button>')
+   +(!ed&&url&&mine?'<button class="bs ptmovebtn" onclick="ptMoveOpen=ptMoveOpen===\''+id+'\'?null:\''+id+'\';ptDayOpen=null;renderTrello()" aria-label="'+t('Move to')+'">⇄</button>':'')
+   +(cfg&&mine&&!ed&&x.board===cfg.main&&url&&!x.done?'<button class="bs ptdaybtn" onclick="ptDayOpen=ptDayOpen===\''+id+'\'?null:\''+id+'\';renderTrello()" aria-label="'+t('Which day?')+'">📅</button>':'')
+   +(url?'<a class="bs" href="'+url+'" target="_blank" rel="noopener" aria-label="Trello">↗</a>':'')+'</div></div>';}
+// move a card to any list on any of his boards — it stays there and moves in Trello too
+function ptMove(id){const x=ptGet(id);const m=me();const sel=document.getElementById('ptMoveSel');if(!x||!sel||x.owner!==m.id)return;const v=sel.value;
+  const meta=ptGet('ptmeta_'+x.owner)||{boards:[]};let b=null,l=null;(meta.boards||[]).forEach(bb=>(bb.lists||[]).forEach(ll=>{if(ll.id===v){b=bb;l=ll;}}));if(!l)return;
+  ptMoveOpen=null;if(x.list===v){renderTrello();return;}
+  x.list=l.id;x.listName=l.name;x.board=b.id;x.boardName=b.name;x.push=true;ptMaps.dirty=true;save();renderTrello();toast('⇄ '+String(b.name||'').trim()+' → '+l.name,'green');ptSyncSoon();}
+// plan a card for a day = its mirror on Daily Delivery check (made, or moved to the other day)
+function ptDay(id){const x=ptGet(id);const m=me();const cfg=(x&&ptCfgFor(x.owner));const sel=document.getElementById('ptDaySel');if(!x||!cfg||!sel||x.owner!==m.id)return;const v=sel.value;
+  const meta=ptGet('ptmeta_'+x.owner)||{boards:[]};const db=(meta.boards||[]).find(b=>b.id===cfg.daily)||{lists:[]};const l=(db.lists||[]).find(z=>z.id===v);if(!l)return;
+  const ex=ptMirrorsOf(x).find(y=>y.board===cfg.daily);
+  if(ex){if(ex.list!==v){ex.list=v;ex.listName=l.name;ex.push=true;}}
+  else{D.ptask=D.ptask||[];D.ptask.push({id:nid('pt'),owner:m.id,t:x.url,desc:'',board:cfg.daily,boardName:db.name||'',list:v,listName:l.name,done:false,push:true});}
+  ptMaps.dirty=true;ptDayOpen=null;save();renderTrello();toast('📅 '+l.name,'green');ptSyncSoon();}
 function renderPT(){const m=me();const own=ptOwners();if(!ptWho||!own.includes(ptWho))ptWho=own.includes(m.id)?m.id:own[0];
-  document.getElementById('jobChips').innerHTML=own.length>1||ptWho!==m.id?own.map(o=>'<div class="chip '+(o===ptWho?'on':'')+'" onclick="ptWho=\''+jsq(o)+'\';ptEdit=null;ptAdding=false;renderJobs()">'+esc(o===m.id?t('Mine'):nameOf(o).split(' ')[0])+'</div>').join(''):'';
-  ['moreDone','addJobBtn'].forEach(k=>{const e=document.getElementById(k);if(e)e.style.display='none';});const at=document.getElementById('addJobTop');if(at)at.style.display='none';
-  const meta=ptGet('ptmeta_'+ptWho)||{boards:[]};const boards=meta.boards||[];
-  const all=(D.ptask||[]).filter(x=>x&&!x.meta&&x.owner===ptWho&&!x.gone);const open=all.filter(x=>!x.done),done=all.filter(x=>x.done);
-  const mine=ptWho===m.id;
+  const cfg=ptCfgFor(ptWho);const meta=ptGet('ptmeta_'+ptWho)||{boards:[]};const allB=meta.boards||[];const mine=ptWho===m.id;
+  const chipsW=own.length>1||ptWho!==m.id?own.map(o=>'<div class="chip '+(o===ptWho?'on':'')+'" onclick="ptWho=\''+jsq(o)+'\';ptEdit=null;ptAdding=false;ptDayOpen=null;renderTrello()">'+esc(o===m.id?t('Mine'):nameOf(o).split(' ')[0])+'</div>').join(''):'';
+  const chipsV=cfg?'<div class="chip '+(ptView==='job'?'on':'')+'" id="ptVJob" onclick="ptView=\'job\';renderTrello()">🗂 '+t('By job')+'</div><div class="chip '+(ptView==='day'?'on':'')+'" id="ptVDay" onclick="ptView=\'day\';renderTrello()">📅 '+t('By day')+'</div>':'';
+  document.getElementById('ptChips').innerHTML=chipsW+chipsV;
   let h='<div class="note" style="margin-bottom:8px">📋 '+(mine?t('Your own Trello — only you see this.'):esc(nameOf(ptWho))+': '+t('their own Trello — only they and the owner see this.'))+' '+t('Last synced')+' '+(meta.syncedAt?when(meta.syncedAt):'—')+(mine?' <button class="bs" id="ptSyncBtn" onclick="ptSync(true)">↻ '+t('Sync now')+'</button>':'')+'</div>';
-  if(mine&&boards.some(b=>(b.lists||[]).length)){h+='<button class="btn" id="ptAddBtn" style="margin-bottom:8px" onclick="ptAdding=!ptAdding;renderJobs()">+ '+t('Add to my Trello')+'</button>';
+  const boards=cfg?allB.filter(b=>b.id===cfg.main):allB;
+  if(mine&&boards.some(b=>(b.lists||[]).length)){h+='<button class="btn" id="ptAddBtn" style="margin-bottom:8px" onclick="ptAdding=!ptAdding;renderTrello()">+ '+t('Add to my Trello')+'</button>';
     if(ptAdding)h+='<div class="card" style="padding:10px 12px;margin-bottom:10px"><select id="ptList" style="margin-bottom:6px">'+boards.map(b=>'<optgroup label="'+esc(b.name)+'">'+(b.lists||[]).map(l=>'<option value="'+esc(b.id+'|'+l.id)+'">'+esc(l.name)+'</option>').join('')+'</optgroup>').join('')+'</select><input id="ptNewT" placeholder="'+t('Task')+'" style="margin-bottom:6px"><textarea id="ptNewD" rows="3" placeholder="'+t('Notes (optional)')+'"></textarea><button class="btn" style="margin-top:6px" onclick="ptAdd()">'+t('Add')+'</button></div>';}
+  ptMaps();
+  const live=(D.ptask||[]).filter(x=>x&&!x.meta&&x.owner===ptWho&&!x.gone);
+  if(cfg&&ptView==='day'){
+    // day by day: a card shows every day from its start date until its due date (late ones on today), plus the cards put
+    // on that weekday on Daily Delivery check. Billing cards and the Stock list show every day, below, not as priority.
+    const today=ptYmd(Date.now());if(!ptDate||ptDate<today)ptDate=today;const D0=ptDate;
+    const days=[...Array(7)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()+i);return d;});
+    h+='<div class="chips" id="ptDays" style="margin-bottom:8px">'+days.map((d,i)=>{const k=ptYmd(d);return '<div class="chip '+(k===D0?'on':'')+'" onclick="ptDate=\''+k+'\';renderTrello()">'+(i===0?t('Today'):i===1?t('Tomorrow'):d.toLocaleDateString(LOC(),{weekday:'short'}))+' '+d.getDate()+'</div>';}).join('')+'</div>';
+    const dn=new Date(D0+'T12:00:00');const wd=dn.toLocaleDateString('en-US',{weekday:'long'}).toLowerCase();
+    const mainOpen=live.filter(x=>x.board===cfg.main&&!x.done);
+    const db=allB.find(b=>b.id===cfg.daily)||{lists:[]};const wl=(db.lists||[]).filter(l=>String(l.name||'').trim().toLowerCase()===wd).map(l=>l.id);
+    const pr=new Map();
+    mainOpen.forEach(x=>{if(ptEvery(x,cfg))return;const r=ptRange(x,D0,today);if(r)pr.set(x.id,{x,late:r==='late'});});
+    live.filter(m=>m.board===cfg.daily&&wl.includes(m.list)).forEach(m=>{const y=ptIsMirror(m)?ptTarget(m):m;if(!y||y.done||ptEvery(y,cfg)||pr.has(y.id))return;pr.set(y.id,{x:y,late:false});});
+    const all2=[...pr.values()].sort((u,v)=>String(u.x.due||'9').localeCompare(String(v.x.due||'9')));const P=all2.filter(o=>!o.late),L=all2.filter(o=>o.late).reverse();
+    const E=live.filter(x=>!x.done&&!ptIsMirror(x)&&ptEvery(x,cfg));
+    h+='<div class="ksec ptdayh" style="margin:10px 0 6px;font-weight:700;color:var(--blue-mid)">📅 '+esc(dn.toLocaleDateString(LOC(),{weekday:'long',month:'short',day:'numeric'}))+' <span style="color:var(--g4);font-weight:500">('+P.length+')</span></div>';
+    h+=P.length?P.map(o=>ptRow(o.x,true)).join(''):'<div class="empty">'+t('Nothing for this day.')+'</div>';
+    if(L.length){const showL=ptOpenL.late===true;h+='<div class="ksec ptlate" style="margin:16px 0 6px;font-weight:700;color:#c0392b;cursor:pointer" onclick="ptOpenL.late='+(showL?'false':'true')+';renderTrello()">'+(showL?'▾ ':'▸ ')+'⚠ '+t('Late — the due date passed, not ticked done')+' <span style="font-weight:500;color:var(--g4)">('+L.length+')</span></div>'+(showL?L.map(o=>ptRow(o.x,true)).join(''):'');}
+    const ke='ev';const showE=ptOpenL[ke]!==false;
+    h+='<div class="ksec ptevery" style="margin:16px 0 6px;font-weight:700;color:var(--g5);cursor:pointer" onclick="ptOpenL.ev='+(showE?'false':'true')+';renderTrello()">'+(showE?'▾ ':'▸ ')+t('Every day — billing & stock (not priority)')+' <span style="font-weight:500;color:var(--g4)">('+E.length+')</span></div>';
+    if(showE)h+='<div style="opacity:.8">'+E.map(x=>ptRow(x,true)).join('')+'</div>';
+    document.getElementById('ptPage').innerHTML=h;return;}
+  // by job: the main board, one section per job (Trello's list order); other boards' cards are only mirrors → shown as badges
+  const q=String(ptQ||'').trim().toLowerCase();
+  if(cfg)h+='<input id="ptSearch" placeholder="🔍 '+t('Search a job or a card')+'" value="'+esc(ptQ)+'" oninput="ptQ=this.value;clearTimeout(window._ptqT);window._ptqT=setTimeout(()=>{renderTrello();const e=document.getElementById(\'ptSearch\');if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length);}},250)" style="margin-bottom:8px">';
+  const pool=live.filter(x=>cfg?x.board===cfg.main:true);
+  const hit=x=>!q||String(ptTitle(x)).toLowerCase().includes(q)||String(x.listName||'').toLowerCase().includes(q)||String(x.desc||'').toLowerCase().includes(q);
+  const open=pool.filter(x=>!x.done&&hit(x)),done=pool.filter(x=>x.done&&hit(x));
   const order=boards.map(b=>b.id);const byB={};open.forEach(x=>{(byB[x.board]=byB[x.board]||[]).push(x);});
   const bids=[...order.filter(b=>byB[b]),...Object.keys(byB).filter(b=>!order.includes(b))];
-  if(!open.length)h+='<div class="empty">'+t('Nothing open on your Trello.')+'</div>';
-  bids.forEach(b=>{const bn=(boards.find(x=>x.id===b)||{}).name||(byB[b][0]||{}).boardName||'Trello';const lo=((boards.find(x=>x.id===b)||{}).lists||[]).map(l=>l.id);
-    const items=byB[b].slice().sort((p,q)=>(lo.indexOf(p.list)-lo.indexOf(q.list))||String(p.t).localeCompare(String(q.t)));
-    h+='<div class="ksec" style="margin:12px 0 6px;font-weight:700">'+esc(bn)+' <span style="color:var(--g4);font-weight:500">('+items.length+')</span></div>'+items.map(ptRow).join('');});
-  if(done.length)h+='<button class="btn sec2" id="ptDoneBtn" style="margin:8px 0" onclick="ptShowDone=!ptShowDone;renderJobs()">✓ '+done.length+' '+t('done')+(ptShowDone?' ▲':' ▼')+'</button>'+(ptShowDone?done.map(ptRow).join(''):'');
-  document.getElementById('jobList').innerHTML=h;}
+  if(!open.length)h+='<div class="empty">'+(q?t('Nothing found'):t('Nothing open on your Trello.'))+'</div>';
+  bids.forEach(b=>{const bo=boards.find(x=>x.id===b)||{};const bn=bo.name||(byB[b][0]||{}).boardName||'Trello';const lo=(bo.lists||[]).map(l=>l.id);
+    const items=byB[b].slice().sort((p2,q2)=>(lo.indexOf(p2.list)-lo.indexOf(q2.list))||String(ptTitle(p2)).localeCompare(String(ptTitle(q2))));
+    if(!cfg)h+='<div class="ksec" style="margin:12px 0 6px;font-weight:700">'+esc(bn)+' <span style="color:var(--g4);font-weight:500">('+items.length+')</span></div>';
+    let lastL=null;items.forEach(x=>{if(x.list!==lastL){lastL=x.list;const ln=x.listName||((bo.lists||[]).find(l=>l.id===x.list)||{}).name||t('Other');h+='<div class="ptlh" style="margin:12px 0 4px;font-size:14px;font-weight:700;color:var(--g6,var(--g5))">'+(cfg?'📍 ':'')+esc(ln)+' <span style="font-weight:500;color:var(--g4)">('+items.filter(z=>z.list===x.list).length+')</span></div>';}h+=ptRow(x);});});
+  if(done.length)h+='<button class="btn sec2" id="ptDoneBtn" style="margin:8px 0" onclick="ptShowDone=!ptShowDone;renderTrello()">✓ '+done.length+' '+t('done')+(ptShowDone?' ▲':' ▼')+'</button>'+(ptShowDone?done.map(ptRow).join(''):'');
+  document.getElementById('ptPage').innerHTML=h;}
+// a job's page: MY Trello cards for this address (job Name's list of the same job) — shown only to the card owner
+function ptKey(v){const k=String(v||'').split(',')[0].toLowerCase().replace(/[^a-z0-9 -]/g,' ').replace(/\s+/g,' ').trim();const mm=k.match(/^([0-9][0-9a-z-]*\s+[a-z]+)/);return mm?mm[1]:k;}
+function ptListForSite(o,s){const cfg=ptCfgFor(o);if(!cfg||!s||!s.name)return null;const meta=ptGet('ptmeta_'+o)||{boards:[]};const b=(meta.boards||[]).find(x=>x.id===cfg.main);if(!b)return null;
+  const f=String(s.name).split(',')[0].trim().toLowerCase(),k=ptKey(s.name);if(!k)return null;
+  return (b.lists||[]).find(l=>String(l.name||'').split(',')[0].trim().toLowerCase()===f)||(b.lists||[]).find(l=>ptKey(l.name)===k)||null;}
+function ptForSite(s){try{const m=me();if(!m)return '';const l=ptListForSite(m.id,s);if(!l)return '';
+  const cs=(D.ptask||[]).filter(x=>x&&!x.meta&&x.owner===m.id&&!x.gone&&x.list===l.id);const open=cs.filter(x=>!x.done),dn=cs.length-open.length;
+  return '<div class="card ptsite" style="padding:10px 12px;margin-bottom:10px;border-left:4px solid var(--blue-mid)"><div class="row" style="align-items:center;margin-bottom:6px"><div style="font-weight:700">📋 '+t('My Trello')+' <span style="font-weight:500;color:var(--g4);font-size:12px">· '+t('only you see this')+'</span></div><button class="bs" onclick="hide(\'m-folder\');ptView=\'job\';ptQ='+esc(JSON.stringify(String(l.name).split(',')[0]))+';goTab(\'trello\')">'+t('Open')+' ›</button></div>'
+   +(open.length?open.map(x=>'<div class="ptsrow" style="display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-top:1px solid var(--g2)"><input type="checkbox" '+(x.done?'checked':'')+' onchange="ptDone(\''+jsq(x.id)+'\',this.checked)" style="width:24px;height:24px;flex:0 0 24px;box-shadow:none"><div style="flex:1;min-width:0"><div style="font-weight:600;white-space:pre-wrap;word-break:break-word">'+esc(ptTitle(x))+'</div>'+(x.desc?'<div style="font-size:13px;color:var(--g5);white-space:pre-wrap;word-break:break-word;margin-top:2px">'+esc(x.desc)+'</div>':'')+((x.start||x.due)?'<div style="font-size:12px;color:var(--g4);margin-top:2px">'+[x.start?'▶ '+new Date(x.start).toLocaleDateString(LOC(),{month:'short',day:'numeric'}):'',x.due?'🏁 '+new Date(x.due).toLocaleDateString(LOC(),{month:'short',day:'numeric'}):''].filter(Boolean).join(' · ')+'</div>':'')+'</div></div>').join(''):'<div style="font-size:13px;color:var(--g4)">'+t('Nothing open on your Trello.')+'</div>')
+   +(dn?'<div style="font-size:12px;color:var(--g4);margin-top:4px">✓ '+dn+' '+t('done')+'</div>':'')+'</div>';}catch(e){return '';}}
+// a task in the app → that person's Trello: the job's list on job Name's (made if the job has none yet), or a list picked
+let jtOpen=null;
+function jtTargets(j){const m=me();if(!m||!j||j.status==='done')return [];const out=[];
+  if(ptAvail()&&(has(j,m.id)||j.from===m.id))out.push(m.id);
+  if(m.role==='owner')ptPeople().forEach(o=>{if(o!==m.id&&!out.includes(o))out.push(o);});return out;}
+function jtWhose(o){return o===me().id?t('my Trello'):nameOf(o).split(' ')[0]+"'s Trello";}
+function jtHtml(j){const tg=jtTargets(j);let h='';
+  if(j.trello&&j.trello.emp)h+='<div class="note" id="jtIn" style="margin-top:8px">📋 '+esc(t('In')+' '+jtWhose(j.trello.emp))+(j.trello.list?' — '+esc(String(j.trello.board||'').trim())+' → '+esc(j.trello.list):'')+'</div>';
+  else if(tg.length){h+='<div style="margin-top:8px">'+tg.map(o=>'<button class="bs b jtbtn" style="margin:0 6px 6px 0" onclick="jtPick(\''+jsq(j.id)+'\',\''+jsq(o)+'\')">📋 '+esc(o===me().id?t('Send to my Trello'):t('Send to')+' '+jtWhose(o))+'</button>').join('')+'</div><div id="jtBox"></div>';}
+  return h;}
+function jtPick(jid,o){jtOpen={j:jid,o};const j=D.jobs.find(x=>x.id===jid)||{};const mine=o===me().id;const meta=mine?(ptGet('ptmeta_'+o)||{boards:[]}):{boards:[]};const cfg=mine?ptCfgFor(o):null;const bs=(meta.boards||[]).filter(b=>!cfg||b.id===cfg.main);const box=document.getElementById('jtBox');if(!box)return;
+  if(!mine&&!j.site){box.innerHTML='<div class="note" style="margin-top:4px">'+t('This task has no job — it goes into the job\'s list on his Trello, so pick a job for the task first.')+'</div>';return;}
+  box.innerHTML='<div class="card" style="padding:10px 12px;margin-top:4px"><div style="font-size:13px;color:var(--g5);margin-bottom:6px">'+t('Which Trello list?')+'</div><select id="jtList" style="margin-bottom:6px">'+((cfg||!mine)&&j.site?'<option value="">📍 '+esc(t("The job's list")+' — '+siteName(j.site))+'</option>':'')+bs.map(b=>'<optgroup label="'+esc(b.name)+'">'+(b.lists||[]).map(l=>'<option value="'+esc(l.id)+'">'+esc(l.name)+'</option>').join('')+'</optgroup>').join('')+'</select><button class="btn" id="jtGo" onclick="jtSend()">📋 '+t('Send')+'</button></div>';}
+async function jtSend(){if(!jtOpen)return;const sel=document.getElementById('jtList');const list=sel?sel.value:'';const go=document.getElementById('jtGo');if(go)go.disabled=true;
+  if(!window.EX_sb||!navigator.onLine){toast(t('You need internet to send it to Trello'),'red');if(go)go.disabled=false;return;}
+  try{try{if(window.EX_saveNow)await window.EX_saveNow();}catch(e){}
+    const {data,error}=await window.EX_sb.rpc('task_to_trello',{p_job:jtOpen.j,p_emp:jtOpen.o,p_list:list||''});if(error)throw error;
+    const j=D.jobs.find(x=>x.id===jtOpen.j);if(j&&!j.trello)j.trello={emp:jtOpen.o,at:Date.now(),list:(data&&data.list)||''};
+    toast('✓ '+(data&&data.already?t('Already in Trello'):t('Sent — it shows in Trello in a minute')),'green');const id=jtOpen.j;jtOpen=null;if(j)openJobDetail(id);try{if(window.EX_catchUp)window.EX_catchUp();}catch(e){}
+  }catch(e){toast('⚠ '+((e&&e.message)||e),'red');if(go)go.disabled=false;}}
 function ptSyncSoon(){clearTimeout(ptSyncT);ptSyncT=setTimeout(()=>ptSync(false),2500);}
 async function ptSync(loud){try{if(window.EX_saveNow)await window.EX_saveNow();}catch(e){}
   if(!window.EX_sb||!window.EX_sb.functions){if(loud)toast(t('Saved on the phone — it goes to Trello when you are online'));return;}
   try{const r=await window.EX_sb.functions.invoke('trello-personal',{body:{}});const s=r&&r.data&&r.data.synced&&r.data.synced[0];
     if(loud)toast(s&&!s.error?'✓ '+t('Trello is up to date'):'⚠ '+t('Could not reach Trello — it will try again in a few minutes'),s&&!s.error?'green':undefined);
     if(window.EX_catchUp)window.EX_catchUp();}catch(e){if(loud)toast(t('Could not reach Trello — it will try again in a few minutes'));}}
-function ptDone(id,v){const x=ptGet(id);if(!x)return;x.done=!!v;x.push=true;if(v){try{buzz(15);}catch(e){}}save();renderJobs();ptSyncSoon();}
-function ptSave(id){const x=ptGet(id);if(!x)return;const tt=(document.getElementById('ptEt').value||'').trim();if(!tt){toast(t('Type the task'));return;}x.t=tt;x.desc=document.getElementById('ptEd').value;x.push=true;ptEdit=null;save();renderJobs();ptSyncSoon();}
+function ptDone(id,v){const x=ptGet(id);if(!x)return;x.done=!!v;x.push=true;ptMaps.dirty=true;if(v){try{buzz(15);}catch(e){}}save();renderTrello();ptSyncSoon();}
+function ptSave(id){const x=ptGet(id);if(!x)return;const tt=(document.getElementById('ptEt').value||'').trim();if(!tt){toast(t('Type the task'));return;}x.t=tt;x.desc=document.getElementById('ptEd').value;x.push=true;ptEdit=null;save();renderTrello();ptSyncSoon();}
 function ptAdd(){const m=me();const v=(document.getElementById('ptList').value||'').split('|');const tt=(document.getElementById('ptNewT').value||'').trim();if(!tt){toast(t('Type the task'));return;}
   const meta=ptGet('ptmeta_'+m.id)||{boards:[]};const b=(meta.boards||[]).find(x=>x.id===v[0])||{};const l=(b.lists||[]).find(x=>x.id===v[1])||{};
   D.ptask=D.ptask||[];D.ptask.push({id:nid('pt'),owner:m.id,t:tt,desc:document.getElementById('ptNewD').value||'',board:v[0],boardName:b.name||'',list:v[1],listName:l.name||'',done:false,push:true});
-  ptAdding=false;save();renderJobs();toast('✓ '+t('Added — going to your Trello'),'green');ptSyncSoon();}
-try{Object.assign(ES,{"My Trello":"Mi Trello","Your own Trello — only you see this.":"Tu propio Trello — solo tú lo ves.","their own Trello — only they and the owner see this.":"su propio Trello — solo esa persona y el dueño lo ven.","Last synced":"Última sincronización","Sync now":"Sincronizar","Add to my Trello":"Agregar a mi Trello","Notes (optional)":"Notas (opcional)","Nothing open on your Trello.":"Nada pendiente en tu Trello.","sending to Trello…":"enviando a Trello…","Trello did not take this change yet — it will try again":"Trello aún no aceptó este cambio — lo intentará de nuevo","Trello is up to date":"Trello está al día","Could not reach Trello — it will try again in a few minutes":"No se pudo conectar con Trello — lo intentará en unos minutos","Added — going to your Trello":"Agregado — va a tu Trello","Saved on the phone — it goes to Trello when you are online":"Guardado en el teléfono — irá a Trello cuando tengas conexión","Type the task":"Escribe la tarea","Mine":"Mías"});}catch(e){}
+  ptAdding=false;save();renderTrello();toast('✓ '+t('Added — going to your Trello'),'green');ptSyncSoon();}
+try{Object.assign(ES,{"My Trello":"Mi Trello","Trello is not connected.":"Trello no está conectado.","Send to my Trello":"Enviar a mi Trello","Send to":"Enviar al","Which Trello list?":"¿Qué lista de Trello?","Send":"Enviar","Already in Trello":"Ya está en Trello","Sent — it shows in Trello in a minute":"Enviado — aparece en Trello en un minuto","You need internet to send it to Trello":"Necesitas internet para enviarlo a Trello","my Trello":"mi Trello","In":"En","By job":"Por trabajo","By day":"Por día","Which day?":"¿Qué día?","Search a job or a card":"Buscar un trabajo o una tarjeta","Nothing found":"No se encontró nada","Linked Trello card":"Tarjeta de Trello enlazada","Late":"Atrasado","This task has no job — it goes into the job's list on his Trello, so pick a job for the task first.":"Esta tarea no tiene trabajo — va a la lista del trabajo en su Trello, así que primero elige un trabajo para la tarea.","only you see this":"solo tú lo ves","Move to":"Mover a","Other":"Otros","Late — the due date passed, not ticked done":"Atrasado — pasó la fecha y no está marcado","Tomorrow":"Mañana","Nothing for this day.":"Nada para este día.","Every day — billing & stock (not priority)":"Todos los días — facturación y stock (sin prioridad)","The job's list":"La lista del trabajo","Nothing planned on a day yet — use 📅 on a card.":"Nada planeado para un día todavía — usa 📅 en una tarjeta.","Your own Trello — only you see this.":"Tu propio Trello — solo tú lo ves.","their own Trello — only they and the owner see this.":"su propio Trello — solo esa persona y el dueño lo ven.","Last synced":"Última sincronización","Sync now":"Sincronizar","Add to my Trello":"Agregar a mi Trello","Notes (optional)":"Notas (opcional)","Nothing open on your Trello.":"Nada pendiente en tu Trello.","sending to Trello…":"enviando a Trello…","Trello did not take this change yet — it will try again":"Trello aún no aceptó este cambio — lo intentará de nuevo","Trello is up to date":"Trello está al día","Could not reach Trello — it will try again in a few minutes":"No se pudo conectar con Trello — lo intentará en unos minutos","Added — going to your Trello":"Agregado — va a tu Trello","Saved on the phone — it goes to Trello when you are online":"Guardado en el teléfono — irá a Trello cuando tengas conexión","Type the task":"Escribe la tarea","Mine":"Mías"});}catch(e){}
 </script>
 
 
