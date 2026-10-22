@@ -5,10 +5,10 @@
 <meta name="theme-color" content="#ffffff"><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Electrix Field</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
-<script>window.EX_VER='vu11022';</script><script src="config.js"></script>
+<script>window.EX_VER='vp11022';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vu11022"></script>
-<script src="extras.js?vu11022"></script>
+<script src="sync.js?vp11022"></script>
+<script src="extras.js?vp11022"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -3411,7 +3411,8 @@ function renderJobHours(siteId){const box=document.getElementById('jobHoursBox')
 // ───────────── SWIPE LEFT/RIGHT BETWEEN TABS ─────────────
 (function(){let sx=0,sy=0,st=0;
   const visTabs=()=>[...document.querySelectorAll('.tab')].filter(b=>b.style.display!=='none');
-  document.addEventListener('touchstart',e=>{if(document.querySelector('div.ov[id^="m-"]:not(.hid)'))return;if(e.target.closest&&e.target.closest('.slide,.sl,.chips,input,select,textarea,[draggable="true"],.thumbs,audio,video'))return;const t=e.touches[0];sx=t.clientX;sy=t.clientY;st=Date.now();},{passive:true});
+  function inHScroll(el){for(let n=el;n&&n!==document.body&&n.nodeType===1;n=n.parentElement){if(n.classList&&(n.classList.contains('kb')||n.classList.contains('kbl')))return true;if(n.scrollWidth>n.clientWidth+4){const ox=getComputedStyle(n).overflowX;if(ox==='auto'||ox==='scroll')return true;}}return false;}
+  document.addEventListener('touchstart',e=>{st=0;if(document.querySelector('div.ov[id^="m-"]:not(.hid)'))return;if(e.target.closest&&e.target.closest('.slide,.sl,.chips,input,select,textarea,[draggable="true"],.thumbs,audio,video'))return;if(inHScroll(e.target))return;const t=e.touches[0];sx=t.clientX;sy=t.clientY;st=Date.now();},{passive:true});
   document.addEventListener('touchend',e=>{if(!st)return;if(document.querySelector('div.ov[id^="m-"]:not(.hid)')||tdK||jdK||cdK){st=0;return;}const dt=Date.now()-st;if(dt>600){st=0;return;}
     const t=e.changedTouches[0];const dx=t.clientX-sx,dy=t.clientY-sy;st=0;
     if(Math.abs(dx)<110||Math.abs(dy)>40||Math.abs(dx)<Math.abs(dy)*3)return;
@@ -4878,7 +4879,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vu11022"></script><script src="scanner-v2-ui.js?vu11022"></script><script src="sched-v21.js?vu11022"></script>
+<script src="scanner-v2.js?vp11022"></script><script src="scanner-v2-ui.js?vp11022"></script><script src="sched-v21.js?vp11022"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
