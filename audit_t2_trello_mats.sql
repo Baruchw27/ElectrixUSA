@@ -200,16 +200,16 @@ end $function$;
 revoke all on function public.guard_ptask() from public, anon, authenticated, service_role;
 grant execute on function public.guard_ptask() to authenticated, service_role;
 
--- 4) privacy (Baruch 2026-10-21 19:58): a person's Trello is seen and changed ONLY by that person — not by the owner.
---    (The owner can still SEND a task into it with task_to_trello, which never shows him the board.)
+-- 4) privacy (Baruch 2026-10-21 19:58 / 20:26): a person's Trello is CHANGED only by that person (guard_ptask). The owner
+--    can LOOK at it (read-only) when he switches to that person in the app — it never shows on his own board.
 do $$
-declare src text; a text := '    when c = ''ptask'' then d->>''owner'' = me->>''id'' or me->>''role'' = ''owner''';
+declare src text; a text := '    when c = ''ptask'' then d->>''owner'' = me->>''id''' || chr(10);
 begin
   src := pg_get_functiondef('public.can_see2(text,jsonb,jsonb)'::regprocedure);
   if position(a in src) > 0 then
-    src := replace(src, a, '    when c = ''ptask'' then d->>''owner'' = me->>''id''');
+    src := replace(src, a, '    when c = ''ptask'' then d->>''owner'' = me->>''id'' or me->>''role'' = ''owner''' || chr(10));
     execute src;
-  elsif position('when c = ''ptask'' then d->>''owner'' = me->>''id''' in src) = 0 then
+  elsif position('when c = ''ptask'' then d->>''owner'' = me->>''id'' or me->>''role'' = ''owner''' in src) = 0 then
     raise exception 'can_see2 ptask rule not found';
   end if;
 end $$;

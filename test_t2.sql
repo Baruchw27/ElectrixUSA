@@ -109,9 +109,9 @@ select pg_temp.expect('Menachem sends HIS OWN task to his Trello', $q$select pub
 reset role;
 select pg_temp.check('… card on orders → Pending', (select d->>'list'='L_pend' and d->>'t'='Clean the van' from (select pg_temp.pt('pt_u3_job_zzT2k') d) x), (select pg_temp.pt('pt_u3_job_zzT2k')::text));
 
--- ── privacy: only Menachem sees and changes his Trello — not the owner ──
+-- ── privacy: only Menachem changes his Trello; the owner can only look ──
 select pg_temp.who('u1'); set local role authenticated;
-select pg_temp.check('the owner does NOT see Menachem''s Trello cards', (select count(*)=0 from records where coll='ptask' and data->>'owner'='u3'), null);
+select pg_temp.check('the owner CAN look at Menachem''s Trello (read-only, when he switches to him)', (select count(*)>0 from records where coll='ptask' and data->>'owner'='u3'), null);
 select pg_temp.expect('… and cannot change one', $q$update records set data = data || '{"done":true}' where coll='ptask' and id='pt_u3_job_zzT2j'$q$, 'blocked');
 select pg_temp.check('… but sees that Menachem is connected (for "Send to Menachem''s Trello")', (select count(*)=1 from public.trello_people() where emp='u3'), null);
 reset role;
