@@ -36,8 +36,14 @@ reset role;
 select pg_temp.check('… sentBy unchanged', (select pg_temp.jb('zzB1a')->'sentBy' = '["u2"]'::jsonb), (select pg_temp.jb('zzB1a')->>'sentBy'));
 
 select pg_temp.who('u3'); set local role authenticated;
-select pg_temp.expect('Olga sends it on to the owner', $q$update records set data = data || '{"to":["u1"]}' where coll='jobs' and id='zzB1a'$q$, 'ok');
+select pg_temp.expect('a plain save cannot hand it away (the database refuses — the app uses "send")', $q$update records set data = data || '{"to":["u1"]}' where coll='jobs' and id='zzB1a'$q$, 'blocked');
+select pg_temp.expect('Olga sends it on to the owner', $q$select public.send_task('zzB1a','["u1"]')$q$, 'ok');
+select pg_temp.expect('… sending it again (no longer hers)', $q$select public.send_task('zzB1a','["u2"]')$q$, 'blocked');
 reset role;
+select pg_temp.who('u8'); set local role authenticated;
+select pg_temp.expect('a worker cannot send someone else''s task', $q$select public.send_task('zzB1a','["u8"]')$q$, 'blocked');
+reset role;
+select pg_temp.check('… the owner is told it was moved to him', pg_temp.inbox('u1','Moved to you by%ZZ order the 200A panel%') = 1, (select string_agg(data->>'msg',' | ') from records where coll='inbox' and data->>'to'='u1' and updated_at > now() - interval '1 minute'));
 select pg_temp.check('… it left Olga''s board', not pg_temp.sees('u3','zzB1a'), null);
 select pg_temp.check('… it is the owner''s now; Mark and Olga both remembered as senders', pg_temp.sees('u1','zzB1a') and (select pg_temp.jb('zzB1a')->'sentBy' = '["u2","u3"]'::jsonb), (select pg_temp.jb('zzB1a')->>'sentBy'));
 

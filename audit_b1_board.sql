@@ -36,7 +36,7 @@ begin
   o := case when tg_op = 'UPDATE' and not old.deleted and jsonb_typeof(old.data) = 'object' then old.data end;
   sb := coalesce(o->'sentBy', case when o is null then n->'sentBy' end, '[]'::jsonb);
   if jsonb_typeof(sb) <> 'array' then sb := '[]'::jsonb; end if;
-  if current_user in ('authenticated','anon') and auth.uid() is not null then
+  if auth.uid() is not null then                 -- a person's change (not the server's own work)
     me := public.my_emp_data(); actor := me->>'id'; crew := coalesce(nullif(me->>'crew',''), '~');
     if coalesce(actor,'') <> '' and (o is null or private.task_holders(n) is distinct from private.task_holders(o)) then
       holds := private.task_holders(n) ?| array[actor, crew];
@@ -98,3 +98,29 @@ revoke all on function public.guard_bcol() from public, anon, authenticated, ser
 grant execute on function public.guard_bcol() to authenticated, service_role;
 create or replace trigger records_guard_bcol before insert or update on public.records for each row
   when (new.coll = 'bcol'::text) execute function public.guard_bcol();
+
+-- 5) send a task on (it leaves your board, lands on theirs). A plain save cannot do this: after it, the task is no
+--    longer yours to see, so the database refuses the change — this does it for you after checking you hold it.
+create or replace function public.send_task(p_id text, p_to jsonb)
+ returns jsonb language plpgsql security definer set search_path to 'public' as $function$
+declare me jsonb := public.my_emp_data(); j jsonb; x text; nd jsonb;
+begin
+  if coalesce(me->>'id','') = '' then raise exception 'sign in first' using errcode = '42501'; end if;
+  select data into j from public.records where coll = 'jobs' and id = p_id and not deleted for update;
+  if j is null then raise exception 'that task is not there any more' using errcode = '22023'; end if;
+  if not (me->>'role' = 'owner' or private.task_holders(j) ?| array[me->>'id', coalesce(nullif(me->>'crew',''), '~')]) then
+    raise exception 'this task is not on your board' using errcode = '42501'; end if;
+  if me->>'role' = 'worker' and not coalesce((me->>'lead')::boolean, false) and j->>'from' is distinct from me->>'id' then
+    raise exception 'only the office or a crew leader can send a job on' using errcode = '42501'; end if;
+  if jsonb_typeof(p_to) <> 'array' or jsonb_array_length(p_to) = 0 or jsonb_array_length(p_to) > 20 then
+    raise exception 'pick who gets it' using errcode = '22023'; end if;
+  for x in select jsonb_array_elements_text(p_to) loop
+    if not exists (select 1 from public.records r where r.coll in ('emps','crews') and r.id = x and not r.deleted) then
+      raise exception 'unknown person or crew: %', x using errcode = '22023'; end if;
+  end loop;
+  update public.records set data = data || jsonb_build_object('to', p_to), updated_by = me->>'id'
+   where coll = 'jobs' and id = p_id returning data into nd;
+  return jsonb_build_object('ok', true, 'row', jsonb_build_object('coll','jobs','id',p_id,'data',nd,'deleted',false));
+end $function$;
+revoke all on function public.send_task(text, jsonb) from public, anon;
+grant execute on function public.send_task(text, jsonb) to authenticated;
