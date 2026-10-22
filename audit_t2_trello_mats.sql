@@ -180,7 +180,7 @@ begin
       'done', coalesce(n->'done','false'::jsonb), 'push', true, 'eat', nowms, 'eby', me->>'id', 'created', nowms);
     return new;
   end if;
-  if o->>'owner' is distinct from me->>'id' and me->>'role' <> 'owner' then raise exception 'not allowed' using errcode = '42501'; end if;
+  if o->>'owner' is distinct from me->>'id' then raise exception 'not allowed' using errcode = '42501'; end if;   -- only the person himself
   -- a move: to a list that is really on one of the card owner's boards (any board — job Name's, orders, …)
   if o->>'card' is not null and n ? 'list' and coalesce(n->>'list','') <> '' and n->'list' is distinct from o->'list' then
     select bb, ll into tb, tl from public.records r, jsonb_array_elements(coalesce(r.data->'boards','[]'::jsonb)) bb, jsonb_array_elements(coalesce(bb->'lists','[]'::jsonb)) ll
@@ -199,3 +199,26 @@ begin
 end $function$;
 revoke all on function public.guard_ptask() from public, anon, authenticated, service_role;
 grant execute on function public.guard_ptask() to authenticated, service_role;
+
+-- 4) privacy (Baruch 2026-10-21 19:58): a person's Trello is seen and changed ONLY by that person — not by the owner.
+--    (The owner can still SEND a task into it with task_to_trello, which never shows him the board.)
+do $$
+declare src text; a text := '    when c = ''ptask'' then d->>''owner'' = me->>''id'' or me->>''role'' = ''owner''';
+begin
+  src := pg_get_functiondef('public.can_see2(text,jsonb,jsonb)'::regprocedure);
+  if position(a in src) > 0 then
+    src := replace(src, a, '    when c = ''ptask'' then d->>''owner'' = me->>''id''');
+    execute src;
+  elsif position('when c = ''ptask'' then d->>''owner'' = me->>''id''' in src) = 0 then
+    raise exception 'can_see2 ptask rule not found';
+  end if;
+end $$;
+-- connected people for the owner's "Send to …'s Trello" button: names only, never the board
+create or replace function public.trello_people()
+ returns table(emp text, member text, connected_at text)
+ language sql stable security definer set search_path to 'public' as $function$
+  select substr(k, length('trello_user:') + 1), (v::jsonb)->>'fullName', (v::jsonb)->>'at' from public.server_config
+   where k like 'trello\_user:%' and ((public.my_emp_data()->>'role') = 'owner' or substr(k, length('trello_user:') + 1) = public.my_emp_data()->>'id')
+$function$;
+revoke all on function public.trello_people() from public, anon;
+grant execute on function public.trello_people() to authenticated;
