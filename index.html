@@ -5,10 +5,10 @@
 <meta name="theme-color" content="#ffffff"><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Electrix Field</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
-<script>window.EX_VER='vtr21021';</script><script src="config.js"></script>
+<script>window.EX_VER='vtr21021b';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vtr21021"></script>
-<script src="extras.js?vtr21021"></script>
+<script src="sync.js?vtr21021b"></script>
+<script src="extras.js?vtr21021b"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -4766,7 +4766,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vtr21021"></script><script src="scanner-v2-ui.js?vtr21021"></script><script src="sched-v21.js?vtr21021"></script>
+<script src="scanner-v2.js?vtr21021b"></script><script src="scanner-v2-ui.js?vtr21021b"></script><script src="sched-v21.js?vtr21021b"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
@@ -4776,6 +4776,8 @@ let ptWho=null,ptShowDone=false,ptEdit=null,ptAdding=false,ptSyncT=null,ptView='
 const PT_CFG={o2:{main:'69b8547f289d0bc27e1ae4df',daily:'69b81ac4ca472d409d18ff0f'}};
 function ptCfgFor(o){const c=PT_CFG[o];const meta=c&&ptGet('ptmeta_'+o);return c&&meta&&(meta.boards||[]).some(b=>b.id===c.main)?c:null;}
 // a person's Trello is ONLY his (Baruch 2026-10-21): nobody else — not even the owner — sees it
+// the owner switched to someone ("view as") → he may LOOK at that person's Trello, never change it
+function ptRO(){return !!(window.EX_REAL&&window.EX_ME&&D.role!==window.EX_ME);}
 function ptAvail(){const m=me();return !!m&&(D.ptask||[]).some(x=>x&&x.meta&&x.owner===m.id);}
 function ptOwners(){const m=me();return m&&ptAvail()?[m.id]:[];}
 // who is connected (names only) — for the owner's "Send to …'s Trello" button
@@ -4801,7 +4803,7 @@ function ptTarget(x){if(!ptIsMirror(x))return null;ptMaps();const y=PT_LK[ptShor
 function ptMirrorsOf(x){ptMaps();const k=ptShort(x.url);return k?(PT_MI[k]||[]).filter(m=>m.owner===x.owner):[];}
 function ptTitle(x){if(!ptIsMirror(x))return x.t||'';const y=ptTarget(x);return y?(y.t||''):'🔗 '+t('Linked Trello card');}
 function ptRow(x,withJob){const id=jsq(x.id);const url=/^https:\/\/trello\.com\//.test(x.url||'')?safeHref(x.url):'';const m=me();const cfg=ptCfgFor(x.owner);
-  const ed=ptEdit===x.id,mine=x.owner===m.id;const mir=cfg?ptMirrorsOf(x):[];
+  const ro=ptRO();const ed=!ro&&ptEdit===x.id,mine=!ro&&x.owner===m.id;const mir=cfg?ptMirrorsOf(x):[];
   const badges=mir.map(y=>'<span class="ptbd" style="display:inline-block;font-size:12px;padding:2px 8px;border-radius:10px;margin:4px 4px 0 0;background:var(--g1,#eef2f7);color:var(--blue-mid)">'+(cfg&&y.board===cfg.daily?'📅 '+esc(y.listName||''):esc(String(y.boardName||'').trim())+': '+esc(y.listName||''))+'</span>').join('');
   let day='';
   if(ptDayOpen===x.id&&cfg){const meta=ptGet('ptmeta_'+x.owner)||{boards:[]};const db=(meta.boards||[]).find(b=>b.id===cfg.daily)||{lists:[]};const cur=(mir.find(y=>y.board===cfg.daily)||{}).list||'';
@@ -4809,7 +4811,7 @@ function ptRow(x,withJob){const id=jsq(x.id);const url=/^https:\/\/trello\.com\/
   if(ptMoveOpen===x.id){const meta=ptGet('ptmeta_'+x.owner)||{boards:[]};
     day+='<div class="card ptmovebox" style="padding:8px 10px;margin-top:6px"><div style="font-size:13px;color:var(--g5);margin-bottom:6px">⇄ '+t('Move to')+'</div><select id="ptMoveSel" style="margin-bottom:6px">'+(meta.boards||[]).map(b=>'<optgroup label="'+esc(String(b.name||'').trim())+'">'+(b.lists||[]).map(l=>'<option value="'+esc(l.id)+'"'+(l.id===x.list?' selected':'')+'>'+esc(l.name)+'</option>').join('')+'</optgroup>').join('')+'</select><div style="display:flex;gap:6px"><button class="btn" style="padding:9px" onclick="ptMove(\''+id+'\')">'+t('Move')+'</button><button class="btn sec2" style="padding:9px" onclick="ptMoveOpen=null;renderTrello()">'+t('Cancel')+'</button></div></div>';}
   return '<div class="card ptrow" data-id="'+esc(x.id)+'" style="padding:10px 12px;display:flex;gap:12px;align-items:flex-start;margin-bottom:8px">'
-   +'<input type="checkbox" class="ptchk" '+(x.done?'checked':'')+' onchange="ptDone(\''+id+'\',this.checked)" aria-label="'+t('Done')+'" style="width:28px;height:28px;flex:0 0 28px;margin-top:2px;box-shadow:none">'
+   +'<input type="checkbox" class="ptchk" '+(x.done?'checked':'')+(ro?' disabled':'')+' onchange="ptDone(\''+id+'\',this.checked)" aria-label="'+t('Done')+'" style="width:28px;height:28px;flex:0 0 28px;margin-top:2px;box-shadow:none">'
    +'<div style="flex:1;min-width:0">'
    +(ed?'<input id="ptEt" value="'+esc(x.t||'')+'" style="margin-bottom:6px"><textarea id="ptEd" rows="4" placeholder="'+t('Notes')+'" style="white-space:pre-wrap">'+esc(x.desc||'')+'</textarea><div style="display:flex;gap:6px;margin-top:6px"><button class="btn" style="padding:10px" onclick="ptSave(\''+id+'\')">'+t('Save')+'</button><button class="btn sec2" style="padding:10px" onclick="ptEdit=null;renderTrello()">'+t('Cancel')+'</button></div>'
       :'<div class="ptt" style="font-weight:600;white-space:pre-wrap;word-break:break-word'+(x.done?';text-decoration:line-through;color:var(--g4)':'')+'">'+esc(ptTitle(x))+'</div>'
@@ -4818,28 +4820,28 @@ function ptRow(x,withJob){const id=jsq(x.id);const url=/^https:\/\/trello\.com\/
        +(badges?'<div class="ptbds">'+badges+'</div>':'')
        +((x.start||x.due||x.push||x.pushErr)?'<div class="ptdates" style="font-size:12px;color:var(--g4);margin-top:4px">'+[x.start?'▶ '+new Date(x.start).toLocaleDateString(LOC(),{month:'short',day:'numeric'}):'',x.due?'🏁 '+new Date(x.due).toLocaleDateString(LOC(),{month:'short',day:'numeric'}):'',x.push?'⏳ '+t('sending to Trello…'):'',x.pushErr?'<span style="color:#c0392b">⚠ '+t('Trello did not take this change yet — it will try again')+'</span>':''].filter(Boolean).join(' · ')+'</div>':'')
        +day)
-   +'</div><div style="display:flex;flex-direction:column;gap:4px">'+(ed?'':'<button class="bs" onclick="ptEdit=\''+id+'\';renderTrello()" aria-label="'+t('Edit')+'">✎</button>')
+   +'</div><div style="display:flex;flex-direction:column;gap:4px">'+(ed||ro?'':'<button class="bs" onclick="ptEdit=\''+id+'\';renderTrello()" aria-label="'+t('Edit')+'">✎</button>')
    +(!ed&&url&&mine?'<button class="bs ptmovebtn" onclick="ptMoveOpen=ptMoveOpen===\''+id+'\'?null:\''+id+'\';ptDayOpen=null;renderTrello()" aria-label="'+t('Move to')+'">⇄</button>':'')
    +(cfg&&mine&&!ed&&x.board===cfg.main&&url&&!x.done?'<button class="bs ptdaybtn" onclick="ptDayOpen=ptDayOpen===\''+id+'\'?null:\''+id+'\';renderTrello()" aria-label="'+t('Which day?')+'">📅</button>':'')
    +(url?'<a class="bs" href="'+url+'" target="_blank" rel="noopener" aria-label="Trello">↗</a>':'')+'</div></div>';}
 // move a card to any list on any of his boards — it stays there and moves in Trello too
-function ptMove(id){const x=ptGet(id);const m=me();const sel=document.getElementById('ptMoveSel');if(!x||!sel||x.owner!==m.id)return;const v=sel.value;
+function ptMove(id){if(ptRO())return;const x=ptGet(id);const m=me();const sel=document.getElementById('ptMoveSel');if(!x||!sel||x.owner!==m.id)return;const v=sel.value;
   const meta=ptGet('ptmeta_'+x.owner)||{boards:[]};let b=null,l=null;(meta.boards||[]).forEach(bb=>(bb.lists||[]).forEach(ll=>{if(ll.id===v){b=bb;l=ll;}}));if(!l)return;
   ptMoveOpen=null;if(x.list===v){renderTrello();return;}
   x.list=l.id;x.listName=l.name;x.board=b.id;x.boardName=b.name;x.push=true;ptMaps.dirty=true;save();renderTrello();toast('⇄ '+String(b.name||'').trim()+' → '+l.name,'green');ptSyncSoon();}
 // plan a card for a day = its mirror on Daily Delivery check (made, or moved to the other day)
-function ptDay(id){const x=ptGet(id);const m=me();const cfg=(x&&ptCfgFor(x.owner));const sel=document.getElementById('ptDaySel');if(!x||!cfg||!sel||x.owner!==m.id)return;const v=sel.value;
+function ptDay(id){if(ptRO())return;const x=ptGet(id);const m=me();const cfg=(x&&ptCfgFor(x.owner));const sel=document.getElementById('ptDaySel');if(!x||!cfg||!sel||x.owner!==m.id)return;const v=sel.value;
   const meta=ptGet('ptmeta_'+x.owner)||{boards:[]};const db=(meta.boards||[]).find(b=>b.id===cfg.daily)||{lists:[]};const l=(db.lists||[]).find(z=>z.id===v);if(!l)return;
   const ex=ptMirrorsOf(x).find(y=>y.board===cfg.daily);
   if(ex){if(ex.list!==v){ex.list=v;ex.listName=l.name;ex.push=true;}}
   else{D.ptask=D.ptask||[];D.ptask.push({id:nid('pt'),owner:m.id,t:x.url,desc:'',board:cfg.daily,boardName:db.name||'',list:v,listName:l.name,done:false,push:true});}
   ptMaps.dirty=true;ptDayOpen=null;save();renderTrello();toast('📅 '+l.name,'green');ptSyncSoon();}
 function renderPT(){const m=me();const own=ptOwners();if(!ptWho||!own.includes(ptWho))ptWho=own.includes(m.id)?m.id:own[0];
-  const cfg=ptCfgFor(ptWho);const meta=ptGet('ptmeta_'+ptWho)||{boards:[]};const allB=meta.boards||[];const mine=ptWho===m.id;
+  const cfg=ptCfgFor(ptWho);const meta=ptGet('ptmeta_'+ptWho)||{boards:[]};const allB=meta.boards||[];const mine=ptWho===m.id&&!ptRO();
   const chipsW=own.length>1||ptWho!==m.id?own.map(o=>'<div class="chip '+(o===ptWho?'on':'')+'" onclick="ptWho=\''+jsq(o)+'\';ptEdit=null;ptAdding=false;ptDayOpen=null;renderTrello()">'+esc(o===m.id?t('Mine'):nameOf(o).split(' ')[0])+'</div>').join(''):'';
   const chipsV=cfg?'<div class="chip '+(ptView==='job'?'on':'')+'" id="ptVJob" onclick="ptView=\'job\';renderTrello()">🗂 '+t('By job')+'</div><div class="chip '+(ptView==='day'?'on':'')+'" id="ptVDay" onclick="ptView=\'day\';renderTrello()">📅 '+t('By day')+'</div>':'';
   document.getElementById('ptChips').innerHTML=chipsW+chipsV;
-  let h='<div class="note" style="margin-bottom:8px">📋 '+(mine?t('Your own Trello — only you see this.'):esc(nameOf(ptWho))+': '+t('their own Trello — only they and the owner see this.'))+' '+t('Last synced')+' '+(meta.syncedAt?when(meta.syncedAt):'—')+(mine?' <button class="bs" id="ptSyncBtn" onclick="ptSync(true)">↻ '+t('Sync now')+'</button>':'')+'</div>';
+  let h=(ptRO()?'<div class="note ptro" style="margin-bottom:8px;border-color:var(--blue-mid)">👁 '+esc(t('Looking at')+' '+nameOf(ptWho).split(' ')[0]+"'s Trello — "+t('read-only, nothing can be changed'))+'</div>':'')+'<div class="note" style="margin-bottom:8px">📋 '+(mine?t('Your own Trello — only you see this.'):esc(nameOf(ptWho))+': '+t('their own Trello — only they and the owner see this.'))+' '+t('Last synced')+' '+(meta.syncedAt?when(meta.syncedAt):'—')+(mine?' <button class="bs" id="ptSyncBtn" onclick="ptSync(true)">↻ '+t('Sync now')+'</button>':'')+'</div>';
   const boards=cfg?allB.filter(b=>b.id===cfg.main):allB;
   if(mine&&boards.some(b=>(b.lists||[]).length)){h+='<button class="btn" id="ptAddBtn" style="margin-bottom:8px" onclick="ptAdding=!ptAdding;renderTrello()">+ '+t('Add to my Trello')+'</button>';
     if(ptAdding)h+='<div class="card" style="padding:10px 12px;margin-bottom:10px"><select id="ptList" style="margin-bottom:6px">'+boards.map(b=>'<optgroup label="'+esc(b.name)+'">'+(b.lists||[]).map(l=>'<option value="'+esc(b.id+'|'+l.id)+'">'+esc(l.name)+'</option>').join('')+'</optgroup>').join('')+'</select><input id="ptNewT" placeholder="'+t('Task')+'" style="margin-bottom:6px"><textarea id="ptNewD" rows="3" placeholder="'+t('Notes (optional)')+'"></textarea><button class="btn" style="margin-top:6px" onclick="ptAdd()">'+t('Add')+'</button></div>';}
@@ -4889,11 +4891,11 @@ function ptListForSite(o,s){const cfg=ptCfgFor(o);if(!cfg||!s||!s.name)return nu
 function ptForSite(s){try{const m=me();if(!m)return '';const l=ptListForSite(m.id,s);if(!l)return '';
   const cs=(D.ptask||[]).filter(x=>x&&!x.meta&&x.owner===m.id&&!x.gone&&x.list===l.id);const open=cs.filter(x=>!x.done),dn=cs.length-open.length;
   return '<div class="card ptsite" style="padding:10px 12px;margin-bottom:10px;border-left:4px solid var(--blue-mid)"><div class="row" style="align-items:center;margin-bottom:6px"><div style="font-weight:700">📋 '+t('My Trello')+' <span style="font-weight:500;color:var(--g4);font-size:12px">· '+t('only you see this')+'</span></div><button class="bs" onclick="hide(\'m-folder\');ptView=\'job\';ptQ='+esc(JSON.stringify(String(l.name).split(',')[0]))+';goTab(\'trello\')">'+t('Open')+' ›</button></div>'
-   +(open.length?open.map(x=>'<div class="ptsrow" style="display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-top:1px solid var(--g2)"><input type="checkbox" '+(x.done?'checked':'')+' onchange="ptDone(\''+jsq(x.id)+'\',this.checked)" style="width:24px;height:24px;flex:0 0 24px;box-shadow:none"><div style="flex:1;min-width:0"><div style="font-weight:600;white-space:pre-wrap;word-break:break-word">'+esc(ptTitle(x))+'</div>'+(x.desc?'<div style="font-size:13px;color:var(--g5);white-space:pre-wrap;word-break:break-word;margin-top:2px">'+esc(x.desc)+'</div>':'')+((x.start||x.due)?'<div style="font-size:12px;color:var(--g4);margin-top:2px">'+[x.start?'▶ '+new Date(x.start).toLocaleDateString(LOC(),{month:'short',day:'numeric'}):'',x.due?'🏁 '+new Date(x.due).toLocaleDateString(LOC(),{month:'short',day:'numeric'}):''].filter(Boolean).join(' · ')+'</div>':'')+'</div></div>').join(''):'<div style="font-size:13px;color:var(--g4)">'+t('Nothing open on your Trello.')+'</div>')
+   +(open.length?open.map(x=>'<div class="ptsrow" style="display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-top:1px solid var(--g2)"><input type="checkbox" '+(x.done?'checked':'')+(ptRO()?' disabled':'')+' onchange="ptDone(\''+jsq(x.id)+'\',this.checked)" style="width:24px;height:24px;flex:0 0 24px;box-shadow:none"><div style="flex:1;min-width:0"><div style="font-weight:600;white-space:pre-wrap;word-break:break-word">'+esc(ptTitle(x))+'</div>'+(x.desc?'<div style="font-size:13px;color:var(--g5);white-space:pre-wrap;word-break:break-word;margin-top:2px">'+esc(x.desc)+'</div>':'')+((x.start||x.due)?'<div style="font-size:12px;color:var(--g4);margin-top:2px">'+[x.start?'▶ '+new Date(x.start).toLocaleDateString(LOC(),{month:'short',day:'numeric'}):'',x.due?'🏁 '+new Date(x.due).toLocaleDateString(LOC(),{month:'short',day:'numeric'}):''].filter(Boolean).join(' · ')+'</div>':'')+'</div></div>').join(''):'<div style="font-size:13px;color:var(--g4)">'+t('Nothing open on your Trello.')+'</div>')
    +(dn?'<div style="font-size:12px;color:var(--g4);margin-top:4px">✓ '+dn+' '+t('done')+'</div>':'')+'</div>';}catch(e){return '';}}
 // a task in the app → that person's Trello: the job's list on job Name's (made if the job has none yet), or a list picked
 let jtOpen=null;
-function jtTargets(j){const m=me();if(!m||!j||j.status==='done')return [];const out=[];
+function jtTargets(j){const m=me();if(!m||!j||j.status==='done'||ptRO())return [];const out=[];
   if(ptAvail()&&(has(j,m.id)||j.from===m.id))out.push(m.id);
   if(m.role==='owner')ptPeople().forEach(o=>{if(o!==m.id&&!out.includes(o))out.push(o);});return out;}
 function jtWhose(o){return o===me().id?t('my Trello'):nameOf(o).split(' ')[0]+"'s Trello";}
@@ -4917,13 +4919,13 @@ async function ptSync(loud){try{if(window.EX_saveNow)await window.EX_saveNow();}
   try{const r=await window.EX_sb.functions.invoke('trello-personal',{body:{}});const s=r&&r.data&&r.data.synced&&r.data.synced[0];
     if(loud)toast(s&&!s.error?'✓ '+t('Trello is up to date'):'⚠ '+t('Could not reach Trello — it will try again in a few minutes'),s&&!s.error?'green':undefined);
     if(window.EX_catchUp)window.EX_catchUp();}catch(e){if(loud)toast(t('Could not reach Trello — it will try again in a few minutes'));}}
-function ptDone(id,v){const x=ptGet(id);if(!x)return;x.done=!!v;x.push=true;ptMaps.dirty=true;if(v){try{buzz(15);}catch(e){}}save();renderTrello();ptSyncSoon();}
-function ptSave(id){const x=ptGet(id);if(!x)return;const tt=(document.getElementById('ptEt').value||'').trim();if(!tt){toast(t('Type the task'));return;}x.t=tt;x.desc=document.getElementById('ptEd').value;x.push=true;ptEdit=null;save();renderTrello();ptSyncSoon();}
-function ptAdd(){const m=me();const v=(document.getElementById('ptList').value||'').split('|');const tt=(document.getElementById('ptNewT').value||'').trim();if(!tt){toast(t('Type the task'));return;}
+function ptDone(id,v){if(ptRO()){renderTrello();return;}const x=ptGet(id);if(!x)return;x.done=!!v;x.push=true;ptMaps.dirty=true;if(v){try{buzz(15);}catch(e){}}save();renderTrello();ptSyncSoon();}
+function ptSave(id){if(ptRO()){renderTrello();return;}const x=ptGet(id);if(!x)return;const tt=(document.getElementById('ptEt').value||'').trim();if(!tt){toast(t('Type the task'));return;}x.t=tt;x.desc=document.getElementById('ptEd').value;x.push=true;ptEdit=null;save();renderTrello();ptSyncSoon();}
+function ptAdd(){if(ptRO()){renderTrello();return;}const m=me();const v=(document.getElementById('ptList').value||'').split('|');const tt=(document.getElementById('ptNewT').value||'').trim();if(!tt){toast(t('Type the task'));return;}
   const meta=ptGet('ptmeta_'+m.id)||{boards:[]};const b=(meta.boards||[]).find(x=>x.id===v[0])||{};const l=(b.lists||[]).find(x=>x.id===v[1])||{};
   D.ptask=D.ptask||[];D.ptask.push({id:nid('pt'),owner:m.id,t:tt,desc:document.getElementById('ptNewD').value||'',board:v[0],boardName:b.name||'',list:v[1],listName:l.name||'',done:false,push:true});
   ptAdding=false;save();renderTrello();toast('✓ '+t('Added — going to your Trello'),'green');ptSyncSoon();}
-try{Object.assign(ES,{"My Trello":"Mi Trello","Trello is not connected.":"Trello no está conectado.","Send to my Trello":"Enviar a mi Trello","Send to":"Enviar al","Which Trello list?":"¿Qué lista de Trello?","Send":"Enviar","Already in Trello":"Ya está en Trello","Sent — it shows in Trello in a minute":"Enviado — aparece en Trello en un minuto","You need internet to send it to Trello":"Necesitas internet para enviarlo a Trello","my Trello":"mi Trello","In":"En","By job":"Por trabajo","By day":"Por día","Which day?":"¿Qué día?","Search a job or a card":"Buscar un trabajo o una tarjeta","Nothing found":"No se encontró nada","Linked Trello card":"Tarjeta de Trello enlazada","Late":"Atrasado","This task has no job — it goes into the job's list on his Trello, so pick a job for the task first.":"Esta tarea no tiene trabajo — va a la lista del trabajo en su Trello, así que primero elige un trabajo para la tarea.","only you see this":"solo tú lo ves","Move to":"Mover a","Other":"Otros","Late — the due date passed, not ticked done":"Atrasado — pasó la fecha y no está marcado","Tomorrow":"Mañana","Nothing for this day.":"Nada para este día.","Every day — billing & stock (not priority)":"Todos los días — facturación y stock (sin prioridad)","The job's list":"La lista del trabajo","Nothing planned on a day yet — use 📅 on a card.":"Nada planeado para un día todavía — usa 📅 en una tarjeta.","Your own Trello — only you see this.":"Tu propio Trello — solo tú lo ves.","their own Trello — only they and the owner see this.":"su propio Trello — solo esa persona y el dueño lo ven.","Last synced":"Última sincronización","Sync now":"Sincronizar","Add to my Trello":"Agregar a mi Trello","Notes (optional)":"Notas (opcional)","Nothing open on your Trello.":"Nada pendiente en tu Trello.","sending to Trello…":"enviando a Trello…","Trello did not take this change yet — it will try again":"Trello aún no aceptó este cambio — lo intentará de nuevo","Trello is up to date":"Trello está al día","Could not reach Trello — it will try again in a few minutes":"No se pudo conectar con Trello — lo intentará en unos minutos","Added — going to your Trello":"Agregado — va a tu Trello","Saved on the phone — it goes to Trello when you are online":"Guardado en el teléfono — irá a Trello cuando tengas conexión","Type the task":"Escribe la tarea","Mine":"Mías"});}catch(e){}
+try{Object.assign(ES,{"My Trello":"Mi Trello","Trello is not connected.":"Trello no está conectado.","Send to my Trello":"Enviar a mi Trello","Send to":"Enviar al","Which Trello list?":"¿Qué lista de Trello?","Send":"Enviar","Already in Trello":"Ya está en Trello","Sent — it shows in Trello in a minute":"Enviado — aparece en Trello en un minuto","You need internet to send it to Trello":"Necesitas internet para enviarlo a Trello","my Trello":"mi Trello","In":"En","By job":"Por trabajo","By day":"Por día","Which day?":"¿Qué día?","Search a job or a card":"Buscar un trabajo o una tarjeta","Nothing found":"No se encontró nada","Linked Trello card":"Tarjeta de Trello enlazada","Late":"Atrasado","Looking at":"Viendo","read-only, nothing can be changed":"solo lectura, no se puede cambiar nada","This task has no job — it goes into the job's list on his Trello, so pick a job for the task first.":"Esta tarea no tiene trabajo — va a la lista del trabajo en su Trello, así que primero elige un trabajo para la tarea.","only you see this":"solo tú lo ves","Move to":"Mover a","Other":"Otros","Late — the due date passed, not ticked done":"Atrasado — pasó la fecha y no está marcado","Tomorrow":"Mañana","Nothing for this day.":"Nada para este día.","Every day — billing & stock (not priority)":"Todos los días — facturación y stock (sin prioridad)","The job's list":"La lista del trabajo","Nothing planned on a day yet — use 📅 on a card.":"Nada planeado para un día todavía — usa 📅 en una tarjeta.","Your own Trello — only you see this.":"Tu propio Trello — solo tú lo ves.","their own Trello — only they and the owner see this.":"su propio Trello — solo esa persona y el dueño lo ven.","Last synced":"Última sincronización","Sync now":"Sincronizar","Add to my Trello":"Agregar a mi Trello","Notes (optional)":"Notas (opcional)","Nothing open on your Trello.":"Nada pendiente en tu Trello.","sending to Trello…":"enviando a Trello…","Trello did not take this change yet — it will try again":"Trello aún no aceptó este cambio — lo intentará de nuevo","Trello is up to date":"Trello está al día","Could not reach Trello — it will try again in a few minutes":"No se pudo conectar con Trello — lo intentará en unos minutos","Added — going to your Trello":"Agregado — va a tu Trello","Saved on the phone — it goes to Trello when you are online":"Guardado en el teléfono — irá a Trello cuando tengas conexión","Type the task":"Escribe la tarea","Mine":"Mías"});}catch(e){}
 </script>
 
 
