@@ -240,7 +240,7 @@ drop trigger if exists records_change on public.records;
 create trigger records_change after insert or update on public.records
 for each row execute function public.on_record_change();
 
--- ===== meeting reminder on the phone 15 minutes before (runs every minute on the server) =====
+-- ===== meeting reminder on the phone 30 minutes before (runs every minute on the server) =====
 -- Keys for the notify function also live in server_config: secret, vapid_public, vapid_private.
 do $c$ begin create extension if not exists pg_cron; exception when others then null; end $c$;
 create or replace function public.meeting_reminders() returns integer
@@ -253,7 +253,7 @@ begin
     where r.coll='meets' and not r.deleted
       and (r.data->>'at') ~ '^[0-9]+$'
       and (r.data->>'at')::bigint > nowms
-      and (r.data->>'at')::bigint <= nowms + 15*60*1000
+      and (r.data->>'at')::bigint <= nowms + 30*60*1000
       and coalesce(r.data->>'ping15','') <> (r.data->>'at')
   loop
     msg := '⏰ ' || to_char(to_timestamp((m.data->>'at')::bigint/1000) at time zone 'America/New_York', 'FMHH12:MI AM')
