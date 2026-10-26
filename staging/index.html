@@ -5,10 +5,10 @@
 <meta name="theme-color" content="#ffffff"><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Electrix Field</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
-<script>window.EX_VER='vm2e1026';</script><script src="config.js"></script>
+<script>window.EX_VER='vm2f1026';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vm2e1026"></script>
-<script src="extras.js?vm2e1026"></script>
+<script src="sync.js?vm2f1026"></script>
+<script src="extras.js?vm2f1026"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -2390,10 +2390,10 @@ function pvSave(){const src=pvList[pvI];if(!src)return;if(typeof dlPhoto==='func
 // ───────────── TRELLO JOBS (General Overview board) ─────────────
 const STAGE={upcoming:['Upcoming','b-ov'],ready:['Confirmed jobs','b-wait'],active:['Roughing','b-prog'],inspection:['Finishing','b-prog'],done:['Complete','b-done'],priced:['Upcoming','b-ov']};
 const STAGE_ORDER=['upcoming','ready','active','inspection','done'];const stageRank=_stRank;
-const stOpen=new Set(['active']);function stToggle(k){if(stOpen.has(k))stOpen.delete(k);else{[...stOpen].forEach(x=>{if(x!=='active')stOpen.delete(x);});stOpen.add(k);}if(document.getElementById('pg-sites').classList.contains('on'))renderSites();else renderJobs();}
+const stOpen=new Set();function stToggle(k){if(stOpen.has(k))stOpen.delete(k);else{stOpen.clear();stOpen.add(k);}if(document.getElementById('pg-sites').classList.contains('on'))renderSites();else renderJobs();}
 const STAGE_ICON={active:'🚧',ready:'🟢',inspection:'🏛',upcoming:'🗓',priced:'💲',done:'✅'};
 function stSec(k,n){const open=stOpen.has(k);
-  if(open)return '<div class="sec" style="margin-top:14px;cursor:pointer;display:flex;justify-content:space-between;color:var(--blue-mid)" onclick="stToggle(\''+jsq(k)+'\')"><span>'+STAGE_ICON[k]+' '+t(STAGE[k][0])+' · '+n+'</span><span>'+(k==='active'?'':t('close')+' ▾')+'</span></div>';
+  if(open)return '<div class="sec" style="margin-top:14px;cursor:pointer;display:flex;justify-content:space-between;color:var(--blue-mid)" onclick="stToggle(\''+jsq(k)+'\')"><span>'+STAGE_ICON[k]+' '+t(STAGE[k][0])+' · '+n+'</span><span>'+(t('close')+' ▾')+'</span></div>';
   return '<div class="card" style="padding:13px 14px;margin:0 0 8px;cursor:pointer;display:flex;align-items:center;gap:12px" onclick="stToggle(\''+jsq(k)+'\')"><span style="font-size:24px">📁</span><div style="flex:1"><b style="font-size:16px">'+t(STAGE[k][0])+'</b><div style="font-size:12px;color:var(--g4)">'+n+' '+t('jobs')+'</div></div><span style="color:var(--g3);font-size:20px">›</span></div>';}
 function stageBadge(s){const st=STAGE[s.stage||'active']||STAGE.active;const ed=canEditFolder(me());return '<span class="badge '+st[1]+'" style="font-weight:600;'+(ed?'cursor:pointer':'')+'"'+(ed?' onclick="event.stopPropagation();pickStage(\''+jsq(s.id)+'\')"':'')+'>'+t(st[0])+(ed?' ▾':'')+'</span>';}
 let stgSite=null;function pickStage(id){const s=D.sites.find(x=>x.id===id);if(!s)return;stgSite=id;document.getElementById('stgTitle').textContent=s.name;
@@ -4762,7 +4762,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vm2e1026"></script><script src="scanner-v2-ui.js?vm2e1026"></script><script src="sched-v21.js?vm2e1026"></script><script src="selftest.js?vm2e1026"></script>
+<script src="scanner-v2.js?vm2f1026"></script><script src="scanner-v2-ui.js?vm2f1026"></script><script src="sched-v21.js?vm2f1026"></script><script src="selftest.js?vm2f1026"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
