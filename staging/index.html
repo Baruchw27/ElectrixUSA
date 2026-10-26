@@ -5,10 +5,10 @@
 <meta name="theme-color" content="#ffffff"><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Electrix Field</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
-<script>window.EX_VER='vm2d1026';</script><script src="config.js"></script>
+<script>window.EX_VER='vm2e1026';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vm2d1026"></script>
-<script src="extras.js?vm2d1026"></script>
+<script src="sync.js?vm2e1026"></script>
+<script src="extras.js?vm2e1026"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -568,7 +568,7 @@ html[data-theme=dark] .sc-av.in{background:#173B2A;color:#7EE0AE}html[data-theme
 
 <div class="tabs">
   <button class="tab" onclick="tab('home',this)" data-prim="1"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/></svg><span data-i18n="Home">Home</span></button>
-  <button class="tab" onclick="tab('sites',this)"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><span data-i18n="Sites">Sites</span></button><button class="tab on" onclick="tab('jobs',this)"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span data-i18n="Jobs">Jobs</span></button>
+  <button class="tab" onclick="tab('sites',this)"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><span data-i18n="Sites">Sites</span></button><button class="tab on" onclick="tab('jobs',this)"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span data-i18n="Tasks">Tasks</span></button>
   <button class="tab" onclick="tab('msg',this)" style="position:relative"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span data-i18n="Messages">Messages</span><span id="msgN" style="position:absolute;top:4px;right:14px;background:#c0392b;color:#fff;font-size:10px;border-radius:9px;padding:1px 5px;display:none"></span></button>
   <button class="tab" onclick="tab('cal',this)"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/><path d="M8 2h8"/></svg><span data-i18n="Meetings">Meetings</span></button>
   <button class="tab" onclick="tab('sched',this)"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span data-i18n="Schedule">Schedule</span></button>
@@ -3605,7 +3605,7 @@ function renderMsgBadge(){const m=me();const gk=myGroups(m).map(g=>'g:'+g.id);co
 
 // ───────────── HOME — one glance for owner / all-access. Primary tabs + "More" for the rest ─────────────
 const PRIMARY={owner:['home','cal','sites','jobs','sched','hours','mat','more'],all:['home','sites','jobs','sched','hours','code','more'],manager:['home','sites','jobs','sched','punch','code','more'],office:['jobs','mat','exp','cal','code','more'],lead:['punch','jobs','mat','van','code','exp','more'],worker:['punch','mat','van','code','exp','more']};
-const TABMETA={van:['🚐','Van'],code:['🧮','Code'],home:['🏠','Home'],jobs:['📋','Jobs'],msg:['💬','Messages'],cal:['🕑','Meetings'],sched:['📅','Schedule'],team:['👥','Team'],punch:['⏱','Punch'],hours:['🕒','Hours'],mat:['📦','Material'],exp:['💵','Money'],tools:['🔧','Garage'],est:['📐','Estimates'],svc:['🔧','Service'],rep:['📊','Reports'],sites:['📁','Jobs'],more:['⋯','More']};
+const TABMETA={van:['🚐','Van'],code:['🧮','Code'],home:['🏠','Home'],jobs:['📋','Tasks'],msg:['💬','Messages'],cal:['🕑','Meetings'],sched:['📅','Schedule'],team:['👥','Team'],punch:['⏱','Punch'],hours:['🕒','Hours'],mat:['📦','Material'],exp:['💵','Money'],tools:['🔧','Garage'],est:['📐','Estimates'],svc:['🔧','Service'],rep:['📊','Reports'],sites:['📁','Jobs'],more:['⋯','More']};
 function goTab(n){const b=document.querySelector('.tab[onclick*="\''+jsq(n)+'\'"]');if(b){b.style.display='';b.click();}}
 function primaryFor(m){if(m.role==='owner'||m.all)return m.role==='owner'?PRIMARY.owner:PRIMARY.all;if(m.role==='manager')return PRIMARY.manager;if(m.role==='office')return PRIMARY.office;if(m.lead)return PRIMARY.lead;return PRIMARY.worker;}
 function renderMore(){const m=me();const prim=primaryFor(m);const allowed=[...document.querySelectorAll('.tab')].filter(b=>b.dataset.allowed==='1').map(b=>b.getAttribute('onclick').match(/'([a-z]+)'/)[1]);
@@ -4762,7 +4762,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vm2d1026"></script><script src="scanner-v2-ui.js?vm2d1026"></script><script src="sched-v21.js?vm2d1026"></script><script src="selftest.js?vm2d1026"></script>
+<script src="scanner-v2.js?vm2e1026"></script><script src="scanner-v2-ui.js?vm2e1026"></script><script src="sched-v21.js?vm2e1026"></script><script src="selftest.js?vm2e1026"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
