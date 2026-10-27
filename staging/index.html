@@ -5,10 +5,10 @@
 <meta name="theme-color" content="#ffffff"><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Electrix Field</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
-<script>window.EX_VER='vm3a1027';</script><script src="config.js"></script>
+<script>window.EX_VER='vm3b1027';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vm3a1027"></script>
-<script src="extras.js?vm3a1027"></script>
+<script src="sync.js?vm3b1027"></script>
+<script src="extras.js?vm3b1027"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -2136,7 +2136,7 @@ function renderPL(){const sel=document.getElementById('plSite');if(sel.value==='
   const list=pl(plSiteId,plPh);const done=list.filter(x=>x.done).length;document.getElementById('plProg').innerHTML=list.length?'<div style="height:8px;background:var(--g1);border-radius:4px;overflow:hidden;margin-bottom:4px"><div style="width:'+Math.round(done/list.length*100)+'%;height:100%;background:var(--green)"></div></div>'+done+' / '+list.length+' '+t('done')+(done===list.length&&list.length?' · ✓ '+t('complete'):''):'';
   const order={};list.slice().sort((a,b)=>a.ts-b.ts).forEach((x,i)=>order[x.id]=i+1);document.getElementById('plList').innerHTML=list.length?list.slice().sort((a,b)=>(a.done?1:0)-(b.done?1:0)||a.ts-b.ts).map(x=>'<div class="ck '+(x.done?'done':'')+'" onclick="plToggle(\''+jsq(x.id)+'\')"><span class="num">'+order[x.id]+'.</span><span class="bx">'+(x.done?'✓':'')+'</span><span class="tx">'+esc(x.text)+'<span class="who">'+(x.done?'✓ '+esc(nameOf(x.doneBy))+' · '+when(x.doneAt):t('added by')+' '+esc(nameOf(x.by)))+'</span></span>'+(canDelPL(x)?'<span class="x" onclick="event.stopPropagation();plDel(\''+jsq(x.id)+'\')">×</span>':'')+'</div>').join(''):'<div style="font-size:13px;color:var(--g3);padding:10px 0">'+t('Nothing on this list yet. Add the first item below.')+'</div>';}
 const isBoss=m=>!!m&&(m.role==='owner'||m.role==='manager'||!!m.all||(m.role==='office'&&m.title==='Payroll'));
-function siteVisible(s,m){m=m||me();if(!s)return false;if(isBoss(m)||m.allJobs)return true;if(m.crew&&s.crew===m.crew)return true;if((s.share||[]).some(x=>x===m.id||x===m.crew))return true;
+function siteVisible(s,m){m=m||me();if(!s)return false;if(isBoss(m)||m.allJobs||matAllJobs(m))return true;if(m.crew&&s.crew===m.crew)return true;if((s.share||[]).some(x=>x===m.id||x===m.crew))return true;
   const k=dkey(new Date());if(m.crew&&(schedDay(m.crew+'|'+k)||{}).site===s.id)return true;if(D.jobs.some(j=>j.site===s.id&&j.status!=='done'&&(j.to===m.id||j.to===m.crew||(j.tos||[]).includes(m.id))))return true;return false;}
 function liveSites(){return D.sites.filter(s=>s&&s.stage!=='lost');}
 function visSites(){const m=me();return liveSites().filter(s=>siteVisible(s,m));}
@@ -2512,7 +2512,7 @@ function setTrelloStage(k){const s=D.sites.find(x=>x.id===stgSite);const name=T4
   refreshAfterStage();trelloMoveNow();}
 let _tmvT=null;function trelloMoveNow(){clearTimeout(_tmvT);_tmvT=setTimeout(async()=>{try{if(window.EX_saveNow)await window.EX_saveNow();}catch(e){}
   try{if(window.EX_sb&&window.EX_sb.functions)await window.EX_sb.functions.invoke('trello-sync',{body:{}});}catch(e){}},800);}
-const canRoughDone=m=>!!m&&(m.role==='owner'||m.role==='manager'||!!m.all);
+const canRoughDone=m=>!!m&&(m.role==='owner'||m.role==='manager'||!!m.all||(m.role==='office'&&/^(shia|menachem)\b/i.test(String(m.name||'').trim())));
 function roughBtn(s){if(!s||!canRoughDone(me()))return '';const st=s.stage||'active';
   if(st==='active')return '<button class="btn gr" style="margin-top:10px" onclick="quickStage(\''+jsq(s.id)+'\',\'roughdone\')">✓ '+t('Rough complete')+'</button>';
   if(st==='roughdone')return '<button class="btn" style="margin-top:10px" onclick="quickStage(\''+jsq(s.id)+'\',\'inspection\')">'+t('Ready for finishing')+' →</button>';return '';}
@@ -4965,7 +4965,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vm3a1027"></script><script src="scanner-v2-ui.js?vm3a1027"></script><script src="sched-v21.js?vm3a1027"></script><script src="selftest.js?vm3a1027"></script>
+<script src="scanner-v2.js?vm3b1027"></script><script src="scanner-v2-ui.js?vm3b1027"></script><script src="sched-v21.js?vm3b1027"></script><script src="selftest.js?vm3b1027"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
