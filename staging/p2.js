@@ -106,7 +106,7 @@ P2.closeSheet=closeSheet;
 // ───────── 1. one "+" button everywhere ─────────
 const fab=document.createElement('button');fab.id='p2fab';fab.setAttribute('aria-label','New');fab.innerHTML=svg('plus',28);fab.hidden=true;fab.onclick=()=>openFab();document.body.appendChild(fab);
 function anyOpen(){if([...document.querySelectorAll('div.ov[id^="m-"]')].some(o=>!o.classList.contains('hid')&&o.id!=='m-folder'))return true;const pv=$('pv');if(pv&&!pv.hidden)return true;const o=$('p2ov');if(o&&!o.hidden)return true;return false;}
-function fabSync(){const m=M();const login=$('m-login');const signed=m&&!(login&&!login.classList.contains('hid'));fab.hidden=!signed||anyOpen()||P2.selMode;}
+function fabSync(){const m=M();const login=$('m-login');const signed=m&&!(login&&!login.classList.contains('hid'));fab.hidden=!signed||anyOpen()||P2.selMode||document.documentElement.classList.contains('p2crew');}
 setInterval(()=>{fabSync();try{navUpdate();}catch(e){}},400);
 function ctxSite(){try{const f=$('m-folder');if(f&&!f.classList.contains('hid')&&typeof fdSite!=='undefined'&&fdSite)return fdSite;}catch(e){}return null;}
 function canTask(m){return m&&(m.role!=='worker'||!!m.lead);}
