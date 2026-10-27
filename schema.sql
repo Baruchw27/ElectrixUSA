@@ -1105,3 +1105,36 @@ end $$;
 revoke all on function private.roughdone_tasks() from public, anon, authenticated;
 create or replace trigger records_zz_roughdone_tasks after insert or update on public.records
   for each row when (new.coll = 'sites') execute function private.roughdone_tasks();
+
+-- ===== Move alerts (2026-10-27, approved by Baruch): a PERSON moving a job to another folder in the app alerts
+-- server_config 'move_alert_to' (live: Shia o1 + Baruch u1) and the job's site manager(s), never the mover.
+-- Moves that come from Trello (no signed-in person) send no alert. Live definition: private.move_alerts().
+create or replace function private.move_alerts() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare cfg jsonb; who text; actor text; aname text; site text; o text; n text; lab jsonb; labes jsonb;
+begin
+  if auth.uid() is null or tg_op <> 'UPDATE' or new.deleted or old.deleted
+     or jsonb_typeof(new.data) <> 'object' or jsonb_typeof(old.data) <> 'object' then return null; end if;
+  o := coalesce(nullif(old.data->>'stage',''),'active'); n := coalesce(nullif(new.data->>'stage',''),'active');
+  if o = n then return null; end if;
+  begin
+    select v::jsonb into cfg from server_config where k = 'move_alert_to';
+    if cfg is null or jsonb_typeof(cfg) <> 'array' then cfg := '[]'::jsonb; end if;
+    actor := public.my_emp_data()->>'id';
+    aname := coalesce(nullif(private.emp_row(actor)->>'name',''), 'Someone');
+    site := private.short_site(new.id);
+    lab := '{"upcoming":"Upcoming","priced":"Upcoming","ready":"Confirmed jobs","active":"Roughing","roughdone":"Rough Complete","inspection":"Finishing","done":"Complete","lost":"Lost bids"}';
+    labes := '{"upcoming":"Próximo","priced":"Próximo","ready":"Trabajos confirmados","active":"Roughing","roughdone":"Rough completo","inspection":"Acabado","done":"Completo","lost":"Perdidos"}';
+    for who in select distinct x from (select jsonb_array_elements_text(cfg) x union all select unnest(private.site_mgr_ids(new.data))) q where coalesce(x,'') <> '' loop
+      perform private.notify_now(who,
+        '↔ ' || site || ': ' || coalesce(lab->>o, o) || ' → ' || coalesce(lab->>n, n) || ' (' || aname || ')',
+        '↔ ' || site || ': ' || coalesce(labes->>o, o) || ' → ' || coalesce(labes->>n, n) || ' (' || aname || ')',
+        'info', jsonb_build_object('site', new.id), actor);
+    end loop;
+  exception when others then raise warning 'move_alerts %: %', new.id, sqlerrm;
+  end;
+  return null;
+end $$;
+revoke all on function private.move_alerts() from public, anon, authenticated;
+create or replace trigger records_zz_move_alerts after update on public.records
+  for each row when (new.coll = 'sites') execute function private.move_alerts();
