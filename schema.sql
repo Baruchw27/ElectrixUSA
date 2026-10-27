@@ -1138,3 +1138,11 @@ end $$;
 revoke all on function private.move_alerts() from public, anon, authenticated;
 create or replace trigger records_zz_move_alerts after update on public.records
   for each row when (new.coll = 'sites') execute function private.move_alerts();
+
+-- ===== P2 round 3 (staging 2026-10-27, NOT live until Baruch approves): morning briefing + end-of-day nudge =====
+-- private.p3_due(jsonb): the day a task is due (same rule as the app's "Today's game plan")
+-- private.p3_tick(p_now, p_force): runs every 15 min (cron 'p3-daily'); work days (Sun–Fri) at/after 6:30 AM New York sends
+--   "☀️ Good morning … N open tasks (L late) · M meetings, first …" and at/after 5:00 PM sends "🌇 N tasks for today are still
+--   open …" to the owner, managers and office (not the accountant). Once per day each (server_config p3_brief_day / p3_eod_day).
+--   Snoozed tasks (data.snz_<person> later than today) are left out. Live definitions: see the staging database (rkkxyk…),
+--   migrations p3_briefing_and_nudge + p3_today_count_fix.
