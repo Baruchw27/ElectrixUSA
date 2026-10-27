@@ -5,10 +5,10 @@
 <meta name="theme-color" content="#ffffff"><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Electrix Field</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
-<script>window.EX_VER='vm3b1027';</script><script src="config.js"></script>
+<script>window.EX_VER='vm3c1027';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vm3b1027"></script>
-<script src="extras.js?vm3b1027"></script>
+<script src="sync.js?vm3c1027"></script>
+<script src="extras.js?vm3c1027"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -2141,7 +2141,7 @@ function siteVisible(s,m){m=m||me();if(!s)return false;if(isBoss(m)||m.allJobs||
 function liveSites(){return D.sites.filter(s=>s&&s.stage!=='lost');}
 function visSites(){const m=me();return liveSites().filter(s=>siteVisible(s,m));}
 function matAllJobs(m){m=m||me();return !!m&&m.role==='office'&&m.title==='Material';}
-function fileVisible(f,m){m=m||me();return isBoss(m)||f.by===m.id||(f.share||[]).some(x=>x===m.id||x===m.crew);}
+function fileVisible(f,m){m=m||me();return isBoss(m)||matAllJobs(m)||f.by===m.id||(f.share||[]).some(x=>x===m.id||x===m.crew);}
 const isAdmin=m=>m.role==='owner'||m.role==='manager'||!!m.all||(m.role==='office'&&m.title==='Material');
 const canDelPL=x=>isAdmin(me());
 function plAdd(){const inp=document.getElementById('plNew');const v=inp.value.trim();if(!v)return;pl(plSiteId,plPh).push({id:nid('pl'),text:v,by:me().id,ts:Date.now(),done:false});inp.value='';save();renderPL();inp.focus();}
@@ -4965,7 +4965,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vm3b1027"></script><script src="scanner-v2-ui.js?vm3b1027"></script><script src="sched-v21.js?vm3b1027"></script><script src="selftest.js?vm3b1027"></script>
+<script src="scanner-v2.js?vm3c1027"></script><script src="scanner-v2-ui.js?vm3c1027"></script><script src="sched-v21.js?vm3c1027"></script><script src="selftest.js?vm3c1027"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
