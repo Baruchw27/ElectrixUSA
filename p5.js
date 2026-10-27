@@ -219,8 +219,8 @@ try{if(typeof PRIMARY==='object'){
   PRIMARY.manager=['home','jobs','sched','punch','more'];
   PRIMARY.office=['jobs','cal','trello','mat','more'];
 }}catch(e){}
-const SHORT=['sites','mat','hours','team','exp','est','svc','rep','tools','code','trello','msg','punch','sched','cal','jobs','van'];
-const SICON={sites:'pin',mat:'box',hours:'clock',team:'users',exp:'dollar',est:'ruler',svc:'phone',rep:'chart',tools:'tool',code:'calc',trello:'clip',msg:'chat',punch:'clock',sched:'cal',cal:'cal',jobs:'check',van:'car'};
+const SHORT=['sites','orr','mat','hours','team','exp','est','svc','rep','tools','code','trello','msg','punch','sched','cal','jobs','van'];
+const SICON={orr:'bolt',sites:'pin',mat:'box',hours:'clock',team:'users',exp:'dollar',est:'ruler',svc:'phone',rep:'chart',tools:'tool',code:'calc',trello:'clip',msg:'chat',punch:'clock',sched:'cal',cal:'cal',jobs:'check',van:'car'};
 function allowedTabs(){return [...document.querySelectorAll('.tab')].filter(b=>b.dataset.allowed==='1').map(b=>((b.getAttribute('onclick')||'').match(/'([a-z]+)'/)||[])[1]).filter(Boolean);}
 function shortcuts(m){const prim=primaryFor(m);const al=allowedTabs();const L=SHORT.filter(n=>al.includes(n)&&!prim.includes(n)).slice(0,8);if(!L.length)return '';
   return '<div id="p5short">'+L.map(n=>'<button onclick="goTab(\''+n+'\')">'+ico(SICON[n]||'folder')+esc5(tt((TABMETA[n]||[])[1]||n))+'</button>').join('')+'</div>';}

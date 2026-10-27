@@ -1359,3 +1359,5 @@ begin
   return jsonb_build_object('made', made, 'closed', closed, 'first_run', first_run, 'at', loc);
 end $f$;
 revoke all on function private.orr_tick(timestamptz, boolean) from public, anon, authenticated;
+
+-- P6 live release (2026-10-27): orr_tick gained a start-date guard (server_config orr_start); orr_seen snapshot taken at release so existing jobs don't get 'Apply to O&R' tasks.
