@@ -1232,3 +1232,130 @@ begin
 end $f$;
 revoke all on function private.orr_tick(timestamptz, boolean) from public, anon, authenticated;
 select cron.schedule('orr-followup', '*/15 * * * *', 'select private.orr_tick()');
+-- ===== P6b O&R tracker v2 (Baruch 2026-10-27): automatic tasks =====
+-- private.orr_tick() now creates real TASKS (records coll 'jobs', id 'orrT_…' / 'orrA_…', data.orrAuto = kind) for the
+-- person who owns each O&R request (data.owner; default server_config orr_owner), and closes them again by itself:
+--   us      O&R is waiting on us (status 'us')            → "O&R needs from us: <need> — <job>"          (any time)
+--   follow  no update for 3+ work days (status 'sent')     → "Follow up with O&R (<PM>): <job> …"         (work hours, Mon–Fri)
+--           (a new one every 3 work days while nothing changes; 10+ work days → the owner/boss also gets an alert)
+--   sched   scheduled date passed, not marked done         → "Confirm with O&R: was the <type> done …"   (work hours)
+-- Job rules (a job's folder change, seen by comparing with server_config orr_seen):
+--   apply   a NEW job (Upcoming / Confirmed / Roughing) with no O&R request → "Apply to O&R (temp / new service)"
+--   meter   a job moved to Rough Complete with no meter / cut-in request   → "O&R: send cut-in card / request meter set"
+--   tempout a job moved to Complete that had a temp service, no removal yet → "O&R: request temp service removal"
+-- A task closes by itself when its reason is gone (request updated / answered / created). Every new task alerts its owner.
+create or replace function private.orr_tick(p_now timestamptz default now(), p_force boolean default false)
+returns jsonb language plpgsql security definer set search_path to 'public' as $f$
+declare td date := (p_now at time zone 'America/New_York')::date; loc timestamp := p_now at time zone 'America/New_York';
+        ms bigint := (extract(epoch from p_now)*1000)::bigint; dow int := extract(isodow from (p_now at time zone 'America/New_York'))::int;
+        workhrs boolean; anyhrs boolean; own_def text; seen jsonb; first_run boolean; r record; s record;
+        own text; nm text; tn text; touch date; idle int; key text; dsc text; want text[] := '{}'; made int := 0; closed int := 0; n int;
+begin
+  workhrs := p_force or (dow <= 5 and loc::time >= time '09:00' and loc::time < time '17:00');
+  anyhrs  := p_force or (dow <> 6 and loc::time >= time '07:00' and loc::time < time '21:00');
+  if not anyhrs then return jsonb_build_object('skip','off hours'); end if;
+  own_def := coalesce(nullif((select v from server_config where k='orr_owner'),''), 'o1');
+
+  -- ── 1. tasks from O&R requests ──
+  for r in select o.id, o.data d, split_part(coalesce(si.data->>'name', o.data->>'addr', '?'), ',', 1) nm
+           from records o left join records si on si.coll='sites' and si.id = o.data->>'site'
+           where o.coll='orr' and not o.deleted and o.data->>'status' in ('sent','us','sched') loop
+    own := coalesce(nullif(r.d->>'owner',''), own_def); nm := r.nm;
+    tn := case r.d->>'type' when 'temp' then 'temp service' when 'tempout' then 'temp removal' when 'newsvc' then 'new service'
+          when 'meter' then 'meter set / cut-in' when 'upgrade' then 'service upgrade' when 'disc' then 'disconnect/reconnect'
+          when 'demo' then 'demolition removal' when 'reloc' then 'relocation' else 'request' end;
+    touch := greatest(
+      (to_timestamp(coalesce(nullif(r.d->>'upd','')::bigint,0)/1000.0) at time zone 'America/New_York')::date,
+      (to_timestamp(coalesce(nullif(r.d->>'ts','')::bigint,0)/1000.0) at time zone 'America/New_York')::date,
+      case when r.d->>'sent' ~ '^\d{4}-\d{2}-\d{2}$' then (r.d->>'sent')::date else date '2000-01-01' end);
+    idle := private.orr_wd(touch, td);
+    key := null;
+    if r.d->>'status' = 'us' then
+      key := 'orrT_' || r.id || '_u_' || coalesce(nullif(r.d->>'usAt',''), r.d->>'upd', '0');
+      dsc := 'O&R needs from us: ' || coalesce(nullif(r.d->>'need',''), 'see the O&R request') || ' — ' || nm || ' (' || tn || coalesce(', #' || nullif(r.d->>'wo',''), '') || ')';
+      if exists (select 1 from records where coll='jobs' and id=key) or anyhrs then
+        if not exists (select 1 from records where coll='jobs' and id=key) then
+          insert into records(coll,id,data) values ('jobs', key, jsonb_build_object('id',key,'ts',ms,'to',jsonb_build_array(own),'from',own,'site',r.d->>'site',
+            'desc',dsc,'descLang','en','descTr','','due','Today','status','open','photo','na','pri',false,'media','[]'::jsonb,'orr',r.id,'orrAuto','us'));
+          perform private.notify_now(own, '⚡ ' || dsc, '⚡ ' || dsc, 'info', jsonb_build_object('job',key), null); made := made + 1;
+        end if;
+        want := want || key;
+      end if;
+    elsif r.d->>'status' = 'sched' then
+      if r.d->>'schedOn' ~ '^\d{4}-\d{2}-\d{2}$' and (r.d->>'schedOn')::date < td then
+        key := 'orrT_' || r.id || '_s_' || (r.d->>'schedOn');
+        dsc := 'Confirm with O&R: was the ' || tn || ' done on ' || to_char((r.d->>'schedOn')::date,'Mon FMDD') || '? — ' || nm;
+        if exists (select 1 from records where coll='jobs' and id=key) then want := want || key;
+        elsif workhrs then
+          insert into records(coll,id,data) values ('jobs', key, jsonb_build_object('id',key,'ts',ms,'to',jsonb_build_array(own),'from',own,'site',r.d->>'site',
+            'desc',dsc,'descLang','en','descTr','','due','Today','status','open','photo','na','pri',false,'media','[]'::jsonb,'orr',r.id,'orrAuto','sched'));
+          perform private.notify_now(own, '⚡ ' || dsc, '⚡ ' || dsc, 'info', jsonb_build_object('job',key), null); made := made + 1; want := want || key;
+        end if;
+      end if;
+    end if;
+    -- follow-up: waiting on O&R (or on us for a long time) with no change for 3+ work days; a fresh task every 3 work days
+    if r.d->>'status' = 'sent' and idle >= 3 then
+      key := 'orrT_' || r.id || '_f_' || touch::text || '_' || (idle / 3);
+      dsc := 'Follow up with O&R' || coalesce(' (' || nullif(r.d->>'pm','') || ')', '') || ': ' || nm || ' — ' || tn || coalesce(', #' || nullif(r.d->>'wo',''), '') || ' · ' || idle || ' work days, no update';
+      if exists (select 1 from records where coll='jobs' and id=key) then want := want || key;
+      elsif workhrs then
+        insert into records(coll,id,data) values ('jobs', key, jsonb_build_object('id',key,'ts',ms,'to',jsonb_build_array(own),'from',own,'site',r.d->>'site',
+          'desc',dsc,'descLang','en','descTr','','due','Today','status','open','photo','na','pri',idle >= 10,'media','[]'::jsonb,'orr',r.id,'orrAuto','follow'));
+        perform private.notify_now(own, '⚡ ' || dsc, '⚡ ' || dsc, 'info', jsonb_build_object('job',key), null); made := made + 1; want := want || key;
+        if idle >= 10 then
+          for s in select e.id from records e where e.coll='emps' and not e.deleted and e.data->>'role'='owner' and e.id <> own and not coalesce((e.data->>'inactive')::boolean,false) loop
+            perform private.notify_now(s.id, '⚡ O&R stuck ' || idle || ' work days: ' || nm || ' — ' || tn || ' (' || coalesce(nullif((select split_part(data->>'name',' ',1) from records where coll='emps' and id=own),''),'office') || ' has a follow-up task)',
+                                              '⚡ O&R detenido ' || idle || ' días hábiles: ' || nm, 'info', jsonb_build_object('tab','orr'), null);
+          end loop;
+        end if;
+      end if;
+    end if;
+  end loop;
+
+  -- ── 2. job rules: new job / Rough Complete / Complete ──
+  seen := (select v from server_config where k='orr_seen')::jsonb;
+  first_run := seen is null; seen := coalesce(seen, '{}'::jsonb);
+  for s in select si.id, si.data->>'stage' stg, split_part(coalesce(si.data->>'name','?'), ',', 1) nm, coalesce((si.data->>'orrNone')::boolean,false) nonee
+           from records si where si.coll='sites' and not si.deleted and coalesce(si.data->>'stage','') <> 'lost' loop
+    if not first_run and not s.nonee then
+      own := own_def; key := null;
+      if not (seen ? s.id) and s.stg in ('upcoming','ready','active','priced')
+         and not exists (select 1 from records o where o.coll='orr' and not o.deleted and o.data->>'site' = s.id) then
+        key := 'orrA_' || s.id || '_apply'; dsc := 'Apply to O&R (temp service / new service) — new job ' || s.nm;
+        insert into records(coll,id,data) values ('jobs', key, jsonb_build_object('id',key,'ts',ms,'to',jsonb_build_array(own),'from',own,'site',s.id,
+          'desc',dsc,'descLang','en','descTr','','due','This week','status','open','photo','na','pri',false,'media','[]'::jsonb,'orrAuto','apply')) on conflict do nothing;
+        get diagnostics n = row_count; if n > 0 then perform private.notify_now(own, '⚡ ' || dsc, '⚡ ' || dsc, 'info', jsonb_build_object('job',key), null); made := made + 1; end if;
+      elsif s.stg = 'roughdone' and coalesce(seen->>s.id,'') <> 'roughdone'
+         and not exists (select 1 from records o where o.coll='orr' and not o.deleted and o.data->>'site' = s.id and o.data->>'type' = 'meter') then
+        key := 'orrA_' || s.id || '_meter'; dsc := 'O&R: send the cut-in card / request the meter set — ' || s.nm || ' is Rough Complete';
+        insert into records(coll,id,data) values ('jobs', key, jsonb_build_object('id',key,'ts',ms,'to',jsonb_build_array(own),'from',own,'site',s.id,
+          'desc',dsc,'descLang','en','descTr','','due','This week','status','open','photo','na','pri',false,'media','[]'::jsonb,'orrAuto','meter')) on conflict do nothing;
+        get diagnostics n = row_count; if n > 0 then perform private.notify_now(own, '⚡ ' || dsc, '⚡ ' || dsc, 'info', jsonb_build_object('job',key), null); made := made + 1; end if;
+      elsif s.stg = 'done' and coalesce(seen->>s.id,'') <> 'done'
+         and exists (select 1 from records o where o.coll='orr' and not o.deleted and o.data->>'site' = s.id and o.data->>'type' = 'temp' and o.data->>'status' <> 'cancel')
+         and not exists (select 1 from records o where o.coll='orr' and not o.deleted and o.data->>'site' = s.id and o.data->>'type' = 'tempout') then
+        key := 'orrA_' || s.id || '_tempout'; dsc := 'O&R: request the temp service removal — ' || s.nm || ' is Complete';
+        insert into records(coll,id,data) values ('jobs', key, jsonb_build_object('id',key,'ts',ms,'to',jsonb_build_array(own),'from',own,'site',s.id,
+          'desc',dsc,'descLang','en','descTr','','due','This week','status','open','photo','na','pri',false,'media','[]'::jsonb,'orrAuto','tempout')) on conflict do nothing;
+        get diagnostics n = row_count; if n > 0 then perform private.notify_now(own, '⚡ ' || dsc, '⚡ ' || dsc, 'info', jsonb_build_object('job',key), null); made := made + 1; end if;
+      end if;
+    end if;
+    seen := seen || jsonb_build_object(s.id, coalesce(s.stg,''));
+  end loop;
+  insert into server_config(k,v) values ('orr_seen', seen::text) on conflict (k) do update set v = excluded.v;
+
+  -- ── 3. close auto tasks whose reason is gone ──
+  update records t set data = t.data || jsonb_build_object('status','done','doneAt',ms,'doneBy','auto','autoClosed',true)
+   where t.coll='jobs' and not t.deleted and coalesce(t.data->>'status','') <> 'done' and t.data->>'orrAuto' in ('us','follow','sched')
+     and not (t.id = any(want))
+     and not (t.data->>'orrAuto' = 'follow' and not workhrs);   -- outside work hours follow-ups are only kept, never re-checked
+  get diagnostics closed = row_count;
+  update records t set data = t.data || jsonb_build_object('status','done','doneAt',ms,'doneBy','auto','autoClosed',true)
+   where t.coll='jobs' and not t.deleted and coalesce(t.data->>'status','') <> 'done' and (
+         (t.data->>'orrAuto' = 'apply'   and exists (select 1 from records o where o.coll='orr' and not o.deleted and o.data->>'site' = t.data->>'site'))
+      or (t.data->>'orrAuto' = 'meter'   and exists (select 1 from records o where o.coll='orr' and not o.deleted and o.data->>'site' = t.data->>'site' and o.data->>'type'='meter'))
+      or (t.data->>'orrAuto' = 'tempout' and exists (select 1 from records o where o.coll='orr' and not o.deleted and o.data->>'site' = t.data->>'site' and o.data->>'type'='tempout')));
+  get diagnostics n = row_count; closed := closed + n;
+  return jsonb_build_object('made', made, 'closed', closed, 'first_run', first_run, 'at', loc);
+end $f$;
+revoke all on function private.orr_tick(timestamptz, boolean) from public, anon, authenticated;
