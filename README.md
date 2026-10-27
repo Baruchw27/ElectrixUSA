@@ -2,6 +2,11 @@
 
 Home-screen web app for Electrix USA. One shared database, so every phone sees the same jobs, punches, tasks, notes and alerts.
 
+## Releasing (read first)
+**The live site is published from the `gh-pages` branch, not `main`.** A release is: commit to `main`, then
+`git push origin main:gh-pages`. Pushing to `main` alone changes nothing on people's phones.
+(Found 2026-10-27: releases vg11026–vg11027b sat on `main` only, so phones stayed on vg11023 until gh-pages was moved.)
+
 ## What's in this folder
 
 | File | What it is |
