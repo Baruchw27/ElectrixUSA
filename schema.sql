@@ -1146,3 +1146,89 @@ create or replace trigger records_zz_move_alerts after update on public.records
 --   open …" to the owner, managers and office (not the accountant). Once per day each (server_config p3_brief_day / p3_eod_day).
 --   Snoozed tasks (data.snz_<person> later than today) are left out. Live definitions: see the staging database (rkkxyk…),
 --   migrations p3_briefing_and_nudge + p3_today_count_fix.
+-- ===== P6 O&R tracker (Baruch 2026-10-27) =====
+-- 1. Only the owner, managers, all-access people and the office (not the accountant) can see or change O&R requests.
+do $m$ begin
+  if position('''orr''' in pg_get_functiondef('public.can_see2'::regproc)) = 0 then
+    execute replace(replace(pg_get_functiondef('public.can_see2'::regproc),
+      $a$'jobs','bcol') then true$a$, $a$'jobs','bcol','orr') then true$a$),
+      $a$    else true end;$a$,
+      $a$    when c = 'orr' then me->>'role' in ('owner','manager') or coalesce((me->>'all')::boolean,false) or (me->>'role' = 'office' and coalesce(me->>'title','') <> 'Accountant')
+    else true end;$a$);
+  end if;
+  if position('''orr''' in pg_get_functiondef('public.guard_record'::regproc)) = 0 then
+    execute replace(pg_get_functiondef('public.guard_record'::regproc),
+      $a$  if new.coll = 'sites' then$a$,
+      $a$  if new.coll = 'orr' then
+    if not (boss or (office and coalesce(me->>'title','') <> 'Accountant')) then raise exception 'not allowed' using errcode = '42501'; end if;
+    return new;
+  end if;
+  if new.coll = 'sites' then$a$);
+  end if;
+end $m$;
+
+-- 2. Work days (Mon–Fri) after day a, up to and including day b.
+create or replace function private.orr_wd(a date, b date) returns int language sql immutable as $$
+  select coalesce(count(*)::int,0) from generate_series(a + 1, b, interval '1 day') d where extract(isodow from d) < 6 $$;
+
+-- 3. Every 15 minutes; on work days at/after 9:30 AM New York, once a day: one summary alert to Shia and Matty
+--    (server_config orr_to) listing requests with no update for 3+ work days (or a scheduled date that passed);
+--    the same request comes back every 3 work days until someone updates it. 10+ work days: Baruch gets it too.
+create or replace function private.orr_tick(p_now timestamptz default now(), p_force boolean default false)
+returns jsonb language plpgsql security definer set search_path to 'public' as $f$
+declare td date := (p_now at time zone 'America/New_York')::date; loc timestamp := p_now at time zone 'America/New_York';
+        rem jsonb; tos jsonb; r record; items text[] := '{}'; esc text[] := '{}'; ids text[] := '{}'; touch date; idle int; last date;
+        nm text; line text; who text; en text; es text; tname text;
+begin
+  if not p_force then
+    if extract(isodow from td) >= 6 then return jsonb_build_object('skip','weekend'); end if;
+    if loc::time < time '09:30' or coalesce((select v from server_config where k='orr_day'),'') = td::text then return jsonb_build_object('skip','not time'); end if;
+    insert into server_config(k,v) values ('orr_day', td::text) on conflict (k) do update set v = excluded.v;
+  end if;
+  rem := coalesce((select v from server_config where k='orr_reminded')::jsonb, '{}'::jsonb);
+  tos := coalesce((select v from server_config where k='orr_to')::jsonb, '["o1","o4"]'::jsonb);
+  for r in select o.id, o.data d, s.data->>'name' site from records o left join records s on s.coll='sites' and s.id = o.data->>'site'
+           where o.coll='orr' and not o.deleted and o.data->>'status' in ('sent','us','sched') loop
+    touch := greatest(
+      (to_timestamp(coalesce(nullif(r.d->>'upd','')::bigint,0)/1000.0) at time zone 'America/New_York')::date,
+      (to_timestamp(coalesce(nullif(r.d->>'ts','')::bigint,0)/1000.0) at time zone 'America/New_York')::date,
+      case when r.d->>'sent' ~ '^\d{4}-\d{2}-\d{2}$' then (r.d->>'sent')::date else date '2000-01-01' end);
+    idle := private.orr_wd(touch, td);
+    last := case when rem ? r.id then (rem->>r.id)::date else null end;
+    if last is not null and last < touch then last := null; end if;              -- someone updated it since the last reminder
+    if last is not null and private.orr_wd(last, td) < 3 then continue; end if;   -- reminded less than 3 work days ago
+    nm := coalesce(split_part(r.site, ',', 1), r.d->>'addr', '?');
+    tname := case r.d->>'type' when 'temp' then 'Temp service' when 'tempout' then 'Temp removal' when 'newsvc' then 'New service'
+             when 'meter' then 'Meter set' when 'upgrade' then 'Upgrade' when 'disc' then 'Disconnect' when 'demo' then 'Demo removal'
+             when 'reloc' then 'Relocation' else 'Other' end;
+    if r.d->>'status' = 'sched' then
+      if not (r.d->>'schedOn' ~ '^\d{4}-\d{2}-\d{2}$' and (r.d->>'schedOn')::date < td) then continue; end if;
+      line := nm || ' (' || tname || ', scheduled ' || to_char((r.d->>'schedOn')::date,'Mon FMDD') || ' — done?)';
+    else
+      if idle < 3 then continue; end if;
+      line := nm || ' (' || tname || coalesce(', WO ' || nullif(r.d->>'wo',''), '') || ', ' || idle || ' days' || case when r.d->>'status'='us' then ', waiting on us' else '' end || ')';
+    end if;
+    items := items || line; ids := ids || r.id;
+    if idle >= 10 then esc := esc || line; end if;
+  end loop;
+  if array_length(items,1) is null then return jsonb_build_object('sent',0); end if;
+  en := '⚡ O&R follow-up: ' || array_length(items,1) || case when array_length(items,1)=1 then ' request has' else ' requests have' end || ' no update — ' || array_to_string(items[1:6], '; ') || case when array_length(items,1) > 6 then '; +' || (array_length(items,1)-6) || ' more' else '' end;
+  es := '⚡ Seguimiento O&R: ' || array_length(items,1) || ' sin novedad — ' || array_to_string(items[1:6], '; ') || case when array_length(items,1) > 6 then '; +' || (array_length(items,1)-6) || ' más' else '' end;
+  for who in select jsonb_array_elements_text(tos) loop
+    perform private.notify_now(who, en, es, 'info', jsonb_build_object('tab','orr'), null);
+  end loop;
+  if array_length(esc,1) is not null then
+    for who in select r2.id from records r2 where r2.coll='emps' and not r2.deleted and r2.data->>'role'='owner' and not coalesce((r2.data->>'inactive')::boolean,false) loop
+      perform private.notify_now(who, '⚡ O&R: ' || array_length(esc,1) || ' with no update for 10+ work days — ' || array_to_string(esc[1:5], '; '),
+                                      '⚡ O&R: ' || array_length(esc,1) || ' sin novedad 10+ días hábiles — ' || array_to_string(esc[1:5], '; '), 'info', jsonb_build_object('tab','orr'), null);
+    end loop;
+  end if;
+  -- remember today for the ones we just listed; forget closed ones
+  rem := (select coalesce(jsonb_object_agg(k, v), '{}'::jsonb) from jsonb_each_text(rem) e(k,v)
+          where exists (select 1 from records o where o.coll='orr' and o.id = e.k and not o.deleted and o.data->>'status' in ('sent','us','sched')));
+  select rem || coalesce(jsonb_object_agg(i, td::text), '{}'::jsonb) into rem from unnest(ids) i;
+  insert into server_config(k,v) values ('orr_reminded', rem::text) on conflict (k) do update set v = excluded.v;
+  return jsonb_build_object('sent', array_length(items,1), 'escalated', coalesce(array_length(esc,1),0));
+end $f$;
+revoke all on function private.orr_tick(timestamptz, boolean) from public, anon, authenticated;
+select cron.schedule('orr-followup', '*/15 * * * *', 'select private.orr_tick()');
