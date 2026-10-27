@@ -11,6 +11,10 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 //  data.tname, so a name changed in the app stays until the card is renamed again in Trello. A phone number at the end
 //  of a card name ("… +1 (845) 555-1234") is not part of the job's name (it goes to the job's phone if that is empty);
 //  trailing dots/commas and upper/lower case don't count as a rename.
+//  A1 (Baruch 2026-10-27): a card ARCHIVED or DELETED in Trello hides its job in the app (stage "lost", like lost bids;
+//  tgone = true, the folder it was in kept as stageBeforeGone). Nothing is erased; if the card comes back on the board the
+//  job comes back with it. Safety: if Trello answers with far fewer cards than the app has jobs for (a bad or partial
+//  answer), or more than 15 jobs would be hidden at once, nothing is hidden — it is only reported (goneHeld).
 //  Runs every 5 minutes (database cron, x-push-secret) and on demand by a signed-in owner / manager / office person.
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
@@ -160,9 +164,11 @@ Deno.serve(async (req) => {
   const cards = await trello("GET", `boards/${BOARD}/cards`, { fields: "name,idList,shortLink,shortUrl,closed,pos" });
   let created = 0, updated = 0, unchanged = 0, skipped = 0, held = 0, renamed = 0;
   const newOnes: string[] = []; const renameLog: { from: string; to: string }[] = [];
+  const openSL = new Set<string>();
   for (const c of cards) {
     if (c.closed) continue;
     const sl = c.shortLink; if (!sl) continue;
+    openSL.add(sl);
     const lname = listName[c.idList] || "";
     const match = bySL[sl];
     // N1: the name follows Trello even while a list move from the app is waiting
@@ -178,9 +184,10 @@ Deno.serve(async (req) => {
     const tl = listIdx[c.idList] ?? null; const tp = typeof c.pos === "number" ? c.pos : (+c.pos || null);
     if (match) {
       const d = match.data || {};
-      if (nm || (d.stage || "") !== m.stage || (d.trelloList || "") !== lname || (m.phase && d.phase !== m.phase) || d.tlpos !== tl || d.tpos !== tp) {
-        const nd = { ...d, ...(nm || {}), stage: m.stage, trelloList: lname, tlpos: tl, tpos: tp };
+      if (nm || d.tgone || (d.stage || "") !== m.stage || (d.trelloList || "") !== lname || (m.phase && d.phase !== m.phase) || d.tlpos !== tl || d.tpos !== tp) {
+        const nd: any = { ...d, ...(nm || {}), stage: m.stage, trelloList: lname, tlpos: tl, tpos: tp };
         if (m.phase) nd.phase = m.phase;
+        if (d.tgone) { delete nd.tgone; delete nd.tgoneAt; delete nd.stageBeforeGone; }   // A1: the card is back on the board
         upserts.push({ id: match.id, coll: "sites", data: nd, deleted: false });
         updated++;
       } else unchanged++;
@@ -195,13 +202,24 @@ Deno.serve(async (req) => {
     }
   }
 
+  // A1) cards archived or deleted in Trello: hide their jobs (kept, never erased)
+  const goneList = existing.filter((r) => { const d = r.data || {}; const sl = shortLinkFromUrl(d.trello);
+    return sl && !openSL.has(sl) && !d.tgone && !d.tmove && d.stage !== "lost"; });
+  const linked = existing.filter((r) => shortLinkFromUrl(r.data?.trello)).length;
+  const goneSafe = openSL.size >= linked * 0.5 && goneList.length <= 15;
+  let gone = 0; const goneLog: string[] = goneList.map((r) => String(r.data?.name || r.id));
+  if (goneSafe) for (const r of goneList) {
+    const d = r.data || {}; const nd = { ...d, stageBeforeGone: d.stage || "active", stage: "lost", tgone: true, tgoneAt: Date.now() };
+    upserts.push({ id: r.id, coll: "sites", data: nd, deleted: false }); gone++;
+  }
+
   // 3) the board's lists, for the app's "Move job to" (Lost Bids left out)
   const pub = lists.filter((l: any) => mapFor(l.name).stage !== "lost").map((l: any, i: number) => ({ id: l.id, name: l.name, stage: mapFor(l.name).stage, phase: mapFor(l.name).phase || null, pos: listIdx[l.id] ?? i }));
   const { data: curL } = await sb.from("records").select("data").eq("coll", "_").eq("id", "trelloLists").maybeSingle();
   if (JSON.stringify(curL?.data?.v?.lists || null) !== JSON.stringify(pub)) upserts.push({ id: "trelloLists", coll: "_", data: { v: { board: BOARD, lists: pub } }, deleted: false });
 
   const summary = { board: BOARD, lists: lists.length, cards: cards.length, created, updated, unchanged, skippedAdmin: skipped,
-    movedToTrello: moved, moveErrors: moveErr, heldForMove: held, moves: moveLog.slice(0, 20), renamed, renames: renameLog.slice(0, 20),
+    hiddenGone: gone, goneHeld: goneSafe ? 0 : goneList.length, gone: goneLog.slice(0, 20), movedToTrello: moved, moveErrors: moveErr, heldForMove: held, moves: moveLog.slice(0, 20), renamed, renames: renameLog.slice(0, 20),
     write: WRITE, sampleNew: newOnes.slice(0, 20) };
   if (dry) return json({ dryRun: true, ...summary });
 
