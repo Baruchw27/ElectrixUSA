@@ -1064,3 +1064,44 @@ end $$;
 create or replace trigger records_guard before insert or update on public.records
   for each row when (new.coll in ('emps','punches','timeoff','exps','travel','goHomeLog','jobs','meets','inbox','push','base','crews','sched','_','sites','stock','mats','keep'))
   execute function public.guard_record();
+
+-- ===== Rough Complete (2026-10-27, approved by Baruch): stage 'roughdone' between Roughing and Finishing =====
+-- Trello lists "Roughing Done" + "Inspection Passed" map to it (server_config 'trello_map').
+-- When a job reaches it (app button or Trello), server_config 'roughdone_tasks' ([{to, en, es}]) makes one task per person
+-- (live: Menachem o2 billing, Shia o1 + Matty o4 inspection) and alerts them; no duplicate while that task is still open.
+create or replace function private.roughdone_tasks() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare cfg jsonb; it jsonb; actor text; from_ text; jid text; site text; nowms bigint := (extract(epoch from now())*1000)::bigint;
+begin
+  if new.deleted or jsonb_typeof(new.data) <> 'object' or coalesce(new.data->>'stage','') <> 'roughdone' then return null; end if;
+  if tg_op = 'UPDATE' and not old.deleted and jsonb_typeof(old.data) = 'object' and coalesce(old.data->>'stage','') = 'roughdone' then return null; end if;
+  begin
+    select v::jsonb into cfg from server_config where k = 'roughdone_tasks';
+    if cfg is null or jsonb_typeof(cfg) <> 'array' then return null; end if;
+    if auth.uid() is not null then actor := public.my_emp_data()->>'id'; end if;
+    from_ := coalesce(nullif(actor,''), nullif(new.data->>'stageBy',''),
+             (select r.id from records r where r.coll='emps' and not r.deleted and r.data->>'role'='owner' order by r.id limit 1));
+    site := private.short_site(new.id);
+    for it in select value from jsonb_array_elements(cfg) loop
+      continue when coalesce(it->>'to','') = '' or private.emp_row(it->>'to') is null;
+      continue when exists (select 1 from records j where j.coll='jobs' and not j.deleted and j.data->>'site' = new.id
+                              and j.data->>'desc' = it->>'en' and coalesce(j.data->>'status','') <> 'done'
+                              and j.data->'to' ? (it->>'to'));
+      jid := 'jrd' || replace(gen_random_uuid()::text,'-','');
+      insert into records (coll,id,data,deleted,updated_by,updated_at) values ('jobs', jid,
+        jsonb_build_object('id',jid,'ts',nowms,'to',jsonb_build_array(it->>'to'),'from',from_,'site',new.id,
+          'desc',it->>'en','descLang','en','descTr',coalesce(it->>'es',''),'due','','status','open',
+          'photo',false,'pri',false,'media','[]'::jsonb,'auto','roughdone'), false, 'server', now());
+      if auth.uid() is null then
+        perform private.notify_now(it->>'to', '📋 New task: ' || case when site <> '' then site || ' — ' else '' end || (it->>'en'),
+          '📋 Nueva tarea: ' || case when site <> '' then site || ' — ' else '' end || coalesce(nullif(it->>'es',''), it->>'en'),
+          'info', jsonb_build_object('job', jid), null);
+      end if;
+    end loop;
+  exception when others then raise warning 'roughdone_tasks %: %', new.id, sqlerrm;
+  end;
+  return null;
+end $$;
+revoke all on function private.roughdone_tasks() from public, anon, authenticated;
+create or replace trigger records_zz_roughdone_tasks after insert or update on public.records
+  for each row when (new.coll = 'sites') execute function private.roughdone_tasks();
