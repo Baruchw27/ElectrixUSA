@@ -176,7 +176,7 @@ P4.addTask=()=>{window._p4due=P4.day;try{openJob();}catch(e){}};
 if(typeof window.renderCal==='function'){const _rc=window.renderCal;window.renderCal=function(){try{_rc.apply(this,arguments);}catch(e){}try{renderCalP4();}catch(e){console.error('p4 cal',e);}};}
 // a task added from a calendar day keeps that day as its due date
 if(typeof window.saveJob==='function'){const _sj=window.saveJob;window.saveJob=function(){const before=(D.jobs||[]).length;const r=_sj.apply(this,arguments);try{if(window._p4due&&(D.jobs||[]).length>before){const j=D.jobs[0];j.dueDate=window._p4due;if(!j.due)j.due='Today';save();window._p4due=null;if($('pg-cal').classList.contains('on'))renderCalP4();}}catch(e){}return r;};}
-if(typeof window.bCard==='function'){const _bc=window.bCard;window.bCard=function(j){let h=_bc.apply(this,arguments);try{if(j.dueDate&&h.indexOf('kbm')>-1){const d=new Date(j.dueDate+'T12:00');h=h.replace(/<div class="kbm">/,'<div class="kbm">📅 '+tt('Due')+' '+d.toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' · ');}}catch(e){}return h;};}
+if(typeof window.bCard==='function'){const _bc=window.bCard;window.bCard=function(j){let h=_bc.apply(this,arguments);try{if(j.dueDate&&h.indexOf('kbm')>-1){const d=new Date(j.dueDate+'T12:00');h=h.replace(/\s*·\s*📅 [^<·]*/,'');h=h.replace(/<div class="kbm">/,'<div class="kbm">🗓 '+tt('Due')+' '+d.toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' · ');}}catch(e){}return h;};}
 
 /* ───────── 4. Home: "Up next" — what's coming today, at a glance ───────── */
 function upNext(m){const k=todayK();const now=Date.now();const ev=eventsFor(k,m).filter(e=>e.kind!=='off'&&(e.kind==='task'||e.at>=now-15*60000));
