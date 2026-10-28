@@ -18,19 +18,22 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const jsq=s=>String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 const tt=s=>{try{return t(s);}catch(e){return s;}};
 const TYPES=[['temp','Temp service'],['newsvc','New service'],['upgrade','Service upgrade'],['tempout','Temp removal'],['meter','Meter set / cut-in'],
- ['disc','Disconnect / reconnect'],['demo','Demolition removal'],['reloc','Pole / service relocation'],['other','Other']];
+ ['gas','Gas service'],['disc','Disconnect / reconnect'],['demo','Demolition removal'],['reloc','Pole / service relocation'],['other','Other']];
 const TYPE=k=>{const x=TYPES.find(y=>y[0]===k);return x?x[1]:k||'—';};
 // [key, label, whose move (us · oru · cust), normal wait in days before a follow-up, only-if]
 const SVC=[['app','Send the application','us',0],['inc','O&R sends the incomplete letter + list','oru',3],['meet','Site meeting with O&R','oru',7],
   ['plan','Send the updated site plan','us',0],['design','O&R design (30–60 days)','oru',30],['pay','Customer pays the O&R invoice','cust',3],
   ['pics','Send pictures of the meters + unit numbers','us',0],['sched','O&R schedules the electric','oru',5],
-  ['gaspics','Gas: send the pictures','us',0,'gas'],['gascert','Gas: send the certificate','us',0,'gas'],['hook','O&R hooks it up','oru',5],['done','Hooked up','',0]];
+  ['hook','O&R hooks it up','oru',5],['done','Hooked up','',0]];
+// Baruch 10/28 17:56: gas is its own line — electric can be done while gas still goes on
+const GAS=[['gaspics','Send the gas pictures','us',0],['gascert','Send the gas certificate','us',0],['gassched','O&R schedules the gas','oru',5],
+  ['gason','O&R turns on the gas','oru',5],['done','Gas is on','',0]];
 const FLOWS={
   temp:[['app','Send the application','us',0],['inv','O&R sends the invoice','oru',3],['pay','Customer pays the O&R invoice','cust',3],
     ['setup','Set up the temp service on site','us',0],['insp','Schedule the inspection','us',0],['hook','O&R hooks it up','oru',5],['done','Hooked up','',0]],
-  newsvc:SVC, upgrade:SVC,
+  newsvc:SVC, upgrade:SVC, gas:GAS,
   _:[['app','Send the request to O&R','us',0],['wait','O&R does it','oru',5],['done','Done','',0]]};
-const ORDER=['app','inc','inv','meet','plan','design','pay','setup','insp','pics','sched','gaspics','gascert','wait','hook'];
+const ORDER=['app','inc','inv','meet','plan','design','pay','setup','insp','pics','sched','gaspics','gascert','gassched','gason','wait','hook'];
 const WHO={us:['Our move','#e8912d'],cust:['Customer','#9b51e0'],oru:['O&R','#2f80ed'],done:['Done','#2fb36b']};
 const ST={us:['Our move','#e8912d'],sent:['Waiting on O&R','#2f80ed'],sched:['Scheduled','#9b51e0'],done:['Done','#2fb36b'],cancel:['Cancelled','#8e8e93']};
 const OPEN=x=>x&&!x.deleted&&x.status!=='done'&&x.status!=='cancel';
@@ -47,7 +50,7 @@ const people=()=>(D.emps||[]).filter(e=>!e.inactive&&staff(e)&&e.role!=='manager
 const pname=id=>{try{return (nameOf(id)||'').split(' ')[0]||'—';}catch(e){return '—';}};
 const sname=x=>String(x.site?siteName(x.site):(x.addr||'—')).split(',')[0];
 function steps(x){return (FLOWS[x.type]||FLOWS._).filter(s=>!s[4]||x[s[4]]);}
-function cur(x){const L=steps(x);return L.find(s=>s[0]===x.step)||(x.status==='done'?L[L.length-1]:L[0]);}
+function cur(x){const L=steps(x);return L.find(s=>s[0]===x.step)||(x.status==='done'?L[L.length-1]:/^gas/.test(x.step||'')?(L.find(s=>s[0]==='hook')||L[0]):L[0]);}
 function idx(x){const L=steps(x);return Math.max(0,L.findIndex(s=>s[0]===cur(x)[0]));}
 function who(x){if(!OPEN(x))return 'done';if(x.need)return 'us';return cur(x)[2]||'oru';}
 const fuDue=x=>OPEN(x)&&who(x)!=='us'&&!!x.fuOn&&x.fuOn<=today();
@@ -81,6 +84,9 @@ html[data-theme=dark] .orrseg button.on{background:#2c2c2e}
 .orrrow{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:9px 12px;margin-bottom:6px;cursor:pointer;box-shadow:0 0 0 .5px rgba(0,0,0,.07);border-left:4px solid #ccc}
 html[data-theme=dark] .orrrow{background:#1c1c1e;box-shadow:none}
 .orrrow .w{flex:1;min-width:0}
+.orrlink{display:flex;align-items:center;gap:8px;background:var(--g1);border-radius:10px;padding:8px 11px;margin:0 0 8px;cursor:pointer;font-size:13px}
+.orrlink b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+html[data-theme=dark] .orrlink{background:#2c2c2e}
 .orrpm{margin:14px 0 6px}
 .orrpml{color:var(--blue-mid,#2f80ed);text-decoration:none}
 .pmcard{text-align:center;padding-top:4px}.pmcard h3{margin:8px 0 2px;font-size:20px}.pmsub{font-size:13px;color:var(--g4);margin-bottom:14px}
@@ -302,8 +308,13 @@ P6.saveNew=()=>{const m=M();const site=$('orrSite').value;if(!site){toast('Pick 
   const x={id:nid('or'),flow:1,site,type,gas,wo:$('orrWo').value.trim(),pm:$('orrPm').value.trim(),owner:$('orrOwn').value||m.id,sent:$('orrSent').value||today(),by:m.id,ts:now,upd:now,did:{},log:[]};
   const L=steps(x);const k=$('orrStep').value;const i=Math.max(0,L.findIndex(s=>s[0]===k));L.slice(0,i).forEach(s=>x.did[s[0]]=now);
   setStep(x,L[i],now);x.log.push({ts:now,by:m.id,txt:'New O&R request — now: '+L[i][1]+(note?' — '+note:'')});
-  D.orr.unshift(x);closeAutoFor(site,type);save();close();toast('✓ Saved','green');renderOrr();refreshFolder();
+  D.orr.unshift(x);if(gas)gasLine(x,now);closeAutoFor(site,type);save();close();toast('✓ Saved','green');renderOrr();refreshFolder();
   if(x.owner!==m.id)try{assignPush([x.owner],()=>'⚡ '+pname(m.id)+' gave you an O&R request: '+sname(x)+' — '+TYPE(x.type),'info',{tab:'orr'});}catch(e){}};
+// the gas line that belongs to an electric request (made once; kept even if the electric is done)
+const gasOf=x=>list().find(g=>g.type==='gas'&&g.gasFor===x.id&&g.status!=='cancel');
+function gasLine(x,now){if(gasOf(x))return gasOf(x);const m=M();now=now||Date.now();
+  const g={id:nid('or'),flow:1,site:x.site,addr:x.addr,type:'gas',gasFor:x.id,wo:x.wo||'',pm:x.pm||'',owner:x.owner||m.id,sent:x.sent||today(),by:m.id,ts:now,upd:now,did:{},log:[{ts:now,by:m.id,txt:'Gas line for the '+TYPE(x.type).toLowerCase()}]};
+  setStep(g,GAS[0],now);D.orr.unshift(g);return g;}
 function setStep(x,s,now){x.step=s[0];x.stepAt=now||Date.now();x.need='';
   if(s[0]==='done'){x.status='done';x.closedAt=x.stepAt;x.fuOn='';}
   else{x.status=s[2]==='us'?'us':'sent';x.fuOn=s[2]==='us'?'':addDays(s[3]||5);x.closedAt=null;}}
@@ -313,8 +324,11 @@ function fuChips(x){const I=jsq(x.id);return '<div class="orrfu">'+FU.map(([l,n]
   +'<button onclick="ORR.pickFu(\''+I+'\')">'+(x.fuOn&&!FU.some(([l,n])=>addDays(n)===x.fuOn)?fd(x.fuOn):'Pick a date')+'</button></div>';}
 P6.open=id=>{const x=list().find(y=>y.id===id);if(!x)return;const site=x.site?siteName(x.site):(x.addr||'—');const tasks=openTasks(x);const c=cur(x),w=who(x),L=steps(x),I=jsq(x.id);
   const nx=L[Math.min(idx(x)+1,L.length-1)];
-  sheet('<div class="orrk">O&amp;R · '+esc(TYPE(x.type))+(x.gas?' + gas':'')+'</div>'
+  const gl=x.type==='gas'?null:gasOf(x),el=x.type==='gas'&&x.gasFor?get(x.gasFor):null;
+  const link=(o,lbl)=>'<div class="orrlink" onclick="ORR.open(\''+jsq(o.id)+'\')"><span>'+esc(lbl)+'</span><b>'+esc(OPEN(o)?cur(o)[1]:nowLine(o))+'</b><span class="chev">›</span></div>';
+  sheet('<div class="orrk">O&amp;R · '+esc(TYPE(x.type))+'</div>'
    +'<h3 style="margin:2px 0 6px;font-size:17px">'+esc(site)+'</h3>'
+   +(gl?link(gl,'Gas'):'')+(el?link(el,'Electric'):'')
    +(OPEN(x)?'<div class="orrnow" style="background:'+WHO[w][1]+'1f"><span style="font-size:11.5px;font-weight:700;color:'+WHO[w][1]+'">NOW · '+esc(w==='oru'?'O&R’S MOVE':w==='cust'?'CUSTOMER':'OUR MOVE')+'</span><b>'+esc(c[1])+'</b>'
        +'<span style="color:var(--g4);font-size:12.5px">Step '+(idx(x)+1)+' of '+(L.length-1)+' · since '+new Date(x.stepAt||x.ts).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' · handled by '+esc(pname(x.owner))+'</span></div>'
      :'<div class="orrnow"><b>'+esc(nowLine(x))+'</b></div>')
@@ -327,7 +341,7 @@ P6.open=id=>{const x=list().find(y=>y.id===id);if(!x)return;const site=x.site?si
       return '<li class="'+(ok?'ok':now?'now':'')+'" onclick="ORR.jump(\''+I+'\',\''+s[0]+'\')"><span class="c">'+(ok?'✓':'')+'</span><span>'+esc(s[1])+(ok&&dd?'<small>'+new Date(dd).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+'</small>':'')+'</span><span class="wh" style="color:'+WHO[s[2]||'oru'][1]+'">'+esc(s[2]==='us'?'us':s[2]==='cust'?'customer':'O&R')+'</span></li>';}).join('')+'</ul>'
    +'<details class="orrdet"><summary>Details</summary>'
      +'<div class="orrkv"><span>O&amp;R project #</span><b>'+esc(x.wo||'—')+'</b><span>O&amp;R site manager</span><b>'+(x.pm?pmLink(x.pm):'—')+'</b><span>Handled by</span><b>'+esc(pname(x.owner))+'</b><span>Sent</span><b>'+fd(x.sent)+'</b>'
-     +((x.type==='newsvc'||x.type==='upgrade')?'<span>Gas</span><b>'+(x.gas?'Yes':'No')+' · <u style="cursor:pointer;font-weight:500" onclick="ORR.gas(\''+I+'\')">change</u></b>':'')+'</div>'
+     +((x.type==='newsvc'||x.type==='upgrade')?'<span>Gas</span><b>'+(gl?'Yes — its own line':'No · <u style="cursor:pointer;font-weight:500" onclick="ORR.gas(\''+I+'\')">add gas</u>')+'</b>':'')+'</div>'
      +'<div class="orrbtns"><button class="btn sec2" onclick="ORR.edit(\''+I+'\')">Edit</button><button class="btn sec2" onclick="ORR.task(\''+I+'\')">+ Task</button>'+(x.site?'<button class="btn sec2" onclick="ORR.close();openFolder(\''+jsq(x.site)+'\')">Job</button>':'')+'</div>'
      +(OPEN(x)?'<div class="orrbtns"><button class="btn sec2" style="color:#d93a2b" onclick="ORR.cancel(\''+I+'\')">Cancel this request</button></div>':'')
      +'<label>History</label>'+((x.log||[]).slice().reverse().map(l=>'<div class="orrlog">'+esc(l.txt)+'<small>'+esc(pname(l.by))+' · '+new Date(l.ts).toLocaleString(LOC(),{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'</small></div>').join('')||'<div class="orrlog">—</div>')
@@ -366,7 +380,7 @@ P6.needs=id=>{const x=get(id);if(!x)return;askPrompt('O&R needs from us',[{label
   bump(x,'O&R needs from us: '+v+(o&&o!==x.owner?' · handed to '+pname(o):''),{need:v,usAt:Date.now(),status:'us',owner:o||x.owner});});};
 P6.delivered=(id,reopen)=>{const x=get(id);if(!x)return;closeTasks(x,['us']);const c=cur(x);
   bump(x,'Sent to O&R what they needed'+(x.need?': '+x.need:''),{need:'',status:c[2]==='us'?'us':'sent',fuOn:c[2]==='us'?'':addDays(3)},reopen);};
-P6.gas=id=>{const x=get(id);if(!x)return;bump(x,'Gas: '+(x.gas?'no':'yes'),{gas:!x.gas});};
+P6.gas=id=>{const x=get(id);if(!x||gasOf(x))return;const g=gasLine(x);bump(x,'Gas added — it has its own line',{gas:true},false);P6.open(g.id);toast('✓ Gas line added','green');};
 P6.cancel=id=>{const x=get(id);if(!x)return;const man=manualOpen(x);
   askConfirm('Cancel this O&R request?'+(man.length?' Its '+man.length+' task'+(man.length===1?'':'s')+' made by hand will be closed too.':''),()=>{closeTasks(x,AUTO.concat([undefined,null,'']));bump(x,'Cancelled',{status:'cancel',closedAt:Date.now(),fuOn:''});},'Cancel it');};
 P6.edit=id=>{const x=get(id);if(!x)return;
