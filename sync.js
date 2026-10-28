@@ -400,8 +400,10 @@ window.addEventListener('online',()=>{st.online=true;paint();flush();catchUp();}
 // the stash is not readable as plaintext by someone inspecting the browser. The key does not depend on the password,
 // so a password change or reset never orphans saved work, and it works for a biometric sign-in (no password needed).
 // Stash blobs are keyed per employee uid, and the app only ever decrypts the signed-in uid's own stash.
-function deviceKey(){return new Promise((res)=>{try{if(!(window.indexedDB&&crypto&&crypto.subtle))return res(null);
-  const r=indexedDB.open('ex_keys',1);
+function deviceKey(){return new Promise((res0)=>{let done=false;const res=v=>{if(!done){done=true;res0(v);}};
+  setTimeout(()=>res(null),5000);   // iPhone home-screen apps can leave IndexedDB hanging on first open — never wait forever
+  try{if(!(window.indexedDB&&crypto&&crypto.subtle))return res(null);
+  const r=indexedDB.open('ex_keys',1);r.onblocked=()=>res(null);
   r.onupgradeneeded=()=>{try{r.result.createObjectStore('k');}catch(e){}};
   r.onerror=()=>res(null);
   r.onsuccess=()=>{try{const db=r.result;const g=db.transaction('k','readonly').objectStore('k').get('deviceKey');
@@ -464,20 +466,34 @@ async function recoverStockStash(uid){try{if(!uid)return;const enc=localStorage.
   try{durPut(SQK,JSON.stringify(cur));localStorage.removeItem('ex_sqenc__'+uid);}catch(e){}}catch(e){}}
 // sign in through the server-side "login" function: the name/phone -> email lookup happens on the server, so the
 // sign-in email is never handed back to someone who isn't signed in (closes the anonymous email-lookup leak).
+// the sign-in this phone has saved (if any) — read straight from storage, so it works even if the library is stuck
+function EX_savedUser(){try{const j=JSON.parse(localStorage.getItem('ex_auth')||'null');const s=j&&(j.currentSession||j);
+  return (s&&s.access_token&&s.refresh_token&&s.user&&s.user.id)?s.user:null;}catch(e){return null;}}
+window.EX_savedUser=EX_savedUser;
 window.EX_login=async function(q,pass){q=(q||'').trim();if(!q||!pass)return {err:'badpass'};
   try{const r=await withTO(sb.functions.invoke('login',{body:{q,password:pass}}),15000,'sign-in');
     // We got a response from the server: a missing session here means it declined the name/password
     // (or the sign-in isn't confirmed) — a real credential problem, not a connection problem.
     if(r.error||!r.data||!r.data.session){const m=(r.error&&(r.error.message||''))||'';return {err:/confirm/i.test(m)?'confirm':'badpass'};}
-    const s=r.data.session;const ss=await sb.auth.setSession({access_token:s.access_token,refresh_token:s.refresh_token});
-    if(ss.error||!ss.data||!ss.data.user)return {err:'badpass'};
-    const uid=ss.data.user.id;try{localStorage.setItem('ex_uid',uid);}catch(e){}
+    const s=r.data.session;
+    // The server already said yes. Saving the session on the phone must never be able to freeze the sign-in
+    // (seen on iPhone home-screen apps on first open): give it a time limit, then check what actually got saved.
+    let ss=null;try{ss=await withTO(sb.auth.setSession({access_token:s.access_token,refresh_token:s.refresh_token}),10000,'save sign-in');}catch(e){ss=null;}
+    let user=ss&&!ss.error&&ss.data&&ss.data.user;
+    let reload=false;
+    if(!user){const saved=EX_savedUser();if(saved&&s.user&&saved.id===s.user.id){user=saved;reload=true;}}
+    if(!user&&!(ss&&ss.error)&&s.user&&s.user.id){   // library still stuck: save the server's session ourselves, then restart the app on it
+      try{const exp=s.expires_at||Math.floor(Date.now()/1000)+(s.expires_in||3600);
+        localStorage.setItem('ex_auth',JSON.stringify({access_token:s.access_token,refresh_token:s.refresh_token,token_type:s.token_type||'bearer',expires_in:s.expires_in||3600,expires_at:exp,user:s.user}));
+        if(EX_savedUser()){user=s.user;reload=true;}}catch(e){}}
+    if(!user){if(ss&&ss.error)return {err:'badpass'};return {err:'offline',msg:'session not saved'};}
+    const uid=user.id;try{localStorage.setItem('ex_uid',uid);}catch(e){}
     // recover this employee's own encrypted stash from a previous logout (device key unwraps it; not tied to password).
-    try{const enc=localStorage.getItem('ex_qenc__'+uid);if(enc){const dk=await deviceKey();if(dk){const rec=await decWith(dk,enc);if(rec&&typeof rec==='object'){Object.keys(rec).forEach(k=>{if(!queue[k])queue[k]=rec[k];});localStorage.removeItem('ex_qenc__'+uid);saveQ();}}}}catch(e){}
-    await recoverStockStash(uid);   // restore any securely-stashed stock transactions for this person
+    try{await withTO((async()=>{const enc=localStorage.getItem('ex_qenc__'+uid);if(enc){const dk=await deviceKey();if(dk){const rec=await decWith(dk,enc);if(rec&&typeof rec==='object'){Object.keys(rec).forEach(k=>{if(!queue[k])queue[k]=rec[k];});localStorage.removeItem('ex_qenc__'+uid);saveQ();}}}})(),8000,'stash');}catch(e){}
+    try{await withTO(recoverStockStash(uid),8000,'stock stash');}catch(e){}   // restore any securely-stashed stock transactions for this person (kept for next time if slow)
     // any legacy plaintext stash from an older build is DISCARDED, not loaded, so no unencrypted work is ever restored.
     try{localStorage.removeItem('ex_queue__'+uid);}catch(e){}
-    return {ok:true,email:ss.data.user.email};
+    return {ok:true,email:user.email,reload};
   }catch(e){return {err:'offline',msg:(e&&e.message)||''};}};  // timed out / never reached the server → connection problem, not a wrong password
 // signing out wipes this phone's copy of the company data, the saved session, and the biometric sign-in, so the next
 // person to use the phone (or the same person on another account) can't see the previous account's data.
