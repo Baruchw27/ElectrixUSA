@@ -252,7 +252,7 @@ if(typeof window.openFolder==='function'){const _of=window.openFolder;window.ope
 function normName(n){return String(n||'').toLowerCase().replace(/[.,#]/g,' ').replace(/\b(drive|dr|road|rd|lane|ln|court|ct|street|st|avenue|ave|place|pl|way|terrace|ter|circle|cir|boulevard|blvd)\b/g,' ').replace(/\b(ny|new york|\d{5})\b/g,' ').replace(/\s+/g,' ').trim();}
 function dupKey(n){const w=normName(n).split(' ');const i=w.findIndex(x=>/^\d+[a-z]?$/.test(x));if(i<0||!w[i+1])return null;return w[i]+' '+w[i+1];}
 P2.dups=function(){const L=(D.sites||[]).filter(s=>s&&s.stage!=='lost'&&!s.tgone);const by={};L.forEach(s=>{const k=dupKey(s.name);if(k)(by[k]=by[k]||[]).push(s);});
-  const ok=new Set(D.dupok||[]);const out=[];Object.values(by).forEach(g=>{for(let a=0;a<g.length;a++)for(let b=a+1;b<g.length;b++){const key=[g[a].id,g[b].id].sort().join('|');if(!ok.has(key))out.push([g[a],g[b],key]);}});return out;};
+  const ok=new Set((D.dupok||[]).filter(x=>typeof x==='string'));const nd=(x,y)=>(x.notDup||[]).includes(y.id)||(y.notDup||[]).includes(x.id);const out=[];Object.values(by).forEach(g=>{for(let a=0;a<g.length;a++)for(let b=a+1;b<g.length;b++){const key=[g[a].id,g[b].id].sort().join('|');if(!ok.has(key)&&!nd(g[a],g[b]))out.push([g[a],g[b],key]);}});return out;};
 // Baruch 2026-10-27: "Same job — merge": everything that belongs to the extra copy (tasks, hours, schedule, material,
 // expenses, O&R, files, links, notes…) moves to the job you keep; the extra copy is hidden (stage "lost", mergedInto) — never erased.
 function refsTo(id){let n=0;const walk=(o,d)=>{if(!o||typeof o!=='object'||d>5)return;if(Array.isArray(o)){o.forEach(x=>walk(x,d+1));return;}
@@ -275,7 +275,8 @@ P2.merge=(aId,bId)=>{const a=D.sites.find(x=>x.id===aId),b=D.sites.find(x=>x.id=
     Object.assign(dup,{stageBeforeMerge:dup.stage,stage:'lost',mergedInto:keep.id,mergedAt:Date.now(),mergedBy:(M()||{}).id,mergedTrello:dup.trello||undefined,trello:'',files:[],links:[],notes:[]});
     D.dupok=(D.dupok||[]).filter(k=>!k.split('|').includes(dup.id));
     save();try{renderSites();}catch(e){}toast('✓ '+tt('Merged')+(n?' — '+n+' '+tt('moved'):''),'green');},tt('Merge'));};
-P2.dupOk=key=>{D.dupok=D.dupok||[];if(!D.dupok.includes(key))D.dupok.push(key);save();renderSites();};
+// Baruch 21:24: "Not a duplicate" kept coming back (it was only kept on the phone) — now saved on both jobs, so it syncs to everyone
+P2.dupOk=key=>{const [x,y]=key.split('|');const a=D.sites.find(s=>s.id===x),b=D.sites.find(s=>s.id===y);if(a&&b){a.notDup=[...new Set([...(a.notDup||[]),b.id])];b.notDup=[...new Set([...(b.notDup||[]),a.id])];}save();renderSites();};
 if(typeof window.renderSites==='function'){const _rs=window.renderSites;window.renderSites=function(){const r=_rs.apply(this,arguments);try{const m=M();const el=$('siteList');
   if(el&&m&&(m.role==='owner'||m.role==='manager'||m.role==='office'||m.all)&&!(($('siteFind')||{}).value||'').trim()){const d=P2.dups();if(d.length){const box=document.createElement('div');box.className='p2dup';
     box.innerHTML='<b>⚠ '+tt('Possible duplicate jobs')+' ('+d.length+')</b>'+d.slice(0,6).map(([a,b,k])=>'<div class="r"><span style="min-width:0">'+esc(a.name)+'<br>'+esc(b.name)+'</span><span style="display:flex;flex-direction:column;gap:4px;flex:none"><button onclick="openFolder(\''+jsq(a.id)+'\')">'+tt('Open')+' 1</button><button onclick="openFolder(\''+jsq(b.id)+'\')">'+tt('Open')+' 2</button>'+((m.role==='owner'||m.role==='office'||m.all)?'<button style="background:#d93a2b;color:#fff" onclick="P2.merge(\''+jsq(a.id)+'\',\''+jsq(b.id)+'\')">'+tt('Same job — merge')+'</button>':'')+'<button onclick="P2.dupOk(\''+jsq(k)+'\')">'+tt('Not a duplicate')+'</button></span></div>').join('');el.prepend(box);}}}catch(e){}return r;};}
