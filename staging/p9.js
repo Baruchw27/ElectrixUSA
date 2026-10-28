@@ -65,6 +65,21 @@ html[data-theme=dark] #homeBody .p7c[data-k=att] .p7r{background:#232326}
 #homeBody .p7c[data-k=att] .p7r>span:first-child{width:6px!important;height:6px!important}
 #homeBody .p7c[data-k=att] .p7r>span:last-child{display:none}
 #homeBody .p7c[data-k=att] .p7r.p9red{box-shadow:none;background:#d93a2b14;color:#c0392b;font-weight:600}
+/* Baruch 22:57: the glass buttons go along the bottom (next to ☰ and +), not up the side —
+   one frosted glass bar (like the new iPhone tab bar) so the names stay readable over the page */
+#p8pin{right:auto!important;left:max(12px,env(safe-area-inset-left,0px))!important;bottom:calc(14px + env(safe-area-inset-bottom,0px))!important;
+  width:calc(100% - 24px - 140px);height:60px;flex-direction:row!important;justify-content:space-around!important;align-items:center!important;gap:0!important;padding:0 4px;border-radius:30px;
+  background:linear-gradient(160deg,rgba(255,255,255,.82),rgba(255,255,255,.58));-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);
+  border:1px solid rgba(255,255,255,.85);box-shadow:0 8px 24px rgba(0,0,0,.14),inset 0 1px 1px rgba(255,255,255,.95)}
+html[data-theme=dark] #p8pin{background:linear-gradient(160deg,rgba(70,70,78,.72),rgba(36,36,40,.6));border-color:rgba(255,255,255,.18);box-shadow:0 8px 24px rgba(0,0,0,.5),inset 0 1px 1px rgba(255,255,255,.2)}
+#p8pin .g{width:auto!important;flex:1;gap:1px!important}
+#p8pin .ball{width:30px!important;height:30px!important;background:none!important;border:none!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+#p8pin .ball::after{display:none!important}
+#p8pin .ball svg{width:22px!important;height:22px!important}
+#p8pin .lab{font-size:10px!important}
+#p8pin .n{top:-4px!important;right:-8px!important}
+html.p2crew #p8pin{width:calc(100% - 24px - 72px)}
+body:has(#pg-home.on) #homeBody{padding-bottom:96px!important}
 /* 18 one action spot: the + goes into the ☰ */
 html.o18 #p2fab{display:none!important}
 html.o18 #p7fm{right:max(16px,env(safe-area-inset-right,0px))!important}
