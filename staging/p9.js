@@ -6,6 +6,9 @@ if(window.EX_P9_OFF)return;
 const $=id=>document.getElementById(id);
 // Baruch 22:44 picked: 1–10, 13, 14, 15, 16 (17 and 18 not now)
 // H07: 18 (hide the "+" button) stays OFF until the + actions also live in the ☰ menu — Baruch: "17 and 18 not now"
+// Baruch 10/28 19:35: the time clock is not set up yet — off for the field (nothing is deleted; set true to bring it back)
+window.EX_FIELD_CLOCK=false;
+try{if(typeof window.noClock==='function'){const _nc=window.noClock;window.noClock=function(e){return _nc(e)||(window.EX_FIELD_CLOCK===false&&!!e&&e.role==='worker');};try{noClock=window.noClock;}catch(x){}}}catch(e){}
 window.P9_ON=window.P9_ON||[1,2,3,4,5,6,7,8,9,10,13,14,15,16];
 const css=`
 /* 1 numbers in one dark color */
@@ -41,7 +44,7 @@ html.o11 #p7date .d{font-size:12.5px!important}
 /* 12 three lines per section */
 html.o12 .p7c .bd>.p7r:nth-of-type(n+4){display:none!important}
 /* 13 quiet sections start closed (only problems open) */
-html.o13 .p7c:not([data-k=att]):not([data-k=tasks]):not(.p9bad):not(.p9open) .bd{display:none!important}
+html.o13 .p7c:not([data-k=att]):not([data-k=tasks]):not([data-k=myjob]):not([data-k=myjobT]):not(.p9bad):not(.p9open) .bd{display:none!important}
 /* H10: a tap on the title opens a quiet section (and closes it again) */
 html.o13 .p7c.p9open.fold .bd{display:none!important}
 /* 14 no arrows */
