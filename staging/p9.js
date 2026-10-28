@@ -92,7 +92,14 @@ function apply(){const h=document.documentElement;for(let i=1;i<=18;i++)h.classL
     const p=$('p8pin'),hb=$('homeBody');if(p&&hb){if(h.classList.contains('o17')){const d=$('p7date');const at=d&&d.nextSibling;if(p.parentNode!==hb)hb.insertBefore(p,at||hb.firstChild);}else if(p.parentNode!==document.body)document.body.appendChild(p);}}catch(e){}}
 function fmLab(){const b=$('p7fm');if(b)b.setAttribute('data-lab',typeof t==='function'?t('More'):'More');}
 try{fmLab();}catch(e){}
-if(typeof window.applyTabs==='function'){const _a9=window.applyTabs;window.applyTabs=function(){const r=_a9.apply(this,arguments);try{fmLab();}catch(e){}return r;};}
+if(typeof window.applyTabs==='function'){const _a9=window.applyTabs;window.applyTabs=function(){
+  // Baruch 10/28 00:10: with no bottom bar every bar button is hidden, so the old "your page's button is hidden → go Home"
+  // check sent people back to Home each time new data arrived. Now only a page the person is NOT allowed to see sends them back.
+  const on=[...document.querySelectorAll('.tab.on')];on.forEach(b=>b.classList.remove('on'));
+  let r;try{r=_a9.apply(this,arguments);}finally{on.forEach(b=>b.classList.add('on'));}
+  try{fmLab();}catch(e){}
+  try{const m=me();const who=m&&m.id;if(who&&window.__p9who&&window.__p9who!==who&&typeof goTab==='function')goTab((typeof primaryFor==='function'&&primaryFor(m)[0])||'home');window.__p9who=who;}catch(e){}   // a different person signed in → their start page
+  return r;};}
 window.P9={apply,set(L){window.P9_ON=L.slice();window.__p9keep=false;apply();}};
 if(typeof window.renderHome==='function'){const _rh=window.renderHome;window.renderHome=function(){const r=_rh.apply(this,arguments);try{apply();}catch(e){}return r;};}
 apply();
