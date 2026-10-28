@@ -160,10 +160,38 @@ html[data-theme=dark] #p7fm.p8x{background:#fff!important}
 html[data-theme=dark] #p7fm.p8x{background:#fff;color:#111}
 `;
 const st=document.createElement('style');st.textContent=css;document.body.appendChild(st);
+
+/* pinned glass buttons on Home (Baruch 22:20: Tasks, Jobs, Schedule, O&R always on the right side of Home; ☰ for the rest) */
+const PIN=['jobs','sites','sched','orr'];
+const pcss=`
+#p8pin{position:fixed;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:59;display:none;flex-direction:column;gap:12px;align-items:center}
+body:has(#pg-home.on) #p8pin{display:flex}
+body:has(#pg-home.on) #homeBody .p7c,body:has(#pg-home.on) #homeBody .p7nums,body:has(#pg-home.on) #homeBody #p7date{margin-right:66px}
+#p8pin .g{display:flex;flex-direction:column;align-items:center;gap:3px;width:62px;border:none;background:none;padding:0;cursor:pointer;font-family:inherit}
+#p8pin .ball{position:relative;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1d1d1f;
+  background:linear-gradient(160deg,rgba(255,255,255,.8),rgba(255,255,255,.45));-webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%);
+  border:1px solid rgba(255,255,255,.8);box-shadow:0 6px 18px rgba(0,0,0,.14),inset 0 1px 1px rgba(255,255,255,.95),inset 0 -6px 12px rgba(0,0,0,.05)}
+#p8pin .ball::after{content:"";position:absolute;left:11px;right:11px;top:4px;height:13px;border-radius:50%;background:linear-gradient(rgba(255,255,255,.8),rgba(255,255,255,0));pointer-events:none}
+#p8pin .ball svg{width:21px;height:21px;position:relative;z-index:1}
+#p8pin .lab{font-size:10.5px;font-weight:600;color:var(--g5);white-space:nowrap}
+#p8pin .n{position:absolute;top:-3px;right:-4px;z-index:2;min-width:18px;height:18px;border-radius:999px;background:#d93a2b;color:#fff;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
+html[data-theme=dark] #p8pin .ball{color:#fff;background:linear-gradient(160deg,rgba(80,80,90,.65),rgba(40,40,46,.45));border-color:rgba(255,255,255,.22);box-shadow:0 6px 18px rgba(0,0,0,.5),inset 0 1px 1px rgba(255,255,255,.25)}
+html[data-theme=dark] #p8pin .ball::after{background:linear-gradient(rgba(255,255,255,.22),rgba(255,255,255,0))}
+html[data-theme=dark] #p8pin .lab{color:#fff}
+#p8glass.on~#p8pin,body:has(#p8glass.on) #p8pin{opacity:0;pointer-events:none}
+`;
+const pst=document.createElement('style');pst.textContent=pcss;document.body.appendChild(pst);
+function pins(){const m=M();let p=$('p8pin');if(!p){p=document.createElement('div');p.id='p8pin';document.body.appendChild(p);}if(!m){p.innerHTML='';return;}
+  const al=allowed();const L=PIN.filter(n=>al.includes(n));
+  p.innerHTML=L.map(n=>{const c=count(n,m);return '<button class="g" onclick="goTab(\''+n+'\')"><span class="ball">'+tabIcon(n)+(c?'<i class="n">'+c+'</i>':'')+'</span><span class="lab">'+esc(tt(LABEL[n]||(TABMETA[n]||[])[1]||n))+'</span></button>';}).join('');
+  if(!L.length)p.style.display='none';else p.style.display='';}
+if(typeof window.renderHome==='function'){const _rh2=window.renderHome;window.renderHome=function(){const r=_rh2.apply(this,arguments);try{pins();}catch(e){}return r;};}
+if(typeof window.applyTabs==='function'){const _at2=window.applyTabs;window.applyTabs=function(){const r=_at2.apply(this,arguments);try{pins();}catch(e){}return r;};}
+try{pins();}catch(e){}
 function build(){const m=M();let g=$('p8glass');if(!g){g=document.createElement('div');g.id='p8glass';document.body.appendChild(g);}if(!m)return g;
   const al=allowed();let start='home';try{start=primaryFor(m)[0];}catch(e){}
   const cur=((document.querySelector('.pg.on')||{}).id||'').replace('pg-','');
-  const L=ORDER.filter(n=>n===start||(n!=='home'&&al.includes(n))).concat(['more']);
+  const onHome=cur==='home';const L=ORDER.filter(n=>(n===start||(n!=='home'&&al.includes(n)))&&!(onHome&&PIN.includes(n))).concat(['more']);
   g.innerHTML='<div class="dim" onclick="P7.close()"></div><div class="col">'+L.map((n,i)=>{const c=n==='more'?0:count(n,m);
     return '<button class="g'+(cur===n?' on':'')+'" style="transition-delay:'+(i*18)+'ms" onclick="P7.go(\''+n+'\')"><span class="ball">'+(n==='home'?HOME:n==='more'?GEAR:tabIcon(n))+(c?'<i class="n">'+c+'</i>':'')+'</span><span class="lab">'+esc(tt(LABEL[n]||(TABMETA[n]||[])[1]||n))+'</span></button>';}).join('')+'</div>';
   return g;}
