@@ -4,7 +4,8 @@
 (function(){
 if(window.EX_P9_OFF)return;
 const $=id=>document.getElementById(id);
-window.P9_ON=window.P9_ON||[];
+// Baruch 22:44 picked: 1–10, 13, 14, 15, 16 (17 and 18 not now)
+window.P9_ON=window.P9_ON||[1,2,3,4,5,6,7,8,9,10,13,14,15,16];
 const css=`
 /* 1 numbers in one dark color */
 html.o1 .p7nums b{color:var(--g5)!important}

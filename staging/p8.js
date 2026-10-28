@@ -166,7 +166,7 @@ const PIN=['jobs','sites','sched','orr'];
 const pcss=`
 #p8pin{position:fixed;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:59;display:none;flex-direction:column;gap:12px;align-items:center}
 body:has(#pg-home.on) #p8pin{display:flex}
-body:has(#pg-home.on) #homeBody .p7c,body:has(#pg-home.on) #homeBody .p7nums,body:has(#pg-home.on) #homeBody #p7date{margin-right:66px}
+/* Baruch 22:44: lists full width again — the glass buttons float on top */
 #p8pin .g{display:flex;flex-direction:column;align-items:center;gap:3px;width:62px;border:none;background:none;padding:0;cursor:pointer;font-family:inherit}
 #p8pin .ball{position:relative;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1d1d1f;
   background:linear-gradient(160deg,rgba(255,255,255,.8),rgba(255,255,255,.45));-webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%);
