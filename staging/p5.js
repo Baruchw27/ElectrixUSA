@@ -77,7 +77,7 @@ const P={
 const DOT=c=>'<svg class="exi" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6" fill="'+c+'"/></svg>';
 const ico=(n,cls)=>'<svg class="exi'+(cls?' '+cls:'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+P[n]+'</svg>';
 window.exIcon=ico;
-const MAP={'📍':'pin','🎤':'mic','🎙':'mic','⚠':'warn','📅':'cal','🗓':'cal','📆':'cal','📷':'cam','📸':'cam','📋':'clip','📦':'box','📤':'up','📥':'down','⏳':'wait','⌛':'wait',
+const MAP={'🔋':'plug','🧯':'warn','🙈':'eye','🏷':'tack','🧪':'bulb','🚫':'warn','❄':'sun','🪜':'tool','🎚':'gear','🌀':'gear','🩹':'tool','♨':'warn','🔥':'warn','🔠':'note','⚖':'ruler','📍':'pin','🎤':'mic','🎙':'mic','⚠':'warn','📅':'cal','🗓':'cal','📆':'cal','📷':'cam','📸':'cam','📋':'clip','📦':'box','📤':'up','📥':'down','⏳':'wait','⌛':'wait',
  '👤':'user','👥':'users','👷':'user','📎':'attach','🏠':'home','🚗':'car','🚐':'car','🚚':'car','📁':'folder','📂':'folder','🗂':'folder','✅':'check','☑':'check',
  '⏰':'clock','🕒':'clock','🕑':'clock','🕘':'clock','🕐':'clock','⏱':'clock','🧰':'tool','🔧':'tool','🛠':'tool','🔩':'tool','🤖':'spark','✨':'spark','🆕':'spark',
  '🔍':'search','🔎':'search','🖼':'image','📝':'note','🗒':'note','✏':'note','🏖':'sun','☀':'sun','🌇':'sun','💬':'chat','🏛':'bldg','🏢':'bldg','🏬':'bldg','🏥':'bldg','🏗':'bldg','🚧':'warn',
