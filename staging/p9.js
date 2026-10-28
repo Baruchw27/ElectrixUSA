@@ -96,4 +96,7 @@ if(typeof window.applyTabs==='function'){const _a9=window.applyTabs;window.apply
 window.P9={apply,set(L){window.P9_ON=L.slice();window.__p9keep=false;apply();}};
 if(typeof window.renderHome==='function'){const _rh=window.renderHome;window.renderHome=function(){const r=_rh.apply(this,arguments);try{apply();}catch(e){}return r;};}
 apply();
+// first screen is drawn with everything loaded → show the app (index.html hides it until now)
+try{const h=$('pg-home');if(h&&h.classList.contains('on'))renderHome();}catch(e){}
+requestAnimationFrame(()=>requestAnimationFrame(()=>document.documentElement.classList.remove('exboot')));
 })();

@@ -367,7 +367,7 @@ function applyRows(rows,{replace}){applying=true;try{
     if(r.coll==='_'){D[r.id]=r.data&&'v' in r.data?r.data.v:r.data;return;}
     if(!(r.coll in D))D[r.coll]=/^[a-z]+$/.test(r.coll)&&!['sched','mylist','punchlists','keepLabels','base'].includes(r.coll)?[]:{};
     // stock history rows are written by the server without an id inside: keep the id, or the phone's copy loses it
-    let data=r.data;if(r.coll==='stockLog'&&data&&typeof data==='object'&&!Array.isArray(data)&&!data.id)data=Object.assign({id:r.id},data);if(r.coll==='emps'){const old=liveRecord('emps',r.id);if(old&&old.pass)data.pass=old.pass;}
+    let data=r.data;if(data&&typeof data==='object'&&!Array.isArray(data)&&!data.id&&Array.isArray(D[r.coll]))data=Object.assign({id:r.id},data);   // Baruch 10/27: a record the server wrote without an id inside (Trello jobs) must keep its id, or each phone saves it again as a new copyif(r.coll==='emps'){const old=liveRecord('emps',r.id);if(old&&old.pass)data.pass=old.pass;}
     if(!replace&&(r.coll==='keep'||r.coll==='mats'))data=listKeepNewer(liveRecord(r.coll,r.id),data);
     setRecord(r.coll,r.id,data);if(r.coll==='stock'&&data&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,data.qty,null,data.qv);
     if(r.coll==='stockLog'&&window.EX_stockLogSeen){try{window.EX_stockLogSeen(r.id);}catch(e){}}});
