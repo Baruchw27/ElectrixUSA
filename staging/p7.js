@@ -83,7 +83,32 @@ html[data-theme=dark] .p7c{background:#1c1c1e;box-shadow:none}
 .p7more{font-size:13px;font-weight:600;color:var(--blue-mid);padding:8px 0 6px;cursor:pointer;border-top:1px solid var(--g1)}
 .p7empty{color:var(--g4);font-size:13.5px;padding:4px 0 8px}
 html.p7nobar #pg-jobs > .stats{display:none}
-#p5hero{margin:2px 0 10px!important}
+/* compact (Baruch 21:12: smaller, see more at once) */
+#p5hero{padding:2px 0 6px!important;margin:0!important}
+#p5hero img{width:min(40%,160px)!important}
+#p7date{gap:9px;margin-bottom:8px}
+#p7date .cal{width:36px;height:38px;border-radius:9px}
+#p7date .cal i{font-size:8.5px;line-height:12px}#p7date .cal b{font-size:16px;line-height:25px}
+#p7date .d{font-size:11.5px}#p7date h2{font-size:16.5px}
+.p7nums{gap:6px;margin-bottom:8px}
+.p7nums button{padding:6px 2px 5px;border-radius:11px}
+.p7nums b{font-size:16px}.p7nums span{font-size:10.5px}
+.p7c{border-radius:13px;margin-bottom:7px}
+.p7c .p7h{padding:7px 11px;gap:8px}
+.p7c .p7h .ic{width:24px;height:24px;border-radius:7px}.p7c .p7h .ic svg{width:14px;height:14px}
+.p7c .p7h b{font-size:13.5px}
+.p7c .p7h .n{font-size:11px;padding:1px 7px}
+.p7c .bd{padding:0 11px 3px}
+.p7r{padding:5px 0;font-size:13px;gap:8px;line-height:1.25}
+.p7r .w small{font-size:11.5px;margin-top:0}
+.p7r.one .w{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p7r.one .w small{display:inline;margin-left:6px}
+.p7r .ck{width:18px;height:18px}
+.p7r .tm{font-size:11.5px;min-width:48px}
+.p7r .pill{font-size:10.5px;padding:1px 6px}
+.p7tag{font-size:9.5px;padding:0 4px}
+.p7more{font-size:12px;padding:5px 0 4px}
+.p7warn{font-size:11.5px;padding:4px 8px;margin:2px 0 3px}
 `;
 const stEl=document.createElement('style');stEl.id='p7css';stEl.textContent=css;document.body.appendChild(stEl);
 
@@ -128,37 +153,37 @@ function tasksCard(m){let L=[];try{L=myTasks(m);}catch(e){}const td=new Date();t
   L=L.slice().sort((a,b)=>(late(b)-late(a))||((b.pri?1:0)-(a.pri?1:0))||((b.ts||0)-(a.ts||0)));
   const rows=L.map(j=>{let tx='';try{tx=jobText(j);}catch(e){tx=j.desc||'';}const from=j.from&&j.from!==m.id?nameOf(j.from).split(' ')[0]:'';
     const tags=(late(j)?'<span class="p7tag r">'+esc(tt('Late'))+'</span>':'')+(j.orr||j.orrAuto?'<span class="p7tag">O&amp;R</span>':'')+(!j['seen_'+m.id]&&from?'<span class="p7tag p">'+esc(tt('New'))+'</span>':'');
-    return '<div class="p7r" onclick="openJobDetail(\''+jsq(j.id)+'\')"><button class="ck" aria-label="Done" onclick="event.stopPropagation();markDone(\''+jsq(j.id)+'\')"></button><div class="w">'+tags+(j.pri?'<b style="color:#c0392b">':'')+esc(String(tx).replace(/^O&R · /,''))+(j.pri?'</b>':'')+'<small>'+[j.site?esc(short(siteName(j.site))):'',from?esc(tt('from'))+' '+esc(from):''].filter(Boolean).join(' · ')+'</small></div></div>';});
+    return '<div class="p7r one" onclick="openJobDetail(\''+jsq(j.id)+'\')"><button class="ck" aria-label="Done" onclick="event.stopPropagation();markDone(\''+jsq(j.id)+'\')"></button><div class="w">'+tags+(j.pri?'<b style="color:#c0392b">':'')+esc(String(tx).replace(/^O&R · [^:]*: /,'').replace(/^O&R · /,''))+(j.pri?'</b>':'')+'<small>'+[j.site?esc(short(siteName(j.site))):'',from?esc(tt('from'))+' '+esc(from):''].filter(Boolean).join(' · ')+'</small></div></div>';});
   let W=[];try{W=gpWaiting(m);}catch(e){}
   const wait=W.length?'<div class="p7more" style="color:var(--g5)" onclick="P7.all(\'wait\')">'+esc(tt('Waiting on others'))+' <span style="color:var(--g4)">'+W.length+'</span> '+(open_('wait')?'▾':'▸')+'</div>'
     +(open_('wait')?W.slice(0,15).map(j=>'<div class="p7r" onclick="openJobDetail(\''+jsq(j.id)+'\')"><div class="w">'+esc(String(j.desc||'').slice(0,80))+'<small>'+esc(nameList(j))+' · '+esc(gpAge(j.ts))+'</small></div></div>').join(''):''):'';
   const lateN=L.filter(late).length;
   const body=rows.length?'':'<div class="p7empty">✓ '+esc(tt('All caught up.'))+'</div>';
-  let h=card('tasks',tabIcon('jobs'),'#2f80ed','My tasks',L.length,rows,5,body,lateN>0);
+  let h=card('tasks',tabIcon('jobs'),'#2f80ed','My tasks',L.length,rows,6,body,lateN>0);
   if(wait)h=h.replace(/<\/div><\/div>$/,wait+'</div></div>');
   return h;}
 function crewCard(day){const k=dkey(day);const isT=day.toDateString()===new Date().toDateString();const td=new Date().toDateString();
   const rows=[];let out=0;(D.crews||[]).forEach(c=>{const guys=(D.emps||[]).filter(e=>e.crew===c.id&&!e.inactive);if(!guys.length)return;const sl=schedDay(c.id+'|'+k);
-    if(!sl){if(day.getDay()!==0&&day.getDay()!==6)rows.push('<div class="p7r" onclick="goTab(\'sched\')"><div class="w"><b>'+esc(c.name)+'</b><small>'+guys.map(e=>esc(e.name.split(' ')[0])).join(', ')+'</small></div><span class="pill bad">'+esc(tt('No job'))+'</span></div>');return;}
+    if(!sl){if(day.getDay()!==0&&day.getDay()!==6)rows.push('<div class="p7r one" onclick="goTab(\'sched\')"><div class="w"><b>'+esc(c.name)+'</b><small>'+guys.map(e=>esc(e.name.split(' ')[0])).join(', ')+'</small></div><span class="pill bad">'+esc(tt('No job'))+'</span></div>');return;}
     out++;const inN=isT?guys.filter(e=>(D.punches||[]).some(p=>p.who===e.id&&!p.out&&new Date(p.in).toDateString()===td)).length:null;
-    rows.push('<div class="p7r" onclick="openCrew(\''+jsq(c.id)+'\')"><div class="w"><b>'+esc(c.name)+'</b>'+(sl.time?' <span style="color:var(--g4);font-size:12.5px">'+esc(sl.time)+'</span>':'')+'<small>'+esc(sl.site?short(siteName(sl.site)):(tt('Several jobs')))+'</small></div>'+(inN!=null?'<span class="pill '+(inN===guys.length?'ok':inN?'am':'bad')+'">'+inN+'/'+guys.length+'</span>':'')+'</div>');});
+    rows.push('<div class="p7r one" onclick="openCrew(\''+jsq(c.id)+'\')"><div class="w"><b>'+esc(c.name)+'</b>'+(sl.time?' <span style="color:var(--g4);font-size:12.5px">'+esc(sl.time)+'</span>':'')+'<small>'+esc(sl.site?short(siteName(sl.site)):(tt('Several jobs')))+'</small></div>'+(inN!=null?'<span class="pill '+(inN===guys.length?'ok':inN?'am':'bad')+'">'+inN+'/'+guys.length+'</span>':'')+'</div>');});
   return card(isT?'crews':'crewsT',IC('cal')||tabIcon('sched'),'#9b51e0',isT?'Crews today':'Crews tomorrow',out+'/'+rows.length,rows,6,'',rows.some(r=>r.includes('pill bad'))&&!isT);}
 function onsiteCard(){const td=new Date().toDateString();const hr=new Date().getHours();const live=(D.punches||[]).filter(p=>!p.out&&new Date(p.in).toDateString()===td&&(D.emps||[]).some(e=>e.id===p.who));
   const by={};live.forEach(p=>{(by[p.site]=by[p.site]||[]).push(p);});const field=(D.emps||[]).filter(e=>e.role==='worker'&&!e.inactive&&!(typeof noClock==='function'&&noClock(e)));
-  const rows=Object.entries(by).sort((a,b)=>b[1].length-a[1].length).map(([sid,ps])=>'<div class="p7r" onclick="openFolder(\''+jsq(sid)+'\')"><div class="w"><b>'+esc(short(siteName(sid)))+'</b><small>'+ps.sort((a,b)=>a.in-b.in).map(p=>esc(nameOf(p.who).split(' ')[0])+(p.away?' ⚠':'')).join(', ')+'</small></div><span class="pill ok">'+ps.length+'</span></div>');
+  const rows=Object.entries(by).sort((a,b)=>b[1].length-a[1].length).map(([sid,ps])=>'<div class="p7r one" onclick="openFolder(\''+jsq(sid)+'\')"><div class="w"><b>'+esc(short(siteName(sid)))+'</b><small>'+ps.sort((a,b)=>a.in-b.in).map(p=>esc(nameOf(p.who).split(' ')[0])+(p.away?' ⚠':'')).join(', ')+'</small></div><span class="pill ok">'+ps.length+'</span></div>');
   let notIn=[];try{const k=dkey(new Date());notIn=(D.crews||[]).filter(c=>schedDay(c.id+'|'+k)).flatMap(c=>(D.emps||[]).filter(e=>e.crew===c.id&&!e.inactive&&!(typeof noClock==='function'&&noClock(e)))).filter(e=>!(D.punches||[]).some(p=>p.who===e.id&&new Date(p.in).toDateString()===td));}catch(e){}
   const warn=notIn.length&&hr>=6&&hr<17?'<div class="p7warn">⏱ '+esc(tt('Not in yet'))+': '+notIn.map(e=>esc(e.name.split(' ')[0])).join(', ')+'</div>':'';
   const n=live.filter(p=>field.some(e=>e.id===p.who)).length;
-  return card('onsite',IC('pin')||tabIcon('hours'),'#2fb36b','On the job now',n+'/'+field.length,rows,4,warn||(rows.length?'':'<div class="p7empty">'+esc(tt('Nobody punched in yet.'))+'</div>'),false);}
+  return card('onsite',IC('pin')||tabIcon('hours'),'#2fb36b','On the job now',n+'/'+field.length,rows,6,warn||(rows.length?'':'<div class="p7empty">'+esc(tt('Nobody punched in yet.'))+'</div>'),false);}
 function meetCard(m){const now=Date.now();const td=new Date().toDateString();const tm=new Date();tm.setDate(tm.getDate()+1);const tms=tm.toDateString();
   const day=at=>{const d=new Date(at).toDateString();return d===td?fmtT(at):d===tms?tt('Tomorrow')+' '+fmtT(at):new Date(at).toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'});};
-  let L=[];try{L=(D.meets||[]).filter(x=>x.at>=now-3600000&&x.at<now+7*86400000&&(m.role==='owner'||inMeet(x,m.id))).map(x=>({at:x.at,h:'<div class="p7r" onclick="goTab(\'cal\')"><span class="tm">'+esc(day(x.at))+'</span><div class="w">'+esc(x.title||tt('Meeting'))+'<small>'+[x.site?esc(short(siteName(x.site))):'',(()=>{try{return esc(meetWhoLine(x));}catch(e){return '';}})()].filter(Boolean).join(' · ')+'</small></div></div>'}));}catch(e){}
+  let L=[];try{L=(D.meets||[]).filter(x=>x.at>=now-3600000&&x.at<now+7*86400000&&(m.role==='owner'||inMeet(x,m.id))).map(x=>({at:x.at,h:'<div class="p7r one" onclick="goTab(\'cal\')"><span class="tm">'+esc(day(x.at))+'</span><div class="w">'+esc(x.title||tt('Meeting'))+'<small>'+[x.site?esc(short(siteName(x.site))):'',(()=>{try{return esc(meetWhoLine(x));}catch(e){return '';}})()].filter(Boolean).join(' · ')+'</small></div></div>'}));}catch(e){}
   try{(D.insp||[]).forEach(i=>{if(i.status==='booked'&&i.at>=now-3600000&&i.at<now+7*86400000)L.push({at:i.at,h:'<div class="p7r" onclick="openFolder(\''+jsq(i.site)+'\')"><span class="tm">'+esc(day(i.at))+'</span><div class="w"><span class="p7tag p">'+esc(tt('Inspection'))+'</span>'+esc(short(siteName(i.site)))+'</div></div>'});
     else if(i.status==='requested')L.push({at:0,h:'<div class="p7r" onclick="openFolder(\''+jsq(i.site)+'\')"><span class="tm" style="color:#c0392b">!</span><div class="w">'+esc(tt('Inspection to book'))+'<small>'+esc(short(siteName(i.site)))+'</small></div></div>'});});}catch(e){}
   L.sort((a,b)=>a.at-b.at);const todayN=L.filter(x=>x.at&&new Date(x.at).toDateString()===td).length;
-  return card('meets',IC('cal')||tabIcon('cal'),'#e8912d','Meetings & inspections',todayN?todayN+' '+tt('today'):L.length,L.map(x=>x.h),4,'',false);}
+  return card('meets',IC('cal')||tabIcon('cal'),'#e8912d','Meetings & inspections',todayN?todayN+' '+tt('today'):L.length,L.map(x=>x.h),5,'',false);}
 function matCard(m){if(!(typeof canHandleMat==='function'&&canHandleMat(m))&&m.role!=='owner')return '';const L=(D.mats||[]).filter(x=>x.status==='open').sort((a,b)=>(a.ts||0)-(b.ts||0));
-  const rows=L.map(x=>{let n=0;try{n=liItems(x).length;}catch(e){}return '<div class="p7r" onclick="goTab(\'mat\')"><div class="w"><b>'+esc(short(x.site?siteName(x.site):x.addr||'—'))+'</b><small>'+[n?n+' '+esc(tt('items')):'',x.from?esc(nameOf(x.from).split(' ')[0]):'',x.when?esc(tt(x.when)):''].filter(Boolean).join(' · ')+'</small></div><span class="chev" style="color:var(--g4)">›</span></div>';});
+  const rows=L.map(x=>{let n=0;try{n=liItems(x).length;}catch(e){}return '<div class="p7r one" onclick="goTab(\'mat\')"><div class="w"><b>'+esc(short(x.site?siteName(x.site):x.addr||'—'))+'</b><small>'+[n?n+' '+esc(tt('items')):'',x.from?esc(nameOf(x.from).split(' ')[0]):'',x.when?esc(tt(x.when)):''].filter(Boolean).join(' · ')+'</small></div><span class="chev" style="color:var(--g4)">›</span></div>';});
   return card('mat',IC('box')||tabIcon('mat'),'#a86a00','Material waiting',L.length,rows,3,'',false);}
 function nums(m,al){const td=new Date().toDateString();let mine=0;try{mine=myTasks(m).length;}catch(e){}
   const field=(D.emps||[]).filter(e=>e.role==='worker'&&!e.inactive);const on=field.filter(e=>(D.punches||[]).some(p=>p.who===e.id&&!p.out&&!p.away&&new Date(p.in).toDateString()===td)).length;
