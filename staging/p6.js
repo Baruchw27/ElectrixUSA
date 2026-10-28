@@ -165,6 +165,13 @@ function renderOrr(){ensurePage();const pg=$('pg-orr');const m=M();if(!pg||!m)re
     const wait=shown.filter(x=>!todo(x)).sort((a,b)=>String(a.fuOn||'9').localeCompare(String(b.fuOn||'9')));
     body=sec('Needs action today',act.length)+(act.length?act.map(row).join(''):'<div class="orrempty">'+esc(tt('All caught up.'))+'</div>')
         +sec('Waiting',wait.length)+(wait.length?wait.map(row).join(''):'<div class="orrempty">'+esc(tt('Nothing waiting.'))+'</div>');
+  }else if(view==='mgr'){   // Baruch 10/28 00:21: all O&R jobs of each site manager, to go over them together
+    const mg=x=>{const st=x.site&&(D.sites||[]).find(y=>y.id===x.site);return st?(Array.isArray(st.managers)&&st.managers.length?st.managers:(st.manager?[st.manager]:[])):[];};
+    const G={};shown.forEach(x=>{const L2=mg(x);(L2.length?L2:['']).forEach(k=>(G[k]=G[k]||[]).push(x));});
+    const nm=k=>k?pname(k):tt('No site manager');
+    Object.keys(G).sort((a,b)=>(!a)-(!b)||nm(a).localeCompare(nm(b))).forEach(k=>{const g=G[k];
+      body+=sec(nm(k),g.length)+g.sort((a,b)=>(!!todo(b)-!!todo(a))||(a.stepAt||0)-(b.stepAt||0)).map(row).join('');});
+    if(!shown.length)body='<div class="orrempty">Nothing here.</div>';
   }else{
     const groups={};shown.forEach(x=>{const c=cur(x);(groups[c[0]]=groups[c[0]]||{l:c[1],L:[]}).L.push(x);});
     ORDER.filter(k=>groups[k]).forEach(k=>{const g=groups[k];body+=sec(g.l,g.L.length)+g.L.sort((a,b)=>(a.stepAt||0)-(b.stepAt||0)).map(row).join('');});
@@ -173,7 +180,7 @@ function renderOrr(){ensurePage();const pg=$('pg-orr');const m=M();if(!pg||!m)re
   const doneL=L.filter(x=>!OPEN(x)&&match(x)).sort((a,b)=>(b.closedAt||b.upd||0)-(a.closedAt||a.upd||0)).slice(0,40);
   const sb=(k)=>'<button class="'+(whoF===k?'on':'')+'" style="color:'+WHO[k][1]+'" onclick="ORR.whoFilter(\''+k+'\')"><b>'+cnt(k)+'</b><span>'+esc(tt(WHO[k][0]==='O&R'?'O&R’s move':WHO[k][0]==='Customer'?'Customer pays':'Our move'))+'</span></button>';
   pg.innerHTML='<div class="orrhd"><h2>O&amp;R</h2><button class="btn" style="width:auto;padding:7px 12px;font-size:13px" onclick="ORR.add()">+ '+esc(tt('New'))+'</button></div>'
-   +'<div class="orrseg"><button class="'+(view==='list'?'on':'')+'" onclick="ORR.view(\'list\')">'+esc(tt('To do'))+'</button><button class="'+(view==='step'?'on':'')+'" onclick="ORR.view(\'step\')">'+esc(tt('By step'))+'</button></div>'
+   +'<div class="orrseg"><button class="'+(view==='list'?'on':'')+'" onclick="ORR.view(\'list\')">'+esc(tt('To do'))+'</button><button class="'+(view==='step'?'on':'')+'" onclick="ORR.view(\'step\')">'+esc(tt('By step'))+'</button><button class="'+(view==='mgr'?'on':'')+'" onclick="ORR.view(\'mgr\')">'+esc(tt('By site manager'))+'</button></div>'
    +'<input type="search" id="orrQ" placeholder="Search address, project #, PM, step" value="'+esc(q)+'" oninput="ORR.search(this.value)">'
    +'<div class="orrsum">'+sb('us')+sb('cust')+sb('oru')+'</div>'
    +body

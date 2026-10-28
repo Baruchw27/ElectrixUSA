@@ -24,7 +24,7 @@ try{if(typeof ES==='object')Object.assign(ES,{
  "Needs action":"Requiere acción","My tasks":"Mis tareas","On site":"En obra","Crews out":"Cuadrillas","Crews today":"Cuadrillas hoy","Crews tomorrow":"Cuadrillas mañana",
  "On the job now":"En la obra ahora","Not in yet":"Aún no llegan","Meetings & inspections":"Reuniones e inspecciones","Material waiting":"Material pendiente",
  "Show all":"Ver todo","Show less":"Ver menos","Waiting on others":"Esperando a otros","All caught up.":"Todo al día.","No job":"Sin trabajo","Settings":"Ajustes",
- "O&R":"O&R","New O&R request":"Nueva solicitud O&R","Our move":"Nos toca","O&R’s move":"Le toca a O&R","Customer pays":"Paga el cliente","To do":"Por hacer","By step":"Por paso",
+ "O&R":"O&R","New O&R request":"Nueva solicitud O&R","Our move":"Nos toca","O&R’s move":"Le toca a O&R","Customer pays":"Paga el cliente","To do":"Por hacer","By step":"Por paso","By site manager":"Por encargado","No site manager":"Sin encargado",
  "Needs action today":"Requiere acción hoy","Waiting":"Esperando","follow up":"seguimiento","Followed up":"Seguimiento hecho","Note":"Nota","Steps":"Pasos","Details":"Detalles",
  "Follow up on":"Seguimiento el","Pick a date":"Elegir fecha","Tomorrow":"Mañana","3 days":"3 días","1 week":"1 semana","2 weeks":"2 semanas","30 days":"30 días",
  "Same job — merge":"Mismo trabajo — unir","Not a duplicate":"No es duplicado","Possible duplicate jobs":"Posibles trabajos duplicados",
