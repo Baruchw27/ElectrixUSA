@@ -22,7 +22,7 @@ const tt=s=>{try{return t(s);}catch(e){return s;}};
 const IC=n=>{try{return window.exIcon?window.exIcon(n):'';}catch(e){return '';}};
 const hubRole=m=>!!m&&(m.role==='owner'||m.role==='manager'||m.role==='office'||!!m.all);
 const short=s=>String(s||'').split(',')[0];
-try{if(typeof ES==='object')Object.assign(ES,{"Menu":"Menú","My tasks":"Mis tareas","On site":"En obra","Crews out":"Cuadrillas","Material":"Material","Today":"Hoy","Settings":"Ajustes","Home":"Inicio",
+try{if(typeof ES==='object')Object.assign(ES,{"Menu":"Menú","Needs action":"Requiere acción","My tasks":"Mis tareas","On site":"En obra","Crews out":"Cuadrillas","Material":"Material","Today":"Hoy","Settings":"Ajustes","Home":"Inicio",
   "Crews today":"Cuadrillas hoy","Crews tomorrow":"Cuadrillas mañana","On the job now":"En la obra ahora","Not in yet":"Aún no llegan","Meetings & inspections":"Reuniones e inspecciones",
   "Material waiting":"Material pendiente","Show all":"Ver todo","Show less":"Ver menos","Waiting on others":"Esperando a otros","All caught up.":"Todo al día.","No job":"Sin trabajo",
   "Inspection":"Inspección","Inspection to book":"Inspección por agendar","items":"artículos","Late":"Atrasado","New":"Nuevo","Nobody punched in yet.":"Nadie ha marcado todavía."});}catch(e){}
@@ -192,6 +192,10 @@ function meetCard(m){const now=Date.now();const td=new Date().toDateString();con
 function matCard(m){if(!(typeof canHandleMat==='function'&&canHandleMat(m))&&m.role!=='owner')return '';const L=(D.mats||[]).filter(x=>x.status==='open').sort((a,b)=>(a.ts||0)-(b.ts||0));
   const rows=L.map(x=>{let n=0;try{n=liItems(x).length;}catch(e){}return '<div class="p7r one" onclick="goTab(\'mat\')"><div class="w"><b>'+esc(short(x.site?siteName(x.site):x.addr||'—'))+'</b><small>'+[n?n+' '+esc(tt('items')):'',x.from?esc(nameOf(x.from).split(' ')[0]):'',x.when?esc(tt(x.when)):''].filter(Boolean).join(' · ')+'</small></div><span class="chev" style="color:var(--g4)">›</span></div>';});
   return card('mat',IC('box')||tabIcon('mat'),'#a86a00','Material waiting',L.length,rows,3,'',false);}
+function attCard(L){if(!L.length)return '';L=L.slice().sort((a,b)=>b.red-a.red);
+  const rows=L.map(x=>'<div class="p7r one" onclick="'+esc(x.act)+'"><span style="flex:none;width:8px;height:8px;border-radius:50%;background:'+(x.red?'#d93a2b':'#e8912d')+'"></span><div class="w">'+esc(x.txt.replace(/^[^A-Za-z0-9¿¡]+/,''))+'</div><span style="color:var(--g4)">›</span></div>');
+  const red=L.filter(x=>x.red).length;
+  return card('att',IC('warn')||'!','#d93a2b','Needs action',L.length,rows,6,'',red>0);}
 function nums(m,al){const td=new Date().toDateString();let mine=0;try{mine=myTasks(m).length;}catch(e){}
   const field=(D.emps||[]).filter(e=>e.role==='worker'&&!e.inactive);const on=field.filter(e=>(D.punches||[]).some(p=>p.who===e.id&&!p.out&&!p.away&&new Date(p.in).toDateString()===td)).length;
   let crews=0;try{const k=dkey(new Date());crews=(D.crews||[]).filter(c=>schedDay(c.id+'|'+k)).length;}catch(e){}
@@ -199,7 +203,7 @@ function nums(m,al){const td=new Date().toDateString();let mine=0;try{mine=myTas
   const b=(n,l,go,col)=>'<button onclick="'+go+'"><b style="color:'+col+'">'+n+'</b><span>'+esc(tt(l))+'</span></button>';
   return '<div class="p7nums">'+b(mine,'My tasks',"P7.to('tasks','jobs')",'#2f80ed')+b(on,'On site',"P7.to('onsite','hours')",'#1f8a4c')+b(crews+'/'+(D.crews||[]).length,'Crews out',"P7.to('crews','sched')",'#7b3fc0')+b(mats,'Material',"P7.to('mat','mat')",mats?'#b86a00':'var(--g4)')+'</div>';}
 P7.to=(k,tab)=>{const c=document.querySelector('.p7c[data-k="'+k+'"]');if(c){if(c.classList.contains('fold'))P7.fold(k);c.scrollIntoView({behavior:'smooth',block:'start'});}else{try{goTab(tab);}catch(e){}}};
-function hubHome(m,el){const d=new Date();const hr=d.getHours();const al=allowed();const greet=hr<12?tt('Good morning'):hr<17?tt('Good afternoon'):tt('Good evening');
+function hubHome(m,el,att){const d=new Date();const hr=d.getHours();const al=allowed();const greet=hr<12?tt('Good morning'):hr<17?tt('Good afternoon'):tt('Good evening');
   const can=n=>al.includes(n)||m.role==='owner';
   const tom=new Date();tom.setDate(tom.getDate()+1);
   const C={tasks:()=>tasksCard(m),onsite:()=>can('hours')||m.role!=='office'?onsiteCard():'',crews:()=>can('sched')?crewCard(new Date()):'',crewsT:()=>can('sched')?crewCard(tom):'',meets:()=>meetCard(m),mat:()=>matCard(m)};
@@ -207,11 +211,15 @@ function hubHome(m,el){const d=new Date();const hr=d.getHours();const al=allowed
   let toq='';try{toq=typeof timeOffQueue==='function'?timeOffQueue():'';}catch(e){}
   el.innerHTML='<div id="p5hero"><img src="'+(document.documentElement.getAttribute('data-theme')==='dark'||(!document.documentElement.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches)?'logo-dark.svg':'logo-light.svg')+'" alt="Electrix"></div>'
    +'<button id="p7date" onclick="goTab(\'cal\')"><span class="cal"><i>'+esc(d.toLocaleDateString(LOC(),{month:'short'}))+'</i><b>'+d.getDate()+'</b></span><span><span class="d">'+esc(d.toLocaleDateString(LOC(),{weekday:'long',month:'long',day:'numeric'}))+'</span><h2>'+esc(greet)+', '+esc(String(m.name||'').split(' ')[0])+'</h2></span><span class="go">›</span></button>'
-   +nums(m,al)+toq+order.map(k=>{try{return C[k]();}catch(e){console.error('p7 card',k,e);return '';}}).join('');}
+   +nums(m,al)+toq+attCard(att||[])+order.map(k=>{try{return C[k]();}catch(e){console.error('p7 card',k,e);return '';}}).join('');}
 if(typeof window.renderHome==='function'){const _rh=window.renderHome;window.renderHome=function(){const m=M();const el=$('homeBody');
   if(!m||!el||!hubRole(m))return _rh.apply(this,arguments);
   try{_rh.apply(this,arguments);}catch(e){}
-  try{hubHome(m,el);}catch(e){console.error('p7 home',e);}};}
+  // Baruch 21:41: keep "Needs action" — take the alerts the app already works out (overdue, off site, no job tomorrow,
+  // inspections to book, not punched in, punch fixes, receipts, GPS…) and show them as one compact card at the top
+  let att=[];try{const tile=[...el.querySelectorAll('.tile')].find(x=>{const h=x.querySelector('h3');return h&&/needs attention|necesita atenci/i.test(h.textContent);});
+    if(tile)att=[...tile.querySelectorAll('.att span')].filter(x=>!x.classList.contains('g')).map(x=>({red:x.classList.contains('r'),txt:x.textContent.trim(),act:x.getAttribute('onclick')||''}));}catch(e){}
+  try{hubHome(m,el,att);}catch(e){console.error('p7 home',e);}};}
 
 /* ───────── More → Settings ───────── */
 function moveNotif(){try{const pg=$('pg-more'),sp=$('pg-sites');if(!pg||!sp||$('p7notif'))return;const s=[...sp.querySelectorAll(':scope > .sec')].find(x=>/Notifications|Notificaciones/.test(x.textContent));

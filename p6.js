@@ -158,22 +158,22 @@ function renderOrr(){ensurePage();const pg=$('pg-orr');const m=M();if(!pg||!m)re
   const cnt=k=>open.filter(x=>who(x)===k).length;
   const shown=whoF?open.filter(x=>who(x)===whoF):open;
   const keepQ=document.activeElement&&document.activeElement.id==='orrQ';
-  const sec=(t,n,extra)=>'<div class="orrsec"><span>'+esc(t)+' <i>'+n+'</i></span>'+(extra||'')+'</div>';
+  const sec=(t,n,extra)=>'<div class="orrsec"><span>'+esc(tt(t))+' <i>'+n+'</i></span>'+(extra||'')+'</div>';
   let body='';
   if(view==='list'){
     const act=shown.filter(todo).sort((a,b)=>(!!b.need-!!a.need)||((cur(b)[2]==='us')-(cur(a)[2]==='us'))||String(a.fuOn||'').localeCompare(String(b.fuOn||'')));
     const wait=shown.filter(x=>!todo(x)).sort((a,b)=>String(a.fuOn||'9').localeCompare(String(b.fuOn||'9')));
-    body=sec('Needs action today',act.length)+(act.length?act.map(row).join(''):'<div class="orrempty">All caught up.</div>')
-        +sec('Waiting',wait.length)+(wait.length?wait.map(row).join(''):'<div class="orrempty">Nothing waiting.</div>');
+    body=sec('Needs action today',act.length)+(act.length?act.map(row).join(''):'<div class="orrempty">'+esc(tt('All caught up.'))+'</div>')
+        +sec('Waiting',wait.length)+(wait.length?wait.map(row).join(''):'<div class="orrempty">'+esc(tt('Nothing waiting.'))+'</div>');
   }else{
     const groups={};shown.forEach(x=>{const c=cur(x);(groups[c[0]]=groups[c[0]]||{l:c[1],L:[]}).L.push(x);});
     ORDER.filter(k=>groups[k]).forEach(k=>{const g=groups[k];body+=sec(g.l,g.L.length)+g.L.sort((a,b)=>(a.stepAt||0)-(b.stepAt||0)).map(row).join('');});
     if(!shown.length)body='<div class="orrempty">Nothing here.</div>';
   }
   const doneL=L.filter(x=>!OPEN(x)&&match(x)).sort((a,b)=>(b.closedAt||b.upd||0)-(a.closedAt||a.upd||0)).slice(0,40);
-  const sb=(k)=>'<button class="'+(whoF===k?'on':'')+'" style="color:'+WHO[k][1]+'" onclick="ORR.whoFilter(\''+k+'\')"><b>'+cnt(k)+'</b><span>'+esc(WHO[k][0]==='O&R'?'O&R’s move':WHO[k][0]==='Customer'?'Customer pays':'Our move')+'</span></button>';
+  const sb=(k)=>'<button class="'+(whoF===k?'on':'')+'" style="color:'+WHO[k][1]+'" onclick="ORR.whoFilter(\''+k+'\')"><b>'+cnt(k)+'</b><span>'+esc(tt(WHO[k][0]==='O&R'?'O&R’s move':WHO[k][0]==='Customer'?'Customer pays':'Our move'))+'</span></button>';
   pg.innerHTML='<div class="orrhd"><h2>O&amp;R</h2><button class="btn" style="width:auto;padding:7px 12px;font-size:13px" onclick="ORR.add()">+ '+esc(tt('New'))+'</button></div>'
-   +'<div class="orrseg"><button class="'+(view==='list'?'on':'')+'" onclick="ORR.view(\'list\')">To do</button><button class="'+(view==='step'?'on':'')+'" onclick="ORR.view(\'step\')">By step</button></div>'
+   +'<div class="orrseg"><button class="'+(view==='list'?'on':'')+'" onclick="ORR.view(\'list\')">'+esc(tt('To do'))+'</button><button class="'+(view==='step'?'on':'')+'" onclick="ORR.view(\'step\')">'+esc(tt('By step'))+'</button></div>'
    +'<input type="search" id="orrQ" placeholder="Search address, project #, PM, step" value="'+esc(q)+'" oninput="ORR.search(this.value)">'
    +'<div class="orrsum">'+sb('us')+sb('cust')+sb('oru')+'</div>'
    +body
