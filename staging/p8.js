@@ -54,7 +54,7 @@ html[data-theme=dark] #pg-exp .btn[style*="--amber"]{background:#f2f2f7!importan
 /* calmer empty lines */
 .empty{color:var(--g4)!important;font-style:normal!important;font-size:13.5px!important;padding:22px 12px!important}
 /* Home opens with a big logo (Baruch 22:11) */
-#homeBody #p5hero{display:flex!important;justify-content:center;padding:44px 0 40px!important;margin:0!important}
+#homeBody #p5hero{display:flex!important;justify-content:center;padding:84px 0 76px!important;margin:0!important}
 #homeBody #p5hero img{width:min(74%,300px)!important;height:auto}
 #p7date{margin-top:4px}
 /* 4. job page summary */
