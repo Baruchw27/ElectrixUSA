@@ -84,6 +84,12 @@ html[data-theme=dark] .orrseg button.on{background:#2c2c2e}
 .orrrow{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:9px 12px;margin-bottom:6px;cursor:pointer;box-shadow:0 0 0 .5px rgba(0,0,0,.07);border-left:4px solid #ccc}
 html[data-theme=dark] .orrrow{background:#1c1c1e;box-shadow:none}
 .orrrow .w{flex:1;min-width:0}
+.orrtrk{display:flex;align-items:baseline;gap:7px;font-size:12.5px;margin-top:3px;min-width:0}
+.orrtrk i{font-style:normal;flex:none;width:58px;font-weight:700;font-size:10.5px;letter-spacing:.4px;color:var(--g4);text-transform:uppercase}
+.orrtrk span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.orrtrk em{font-style:normal;color:var(--g4);font-size:11.5px;flex:none}
+.orrtk{font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--g4);margin:10px 0 4px}
+.orrgas{border-top:1px solid var(--g2);margin-top:12px;padding-top:2px}
 .orrlink{display:flex;align-items:center;gap:8px;background:var(--g1);border-radius:10px;padding:8px 11px;margin:0 0 8px;cursor:pointer;font-size:13px}
 .orrlink b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
 html[data-theme=dark] .orrlink{background:#2c2c2e}
@@ -179,56 +185,77 @@ try{applyTabs();}catch(e){}
 
 /* ───────── overview ───────── */
 let q='',view='list',whoF='',showDone=false;
-function row(x){const td=todo(x),w=who(x),col=WHO[w][1],L=steps(x);const pct=OPEN(x)?Math.round(idx(x)/(L.length-1)*100):100;
+function row(x){const g=gOf(x);if(g)return row2(x,g);const td=todo(x),w=who(x),col=WHO[w][1],L=steps(x);const pct=OPEN(x)?Math.round(idx(x)/(L.length-1)*100):100;
   const sub=td?'<span class="'+(td.us?'us':td.late?'late':'')+'">'+esc(td.t)+'</span>':esc(nowLine(x));
   const right=td?'<button class="orrgo'+(td.us?' ous':'')+'" onclick="event.stopPropagation();ORR.'+td.f+'(\''+jsq(x.id)+'\')">'+esc(td.b)+'</button>'
     :(OPEN(x)&&x.fuOn?'<span class="fu">follow up<br><b style="display:inline;font-size:12px;color:var(--g5)">'+fd(x.fuOn)+'</b></span>':'<span class="chev">›</span>');
   return '<div class="orrrow" style="border-left-color:'+col+'" onclick="ORR.open(\''+jsq(x.id)+'\')"><div class="w"><b>'+esc(sname(x))+' <small>'+esc(TYPE(x.type))+'</small></b><div class="s">'+sub+'</div>'
    +(td?'<div class="s" style="font-size:11.5px">'+esc(td.t===cur(x)[1]?nowLine(x).replace(' · '+cur(x)[1],''):nowLine(x))+'</div>':'')+(OPEN(x)?'<div class="orrbar"><i style="width:'+pct+'%"></i></div>':'')+'</div>'+right+'</div>';}
+function row2(x,g){const a=jAct(x),td=todo(a),w=jWho(x),fu=jFu(x);
+  const right=td?'<button class="orrgo'+(td.us?' ous':'')+'" onclick="event.stopPropagation();ORR.'+td.f+'(\''+jsq(a.id)+'\')">'+esc(td.b)+'<small style="display:block;font-size:10px;font-weight:600;opacity:.85">'+esc(tt(a===g?'Gas':'Electric'))+'</small></button>'
+    :(jOPEN(x)&&fu?'<span class="fu">follow up<br><b style="display:inline;font-size:12px;color:var(--g5)">'+fd(fu)+'</b></span>':'<span class="chev">›</span>');
+  return '<div class="orrrow" style="border-left-color:'+WHO[w][1]+'" onclick="ORR.open(\''+jsq(x.id)+'\')"><div class="w"><b>'+esc(sname(x))+' <small>'+esc(TYPE(x.type))+' + gas</small></b>'
+   +trackLine(x,'Electric')+trackLine(g,'Gas')+'</div>'+right+'</div>';}
 function list(){return (D.orr||[]).filter(x=>x&&!x.deleted);}
+// Baruch 10/28 18:20 (option 1): a job with gas is ONE line with two tracks — Electric and Gas. The gas track is kept as its own
+// record behind the scenes (own steps, follow-ups, server tasks) but is only ever shown inside its job's line and page.
+const parentOf=x=>x&&x.type==='gas'&&x.gasFor?(D.orr||[]).find(y=>y.id===x.gasFor&&!y.deleted):null;
+const isChild=x=>!!parentOf(x);
+function jobs(){return list().filter(x=>!isChild(x));}
+const gOf=x=>x&&x.type!=='gas'?(D.orr||[]).find(g=>g&&!g.deleted&&g.type==='gas'&&g.gasFor===x.id&&g.status!=='cancel'):null;
+const jOPEN=x=>OPEN(x)||OPEN(gOf(x));
+const jTodo=x=>todo(x)||(gOf(x)?todo(gOf(x)):null);
+const jAct=x=>{const g=gOf(x);if(todo(x))return x;if(g&&todo(g))return g;if(OPEN(x))return x;if(g&&OPEN(g))return g;return x;};
+const jWho=x=>{const g=gOf(x);const W=[OPEN(x)?who(x):null,g&&OPEN(g)?who(g):null].filter(Boolean);return W.includes('us')?'us':W.includes('cust')?'cust':W[0]||'done';};
+const jFu=x=>[x,gOf(x)].filter(r=>r&&OPEN(r)&&r.fuOn).map(r=>r.fuOn).sort()[0]||'';
+function trackLine(r,lbl){if(!r)return '';const td=todo(r);const w=who(r);
+  const txt=!OPEN(r)?'✓ '+nowLine(r):td?td.t:cur(r)[1]+(r.fuOn?' · follow up '+fd(r.fuOn):'');
+  const col=!OPEN(r)?'#2fb36b':WHO[w][1];
+  return '<div class="orrtrk"><i>'+esc(tt(lbl))+'</i><span style="color:'+col+';font-weight:600">'+esc(txt)+'</span>'+(OPEN(r)?'<em>'+(idx(r)+1)+'/'+(steps(r).length-1)+'</em>':'')+'</div>';}
 function pmRow(x){const c=cur(x),w=who(x),L=steps(x),i=idx(x),d=daysSince(x.stepAt||x.ts);
   const kv=[['Project #',x.wo||'—'],['Sent',x.sent?fd(x.sent):'—'],['Follow up',x.fuOn?fd(x.fuOn):'—']];
   return '<div class="orrrow orrpr" style="border-left-color:'+WHO[w][1]+'" onclick="ORR.open(\''+jsq(x.id)+'\')"><div class="w">'
    +'<b>'+esc(sname(x))+' <small>'+esc(TYPE(x.type))+'</small></b>'
    +'<div class="s"><span style="color:'+WHO[w][1]+';font-weight:600">'+esc(tt(WHO[w][0]==='O&R'?'Waiting on O&R':WHO[w][0]==='Customer'?'Customer pays':'Our move'))+'</span> · '+esc(tt('Step'))+' '+(i+1)+'/'+L.length+': '+esc(c[1])+' · '+d+' '+esc(tt(d===1?'day':'days'))+'</div>'
    +(x.need?'<div class="s" style="color:#c0392b">'+esc(tt('Needs'))+': '+esc(x.need)+'</div>':'')
+   +(gOf(x)?trackLine(gOf(x),'Gas'):'')
    +'<div class="kv">'+kv.map(k=>'<span>'+esc(tt(k[0]))+' <b>'+esc(k[1])+'</b></span>').join('')+'</div></div><span class="chev">›</span></div>';}
-P6.copyPm=k=>{const g=list().filter(x=>OPEN(x)&&(x.pm||'').trim()===k).sort((a,b)=>(a.stepAt||a.ts||0)-(b.stepAt||b.ts||0));
+P6.copyPm=k=>{const g=jobs().filter(x=>jOPEN(x)&&(x.pm||'').trim()===k).sort((a,b)=>(a.stepAt||a.ts||0)-(b.stepAt||b.ts||0));
   const txt=(k||'No O&R site manager')+' — '+g.length+' open\n\n'+g.map(x=>{const c=cur(x);const d=daysSince(x.stepAt||x.ts);
-    return '• '+sname(x)+' ('+TYPE(x.type)+')'+(x.wo?' — project #'+x.wo:'')+'\n   '+c[1]+' — '+d+(d===1?' day':' days')+(x.sent?' · sent '+fd(x.sent):'');}).join('\n');
+    const gg=gOf(x);return '• '+sname(x)+' ('+TYPE(x.type)+(gg?' + gas':'')+')'+(x.wo?' — project #'+x.wo:'')+'\n   '+(gg?'Electric: ':'')+(OPEN(x)?c[1]+' — '+d+(d===1?' day':' days'):'done')+(x.sent?' · sent '+fd(x.sent):'')+(gg?'\n   Gas: '+(OPEN(gg)?cur(gg)[1]:'done'):'');}).join('\n');
   const ok=()=>toast('📋 '+tt('Copied'),'green');
   if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(ok,()=>{});};
 function renderOrr(){ensurePage();const pg=$('pg-orr');const m=M();if(!pg||!m)return;
   if(!staff(m)){pg.innerHTML='<div class="orrempty">'+esc(tt('Not on your screens'))+'</div>';return;}
-  const L=list();const qq=q.trim().toLowerCase();
-  const match=x=>!qq||(sname(x)+' '+(x.wo||'')+' '+(x.pm||'')+' '+TYPE(x.type)+' '+pname(x.owner)+' '+cur(x)[1]).toLowerCase().includes(qq);
-  const open=L.filter(x=>OPEN(x)&&match(x));
-  const cnt=k=>open.filter(x=>who(x)===k).length;
-  const shown=whoF?open.filter(x=>who(x)===whoF):open;
+  const L=jobs();const qq=q.trim().toLowerCase();
+  const match=x=>!qq||(sname(x)+' '+(x.wo||'')+' '+(x.pm||'')+' '+TYPE(x.type)+(gOf(x)?' gas '+cur(gOf(x))[1]:'')+' '+pname(x.owner)+' '+cur(x)[1]).toLowerCase().includes(qq);
+  const open=L.filter(x=>jOPEN(x)&&match(x));
+  const cnt=k=>open.filter(x=>jWho(x)===k).length;
+  const shown=whoF?open.filter(x=>jWho(x)===whoF):open;
   const keepQ=document.activeElement&&document.activeElement.id==='orrQ';
   const sec=(t,n,extra)=>'<div class="orrsec"><span>'+esc(tt(t))+' <i>'+n+'</i></span>'+(extra||'')+'</div>';
   let body='';
   if(view==='list'){
-    const act=shown.filter(todo).sort((a,b)=>(!!b.need-!!a.need)||((cur(b)[2]==='us')-(cur(a)[2]==='us'))||String(a.fuOn||'').localeCompare(String(b.fuOn||'')));
-    const wait=shown.filter(x=>!todo(x)).sort((a,b)=>String(a.fuOn||'9').localeCompare(String(b.fuOn||'9')));
+    const act=shown.filter(jTodo).sort((a,b)=>(!!jAct(b).need-!!jAct(a).need)||((cur(jAct(b))[2]==='us')-(cur(jAct(a))[2]==='us'))||String(jFu(a)).localeCompare(String(jFu(b))));
+    const wait=shown.filter(x=>!jTodo(x)).sort((a,b)=>String(jFu(a)||'9').localeCompare(String(jFu(b)||'9')));
     body=sec('Needs action today',act.length)+(act.length?act.map(row).join(''):'<div class="orrempty">'+esc(tt('All caught up.'))+'</div>')
         +sec('Waiting',wait.length)+(wait.length?wait.map(row).join(''):'<div class="orrempty">'+esc(tt('Nothing waiting.'))+'</div>');
   }else if(view==='mgr'){
     body+='<button class="bs b" style="margin:4px 0 6px" onclick="ORR.pmBook()">'+esc(tt('O&R contacts'))+'</button>';   // Baruch 10/28 00:23: grouped by O&R's site manager (DeLalla, Rohrer…) — everything to go over on one call with him
     const G={};shown.forEach(x=>{const k=(x.pm||'').trim();(G[k]=G[k]||[]).push(x);});
     Object.keys(G).sort((a,b)=>(!a)-(!b)||G[b].length-G[a].length||a.localeCompare(b)).forEach(k=>{const g=G[k].sort((a,b)=>(a.stepAt||a.ts||0)-(b.stepAt||b.ts||0));
-      const n=w=>g.filter(x=>who(x)===w).length;const parts=[[n('oru'),'on O&R','#2f80ed'],[n('us'),'on us','#e8912d'],[n('cust'),'on customer','#9b51e0']].filter(p=>p[0]);
+      const n=w=>g.filter(x=>jWho(x)===w).length;const parts=[[n('oru'),'on O&R','#2f80ed'],[n('us'),'on us','#e8912d'],[n('cust'),'on customer','#9b51e0']].filter(p=>p[0]);
       body+='<div class="orrpm"><div class="ph"><b>'+(k?pmLink(k):esc(tt('No O&R site manager')))+'</b><i>'+g.length+'</i><button onclick="ORR.copyPm(\''+jsq(k)+'\')">'+esc(tt('Copy list'))+'</button></div>'
         +(()=>{const c=pmFind(k);if(!c)return '';return '<div class="pmline">'+'<span class="pmfull">'+esc(c.name)+'</span>'+(c.phone?'<a href="tel:'+esc(tel(c.phone))+'">'+IC.call+esc(c.phone)+'</a>':'')+(c.email?'<a href="mailto:'+esc(c.email)+'">'+IC.mail+esc(c.email)+'</a>':'')+'</div>';})()
         +'<div class="sm">'+parts.map(p=>'<span style="color:'+p[2]+'">'+p[0]+' '+esc(tt(p[1]))+'</span>').join(' · ')+'</div>'
         +g.map(pmRow).join('')+'</div>';});
     if(!shown.length)body='<div class="orrempty">Nothing here.</div>';
   }else{
-    const groups={};shown.forEach(x=>{const c=cur(x);(groups[c[0]]=groups[c[0]]||{l:c[1],L:[]}).L.push(x);});
-    ORDER.filter(k=>groups[k]).forEach(k=>{const g=groups[k];body+=sec(g.l,g.L.length)+g.L.sort((a,b)=>(a.stepAt||0)-(b.stepAt||0)).map(row).join('');});
+    const groups={};shown.forEach(x=>{const c=cur(jAct(x));(groups[c[0]]=groups[c[0]]||{l:c[1],L:[]}).L.push(x);});
+    ORDER.filter(k=>groups[k]).forEach(k=>{const g=groups[k];body+=sec(g.l,g.L.length)+g.L.sort((a,b)=>(jAct(a).stepAt||0)-(jAct(b).stepAt||0)).map(row).join('');});
     if(!shown.length)body='<div class="orrempty">Nothing here.</div>';
   }
-  const doneL=L.filter(x=>!OPEN(x)&&match(x)).sort((a,b)=>(b.closedAt||b.upd||0)-(a.closedAt||a.upd||0)).slice(0,40);
+  const doneL=L.filter(x=>!jOPEN(x)&&match(x)).sort((a,b)=>(b.closedAt||b.upd||0)-(a.closedAt||a.upd||0)).slice(0,40);
   const sb=(k)=>'<button class="'+(whoF===k?'on':'')+'" style="color:'+WHO[k][1]+'" onclick="ORR.whoFilter(\''+k+'\')"><b>'+cnt(k)+'</b><span>'+esc(tt(WHO[k][0]==='O&R'?'O&R’s move':WHO[k][0]==='Customer'?'Customer pays':'Our move'))+'</span></button>';
   pg.innerHTML='<div class="orrhd"><h2>O&amp;R</h2><button class="btn" style="width:auto;padding:7px 12px;font-size:13px" onclick="ORR.add()">+ '+esc(tt('New'))+'</button></div>'
    +'<div class="orrseg"><button class="'+(view==='list'?'on':'')+'" onclick="ORR.view(\'list\')">'+esc(tt('To do'))+'</button><button class="'+(view==='step'?'on':'')+'" onclick="ORR.view(\'step\')">'+esc(tt('By step'))+'</button><button class="'+(view==='mgr'?'on':'')+'" onclick="ORR.view(\'mgr\')">'+esc(tt('By site manager'))+'</button></div>'
@@ -321,30 +348,42 @@ function openTasks(x){return (D.jobs||[]).filter(j=>j.orr===x.id&&j.status!=='do
 const FU=[['Tomorrow',1],['3 days',3],['1 week',5],['2 weeks',14],['30 days',30]];
 function fuChips(x){const I=jsq(x.id);return '<div class="orrfu">'+FU.map(([l,n])=>{const d=addDays(n);return '<button class="'+(x.fuOn===d?'on':'')+'" onclick="ORR.setFu(\''+I+'\',\''+d+'\')">'+esc(l)+'</button>';}).join('')
   +'<button onclick="ORR.pickFu(\''+I+'\')">'+(x.fuOn&&!FU.some(([l,n])=>addDays(n)===x.fuOn)?fd(x.fuOn):'Pick a date')+'</button></div>';}
-P6.open=id=>{const x=list().find(y=>y.id===id);if(!x)return;const site=x.site?siteName(x.site):(x.addr||'—');const tasks=openTasks(x);const c=cur(x),w=who(x),L=steps(x),I=jsq(x.id);
+P6.open=id=>{let x=list().find(y=>y.id===id);if(!x)return;if(isChild(x))x=parentOf(x);const site=x.site?siteName(x.site):(x.addr||'—');const tasks=openTasks(x);const c=cur(x),w=who(x),L=steps(x),I=jsq(x.id);
   const nx=L[Math.min(idx(x)+1,L.length-1)];
-  const gl=x.type==='gas'?null:gasOf(x),el=x.type==='gas'&&x.gasFor?get(x.gasFor):null;
+  const gl=gOf(x),el=null;
   const link=(o,lbl)=>'<div class="orrlink" onclick="ORR.open(\''+jsq(o.id)+'\')"><span>'+esc(lbl)+'</span><b>'+esc(OPEN(o)?cur(o)[1]:nowLine(o))+'</b><span class="chev">›</span></div>';
-  sheet('<div class="orrk">O&amp;R · '+esc(TYPE(x.type))+'</div>'
+  sheet('<div class="orrk">O&amp;R · '+esc(TYPE(x.type))+(gl?' + gas':'')+'</div>'
    +'<h3 style="margin:2px 0 6px;font-size:17px">'+esc(site)+'</h3>'
-   +(gl?link(gl,'Gas'):'')+(el?link(el,'Electric'):'')
+
    +(OPEN(x)?'<div class="orrnow" style="background:'+WHO[w][1]+'1f"><span style="font-size:11.5px;font-weight:700;color:'+WHO[w][1]+'">NOW · '+esc(w==='oru'?'O&R’S MOVE':w==='cust'?'CUSTOMER':'OUR MOVE')+'</span><b>'+esc(c[1])+'</b>'
        +'<span style="color:var(--g4);font-size:12.5px">Step '+(idx(x)+1)+' of '+(L.length-1)+' · since '+new Date(x.stepAt||x.ts).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' · handled by '+esc(pname(x.owner))+'</span></div>'
-     :'<div class="orrnow"><b>'+esc(nowLine(x))+'</b></div>')
+     :(gl?'<div class="orrnow" style="background:#2fb36b1f"><span style="font-size:11.5px;font-weight:700;color:#2fb36b">ELECTRIC · DONE</span><b>'+esc(nowLine(x))+'</b></div>':'<div class="orrnow"><b>'+esc(nowLine(x))+'</b></div>'))
    +(x.need?'<div class="orrneed"><b>O&amp;R needs from us:</b> '+esc(x.need)+'<div class="orrbtns"><button class="btn" style="background:#e8912d" onclick="ORR.delivered(\''+I+'\')">Sent to O&amp;R</button></div></div>':'')
    +(OPEN(x)?'<div class="orrbtns"><button class="btn" onclick="ORR.next(\''+I+'\')">✓ Done'+(nx[0]!=='done'?' → '+esc(nx[1]):'')+'</button></div>'
      +(w!=='us'?'<label>Follow up on'+(x.fuOn?' · '+fd(x.fuOn,{weekday:'short',month:'short',day:'numeric'}):'')+'</label>'+fuChips(x):'')
      +'<div class="orrbtns">'+(w!=='us'?'<button class="btn sec2" onclick="ORR.follow(\''+I+'\')">Followed up</button>':'')+'<button class="btn sec2" onclick="ORR.note(\''+I+'\')">Note</button><button class="btn sec2" onclick="ORR.needs(\''+I+'\')">O&amp;R needs…</button></div>':'')
    +(tasks.length?'<label>Open tasks</label>'+tasks.map(j=>'<div class="orrtask" onclick="ORR.close();openJobDetail(\''+jsq(j.id)+'\')"><span>'+esc(j.desc)+'</span><span style="color:var(--g4);white-space:nowrap">'+esc(pname((j.to||[])[0]))+' ›</span></div>').join(''):'')
-   +'<label>Steps</label><ul class="orrchk">'+L.filter(s=>s[0]!=='done').map((s,i)=>{const ok=!OPEN(x)||i<idx(x);const now=OPEN(x)&&i===idx(x);const dd=(x.did||{})[s[0]];
-      return '<li class="'+(ok?'ok':now?'now':'')+'" onclick="ORR.jump(\''+I+'\',\''+s[0]+'\')"><span class="c">'+(ok?'✓':'')+'</span><span>'+esc(s[1])+(ok&&dd?'<small>'+new Date(dd).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+'</small>':'')+'</span><span class="wh" style="color:'+WHO[s[2]||'oru'][1]+'">'+esc(s[2]==='us'?'us':s[2]==='cust'?'customer':'O&R')+'</span></li>';}).join('')+'</ul>'
+   +(gl?gasBox(gl):'')
+   +(gl&&!OPEN(x)?'<details class="orrdet"><summary>'+esc(tt('Electric steps'))+'</summary>':'')+'<label>'+(gl?esc(tt('Electric steps')):'Steps')+'</label><ul class="orrchk">'+L.filter(s=>s[0]!=='done').map((s,i)=>{const ok=!OPEN(x)||i<idx(x);const now=OPEN(x)&&i===idx(x);const dd=(x.did||{})[s[0]];
+      return '<li class="'+(ok?'ok':now?'now':'')+'" onclick="ORR.jump(\''+I+'\',\''+s[0]+'\')"><span class="c">'+(ok?'✓':'')+'</span><span>'+esc(s[1])+(ok&&dd?'<small>'+new Date(dd).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+'</small>':'')+'</span><span class="wh" style="color:'+WHO[s[2]||'oru'][1]+'">'+esc(s[2]==='us'?'us':s[2]==='cust'?'customer':'O&R')+'</span></li>';}).join('')+'</ul>'+(gl&&!OPEN(x)?'</details>':'')
    +'<details class="orrdet"><summary>Details</summary>'
      +'<div class="orrkv"><span>O&amp;R project #</span><b>'+esc(x.wo||'—')+'</b><span>O&amp;R site manager</span><b>'+(x.pm?pmLink(x.pm):'—')+'</b><span>Handled by</span><b>'+esc(pname(x.owner))+'</b><span>Sent</span><b>'+fd(x.sent)+'</b>'
-     +((x.type==='newsvc'||x.type==='upgrade')?'<span>Gas</span><b>'+(gl?'Yes — its own line':'No · <u style="cursor:pointer;font-weight:500" onclick="ORR.gas(\''+I+'\')">add gas</u>')+'</b>':'')+'</div>'
+     +((x.type==='newsvc'||x.type==='upgrade')?'<span>Gas</span><b>'+(gl?'Yes':'No · <u style="cursor:pointer;font-weight:500" onclick="ORR.gas(\''+I+'\')">add gas</u>')+'</b>':'')+'</div>'
      +'<div class="orrbtns"><button class="btn sec2" onclick="ORR.edit(\''+I+'\')">Edit</button><button class="btn sec2" onclick="ORR.task(\''+I+'\')">+ Task</button>'+(x.site?'<button class="btn sec2" onclick="ORR.close();openFolder(\''+jsq(x.site)+'\')">Job</button>':'')+'</div>'
      +(OPEN(x)?'<div class="orrbtns"><button class="btn sec2" style="color:#d93a2b" onclick="ORR.cancel(\''+I+'\')">Cancel this request</button></div>':'')
      +'<label>History</label>'+((x.log||[]).slice().reverse().map(l=>'<div class="orrlog">'+esc(l.txt)+'<small>'+esc(pname(l.by))+' · '+new Date(l.ts).toLocaleString(LOC(),{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'</small></div>').join('')||'<div class="orrlog">—</div>')
    +'</details>');};
+function gasBox(g){const I=jsq(g.id),c=cur(g),w=who(g),L=steps(g);const nx=L[Math.min(idx(g)+1,L.length-1)];
+  return '<div class="orrgas">'
+   +(OPEN(g)?'<div class="orrnow" style="background:'+WHO[w][1]+'1f"><span style="font-size:11.5px;font-weight:700;color:'+WHO[w][1]+'">GAS · '+esc(w==='oru'?'O&R’S MOVE':w==='cust'?'CUSTOMER':'OUR MOVE')+'</span><b>'+esc(c[1])+'</b>'
+       +'<span style="color:var(--g4);font-size:12.5px">Step '+(idx(g)+1)+' of '+(L.length-1)+' · since '+new Date(g.stepAt||g.ts).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+'</span></div>'
+     :'<div class="orrnow" style="background:#2fb36b1f"><span style="font-size:11.5px;font-weight:700;color:#2fb36b">GAS · DONE</span><b>'+esc(nowLine(g))+'</b></div>')
+   +(g.need?'<div class="orrneed"><b>O&amp;R needs from us (gas):</b> '+esc(g.need)+'<div class="orrbtns"><button class="btn" style="background:#e8912d" onclick="ORR.delivered(\''+I+'\')">Sent to O&amp;R</button></div></div>':'')
+   +(OPEN(g)?'<div class="orrbtns"><button class="btn" onclick="ORR.next(\''+I+'\')">✓ Done'+(nx[0]!=='done'?' → '+esc(nx[1]):' — gas is on')+'</button></div>'
+     +(w!=='us'?'<label>Gas follow up on'+(g.fuOn?' · '+fd(g.fuOn,{weekday:'short',month:'short',day:'numeric'}):'')+'</label>'+fuChips(g):'')
+     +'<div class="orrbtns">'+(w!=='us'?'<button class="btn sec2" onclick="ORR.follow(\''+I+'\')">Followed up</button>':'')+'<button class="btn sec2" onclick="ORR.needs(\''+I+'\')">O&amp;R needs…</button></div>':'')
+   +'<label>'+esc(tt('Gas steps'))+'</label><ul class="orrchk">'+L.filter(s=>s[0]!=='done').map((s,i)=>{const ok=!OPEN(g)||i<idx(g);const now=OPEN(g)&&i===idx(g);const dd=(g.did||{})[s[0]];
+      return '<li class="'+(ok?'ok':now?'now':'')+'" onclick="ORR.jump(\''+I+'\',\''+s[0]+'\')"><span class="c">'+(ok?'✓':'')+'</span><span>'+esc(s[1])+(ok&&dd?'<small>'+new Date(dd).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+'</small>':'')+'</span><span class="wh" style="color:'+WHO[s[2]||'oru'][1]+'">'+esc(s[2]==='us'?'us':s[2]==='cust'?'customer':'O&R')+'</span></li>';}).join('')+'</ul></div>';}
 function bump(x,txt,extra,reopen){const m=M();const now=Date.now();Object.assign(x,extra||{});x.upd=now;x.log=(x.log||[]).concat([{ts:now,by:m.id,txt}]);save();renderOrr();refreshFolder();if(reopen!==false)P6.open(x.id);}
 function closeTasks(x,kinds){const m=M();(D.jobs||[]).forEach(j=>{if(j.orr===x.id&&j.status!=='done'&&(!kinds||kinds.includes(j.orrAuto))){j.status='done';j.doneAt=Date.now();j.doneBy=m.id;}});}
 function closeAutoFor(site,type){const m=M();(D.jobs||[]).forEach(j=>{if(j.site===site&&j.status!=='done'&&(j.orrAuto==='apply'||(j.orrAuto==='meter'&&type==='meter')||(j.orrAuto==='tempout'&&type==='tempout'))){j.status='done';j.doneAt=Date.now();j.doneBy=m.id;}});}
@@ -376,7 +415,7 @@ P6.needs=id=>{const x=get(id);if(!x)return;askPrompt('O&R needs from us',[{label
   bump(x,'O&R needs from us: '+v+(o&&o!==x.owner?' · handed to '+pname(o):''),{need:v,usAt:Date.now(),status:'us',owner:o||x.owner});});};
 P6.delivered=(id,reopen)=>{const x=get(id);if(!x)return;closeTasks(x,['us']);const c=cur(x);
   bump(x,'Sent to O&R what they needed'+(x.need?': '+x.need:''),{need:'',status:c[2]==='us'?'us':'sent',fuOn:c[2]==='us'?'':addDays(3)},reopen);};
-P6.gas=id=>{const x=get(id);if(!x||gasOf(x))return;const g=gasLine(x);bump(x,'Gas added — it has its own line',{gas:true},false);P6.open(g.id);toast('✓ Gas line added','green');};
+P6.gas=id=>{const x=get(id);if(!x||gasOf(x))return;const g=gasLine(x);bump(x,'Gas added',{gas:true});toast('✓ Gas added','green');};
 P6.cancel=id=>{const x=get(id);if(!x)return;askConfirm('Cancel this O&R request?',()=>{closeTasks(x);bump(x,'Cancelled',{status:'cancel',closedAt:Date.now(),fuOn:''});},'Cancel it');};
 P6.edit=id=>{const x=get(id);if(!x)return;
   askPrompt('Edit',[{label:'O&R project #',value:x.wo||''},{label:'O&R site manager',value:x.pm||''},{label:'Who handles it',options:[{v:x.owner||'',l:pname(x.owner)}].concat(people().filter(e=>e.id!==x.owner).map(e=>({v:e.id,l:e.name})))},{label:'Date sent',value:x.sent||'',type:'date'}],
@@ -410,7 +449,7 @@ if(typeof window.openJobDetail==='function'){const _oj=window.openJobDetail;wind
     b.onclick=()=>{try{hide('m-jobd');}catch(e){}x?P6.open(x.id):P6.add(j.site,j.orrAuto==='meter'?'meter':j.orrAuto==='tempout'?'tempout':undefined);};const pb=[...md.querySelectorAll('button')].find(x=>/Photo|Foto/.test(x.textContent));const rw=pb&&pb.parentElement;if(rw&&rw.parentElement)rw.parentElement.insertBefore(b,rw);else md.appendChild(b);}}catch(e){}return r;};}
 
 /* ───────── job page box ───────── */
-function folderBox(s){const m=M();if(!staff(m))return '';const L=list().filter(x=>x.site===s.id).sort((a,b)=>(OPEN(b)-OPEN(a))||((b.ts||0)-(a.ts||0)));
+function folderBox(s){const m=M();if(!staff(m))return '';const L=jobs().filter(x=>x.site===s.id).sort((a,b)=>(jOPEN(b)-jOPEN(a))||((b.ts||0)-(a.ts||0)));
   return '<div class="card" id="orrJob" data-p2t="over"><div class="row" style="align-items:center;margin-bottom:6px"><b style="font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--g4)">O&amp;R</b><span style="color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600" onclick="ORR.add(\''+jsq(s.id)+'\')">+ New request</span></div>'
    +(L.length?L.map(row).join(''):(s.orrNone?'<div style="font-size:13px;color:var(--g4)">No O&amp;R needed for this job. <u style="cursor:pointer" onclick="ORR.none(\''+jsq(s.id)+'\',false)">Undo</u></div>':'<div style="font-size:13px;color:var(--g4)">No O&amp;R request yet. <u style="cursor:pointer" onclick="ORR.none(\''+jsq(s.id)+'\',true)">No O&amp;R needed</u></div>'))+'</div>';}
 P6.none=(sid,v)=>{const s=D.sites.find(x=>x.id===sid);if(!s)return;s.orrNone=!!v;if(v)(D.jobs||[]).forEach(j=>{if(j.site===sid&&j.orrAuto==='apply'&&j.status!=='done'){j.status='done';j.doneAt=Date.now();}});save();refreshFolder();};
