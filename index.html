@@ -5,10 +5,15 @@
 <meta name="theme-color" content="#ffffff"><meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Electrix Field</title>
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png">
-<script>window.EX_VER='vg2m1027';</script><script src="config.js"></script>
+<script>document.documentElement.classList.add('exboot');setTimeout(function(){document.documentElement.classList.remove('exboot');},6000);</script>
+<style>/* Baruch 10/27: no flash of the old screens while the app's newer parts load — the Electrix logo shows until they're ready */
+html.exboot .top,html.exboot .pg,html.exboot .tabs,html.exboot #p2fab,html.exboot #p7fm,html.exboot #p8pin{visibility:hidden!important}
+html.exboot body{background:#f2f2f7 url(logo-light.svg) center 42%/min(62%,300px) no-repeat!important}
+@media (prefers-color-scheme:dark){html.exboot body{background:#000 url(logo-dark.svg) center 42%/min(62%,300px) no-repeat!important}}</style>
+<script>window.EX_VER='vg2n1027';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vg2m1027"></script>
-<script src="extras.js?vg2m1027"></script>
+<script src="sync.js?vg2n1027"></script>
+<script src="extras.js?vg2n1027"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -4968,7 +4973,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vg2m1027"></script><script src="scanner-v2-ui.js?vg2m1027"></script><script src="sched-v21.js?vg2m1027"></script><script src="p2.js?vg2m1027"></script><script src="p4.js?vg2m1027"></script><script src="p5.js?vg2m1027"></script><script src="p6.js?vg2m1027"></script><script src="p7.js?vg2m1027"></script><script src="p8.js?vg2m1027"></script><script src="p9.js?vg2m1027"></script>
+<script src="scanner-v2.js?vg2n1027"></script><script src="scanner-v2-ui.js?vg2n1027"></script><script src="sched-v21.js?vg2n1027"></script><script src="p2.js?vg2n1027"></script><script src="p4.js?vg2n1027"></script><script src="p5.js?vg2n1027"></script><script src="p6.js?vg2n1027"></script><script src="p7.js?vg2n1027"></script><script src="p8.js?vg2n1027"></script><script src="p9.js?vg2n1027"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
