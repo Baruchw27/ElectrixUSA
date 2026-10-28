@@ -5,7 +5,7 @@
 if(window.EX_P9_OFF)return;
 const $=id=>document.getElementById(id);
 // Baruch 22:44 picked: 1–10, 13, 14, 15, 16 (17 and 18 not now)
-window.P9_ON=window.P9_ON||[1,2,3,4,5,6,7,8,9,10,13,14,15,16];
+window.P9_ON=window.P9_ON||[1,2,3,4,5,6,7,8,9,10,13,14,15,16,18];
 const css=`
 /* 1 numbers in one dark color */
 html.o1 .p7nums b{color:var(--g5)!important}
@@ -65,6 +65,20 @@ html[data-theme=dark] #homeBody .p7c[data-k=att] .p7r{background:#232326}
 #homeBody .p7c[data-k=att] .p7r>span:first-child{width:6px!important;height:6px!important}
 #homeBody .p7c[data-k=att] .p7r>span:last-child{display:none}
 #homeBody .p7c[data-k=att] .p7r.p9red{box-shadow:none;background:#d93a2b14;color:#c0392b;font-weight:600}
+/* Baruch 23:05: counts sit right next to their title / line, not out on the right edge (under the glass buttons) */
+#homeBody .p7c .p7h b{flex:0 1 auto!important}
+#homeBody .p7c .p7h .n{margin-right:auto}
+#homeBody .p7c:not([data-k=att]) .p7r.one .w{flex:0 1 auto!important}
+#homeBody .p7c:not([data-k=att]) .p7r.one .pill{margin-right:auto;margin-left:2px}
+/* Baruch 23:13: the ☰ ball is the same size as the other 4, with its name under it */
+html.o18 body #p7fm{width:50px!important;height:50px!important;right:calc(max(14px,env(safe-area-inset-right,0px)) + 6px)!important;bottom:calc(30px + env(safe-area-inset-bottom,0px))!important;overflow:visible}
+html.o18 #p7fm svg{width:21px!important;height:21px!important}
+html.o18 #p7fm::after{content:attr(data-lab);position:absolute;top:53px;left:50%;transform:translateX(-50%);font-size:10.5px;font-weight:600;color:var(--g5);white-space:nowrap}
+html[data-theme=dark].o18 #p7fm::after{color:#fff}
+html.o18 #p7fm.p8x::after{display:none}
+html.o18 #p8pin{bottom:calc(98px + env(safe-area-inset-bottom,0px))!important}
+/* Baruch 23:09: no count next to "Crews today / tomorrow" — the "No job" lines already say it */
+#homeBody .p7c[data-k=crews] .p7h .n,#homeBody .p7c[data-k=crewsT] .p7h .n{display:none!important}
 /* 18 one action spot: the + goes into the ☰ */
 html.o18 #p2fab{display:none!important}
 html.o18 #p7fm{right:max(16px,env(safe-area-inset-right,0px))!important}
@@ -76,6 +90,9 @@ function apply(){const h=document.documentElement;for(let i=1;i<=18;i++)h.classL
   try{document.querySelectorAll('#homeBody .p7c[data-k=att] .p7r').forEach(r=>{const d=r.querySelector('span');r.classList.toggle('p9red',!!d&&/d93a2b/.test(d.getAttribute('style')||''));});}catch(e){}
   try{// 17: the pinned buttons move under the greeting
     const p=$('p8pin'),hb=$('homeBody');if(p&&hb){if(h.classList.contains('o17')){const d=$('p7date');const at=d&&d.nextSibling;if(p.parentNode!==hb)hb.insertBefore(p,at||hb.firstChild);}else if(p.parentNode!==document.body)document.body.appendChild(p);}}catch(e){}}
+function fmLab(){const b=$('p7fm');if(b)b.setAttribute('data-lab',typeof t==='function'?t('More'):'More');}
+try{fmLab();}catch(e){}
+if(typeof window.applyTabs==='function'){const _a9=window.applyTabs;window.applyTabs=function(){const r=_a9.apply(this,arguments);try{fmLab();}catch(e){}return r;};}
 window.P9={apply,set(L){window.P9_ON=L.slice();window.__p9keep=false;apply();}};
 if(typeof window.renderHome==='function'){const _rh=window.renderHome;window.renderHome=function(){const r=_rh.apply(this,arguments);try{apply();}catch(e){}return r;};}
 apply();
