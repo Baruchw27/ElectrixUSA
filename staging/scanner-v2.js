@@ -438,7 +438,7 @@
         for (const ip of iparts) {
           if (!ip) continue;
           if (ip === qk) { score = Math.max(score, 0.97); why = 'same part number'; }
-          else if (skel(ip) === qs && qs.length >= 4) { if (0.9 > score) { score = 0.9; why = 'same part number (OCR look-alike letters)'; } }
+          else if (skel(ip) === qs && qs.length >= 4) { const sb = qb && ib && canonBrand(qb) === canonBrand(ib); const v = sb ? 0.9 : 0.8; if (v > score) { score = v; why = 'same part number (OCR look-alike letters)'; } }   // M26: look-alike letters with no matching maker = check, not sure
           else if (qk.length >= 5 && ip.length >= 5) {
             const d = levOCR(ip, qk);
             if (d <= 1 && 0.72 > score) { score = 0.72; why = 'part number 1 character apart'; }
@@ -448,6 +448,12 @@
         for (const op of qparts.slice(1)) if (iparts.includes(op) && 0.8 > score) { score = 0.8; why = 'matches another part number on the label'; }
       }
       if (score && qb && ib && canonBrand(qb) !== canonBrand(ib)) { score *= 0.6; why += ' — but a different maker'; }
+      // M26: a different colour or amperage is a different product (Leviton -W / -I, 15A / 20A) — never "sure"
+      if (score >= 0.45) { const qt = String([q.name, q.desc, q.color, q.part].filter(Boolean).join(' ')).toUpperCase(); const it2 = String([it.name, it.color, it.model].filter(Boolean).join(' ')).toUpperCase();
+        const qc = q.color ? colorOf(String(q.color).toUpperCase()) : colorOf(qt), ic = it.color ? colorOf(String(it.color).toUpperCase()) : colorOf(it2);
+        const amp = x => { const m = x.match(/\b(15|20|30|40|50|60|100|125|150|200)\s?A(?:MP)?\b/); return m ? m[1] : ''; }; const qa = amp(qt), ia = amp(it2);
+        if (qc && ic && qc !== ic && why !== 'same part number') { score = Math.min(score, 0.7); why += ' — but a different colour'; }
+        if (qa && ia && qa !== ia) { score = Math.min(score, 0.6); why += ' — but a different amperage'; } }
       const qn = q.name || [q.brand, q.desc].filter(Boolean).join(' ');
       if (qn) {
         const ns = nameSim(qn, it.name);

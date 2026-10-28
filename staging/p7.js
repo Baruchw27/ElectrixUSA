@@ -121,7 +121,9 @@ const stEl=document.createElement('style');stEl.id='p7css';stEl.textContent=css;
 
 /* ───────── one layout for everyone: no bar, a menu ───────── */
 const _pf=window.primaryFor;
-function startOf(m){if(hubRole(m))return 'home';try{const p=_pf(m);return (p||[]).find(x=>x!=='more')||'punch';}catch(e){return 'punch';}}
+function startOf(m){if(hubRole(m))return 'home';
+  if(m&&m.role==='worker'&&typeof noClock==='function'&&noClock(m))return 'jobs';   // H09: no time clock → start on Tasks, not Punch
+  try{const p=_pf(m);return (p||[]).find(x=>x!=='more')||'punch';}catch(e){return 'punch';}}
 if(typeof _pf==='function'){window.primaryFor=function(m){return m?[startOf(m),'more']:_pf.apply(this,arguments);};try{primaryFor=window.primaryFor;}catch(e){}}
 function setMode(){document.documentElement.classList.toggle('p7nobar',!!M());}
 const ORDER=['home','punch','jobs','sites','sched','cal','hours','orr','mat','trello','team','exp','est','svc','tools','rep','code','msg','van'];
@@ -171,7 +173,7 @@ function tasksCard(m){let L=[];try{L=myTasks(m);}catch(e){}const td=new Date();t
   return h;}
 function crewCard(day){const k=dkey(day);const isT=day.toDateString()===new Date().toDateString();const td=new Date().toDateString();
   const rows=[];let out=0;(D.crews||[]).forEach(c=>{const guys=(D.emps||[]).filter(e=>e.crew===c.id&&!e.inactive);if(!guys.length)return;const sl=schedDay(c.id+'|'+k);
-    if(!sl){if(day.getDay()!==0&&day.getDay()!==6)rows.push('<div class="p7r one" onclick="goTab(\'sched\')"><div class="w"><b>'+esc(c.name)+'</b><small>'+guys.map(e=>esc(e.name.split(' ')[0])).join(', ')+'</small></div><span class="pill bad">'+esc(tt('No job'))+'</span></div>');return;}
+    if(!sl){if(day.getDay()!==6)rows.push('<div class="p7r one" onclick="goTab(\'sched\')"><div class="w"><b>'+esc(c.name)+'</b><small>'+guys.map(e=>esc(e.name.split(' ')[0])).join(', ')+'</small></div><span class="pill bad">'+esc(tt('No job'))+'</span></div>');return;}
     out++;const inN=isT?guys.filter(e=>(D.punches||[]).some(p=>p.who===e.id&&!p.out&&new Date(p.in).toDateString()===td)).length:null;
     rows.push('<div class="p7r one" onclick="openCrew(\''+jsq(c.id)+'\')"><div class="w"><b>'+esc(c.name)+'</b>'+(sl.time?' <span style="color:var(--g4);font-size:12.5px">'+esc(sl.time)+'</span>':'')+'<small>'+esc(sl.site?short(siteName(sl.site)):(tt('Several jobs')))+'</small></div>'+(inN!=null?'<span class="pill '+(inN===guys.length?'ok':inN?'am':'bad')+'">'+inN+'/'+guys.length+'</span>':'')+'</div>');});
   return card(isT?'crews':'crewsT',IC('cal')||tabIcon('sched'),'#9b51e0',isT?'Crews today':'Crews tomorrow',out+'/'+rows.length,rows,6,'',rows.some(r=>r.includes('pill bad'))&&!isT);}
@@ -219,7 +221,17 @@ if(typeof window.renderHome==='function'){const _rh=window.renderHome;window.ren
   // inspections to book, not punched in, punch fixes, receipts, GPS…) and show them as one compact card at the top
   let att=[];try{const tile=[...el.querySelectorAll('.tile')].find(x=>{const h=x.querySelector('h3');return h&&/needs attention|necesita atenci/i.test(h.textContent);});
     if(tile)att=[...tile.querySelectorAll('.att span')].filter(x=>!x.classList.contains('g')).map(x=>({red:x.classList.contains('r'),txt:x.textContent.trim(),act:x.getAttribute('onclick')||''}));}catch(e){}
+  // M05: office people (no all-access) never get that tile — work out the alerts for their own job instead
+  if(m.role==='office'&&!m.all){try{att=att.concat(officeAtt(m));}catch(e){}}
   try{hubHome(m,el,att);}catch(e){console.error('p7 home',e);}};}
+try{if(typeof ES==='object')Object.assign(ES,{"clock entries to approve":"entradas de reloj por aprobar","O&R follow-ups":"seguimientos de O&R"});}catch(e){}
+function officeAtt(m){const L=[];const add=(red,txt,act)=>L.push({red,txt,act});
+  if(m.title==='Payroll'){const f=(D.fixes||[]).filter(x=>x.status==='pending').length;if(f)add(false,f+' '+tt('punch fixes'),"goTab('hours')");
+    const p=(D.punches||[]).filter(x=>x.pending&&!x.approvedBy&&!x.rejected).length;if(p)add(true,p+' '+tt('clock entries to approve'),"goTab('hours')");}
+  if(m.title==='Payroll'||m.title==='Bookkeeper'){const r=(D.exps||[]).filter(x=>!x.amt).length;if(r)add(false,r+' '+tt('receipts need amount'),"moneyView='receipts';goTab('exp')");}
+  if(typeof canBookInsp==='function'&&canBookInsp(m)){const i=(D.insp||[]).filter(x=>x.status==='requested').length;if(i)add(true,i+' '+tt('inspection to book'),"goTab('sites')");}
+  if(m.title!=='Accountant'&&window.ORR&&typeof ORR.todo==='function'){const o=(D.orr||[]).filter(x=>x&&!x.deleted&&ORR.todo(x)).length;if(o)add(true,o+' '+tt('O&R follow-ups'),"goTab('orr')");}
+  return L;}
 
 /* ───────── More → Settings ───────── */
 function moveNotif(){try{const pg=$('pg-more'),sp=$('pg-sites');if(!pg||!sp||$('p7notif'))return;const s=[...sp.querySelectorAll(':scope > .sec')].find(x=>/Notifications|Notificaciones/.test(x.textContent));

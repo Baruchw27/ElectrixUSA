@@ -137,7 +137,7 @@
       try { navigator.vibrate && navigator.vibrate([30, 60, 30]); } catch (e) { }
       return;
     }
-    scBeep(); scM.pausedCode = pc.key; scM.pc = pc; scM.thumb = scThumb(); scM.snap = null; scM.part = '';
+    scBeep(); scM.pausedCode = pc.key; scM.pc = pc; scM.wrongSkip = null; scM.thumb = scThumb(); scM.snap = null; scM.part = '';
     const r = S.identify(pc, ctx());
     scM.idr = r;
     if (scM.ft && scM.ft.pending) Object.assign(scM.ft, { pending: false, status: r.status, ok: true }); // number read from the label print
@@ -154,10 +154,11 @@
   function v2Link(itemId, pack) {
     const pc = scM && scM.pc; const it = stockById(itemId); if (!pc || !it) return null;
     if (pc.label) return null; // found from the label words (no barcode): nothing to remember
+    if (scM.wrongSkip === pc.key && !catMgr()) return null; // H46: after "Wrong item" only the material office changes the saved link
     const id = S.linkId(pc); const M = maps();
     M[id] = { id, code: pc.key, raw: pc.raw, type: pc.type, item: itemId, pack: pack == null ? (pc.level === 'box' ? null : 1) : Math.max(1, Math.floor(+pack)), level: pc.level, by: (me() || {}).id, ts: Date.now(), verified: true };
     // the old list on the item: drop this barcode from any OTHER item (it was wrong there); never touch names
-    D.stock.forEach(x => { if (x && x.id !== itemId && (x.codes || []).some(c => S.parseCode(c).key === pc.key)) x.codes = x.codes.filter(c => S.parseCode(c).key !== pc.key); });
+    if (catMgr()) D.stock.forEach(x => { if (x && x.id !== itemId && (x.codes || []).some(c => S.parseCode(c).key === pc.key)) x.codes = x.codes.filter(c => S.parseCode(c).key !== pc.key); });
     try { save(); } catch (e) { }
     return M[id];
   }
@@ -236,7 +237,7 @@
     const prev = S.allLinks(D.stock, maps()).find(l => l.key === pc.key && l.item === id);
     v2Link(id, prev ? prev.pack : null);
     // remove the other items' old links to this barcode
-    Object.keys(maps()).forEach(k => { const m = maps()[k]; if (m && m.item !== id && S.parseCode(m.code || '').key === pc.key) delete maps()[k]; });
+    if (catMgr()) Object.keys(maps()).forEach(k => { const m = maps()[k]; if (m && m.item !== id && S.parseCode(m.code || '').key === pc.key) delete maps()[k]; });   // H46: others' links are removed only by the material office
     try { save(); } catch (e) { }
     const r = S.identify(pc, ctx()); v2Qty(it, r.status === 'known' ? r.pack : null);
   };
@@ -375,7 +376,7 @@
   }
   async function ocrMulti(img, modes) {
     if (window.ocrText !== OCR0) return window.ocrText(img, modes); // a test (or another reader) replaced it
-    const Tz = await loadTess(); if (!window._tessV2) window._tessV2 = await Tz.createWorker('eng');
+    const Tz = await loadTess(); if (!window._tessV2) window._tessV2 = await Tz.createWorker('eng', 1, window.TESS_OPT || {});
     let out = '';
     for (const m of modes) { try { await window._tessV2.setParameters({ tessedit_pageseg_mode: m }); const r = await window._tessV2.recognize(img); out += ((r && r.data && r.data.text) || '') + '\n'; } catch (e) { } }
     return out;
@@ -532,7 +533,7 @@
     f.name = [f.brand, f.part, desc].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
     if (!f.name) { toast(T('Type the item')); return; }
     // still catch duplicates by part number before making a new item
-    if (f.part) { const dup = S.matchInventory({ part: f.part, brand: f.brand }, D.stock).find(c => c.score >= 0.97); if (dup && !scM.dupOk) { scM.dupOk = true; const cb = $('v2cands'); if (cb) cb.innerHTML = '<div class="v2warn">' + T('You already have an item with this part number:') + '</div><button type="button" class="v2c top" onclick="v2Pick(\'' + J(dup.item.id) + '\')"><b>' + E(dup.item.name) + '</b><small>' + T('Tap to use it') + '</small></button><div style="font-size:12px;color:#666">' + T('Tap Save again only if it really is a different item.') + '</div>'; return; } }
+    if (f.part) { const dup = S.matchInventory({ part: f.part, brand: f.brand }, D.stock).find(c => c.score >= 0.97); const dk = dup ? scM.pc.key + '|' + dup.item.id : ''; if (dup && scM.dupOk !== dk) { scM.dupOk = dk; /* M13: warn for every new barcode / part number, not once per session */ const cb = $('v2cands'); if (cb) cb.innerHTML = '<div class="v2warn">' + T('You already have an item with this part number:') + '</div><button type="button" class="v2c top" onclick="v2Pick(\'' + J(dup.item.id) + '\')"><b>' + E(dup.item.name) + '</b><small>' + T('Tap to use it') + '</small></button><div style="font-size:12px;color:#666">' + T('Tap Save again only if it really is a different item.') + '</div>'; return; } }
     const s = createItem(f); const n = parseInt(($('v2n') || {}).value) || null;
     ftConfirm({ how: 'saved as a new item', item: s.id, name: s.name, brand: f.brand, part: f.part, pack: n || null });
     if (scM.pc.label) { toast('✓ ' + s.name, 'green'); v2Qty(s, 1); return; }
@@ -551,12 +552,27 @@
   window.scUseLook = window.v2SaveNew;
 
   // wrong item: take this barcode off it and identify again
-  window.scWrong = function () {
-    if (!scM || !scM.pc) return; const pc = scM.pc; if (scM.ft) { scM.ft.wrong = true; if (scM.ft.confirmed) delete scM.ft.confirmed.item; }
+  // H46: the saved link is shared by every phone. Only the people who manage the material list may remove it (after a
+  // confirmation; the server keeps the old link in history). Everyone else: this scan is identified again, the link stays,
+  // and Menachem gets a message to check it.
+  function catMgr() { try { return typeof mcIsMgr === 'function' && mcIsMgr(); } catch (e) { return false; } }
+  function wrongReport(pc, itemId) { try { const it = stockById(itemId); const to = (D.emps || []).filter(e => !e.inactive && e.role === 'office' && e.title === 'Material').map(e => e.id);
+      if (to.length && typeof pushTo === 'function') pushTo(to, () => '▦ ' + T('Barcode may be on the wrong item') + ': ' + (pc.raw || pc.key) + ' → ' + ((it && it.name) || itemId) + ' (' + ((me() || {}).name || '') + ')', 'mat'); } catch (e) { } }
+  function wrongUnlink(pc) {
     Object.keys(maps()).forEach(k => { const m = maps()[k]; if (m && S.parseCode(m.code || '').key === pc.key) delete maps()[k]; });
     D.stock.forEach(x => { if (x && (x.codes || []).some(c => S.parseCode(c).key === pc.key)) x.codes = x.codes.filter(c => S.parseCode(c).key !== pc.key); });
     try { save(); } catch (e) { }
-    scM.snap = scM.snap || scSnap(); window.v2New();
+  }
+  window.scWrong = function () {
+    if (!scM || !scM.pc) return; const pc = scM.pc; const was = scM.qItem; if (scM.ft) { scM.ft.wrong = true; if (scM.ft.confirmed) delete scM.ft.confirmed.item; }
+    scM.snap = scM.snap || scSnap(); scM.wrongSkip = pc.key; window.v2New();          // identify this scan again (nothing removed yet)
+    if (pc.label) return;
+    if (catMgr() && typeof askConfirm === 'function') {
+      const it = stockById(was);
+      askConfirm(T('Remove this barcode from') + ' “' + ((it && it.name) || '') + '” ' + T('for everyone?'), () => wrongUnlink(pc), T('Remove'));
+      return;
+    }
+    wrongReport(pc, was); toast('📨 ' + T('Menachem will check this barcode. Pick the right item for this scan.'), 'green');
   };
 
   // ── barcode won't scan (torn, wrinkled, no barcode at all): read the label instead.

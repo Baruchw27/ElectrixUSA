@@ -79,12 +79,16 @@ window.EX_queuedIn=function(coll){return Object.keys(queue).filter(k=>queue[k]&&
 // BEFORE the change leaves the waiting list; each person only ever sees their own.
 function loadRej(){try{const a=JSON.parse(durRead('ex_rejects')||'[]');return Array.isArray(a)?a:[];}catch(e){return [];}}
 const memRej=[];
-function keepRej(list){const all=loadRej().concat(memRej.filter(m=>!loadRej().some(y=>y.id===m.id&&y.by===m.by)));list.forEach(x=>{if(!x||x.coll==='inbox'||x.coll==='push'||x.coll==='_')return;/* B5: every kind of record (was: schedule only) */const i=all.findIndex(y=>y.coll===x.coll&&y.id===x.id&&y.by===(st.user||null));const rec={coll:x.coll,id:x.id,data:x.data===undefined?null:x.data,del:!!x.del,reason:x.stale?'stale':x.delRefused?'delete-refused':'refused',at:Date.now(),by:st.user||null};if(i>=0)all[i]=rec;else all.push(rec);});
+function keepRej(list){const all=loadRej().concat(memRej.filter(m=>!loadRej().some(y=>y.id===m.id&&y.by===m.by)));list.forEach(x=>{if(!x||x.coll==='inbox'||x.coll==='push'||x.coll==='_')return;/* B5: every kind of record (was: schedule only) */const i=all.findIndex(y=>y.coll===x.coll&&y.id===x.id&&y.by===(st.user||null));const rec={coll:x.coll,id:x.id,data:x.data===undefined?null:x.data,del:!!x.del,reason:x.stale?'stale':x.delRefused?'delete-refused':'refused',why:x.why||'',at:Date.now(),by:st.user||null};if(i>=0)all[i]=rec;else all.push(rec);});
   const ok=putSafe('ex_rejects',JSON.stringify(all.slice(-500)));
   if(!ok){all.forEach(r=>{if(!memRej.some(m=>m.id===r.id&&m.by===r.by))memRej.push(r);});}else memRej.length=0;
   return ok;}
 window.EX_rejects=function(){const me=st.user||null;const all=loadRej();memRej.forEach(m=>{if(!all.some(y=>y.id===m.id&&y.by===m.by))all.push(m);});return all.filter(x=>(x.by||null)===me);};
 window.EX_dropReject=function(coll,id){const me=st.user||null;for(let i=memRej.length-1;i>=0;i--)if(memRej[i].coll===coll&&memRej[i].id===id&&(memRej[i].by||null)===me)memRej.splice(i,1);const all=loadRej().filter(y=>!(y.coll===coll&&y.id===id&&(y.by||null)===me));putSafe('ex_rejects',JSON.stringify(all));};
+// M22: "Try again" — put what the person entered back on the waiting list (the server decides again; never forced)
+window.EX_retryReject=function(coll,id){const x=window.EX_rejects().find(y=>y.coll===coll&&y.id===id);if(!x)return false;
+  const k=coll+'\u0001'+id;if(x.del)queue[k]={coll,id,del:true,meta:{}};else if(x.data!=null)queue[k]={coll,id,data:x.data,base:null};else return false;
+  window.EX_dropReject(coll,id);saveQ();schedule();return true;};
 // what happened to each row the last time it was sent (decided at the moment the server answered)
 const outcome={};function mark(coll,id,status,extra){const now=Date.now();outcome[coll+'\u0001'+id]=Object.assign({status,at:now},extra||{});
   if(Object.keys(outcome).length>2000)Object.keys(outcome).forEach(k=>{if(now-outcome[k].at>3600000)delete outcome[k];});}
@@ -100,7 +104,9 @@ function colls(){return Object.keys(D).filter(k=>!SKIP.has(k)&&D[k]!==null&&type
 // sync view everywhere snap is set; the live value still comes down from the server on pull/catch-up for display.
 function upStrip(coll,data){if(coll==='stock'&&data&&typeof data==='object'){const d=Object.assign({},data);delete d.qty;delete d.qv;return d;}return data;}
 function recordsOf(k){const v=D[k];const out={};
-  if(Array.isArray(v)){v.forEach(x=>{if(!x||typeof x!=='object')return;if(!x.id)x.id=nid(k.slice(0,2));let r=x;if(k==='emps'){r=Object.assign({},x);EMP_STRIP.forEach(f=>delete r[f]);r.authEmail=emailFor(x);}else if(k==='stock'){r=Object.assign({},x);delete r.qty;delete r.qv;}out[x.id]=r;});}
+  if(Array.isArray(v)){v.forEach(x=>{if(!x||typeof x!=='object')return;if(!x.id)x.id=nid(k.slice(0,2));let r=x;if(k==='emps'){r=Object.assign({},x);EMP_STRIP.forEach(f=>delete r[f]);r.authEmail=emailFor(x);}else if(k==='stock'){r=Object.assign({},x);delete r.qty;delete r.qv;}
+      else if('pass' in x||'password' in x||'pw' in x){r=Object.assign({},x);delete r.pass;delete r.password;delete r.pw;}   // C13: a password never leaves the phone (the server refuses it too)
+      out[x.id]=r;});}
   else{Object.keys(v).forEach(id=>{out[id]=v[id];});}
   return out;}
 function scalars(){const out={};Object.keys(D).forEach(k=>{if(SKIP.has(k))return;const v=D[k];if(v===null||typeof v!=='object')out[k]=v;});return out;}
@@ -114,7 +120,10 @@ function delRecord(coll,id){const v=D[coll];if(Array.isArray(v)){const i=v.findI
 function diff(){const ops=[];
   colls().forEach(k=>{const cur=recordsOf(k);const was=snap[k]||{};const now={};
     Object.keys(cur).forEach(id=>{const j=canon(cur[id]);now[id]=j;if(was[id]!==j)ops.push({coll:k,id,data:cur[id],j,base:was[id]||null});});
-    Object.keys(was).forEach(id=>{if(!(id in cur)){let meta={};if(k==='keep'){try{const o=JSON.parse(was[id]);meta={owner:o.owner,collab:o.collab||[]};}catch(e){}}ops.push({coll:k,id,del:true,meta});}});
+    Object.keys(was).forEach(id=>{if(!(id in cur)){let meta={};if(k==='keep'){try{const o=JSON.parse(was[id]);meta={owner:o.owner,collab:o.collab||[]};}catch(e){}}
+      // C18: clearing a schedule day says which version it cleared (rev+1), so the server can refuse clearing a newer one
+      if(k==='sched'){try{const o=JSON.parse(was[id]);meta={rev:((o&&+o.rev)||0)+1};}catch(e){}}
+      ops.push({coll:k,id,del:true,meta});}});
     snap[k]=now;});
   const sc=scalars();const wasS=snap._||{};const nowS={};
   Object.keys(sc).forEach(id=>{const j=canon(sc[id]);nowS[id]=j;if(wasS[id]!==j)ops.push({coll:'_',id,data:{v:sc[id]},j,base:null});});
@@ -122,7 +131,21 @@ function diff(){const ops=[];
   snap._=nowS;return ops;}
 function takeSnap(){snap={};colls().forEach(k=>{const cur=recordsOf(k);const now={};Object.keys(cur).forEach(id=>now[id]=canon(cur[id]));snap[k]=now;});const sc=scalars();const nowS={};Object.keys(sc).forEach(id=>nowS[id]=canon(sc[id]));snap._=nowS;}
 
-window.EX_afterSave=function(){if(!REAL||!(ready||localReady)||applying)return;const ops=diff();if(!ops.length)return;
+// C16: Baruch's "View as" is look-only. Nothing made while viewing as someone else is ever sent — the phone copy is put
+// back to what the server has (the change is undone on screen, never saved under anybody's name).
+window.EX_viewOnly=function(){return !!(window.EX_ME&&typeof D!=='undefined'&&D&&D.role&&D.role!==window.EX_ME);};
+function undoViewAs(){
+  // rebuild the phone copy from the last-saved snapshot: every record exactly as it was before the view-as change
+  // (stock keeps its live count: the count is never part of the snapshot)
+  const back=(k,id,j)=>{try{const d=JSON.parse(j);if(k==='stock'){const l=liveRecord(k,id);if(l){d.qty=l.qty;if('qv' in l)d.qv=l.qv;}}setRecord(k,id,d);}catch(e){}};
+  applying=true;try{colls().forEach(k=>{const was=snap[k]||{};const cur=recordsOf(k);
+      Object.keys(cur).forEach(id=>{if(!(id in was))delRecord(k,id);else if(canon(cur[id])!==was[id])back(k,id,was[id]);});
+      Object.keys(was).forEach(id=>{if(!(id in cur))back(k,id,was[id]);});});}finally{applying=false;}
+  try{if(typeof toast==='function')toast(typeof t==='function'?t('View only — changes are not saved while viewing as someone else.'):'View only — not saved.','bad');}catch(e){}
+  try{localSave();bump();}catch(e){}}
+window.EX_afterSave=function(){if(!REAL||!(ready||localReady)||applying)return;
+  if(window.EX_viewOnly()){undoViewAs();return;}   // C16
+  const ops=diff();if(!ops.length)return;
   ops.forEach(o=>{const k=o.coll+'\u0001'+o.id;const prev=queue[k];
     if(o.del)queue[k]={coll:o.coll,id:o.id,del:true,meta:o.meta||{}};
     else{const base=prev?(prev.del?null:prev.base):(o.base&&o.coll!=='_'?(o.coll==='emps'?canon(stripEmp(JSON.parse(o.base))):o.base):null);queue[k]={coll:o.coll,id:o.id,data:o.data,base};}});
@@ -153,7 +176,7 @@ window.EX_uploadBlob=async function(blob,folder){if(!REAL||!sb||!st.online)retur
 //   • an existing row whose patch was denied → it comes back with the old values (our fields not applied).
 // either way the person must be told and the local optimistic copy undone — never a false "saved".
 // returns the list of rejected {coll,id,absent} so the caller can revert and surface a clear error.
-const SERVER_OWNED={jobs:['sentBy'],travel:['pay','minutes','auto','status'],punches:['srvIn','hist','lateEntry'],mats:['st','status','stAt','stBy','readyAt','from']};
+const SERVER_OWNED={jobs:['sentBy'],travel:['pay','minutes','oneWay','auto','status'],punches:['srvIn','srvOut','outSrc','hist','lateEntry','missingOut','missingAt'],fixes:['at','srvAt'],mats:['st','status','stAt','stBy','readyAt','from']};
 // L2 lists: the server stamps each item (rev, who, when) and, when two phones changed the same item at once, keeps the
 // newer one in place and this phone's version next to it (li_<id>~…) — neither is a refusal.
 const LIST_SET=['rev','base','eby','eat','by','ts'];
@@ -176,11 +199,20 @@ function rejectedRows(sent,server){const out=[];if(!Array.isArray(server))return
     const own=SERVER_OWNED[row.coll]||[];   // fields the server works out itself (it is not a refusal when they differ)
     const sentObj=(row.patch&&typeof row.patch==='object')?row.patch:(row.coll==='punches'&&row.full&&typeof row.full==='object'?row.full:null);
     if(sentObj){let bad=false;for(const f in sentObj){if(own.indexOf(f)>=0)continue;if((row.coll==='keep'||row.coll==='mats')&&f==='assign')continue;
+      if(row.base&&f in row.base&&Array.isArray(d[f]))continue;   // C19: a merged list comes back with other phones' items too — not a refusal
       if((row.coll==='keep'||row.coll==='mats')&&/^l[ic]_/.test(f)){if(listSame(d[f],sentObj[f],row.coll)||Object.keys(d).some(k=>k.indexOf(f+'~')===0))continue;bad=true;break;}
       if(canon(d[f])!==canon(sentObj[f])){bad=true;break;}}
       if(!bad&&row.coll==='punches'&&Array.isArray(row.unset))bad=row.unset.some(f=>own.indexOf(f)<0&&(f in d));
       if(bad)out.push({coll:row.coll,id:row.id});}});
   return out;}
+// M22: save_records_v2 also says WHY a row was refused (err). Falls back to save_records on a server without it.
+let hasV2=true;
+async function saveRpc(rows){
+  if(hasV2){const r=await withTO(sb.rpc('save_records_v2',{rows}),45000,'save');
+    if(!r.error){const why={};const data=(Array.isArray(r.data)?r.data:[]).filter(x=>{if(x&&x.err)why[x.coll+'\u0001'+x.id]=x.err;return x&&x.data!==null;});return {data,why,error:null};}
+    if(!/save_records_v2|PGRST202|does not exist|not find|^nf$|HTTP 404/i.test((r.error.message||'')+(r.error.code||'')))return r;   // only a missing v2 falls back
+    hasV2=false;}
+  return withTO(sb.rpc('save_records',{rows}),45000,'save');}
 let lastReject=[];          // rows rejected by the most recent flush (read by EX_saveNow)
 let lastFlushError=null;    // hard error (network/auth) from the most recent flush, else null
 let suppressRejectToast=false; // EX_saveNow shows its own message at the point of action, so mute the background toast
@@ -202,7 +234,10 @@ async function _flush(){const keys=Object.keys(queue);if(!keys.length){lastRejec
       // stock qty is NEVER sent by the normal sync (only apply_stock_txn changes it) — the live record carries the phone's local qty
       const cur=JSON.parse(JSON.stringify(live?(o.coll==='emps'?stripEmp(live):upStrip(o.coll,live)):upStrip(o.coll,o.data)));let row;
       const plain=v=>!!v&&typeof v==='object'&&!Array.isArray(v);let bb=null;try{bb=o.base?JSON.parse(o.base):null;}catch(e){}
-      if(bb&&plain(cur)&&plain(bb)){const b=bb;const patch={},unset=[];Object.keys(cur).forEach(f=>{if(canon(cur[f])!==canon(b[f]))patch[f]=cur[f];});Object.keys(b).forEach(f=>{if(!(f in cur))unset.push(f);});row={coll:o.coll,id:o.id,patch,unset,by:st.user||null};}
+      if(bb&&plain(cur)&&plain(bb)){const b=bb;const patch={},unset=[];Object.keys(cur).forEach(f=>{if(canon(cur[f])!==canon(b[f]))patch[f]=cur[f];});Object.keys(b).forEach(f=>{if(!(f in cur))unset.push(f);});row={coll:o.coll,id:o.id,patch,unset,by:st.user||null};
+        // C19: for every list that changed, also send the list as this phone first had it, so the server can merge
+        // (keep what other phones added/changed meanwhile) instead of replacing the whole list
+        if(o.coll!=='sched'){const ab={};Object.keys(patch).forEach(f=>{if(Array.isArray(patch[f])&&Array.isArray(b[f]))ab[f]=b[f];});if(Object.keys(ab).length)row.base=ab;}}
       else if(o.coll==='stock')row={coll:o.coll,id:o.id,patch:cur,unset:[],by:st.user||null};
       else row={coll:o.coll,id:o.id,full:cur,by:st.user||null};
       if(o.coll==='stock'&&row.patch){delete row.patch.qty;delete row.patch.qv;if(row.unset)row.unset=row.unset.filter(f=>f!=='qty'&&f!=='qv');} // merge, never replace: keeps the server's count (another phone may have counted it already)
@@ -213,7 +248,7 @@ async function _flush(){const keys=Object.keys(queue);if(!keys.length){lastRejec
     // Send a group of rows. The database checks each schedule day's revision and refuses the WHOLE call if any one
     // day is out of date (another phone changed it first). So when that happens, resend the rows one by one: only the
     // out-of-date day is refused (kept with what the person entered, see keepRej) and every other change still lands.
-    async function sendUps(part,prt){const r=await withTO(sb.rpc('save_records',{rows:part}),45000,'save');
+    async function sendUps(part,prt){const r=await saveRpc(part);
       if(r.error){
         if(isStale(r.error)){
           if(part.length>1){for(let n=0;n<part.length;n++)await sendUps([part[n]],[prt[n]]);return;}
@@ -228,7 +263,7 @@ async function _flush(){const keys=Object.keys(queue);if(!keys.length){lastRejec
           keepRej([rj]);done(x.coll+'\u0001'+x.id,o);saveQ();mark(x.coll,x.id,'rej',{stale:true});staleHit=true;myRej.push(rj);return;}
         throw r.error;}
       const rej=rejectedRows(part,r.data);
-      rej.forEach(x=>{const n=part.findIndex(p=>p.coll===x.coll&&p.id===x.id);x.data=n>=0&&prt[n]?prt[n].data:null;});
+      rej.forEach(x=>{const n=part.findIndex(p=>p.coll===x.coll&&p.id===x.id);x.data=n>=0&&prt[n]?prt[n].data:null;const w=r.why&&r.why[x.coll+'\u0001'+x.id];if(w)x.why=w;});
       if(rej.length)keepRej(rej);                     // what the person entered is safe before anything leaves the queue
       part.forEach((x,n)=>{done(x.coll+'\u0001'+x.id,prt[n]);const bad=rej.find(y=>y.coll===x.coll&&y.id===x.id);mark(x.coll,x.id,bad?'rej':'ok',bad?{absent:!!bad.absent}:null);});
       saveQ();adopt(r.data);
@@ -239,17 +274,26 @@ async function _flush(){const keys=Object.keys(queue);if(!keys.length){lastRejec
       myRej.push(...rej);}
     for(let i=0;i<ups.length;i+=200)await sendUps(ups.slice(i,i+200),refs.slice(i,i+200));
     if(staleHit)setTimeout(()=>{try{catchUp();}catch(_){}},0); // pull the version that won so the board shows what is really saved
-    for(let i=0;i<dels.length;i+=200){const part=dels.slice(i,i+200);const r=await withTO(sb.rpc('save_records',{rows:part.map(o=>({coll:o.coll,id:o.id,deleted:true,full:o.meta||{},by:st.user||null}))}),45000,'save');if(r.error)throw r.error;
+    // C18: a stale "Clear day" is refused by the server for the whole call → send removals one by one; the stale one is
+    // kept as refused (another phone changed that day first), never retried forever
+    const delOne=async o=>{const r=await saveRpc([{coll:o.coll,id:o.id,deleted:true,full:o.meta||{},by:st.user||null}]);
+      if(r.error&&isStale(r.error)){const rj={coll:o.coll,id:o.id,stale:true,del:true,data:null};keepRej([rj]);done(o.coll+'\u0001'+o.id,o);saveQ();mark(o.coll,o.id,'rej',{stale:true});staleHit=true;myRej.push(rj);return null;}
+      return r;};
+    for(let i=0;i<dels.length;i+=200){const part0=dels.slice(i,i+200);let part=part0;let r=await saveRpc(part.map(o=>({coll:o.coll,id:o.id,deleted:true,full:o.meta||{},by:st.user||null})));
+      if(r.error&&isStale(r.error)){const rows=[];part=[];for(const o of part0){const x=await delOne(o);if(x){if(x.error)throw x.error;part.push(o);rows.push(...(x.data||[]));Object.assign((r.why=r.why||{}),x.why||{});}}r={data:rows,why:r.why,error:null};if(staleHit)setTimeout(()=>{try{catchUp();}catch(_){}},0);}
+      if(r.error)throw r.error;
       // a delete the server refused comes back still present and not deleted → restore it locally (adopt does) and flag
       // (scoped to 'sched' so other features keep today's behavior)
       const dby={};(Array.isArray(r.data)?r.data:[]).forEach(s=>{dby[s.coll+'\u0001'+s.id]=s;});
-      const refused=part.filter(o=>{if(o.coll==='inbox')return false;const s=dby[o.coll+'\u0001'+o.id];return !!(s&&!s.deleted);}).map(o=>({coll:o.coll,id:o.id,delRefused:true,del:true}));
+      const refused=part.filter(o=>{if(o.coll==='inbox')return false;const s=dby[o.coll+'\u0001'+o.id];return !!(s&&!s.deleted);}).map(o=>({coll:o.coll,id:o.id,delRefused:true,del:true,why:(r.why&&r.why[o.coll+'\u0001'+o.id])||''}));
       if(refused.length)keepRej(refused);
       part.forEach(o=>{done(o.coll+'\u0001'+o.id,o);mark(o.coll,o.id,refused.some(x=>x.id===o.id&&x.coll===o.coll)?'rej':'ok');});saveQ();adopt(r.data);
       myRej.push(...refused);}
     st.err=skipped?((typeof t==='function'?t('Photo upload failed — will retry'):'Photo upload failed')):'';st.retrying=false;
     lastReject=myRej;
-    if(myRej.length){const msg=(typeof t==='function'?t('Some changes could not be saved — showing the saved version.'):'Some changes could not be saved — showing the saved version.');
+    if(myRej.length){const w=myRej.find(x=>x.why);   // M22: say which item and why, and where to review it
+      const msg=(typeof t==='function'?t('Some changes could not be saved — showing the saved version.'):'Some changes could not be saved — showing the saved version.')
+        +(w?' ('+w.why+')':'')+' '+(typeof t==='function'?t('Settings › Not saved to review.'):'Settings › Not saved to review.');
       try{window.dispatchEvent(new CustomEvent('ex-rejected',{detail:{rows:myRej.slice()}}));}catch(e){}
       if(!suppressRejectToast){try{if(typeof toast==='function')toast(msg,'bad');}catch(e){}}}}
   catch(e){lastReject=myRej;lastFlushError=(e&&e.message)||'sync error';
@@ -307,7 +351,7 @@ function liveRecord(coll,id){const v=D[coll];if(Array.isArray(v))return v.find(x
 function stripEmp(x){const r=Object.assign({},x);EMP_STRIP.forEach(f=>delete r[f]);r.authEmail=emailFor(x);return r;}
 // B1: rows the server handed back from an action (e.g. send_task) — take them as the truth, nothing to send
 window.EX_adopt=function(rows){try{adopt(rows);localSave();bump();}catch(e){log(e);}};
-function localSave(){try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){}if(Object.keys(queue).length&&st.qStored===false)saveQ();}
+function localSave(){if(!window.EX_STALE){try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){}}if(Object.keys(queue).length&&st.qStored===false)saveQ();}
 
 // ---------- pull ----------
 // History the phone keeps only for a while (see pruneOld in the app): download just the recent part, so the start-up
@@ -361,6 +405,12 @@ function listKeepNewer(old,inc){if(!old||typeof old!=='object'||!inc||typeof inc
     const stamped=/^lc_/.test(k)?!!a.by:((+a.rev||0)>=1&&!!a.eat);if(!stamped)continue;
     if(b===undefined||(/^li_/.test(k)&&b&&typeof b==='object'&&(+a.rev||0)>(+b.rev||0))){(out=out||Object.assign({},inc))[k]=a;}}
   return out||inc;}
+let refreshing=false;
+async function refreshAll(){if(refreshing||!REAL||!ready||!st.online)return;refreshing=true;
+  try{if(await turnedOff())return;const rows=await pullAll();if(rows.length){applyRows(rows,{replace:true});applyPendingQueue();takeSnap();localSave();bump();}
+    try{if(typeof applyTabs==='function')applyTabs();if(typeof renderAll==='function')renderAll();}catch(e){}}
+  catch(e){log('refresh',e);}finally{refreshing=false;}}
+window.EX_refreshAll=refreshAll;
 function applyRows(rows,{replace}){applying=true;try{
   if(replace){colls().forEach(k=>{if(k==='_')return;D[k]=Array.isArray(D[k])?[]:{};});}
   rows.forEach(r=>{if(r.deleted){if(r.coll==='_')delete D[r.id];else delRecord(r.coll,r.id);return;}
@@ -369,6 +419,10 @@ function applyRows(rows,{replace}){applying=true;try{
     // stock history rows are written by the server without an id inside: keep the id, or the phone's copy loses it
     let data=r.data;if(data&&typeof data==='object'&&!Array.isArray(data)&&!data.id&&Array.isArray(D[r.coll]))data=Object.assign({id:r.id},data);   // Baruch 10/27: a record the server wrote without an id inside (Trello jobs) must keep its id, or each phone saves it again as a new copyif(r.coll==='emps'){const old=liveRecord('emps',r.id);if(old&&old.pass)data.pass=old.pass;}
     if(!replace&&(r.coll==='keep'||r.coll==='mats'))data=listKeepNewer(liveRecord(r.coll,r.id),data);
+    // A11: MY OWN role / crew / leader / all-access / title / active changed → the server now shows me a different set of
+    // records: download everything again so what I may no longer see does not stay on this phone
+    if(!replace&&r.coll==='emps'&&ready&&data&&data.authUid&&window.EX_ME===r.id){const old=liveRecord('emps',r.id);
+      if(old&&['role','crew','lead','all','title','inactive','perms'].some(f=>canon(old[f])!==canon(data[f])))setTimeout(refreshAll,50);}
     setRecord(r.coll,r.id,data);if(r.coll==='stock'&&data&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,data.qty,null,data.qv);
     if(r.coll==='stockLog'&&window.EX_stockLogSeen){try{window.EX_stockLogSeen(r.id);}catch(e){}}});
   }finally{applying=false;}}
@@ -555,7 +609,10 @@ function tie(e,uid){if(!uid)return;const live=liveRecord('emps',e.id)||e;if(live
 window.EX_createUser=async function(e,pass){const r=await sb.rpc('admin_create_user',{p_email:emailFor(e),p_pass:pass});if(r.error)return {err:r.error.message};if(!r.data)return {err:'failed'};tie(e,r.data);return {ok:true,email:emailFor(e)};};
 window.EX_setPassword=async function(e,pass){const r=await sb.rpc('admin_set_password',{p_email:emailFor(e),p_pass:pass});if(r.error)return {err:r.error.message};if(!r.data)return {err:'nouser'};tie(e,r.data);return {ok:true};};
 window.EX_upc=async function(code){if(!sb)return null;try{const r=await withTO(sb.functions.invoke('upc',{body:{code}}),9000,'barcode lookup');return r&&!r.error?r.data:null;}catch(e){return null;}};
-window.EX_changeMyPassword=async function(pass){const r=await sb.auth.updateUser({password:pass});return r.error?{err:r.error.message}:{ok:true};};
+// H02: through the server, so the same password rules apply as when the office sets one (8+, letters and numbers, not common)
+window.EX_changeMyPassword=async function(pass){const r=await sb.rpc('change_my_password',{p_pass:pass});
+  if(r.error&&/change_my_password|PGRST202|not find|^nf$|HTTP 404/i.test((r.error.message||'')+(r.error.code||''))){const u=await sb.auth.updateUser({password:pass});return u.error?{err:u.error.message}:{ok:true};}
+  return r.error?{err:r.error.message}:(r.data?{ok:true}:{err:'failed'});};
 window.EX_setupOwner=async function(e,pass){const email=emailFor(e);const r=await sb.rpc('setup_owner',{p_email:email,p_pass:pass});if(r.error)return {err:/already/.test(r.error.message)?'This app is already set up. Sign in instead.':r.error.message};const l=await sb.auth.signInWithPassword({email,password:pass});if(l.error)return {err:l.error.message};return {ok:true,uid:l.data.user.id};};
 window.EX_whoami=function(){return st.user;};
 
@@ -565,6 +622,12 @@ window.EX_boot=async function(){if(!REAL)return {real:false};
   sb=window.supabase.createClient(CFG.url,CFG.anonKey,{auth:{persistSession:true,storageKey:'ex_auth',lock:async(_n,_t,fn)=>await fn()}});
   sbAux=window.supabase.createClient(CFG.url,CFG.anonKey,{auth:{persistSession:false,autoRefreshToken:false,storageKey:'ex_aux',lock:async(_n,_t,fn)=>await fn()}});
   window.EX_sb=sb;
+  // C16: while Baruch is viewing as someone else, server actions that CHANGE things are refused on the phone too
+  // (reads — history, counts, reconcile views — still work). save_records stays open: it only sends what was queued
+  // BEFORE view-as began (Baruch's own work); EX_afterSave never queues anything made while viewing as someone else.
+  {const READ_RPC=new Set(['save_records','is_member','no_team_yet','history_records','list_history','stock_history','stock_history_v2','stock_item_history','stock_site_history','stock_site_net','stock_reconcile','catalog_managers','trello_people','recent_client_errors','log_client_errors']);
+    const rpc0=sb.rpc.bind(sb);sb.rpc=function(fn,args,o){if(window.EX_viewOnly&&window.EX_viewOnly()&&!READ_RPC.has(fn)){try{if(typeof toast==='function')toast(typeof t==='function'?t('View only — changes are not saved while viewing as someone else.'):'View only','bad');}catch(e){}
+        return Promise.resolve({data:null,error:{message:'view only',code:'view_only'}});}return rpc0(fn,args,o);};}
   let email=null,uid=null;try{const s=await withTO(sb.auth.getSession(),6000,'sign-in');const u=s.data.session&&s.data.session.user;email=u?u.email:null;uid=u?u.id:null;}catch(e){email=cachedEmail();st.slow=true;}st.user=email;
   // account switch: if the person signed in now is not the one this phone's cached data belongs to, drop the old copy first
   try{const prev=localStorage.getItem('ex_uid');if(uid){if(prev&&prev!==uid){

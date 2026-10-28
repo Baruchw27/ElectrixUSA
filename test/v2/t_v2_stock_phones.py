@@ -2,8 +2,9 @@
 # simultaneous take-outs / returns, over-picking, a lost server answer, offline + reconnect, offline over-pick,
 # double taps, a phone restarted with unsent counts, and normal sync trying to write counts.
 # (The real-database side of the same races is tested by staging/functions/stg-stock-race with real parallel sessions.)
-import asyncio, json, os, subprocess, time, urllib.request
+import sys, asyncio, json, os, subprocess, time, urllib.request
 from playwright.async_api import async_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); from testpw import team_passwords
 HERE = os.path.dirname(os.path.abspath(__file__)); T = os.path.join(HERE, '..'); PORT = 8793; BASE = f'http://localhost:{PORT}'
 FAKE = open(os.path.join(T, 'fakeclient.js')).read()
 CFG = f"window.EX_CFG={{url:'{BASE}',anonKey:'test',debug:false,trello:false,ai:false,vapid:'BBBB'}};"
@@ -54,9 +55,7 @@ async def main():
             await O.evaluate("askPrompt=(t,f,cb)=>cb(['ownerpass1','clean']);0"); await O.evaluate("exSetup()")
             await until(O, "document.getElementById('m-login').classList.contains('hid')&&me()&&me().role==='owner'", 15000)
             await O.evaluate("D.sites.push({id:'site_t1',name:'12 Test Lane',stage:'active',phase:'rough',files:[],links:[]});D.stock.push({id:'s_race1',name:'Leviton 5603-P2W 3-Way Switch White',unit:'pc',qty:0,min:0});save();0")
-            await until(O, "(D.keep||[]).some(n=>/Team passwords/.test(n.title||'')&&/: /.test(n.body||''))", 40000)
-            note = await O.evaluate("(D.keep||[]).find(n=>/Team passwords/.test(n.title||''))?.body||''")
-            pw = {l.split(': ')[0]: l.split(': ')[1] for l in note.split('\n') if ': ' in l}
+            pw = await team_passwords(O)   # C13: no passwords in records — fresh test passwords for this run
             workers = [w for w in await O.evaluate("D.emps.filter(e=>e.role==='worker'&&!e.inactive).map(e=>e.name)") if w in pw][:3]
             P = []
             for w in workers:
@@ -111,7 +110,7 @@ async def main():
             chk('the refused move is kept for the office to review', await C.evaluate("(D.rejq||[]).length>=1"))
             print('6. Double tap on Save')
             n0 = len(logs())
-            await A.evaluate("openStockIn();siLines=[{id:'s_race1',name:'x',unit:'pc',qty:3}];document.getElementById('siSrc').value='New inventory';Promise.all([saveStockIn(),saveStockIn(),saveStockIn()]);0")
+            await A.evaluate("openStockIn();siLines=[{id:'s_race1',name:'x',unit:'pc',qty:3}];(typeof siKindSet==='function'&&siKindSet('new'));document.getElementById('siSrc').value='New inventory';Promise.all([saveStockIn(),saveStockIn(),saveStockIn()]);0")
             await until(A, "!stockQ().length", 8000); await A.wait_for_timeout(500)
             chk('three taps → one transaction (7 + 3 = 10)', sq('s_race1') == 10 and len(logs()) == n0 + 1, (sq('s_race1'), len(logs()) - n0))
             print('7. Phone restarted while it still has unsent counts')

@@ -95,9 +95,16 @@ const T=s=>typeof t==='function'?t(s):s;
 // The Face-ID password verifier lives in sync.js (window.EX_setPwVerifier / EX_checkPwVerifier / EX_clearPwVerifier /
 // EX_hasPwVerifier) so the device key and raw decrypt stay out of page scope. extras.js only CALLS those below.
 let unlocked=false,hiddenAt=0,fails=0;
-function unlockNow(){unlocked=true;fails=0;const o=document.getElementById('exLock');if(o)o.remove();}
+// H04: while locked, everything behind the lock is hidden and cannot be tapped or typed into (menus, dialogs,
+// scanner and microphone overlays included) — not just covered
+function sealApp(on){document.documentElement.classList.toggle('exlocked',!!on);
+  [...document.body.children].forEach(e=>{if(e.id==='exLock')return;try{if(on){if(!e.inert){e.inert=true;e.dataset.exSealed='1';}}else if(e.dataset.exSealed){e.inert=false;delete e.dataset.exSealed;}}catch(x){}});
+  if(on){try{if(window.P7&&P7.close)P7.close();}catch(x){}try{const a=document.activeElement;if(a&&a.blur)a.blur();}catch(x){}}}
+(function(){const s=document.createElement('style');s.textContent='html.exlocked body>*:not(#exLock){visibility:hidden!important}';document.head.appendChild(s);})();
+function unlockNow(){unlocked=true;fails=0;const o=document.getElementById('exLock');if(o)o.remove();sealApp(false);}
 function lockBase(o,dark){o.style.background=dark?'#000':'#fff';o.style.color=dark?'#f2f2f7':'#1F1E2A';}
-function lockScreen(msg){let o=document.getElementById('exLock');if(!o){o=document.createElement('div');o.id='exLock';o.style.cssText='position:fixed;inset:0;z-index:950;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center';document.body.appendChild(o);}
+function lockScreen(msg){let o=document.getElementById('exLock');if(!o){o=document.createElement('div');o.id='exLock';o.style.cssText='position:fixed;inset:0;z-index:2147483647;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center';document.body.appendChild(o);}
+  sealApp(true);
   const dark=document.documentElement.dataset.theme==='dark';lockBase(o,dark);
   o.innerHTML='<img src="'+(dark?'logo-dark.svg':'logo-light.svg')+'" style="height:42px"><div style="font-size:15px;opacity:.7">'+(msg||'')+'</div>'
    +'<button id="exUnlock" style="border:0;background:#1F1E2A;color:#fff;font-size:17px;font-weight:600;padding:15px 26px;border-radius:14px;min-width:240px">🔒 '+T('Unlock with Face ID')+'</button>'
@@ -159,7 +166,16 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){hiddenAt=D
 (function(){let pending=false;
   // never reload while a change is being sent, or while unsent changes are only in memory (phone storage full);
   // unsent changes safely stored on the phone survive a reload, so they must not block updates forever
-  function busy(){const S=window.EX_SYNC;if(S&&(S.flushing||(S.pending>0&&S.qStored===false)))return true;const a=document.activeElement;if(a&&(a.tagName==='TEXTAREA'||(a.tagName==='INPUT'&&a.value)))return true;if(document.querySelector('.ov:not(.hid),.xpk,#exViewer[style*="flex"]'))return true;if(window.EX_mic&&window.EX_mic.on)return true;return false;}
+  function busy(){const S=window.EX_SYNC;if(S&&(S.flushing||(S.pending>0&&S.qStored===false)))return true;const a=document.activeElement;if(a&&(a.tagName==='TEXTAREA'||(a.tagName==='INPUT'&&a.value)))return true;if(document.querySelector('.ov:not(.hid),.xpk,#exViewer[style*="flex"]'))return true;if(window.EX_mic&&window.EX_mic.on)return true;
+    // M23: also wait while anything typed is not saved yet (a field still holding text, even after the keyboard closed),
+    // while a sheet / scanner / camera is open, or for 2 minutes after the camera or file picker was used
+    if(document.querySelector('#p2ov:not([hidden]),#scanOv[style*="flex"],#v2ftr'))return true;
+    if([...document.querySelectorAll('.ov:not(.hid) textarea,.ov:not(.hid) input[type=text],#p2ov:not([hidden]) textarea')].some(x=>x.value&&x.value.trim()))return true;
+    if(Date.now()-(window.__exPickAt||0)<120000)return true;
+    if(window.EX_STALE)return true;
+    return false;}
+  document.addEventListener('click',e=>{const x=e.target&&e.target.closest&&(e.target.closest('input[type=file]')||e.target.closest('label'));if(x&&(x.type==='file'||x.querySelector&&x.querySelector('input[type=file]')))window.__exPickAt=Date.now();},true);
+  document.addEventListener('change',e=>{if(e.target&&e.target.type==='file')window.__exPickAt=Date.now();},true);
   async function check(){if(!window.EX_VER||!navigator.onLine)return;try{const r=await fetch('version.json?'+Date.now(),{cache:'no-store'});if(!r.ok)return;const j=await r.json();if(!j.v||j.v===window.EX_VER)return;
       let tried='';try{tried=sessionStorage.getItem('ex_upd')||'';}catch(e){}if(tried===j.v)return; // never loop
       if(busy()){pending=true;return;}try{sessionStorage.setItem('ex_upd',j.v);}catch(e){}location.reload();}catch(e){}}

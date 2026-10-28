@@ -18,6 +18,11 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 //  M1 (Baruch 2026-10-27 23:24, duplicates kept coming back): (a) a new job made from a card now carries its own id inside
 //  (without it every phone saved the job again as a new copy); (b) a card whose job was merged into another one
 //  ("Same job — merge", data.mergedTrello on the hidden copy) is never brought back as a new job.
+//  2026-10-28 audit (H11/H12/H13/M07): W1 writes only the fields this run changed, merged on the server
+//  (trello_apply_sites) — a phone's change made while the sync was running is never overwritten, and a move made in the
+//  app meanwhile is kept; R1 a job removed in the app is never brought back by its card; L1 a job made in the app is
+//  linked to the card with the same address (exactly one match) instead of a second copy; M7 an old "not moved in
+//  Trello" warning is cleared once the job follows the board again, and the app is told when the board was last read.
 //  Runs every 5 minutes (database cron, x-push-secret) and on demand by a signed-in owner / manager / office person.
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
@@ -130,11 +135,31 @@ Deno.serve(async (req) => {
     existing.push(...(page || []));
     if (!page || page.length < 1000) break;
   }
+  // W1 (2026-10-28): what the job looked like when this run read it — only the fields this run changes are written
+  // back (trello_apply_sites merges them), so a phone's change made in the meantime (files, notes, a move) is kept.
+  const orig: Record<string, any> = {};
+  for (const r of existing) orig[r.id] = JSON.parse(JSON.stringify(r.data || {}));
   const bySL: Record<string, { id: string; data: any }> = {};
   for (const r of existing) { const sl = shortLinkFromUrl(r.data?.trello); if (sl) bySL[sl] = r; }
   // M1b: cards let go of by "Same job — merge" belong to the job they were merged into — never a new copy
   const mergedSL = new Set<string>();
   for (const r of existing) { const sl = shortLinkFromUrl(r.data?.mergedTrello); if (sl && !bySL[sl]) mergedSL.add(sl); }
+  // R1 (H13): a job removed in the app (deleted, or "Remove site" → removedTrello) never comes back from its card
+  const removedSL = new Set<string>();
+  for (const r of existing) { const sl = shortLinkFromUrl(r.data?.removedTrello); if (sl && !bySL[sl]) removedSL.add(sl); }
+  for (let from = 0; ; from += 1000) {
+    const { data: page, error } = await sb.from("records").select("id,data").eq("coll", "sites").eq("deleted", true).order("id").range(from, from + 999);
+    if (error) throw error;
+    for (const r of page || []) { const sl = shortLinkFromUrl(r.data?.trello) || shortLinkFromUrl(r.data?.removedTrello); if (sl && !bySL[sl]) removedSL.add(sl); }
+    if (!page || page.length < 1000) break;
+  }
+  // L1 (H12): a job made in the app (no card yet) is linked to the card with the same address instead of a second copy
+  const firstPart = (x: unknown) => normName(String(x ?? "").split(",")[0]);
+  const unlinked: Record<string, { id: string; data: any }[]> = {};
+  for (const r of existing) { const d = r.data || {};
+    if (shortLinkFromUrl(d.trello) || d.mergedInto || d.removed || d.stage === "lost" || !firstPart(d.name)) continue;
+    (unlinked[firstPart(d.name)] = unlinked[firstPart(d.name)] || []).push(r); }
+  let linkedByName = 0; const linkLog: string[] = [];
   const upserts: any[] = [];
 
   // 1) app → Shia's board: jobs moved in the app go to their new list first
@@ -168,7 +193,7 @@ Deno.serve(async (req) => {
 
   // 2) Shia's board → app
   const cards = await trello("GET", `boards/${BOARD}/cards`, { fields: "name,idList,shortLink,shortUrl,closed,pos" });
-  let created = 0, updated = 0, unchanged = 0, skipped = 0, held = 0, renamed = 0, skippedMerged = 0;
+  let created = 0, updated = 0, unchanged = 0, skipped = 0, held = 0, renamed = 0, skippedMerged = 0, skippedRemoved = 0;
   const newOnes: string[] = []; const renameLog: { from: string; to: string }[] = [];
   const openSL = new Set<string>();
   for (const c of cards) {
@@ -176,8 +201,17 @@ Deno.serve(async (req) => {
     const sl = c.shortLink; if (!sl) continue;
     openSL.add(sl);
     const lname = listName[c.idList] || "";
-    const match = bySL[sl];
+    let match = bySL[sl];
     if (!match && mergedSL.has(sl)) { skippedMerged++; continue; }   // M1b
+    if (!match && removedSL.has(sl)) { skippedRemoved++; continue; }   // R1
+    if (!match && !skip.has(lname)) {   // L1: exactly one unlinked app job with this address → link it to the card
+      const cand = (unlinked[firstPart(splitName(c.name).name)] || []).filter((r) => !shortLinkFromUrl(r.data?.trello));
+      if (cand.length === 1) {
+        const r = cand[0]; const nd = { ...(r.data || {}), trello: c.shortUrl || ("https://trello.com/c/" + sl), tname: splitName(c.name).name || c.name };
+        r.data = nd; bySL[sl] = r; match = r; linkedByName++; linkLog.push(String(nd.name || r.id));
+        upserts.push({ id: r.id, coll: "sites", data: nd, deleted: false });
+      }
+    }
     // N1: the name follows Trello even while a list move from the app is waiting
     let nm: Record<string, string> | null = null;
     if (match) { nm = nameUpdate(match.data || {}, c.name); if (nm?.name) { renamed++; renameLog.push({ from: String(match.data?.name || ""), to: nm.name }); } }
@@ -191,11 +225,13 @@ Deno.serve(async (req) => {
     const tl = listIdx[c.idList] ?? null; const tp = typeof c.pos === "number" ? c.pos : (+c.pos || null);
     if (match) {
       const d = match.data || {};
-      if (nm || d.tgone || (d.stage || "") !== m.stage || (d.trelloList || "") !== lname || (m.phase && d.phase !== m.phase) || d.tlpos !== tl || d.tpos !== tp || !d.id) {
+      if (nm || d.tgone || d.tmoveErr || (d.stage || "") !== m.stage || (d.trelloList || "") !== lname || (m.phase && d.phase !== m.phase) || d.tlpos !== tl || d.tpos !== tp || !d.id) {
         const nd: any = { ...d, ...(nm || {}), stage: m.stage, trelloList: lname, tlpos: tl, tpos: tp };
         if (!nd.id) nd.id = match.id;   // M1a
         if (m.phase) nd.phase = m.phase;
         if (d.tgone) { delete nd.tgone; delete nd.tgoneAt; delete nd.stageBeforeGone; }   // A1: the card is back on the board
+        if (d.tmoveErr) delete nd.tmoveErr;   // M7: the job shows where the card really is now — the old warning is gone
+        match.data = nd;
         upserts.push({ id: match.id, coll: "sites", data: nd, deleted: false });
         updated++;
       } else unchanged++;
@@ -224,10 +260,14 @@ Deno.serve(async (req) => {
 
   // 3) the board's lists, for the app's "Move job to" (Lost Bids left out)
   const pub = lists.filter((l: any) => mapFor(l.name).stage !== "lost").map((l: any, i: number) => ({ id: l.id, name: l.name, stage: mapFor(l.name).stage, phase: mapFor(l.name).phase || null, pos: listIdx[l.id] ?? i }));
+  // M7: the app shows when the board was last read ("Trello synced 10:35") — written at most every 15 minutes unless the lists changed
   const { data: curL } = await sb.from("records").select("data").eq("coll", "_").eq("id", "trelloLists").maybeSingle();
-  if (JSON.stringify(curL?.data?.v?.lists || null) !== JSON.stringify(pub)) upserts.push({ id: "trelloLists", coll: "_", data: { v: { board: BOARD, lists: pub } }, deleted: false });
+  const lastSync = +(curL?.data?.v?.syncedAt || 0);
+  if (JSON.stringify(curL?.data?.v?.lists || null) !== JSON.stringify(pub) || Date.now() - lastSync > 15 * 60000 || moveErr)
+    upserts.push({ id: "trelloLists", coll: "_", data: { v: { board: BOARD, lists: pub, syncedAt: Date.now(), moveErrors: moveErr } }, deleted: false });
 
-  const summary = { board: BOARD, lists: lists.length, cards: cards.length, created, updated, unchanged, skippedAdmin: skipped, skippedMerged,
+  const summary = { board: BOARD, lists: lists.length, cards: cards.length, created, updated, unchanged, skippedAdmin: skipped, skippedMerged, skippedRemoved,
+    linkedByName, linked: linkLog.slice(0, 20),
     hiddenGone: gone, goneHeld: goneSafe ? 0 : goneList.length, gone: goneLog.slice(0, 20), movedToTrello: moved, moveErrors: moveErr, heldForMove: held, moves: moveLog.slice(0, 20), renamed, renames: renameLog.slice(0, 20),
     write: WRITE, sampleNew: newOnes.slice(0, 20) };
   if (dry) return json({ dryRun: true, ...summary });
@@ -235,9 +275,28 @@ Deno.serve(async (req) => {
   const last: Record<string, any> = {};
   for (const u of upserts) last[u.coll + "|" + u.id] = u;             // one write per record
   const rows = Object.values(last);
-  for (let i = 0; i < rows.length; i += 200) {
-    const { error } = await sb.from("records").upsert(rows.slice(i, i + 200), { onConflict: "coll,id" });
+  // W1: jobs → only the changed fields, merged on the server (trello_apply_sites); a removed job is never brought back,
+  // and a job moved in the app since this run read it keeps the app's move. The '_' list record is written as before.
+  const siteRows: any[] = []; const other: any[] = [];
+  const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  for (const u of rows as any[]) {
+    if (u.coll !== "sites") { other.push(u); continue; }
+    const was = orig[u.id];
+    if (!was) { siteRows.push({ id: u.id, create: true, patch: u.data }); continue; }
+    const patch: Record<string, unknown> = {}; const unset: string[] = [];
+    for (const k of Object.keys(u.data || {})) if (!same(u.data[k], was[k])) patch[k] = u.data[k];
+    for (const k of Object.keys(was)) if (!(k in (u.data || {}))) unset.push(k);
+    if (Object.keys(patch).length || unset.length) siteRows.push({ id: u.id, patch, unset, expectMove: was.tmove ?? null });
+  }
+  const applied = { updated: 0, created: 0, skipped: 0, heldForAppMove: 0 };
+  for (let i = 0; i < siteRows.length; i += 100) {
+    const { data: res, error } = await sb.rpc("trello_apply_sites", { p_rows: siteRows.slice(i, i + 100) });
+    if (error) throw error;
+    for (const k of Object.keys(applied)) (applied as any)[k] += +((res as any)?.[k] || 0);
+  }
+  for (let i = 0; i < other.length; i += 200) {
+    const { error } = await sb.from("records").upsert(other.slice(i, i + 200), { onConflict: "coll,id" });
     if (error) throw error;
   }
-  return json({ applied: true, ...summary });
+  return json({ applied: true, written: applied, ...summary });
 });

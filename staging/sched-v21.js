@@ -134,38 +134,43 @@ slotMovePrompt=function(){const asg=slotOneoffs.filter(a=>a.site&&a.start!=null)
 
 // ongoing ("until reassigned") jobs — previously saved with no confirmation
 slotAddOngoing=function(){const wd=crewWorkday(schedCrew);const site=document.getElementById('slotAddSite').value;const full=document.getElementById('slotOngFull').checked;const h=parseFloat((document.getElementById('slotAddHours')||{}).value)||4;const st=full?wd.start:slotNextStart();const en=full?wd.end:Math.min(wd.end,st+Math.round(h*60));
-  const crew=schedCrew,day=slotDay;const cur=activeRule(crew);
+  const crew=schedCrew,day=slotDay<todayK()?todayK():slotDay;const cur=activeRule(crew);   // H31: an ongoing job starts today at the earliest (past days stay as they were)
   const write=()=>{const rid=Date.now().toString(36);const keys=['ONG:'+crew+':'+rid];if(cur)keys.push('ONG:'+crew+':'+cur.ruleId);
     commit(keys,()=>{if(cur){D.sched['ONG:'+crew+':'+cur.ruleId]=Object.assign({},D.sched['ONG:'+crew+':'+cur.ruleId],{to:addDays(day,-1),rev:(cur.rev||0)+1,by:me().id,at:Date.now()});}
       D.sched['ONG:'+crew+':'+rid]={site,start:st,end:en,workdays:wd.workdays,from:day,to:null,rev:1,by:me().id,at:Date.now()};},
       {op:'ong:'+crew,btn:byLabel('#slotBody','Set ongoing'),okMsg:T('Ongoing set — repeats every working day'),onReject:why=>inEditorError(why)}).then(r=>{if(r==='rejected'||r==='busy')return;slotAddMode=null;try{renderSlotEditor();}catch(e){}});};
 function byLabel(scope,txt){return [...document.querySelectorAll(scope+' button')].find(b=>b.textContent.trim().indexOf(T(txt))>=0)||null;}
   if(cur)askConfirm(T('This crew already has an ongoing job')+' ('+siteName(cur.site)+'). '+T('Replace it from this date forward?'),write,T('Replace'));else write();};
-slotEndOngoing=function(){const rule=ruleOn(schedCrew,slotDay);if(!rule)return;const crew=schedCrew,day=slotDay;const rk='ONG:'+crew+':'+rule.ruleId;
-  askConfirm(T('End this ongoing job?')+' '+T('It stops repeating from today. Past days stay as they were.'),()=>{
-    commit([rk],()=>{const prev=addDays(day,-1);if(prev<(rule.from||''))delete D.sched[rk];else D.sched[rk]=Object.assign({},D.sched[rk],{to:prev,rev:(rule.rev||0)+1,by:me().id,at:Date.now()});},
+// H31: it stops from the day you opened (today at the earliest) — the last day it runs is shown, and a job that
+// already ran is ended, never removed (past days stay exactly as they were)
+slotEndOngoing=function(){const rule=ruleOn(schedCrew,slotDay);if(!rule)return;const crew=schedCrew,day=slotDay<todayK()?todayK():slotDay;const rk='ONG:'+crew+':'+rule.ruleId;
+  const prev=addDays(day,-1),gone=prev<(rule.from||'')&&(rule.from||'')>=todayK();
+  askConfirm(T('End this ongoing job?')+' '+(gone?T('It has not started yet, so it is removed.'):T('Last day it runs')+': '+fmtDay(prev)+'. '+T('Past days stay as they were.')),()=>{
+    commit([rk],()=>{if(gone)delete D.sched[rk];else D.sched[rk]=Object.assign({},D.sched[rk],{to:prev,rev:(rule.rev||0)+1,by:me().id,at:Date.now()});},
       {okMsg:T('Ongoing job ended'),onReject:why=>inEditorError(why)}).then(r=>{if(r!=='rejected'&&r!=='busy')hide('m-slot');});},T('End'));};
 slotChangeOngoing=function(){const rule=ruleOn(schedCrew,slotDay);if(!rule)return;const crew=schedCrew,day=slotDay;
   askPrompt(T('Change the ongoing job'),[
     {label:T('Apply to'),options:[{v:'one',l:T('Just this day')},{v:'range',l:T('A date range')},{v:'perm',l:T('Permanently (reassign)')}]},
-    {label:T('Send to'),options:[{v:'__off',l:T('Off — no crew here')}].concat(D.sites.map(s=>({v:s.id,l:s.name})))},
+    {label:T('Send to'),options:[{v:'__off',l:T('Off — no crew here')}].concat(moveSites().map(s=>({v:s.id,l:s.name})))},   // H33: no lost / completed jobs
     {label:T('If a range: last date'),value:day,type:'date'}],
     ([scope,site,endDate])=>{const rep=site==='__off'?'__off':{site,start:rule.start,end:rule.end};const keys=[];const days=[];
       if(scope==='one')days.push(day);
       else if(scope==='range'){let k=day;const e=endDate||day;let g=0;while(k<=e&&g++<400){days.push(k);k=addDays(k,1);}}
       days.forEach(k=>keys.push(crewDayKey(crew,k)));
-      const rk='ONG:'+crew+':'+rule.ruleId,rid=Date.now().toString(36);if(scope==='perm'){keys.push(rk);if(site!=='__off')keys.push('ONG:'+crew+':'+rid);}
+      const rk='ONG:'+crew+':'+rule.ruleId,rid=Date.now().toString(36);const pday=day<todayK()?todayK():day;   // H31: a permanent change starts today at the earliest
+      if(scope==='perm'){keys.push(rk);if(site!=='__off')keys.push('ONG:'+crew+':'+rid);}
       commit(keys,()=>{const sc=schedCrew;schedCrew=crew;try{days.forEach(k=>applyOngExc(k,rep));}finally{schedCrew=sc;}
-        if(scope==='perm'){D.sched[rk]=Object.assign({},D.sched[rk],{to:addDays(day,-1),rev:(rule.rev||0)+1,by:me().id,at:Date.now()});
-          if(site!=='__off')D.sched['ONG:'+crew+':'+rid]={site,start:rule.start,end:rule.end,workdays:rule.workdays,from:day,to:null,rev:1,by:me().id,at:Date.now()};}},
+        if(scope==='perm'){D.sched[rk]=Object.assign({},D.sched[rk],{to:addDays(pday,-1),rev:(rule.rev||0)+1,by:me().id,at:Date.now()});
+          if(site!=='__off')D.sched['ONG:'+crew+':'+rid]={site,start:rule.start,end:rule.end,workdays:rule.workdays,from:pday,to:null,rev:1,by:me().id,at:Date.now()};}},
         {okMsg:T('Updated — other jobs kept'),onReject:why=>inEditorError(why)}).then(r=>{if(r!=='rejected'&&r!=='busy')hide('m-slot');});});};
 
 // individual moves (one person to another job for part of a day)
 saveLoan=function(){const emp=document.getElementById('loanEmp').value;const site=document.getElementById('loanSite').value;const start=hhmm2min(document.getElementById('loanStart').value);const end=hhmm2min(document.getElementById('loanEnd').value);const note=document.getElementById('loanNote').value;
   if(start==null){toast(T('Enter a start time'));return;}const asg=[{id:newAsgId(),site,start,end:(end!=null&&end>start)?end:null,note}];const day=loanDay;const key=loanKey(emp,day);
-  const btn=document.querySelector('#m-loan button.btn');
-  const go=()=>{const msgs=conflictsForLoan(emp,day,asg);
-    const doIt=()=>commit([key],()=>{D.sched[key]={emp,assignments:asg,rev:rowRev(key)+1,by:me().id,at:Date.now()};},{btn,okMsg:T('Person moved')}).then(r=>{if(r!=='rejected'&&r!=='busy')hide('m-loan');});
+  const btn=document.querySelector('#m-loan button.btn');const skip=(typeof loanEdit!=='undefined'&&loanEdit&&loanEdit.emp===emp)?loanEdit.id:null;
+  // H32: the person's other moves that day are kept and checked for overlap (this used to replace them)
+  const go=()=>{const msgs=conflictsForLoan(emp,day,asg,skip);
+    const doIt=()=>commit([key],()=>{D.sched[key]={emp,assignments:loanMerged(emp,day,asg,skip),rev:rowRev(key)+1,by:me().id,at:Date.now()};},{btn,okMsg:T('Person moved')}).then(r=>{if(r!=='rejected'&&r!=='busy')hide('m-loan');});
     if(msgs.length)askConfirm('⚠ '+T('Scheduling conflict')+':\n\n'+msgs.join('\n')+'\n\n'+T('Save anyway?'),doIt,T('Save anyway'));else doIt();};
   if(rowRev(key)!==loanBaseRev){askConfirm(T('This was changed since you opened it. Overwrite?'),go,T('Overwrite'));}else go();};
 clearLoanFor=function(empId,k){if(!empId)return;const key=loanKey(empId,k);
@@ -216,7 +221,7 @@ let pickSel=[];
 function pickDays(title,src,crewIds,onPick){pickSel=[];const start=todayK()>src?todayK():addDays(src,1);
   const days=[];for(let i=0;i<21;i++)days.push(addDays(start,i));
   const booked=k=>crewIds.some(c=>realAsgs(effectiveAsgs(c,k)).length);
-  const chip=k=>{const d=new Date(k+'T12:00');const wk=d.getDay()===0||d.getDay()===6;return '<button type="button" class="chip" data-k="'+k+'" style="margin:0;padding:7px 4px;min-width:0;text-align:center;line-height:1.15;'+(wk?'opacity:.6;':'')+'" onclick="EX_pickToggle(this)"><span style="font-size:11px">'+esc(d.toLocaleDateString(LOC(),{weekday:'short'}))+'</span><br><b>'+d.getDate()+'</b>'+(booked(k)?'<span style="color:var(--amber)"> ●</span>':'')+'</button>';};
+  const chip=k=>{const d=new Date(k+'T12:00');const wk=d.getDay()===6;return '<button type="button" class="chip" data-k="'+k+'" style="margin:0;padding:7px 4px;min-width:0;text-align:center;line-height:1.15;'+(wk?'opacity:.6;':'')+'" onclick="EX_pickToggle(this)"><span style="font-size:11px">'+esc(d.toLocaleDateString(LOC(),{weekday:'short'}))+'</span><br><b>'+d.getDate()+'</b>'+(booked(k)?'<span style="color:var(--amber)"> ●</span>':'')+'</button>';};
   const quick=(lbl,fn)=>'<button type="button" class="chip" style="margin:0" onclick="'+fn+'">'+esc(lbl)+'</button>';
   ask(title,'<div style="font-size:12.5px;color:var(--g4);margin-bottom:8px">'+T('From')+' <b>'+esc(fmtDay(src))+'</b>. '+T('Tap the days to copy to.')+' <span style="color:var(--amber)">●</span> = '+T('already booked')+'</div>'
     +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'+quick(T('Next day'),"EX_pickQuick('next')")+quick(T('Rest of this week'),"EX_pickQuick('week')")+quick(T('Next 5 workdays'),"EX_pickQuick('five')")+quick(T('Clear'),"EX_pickQuick('none')")+'</div>'
@@ -227,7 +232,7 @@ function pickRefresh(){document.querySelectorAll('#askBody [data-k]').forEach(b=
   const c=document.getElementById('pickCount');if(c)c.textContent=pickSel.length?pickSel.length+' '+T(pickSel.length===1?'day selected':'days selected'):'';
   const ok=document.getElementById('askOk');if(ok)ok.textContent=pickSel.length?T('Copy to')+' '+pickSel.length+' '+T(pickSel.length===1?'day':'days'):T('Copy');}
 window.EX_pickToggle=function(b){const k=b.dataset.k;const i=pickSel.indexOf(k);if(i>=0)pickSel.splice(i,1);else pickSel.push(k);pickRefresh();};
-window.EX_pickQuick=function(w){const all=[...document.querySelectorAll('#askBody [data-k]')].map(b=>b.dataset.k);const wd=k=>{const g=new Date(k+'T12:00').getDay();return g>=1&&g<=5;};
+window.EX_pickQuick=function(w){const all=[...document.querySelectorAll('#askBody [data-k]')].map(b=>b.dataset.k);const wd=k=>new Date(k+'T12:00').getDay()!==6;   // H28: work days are Sunday–Friday
   if(w==='none')pickSel=[];else if(w==='next')pickSel=[all.find(wd)].filter(Boolean);
   else if(w==='five')pickSel=all.filter(wd).slice(0,5);
   else{const first=all[0];const d=new Date(first+'T12:00');const sat=addDays(first,6-d.getDay());pickSel=all.filter(k=>k<=sat&&wd(k));}

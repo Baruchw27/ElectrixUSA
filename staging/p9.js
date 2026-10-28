@@ -5,7 +5,8 @@
 if(window.EX_P9_OFF)return;
 const $=id=>document.getElementById(id);
 // Baruch 22:44 picked: 1–10, 13, 14, 15, 16 (17 and 18 not now)
-window.P9_ON=window.P9_ON||[1,2,3,4,5,6,7,8,9,10,13,14,15,16,18];
+// H07: 18 (hide the "+" button) stays OFF until the + actions also live in the ☰ menu — Baruch: "17 and 18 not now"
+window.P9_ON=window.P9_ON||[1,2,3,4,5,6,7,8,9,10,13,14,15,16];
 const css=`
 /* 1 numbers in one dark color */
 html.o1 .p7nums b{color:var(--g5)!important}
@@ -40,7 +41,9 @@ html.o11 #p7date .d{font-size:12.5px!important}
 /* 12 three lines per section */
 html.o12 .p7c .bd>.p7r:nth-of-type(n+4){display:none!important}
 /* 13 quiet sections start closed (only problems open) */
-html.o13 .p7c:not([data-k=att]):not([data-k=tasks]):not(.p9bad) .bd{display:none!important}
+html.o13 .p7c:not([data-k=att]):not([data-k=tasks]):not(.p9bad):not(.p9open) .bd{display:none!important}
+/* H10: a tap on the title opens a quiet section (and closes it again) */
+html.o13 .p7c.p9open.fold .bd{display:none!important}
 /* 14 no arrows */
 html.o14 .p7c .p7h .ch,html.o14 .p7r .chev,html.o14 .p7c[data-k=att] .p7r>span:last-child,html.o14 #p7date .go{display:none!important}
 /* 15 "not in yet" as a normal row */
@@ -86,11 +89,13 @@ html.o18 #p7fm{right:max(16px,env(safe-area-inset-right,0px))!important}
 const st=document.createElement('style');st.id='p9css';st.textContent=css;document.body.appendChild(st);
 function apply(){const h=document.documentElement;for(let i=1;i<=18;i++)h.classList.toggle('o'+i,window.P9_ON.includes(i)||h.classList.contains('o'+i)&&window.__p9keep);
   try{// 13: a section with a problem stays open
-    document.querySelectorAll('#homeBody .p7c').forEach(c=>c.classList.toggle('p9bad',!!c.querySelector('.pill.bad,.p7warn,.n.r')));}catch(e){}
+    document.querySelectorAll('#homeBody .p7c').forEach(c=>c.classList.toggle('p9bad',!!c.querySelector('.pill.bad,.p7warn,.n.r')));
+    // H10: a quiet section the person opened stays open (remembered per section)
+    document.querySelectorAll('#homeBody .p7c').forEach(c=>{let o=false;try{o=localStorage.getItem('p9o_'+c.dataset.k)==='1';}catch(e){}c.classList.toggle('p9open',o);});}catch(e){}
   try{document.querySelectorAll('#homeBody .p7c[data-k=att] .p7r').forEach(r=>{const d=r.querySelector('span');r.classList.toggle('p9red',!!d&&/d93a2b/.test(d.getAttribute('style')||''));});}catch(e){}
   try{// 17: the pinned buttons move under the greeting
     const p=$('p8pin'),hb=$('homeBody');if(p&&hb){if(h.classList.contains('o17')){const d=$('p7date');const at=d&&d.nextSibling;if(p.parentNode!==hb)hb.insertBefore(p,at||hb.firstChild);}else if(p.parentNode!==document.body)document.body.appendChild(p);}}catch(e){}}
-function fmLab(){const b=$('p7fm');if(b)b.setAttribute('data-lab',typeof t==='function'?t('More'):'More');}
+function fmLab(){const b=$('p7fm');if(b)b.setAttribute('data-lab',typeof tt==='function'?tt('Settings'):typeof t==='function'?t('Settings'):'Settings');}   // M01: same name everywhere
 try{fmLab();}catch(e){}
 if(typeof window.applyTabs==='function'){const _a9=window.applyTabs;window.applyTabs=function(){
   // Baruch 10/28 00:10: with no bottom bar every bar button is hidden, so the old "your page's button is hidden → go Home"
@@ -101,6 +106,11 @@ if(typeof window.applyTabs==='function'){const _a9=window.applyTabs;window.apply
   try{const m=me();const who=m&&m.id;if(who&&window.__p9who&&window.__p9who!==who&&typeof goTab==='function')goTab((typeof primaryFor==='function'&&primaryFor(m)[0])||'home');window.__p9who=who;}catch(e){}   // a different person signed in → their start page
   return r;};}
 window.P9={apply,set(L){window.P9_ON=L.slice();window.__p9keep=false;apply();}};
+// H10: with "quiet sections start closed" on, tapping a section title opens it (tap again to close)
+if(window.P7&&typeof P7.fold==='function'){const _fold=P7.fold;P7.fold=function(k){const c=document.querySelector('#homeBody .p7c[data-k="'+k+'"]');
+  if(c&&document.documentElement.classList.contains('o13')&&k!=='att'&&k!=='tasks'&&!c.classList.contains('p9bad')){const o=!c.classList.contains('p9open');
+    c.classList.toggle('p9open',o);c.classList.remove('fold');try{localStorage.setItem('p9o_'+k,o?'1':'0');localStorage.setItem('p7f_'+k,'0');}catch(e){}return;}
+  return _fold.apply(this,arguments);};}
 if(typeof window.renderHome==='function'){const _rh=window.renderHome;window.renderHome=function(){const r=_rh.apply(this,arguments);try{apply();}catch(e){}return r;};}
 apply();
 // first screen is drawn with everything loaded → show the app (index.html hides it until now)

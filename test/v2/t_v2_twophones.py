@@ -1,6 +1,7 @@
 # Scanner V2 with two worker phones at the same time + offline, against the local stand-in server (real sync code).
-import asyncio, json, os, subprocess, time, urllib.request
+import sys, asyncio, json, os, subprocess, time, urllib.request
 from playwright.async_api import async_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); from testpw import team_passwords
 HERE = os.path.dirname(os.path.abspath(__file__)); T = os.path.join(HERE, '..'); PORT = 8791; BASE = f'http://localhost:{PORT}'
 FAKE = open(os.path.join(T, 'fakeclient.js')).read()
 CFG = f"window.EX_CFG={{url:'{BASE}',anonKey:'test',debug:false,trello:false,ai:false,vapid:'BBBB'}};"
@@ -45,10 +46,8 @@ async def main():
             ca, A0, ea = await phone(b, 'owner')
             await A0.evaluate("askPrompt=(t,f,cb)=>cb(['ownerpass1','clean']);0"); await A0.evaluate("exSetup()")
             await until(A0, "document.getElementById('m-login').classList.contains('hid')&&me()&&me().role==='owner'", 15000)
-            await until(A0, "(D.keep||[]).some(n=>/Team passwords/.test(n.title||'')&&/: /.test(n.body||''))", 40000)
             await A0.evaluate("D.sites.push({id:'site_t1',name:'12 Test Lane',stage:'active',phase:'rough',files:[],links:[]});save();0")
-            note = await A0.evaluate("(D.keep||[]).find(n=>/Team passwords/.test(n.title||''))?.body||''")
-            pw = {l.split(': ')[0]: l.split(': ')[1] for l in note.split('\n') if ': ' in l}
+            pw = await team_passwords(A0)   # C13: no passwords in records — fresh test passwords for this run
             workers = await A0.evaluate("D.emps.filter(e=>e.role==='worker'&&!e.inactive).map(e=>e.name)")
             w1, w2 = [w for w in workers if w in pw][:2]
             print('   workers:', w1, w2)

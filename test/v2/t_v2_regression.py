@@ -4,6 +4,7 @@
 # Usage: python3 t_v2_regression.py <app dir containing index.html + test/fakeserver.js> <port>
 import asyncio, json, os, subprocess, sys, time, urllib.request
 from playwright.async_api import async_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); from testpw import team_passwords
 R = sys.argv[1]; PORT = int(sys.argv[2]) if len(sys.argv) > 2 else 8795; BASE = f'http://localhost:{PORT}'
 FAKE = open(os.path.join(R, 'test', 'fakeclient.js')).read()
 CFG = f"window.EX_CFG={{url:'{BASE}',anonKey:'test',debug:false,trello:false,ai:false,vapid:'BBBB'}};"
@@ -46,9 +47,7 @@ async def main():
             cO, O, eO = await phone(b, 'owner')
             await O.evaluate("askPrompt=(t,f,cb)=>cb(['ownerpass1','clean']);0"); await O.evaluate("exSetup()")
             chk('owner account created and signed in', await until(O, "document.getElementById('m-login').classList.contains('hid')&&me()&&me().role==='owner'", 15000))
-            await until(O, "(D.keep||[]).some(n=>/Team passwords/.test(n.title||'')&&/: /.test(n.body||''))", 40000)
-            note = await O.evaluate("(D.keep||[]).find(n=>/Team passwords/.test(n.title||''))?.body||''")
-            pw = {l.split(': ')[0]: l.split(': ')[1] for l in note.split('\n') if ': ' in l}
+            pw = await team_passwords(O)   # C13: no passwords in records — fresh test passwords for this run
             w = [x for x in await O.evaluate("D.emps.filter(e=>e.role==='worker'&&!e.inactive).map(e=>e.name)") if x in pw][0]
             cW, W, eW = await phone(b, w)
             await W.fill('#lgUser', w); await W.fill('#lgPass', 'wrong-password-1'); await W.evaluate("doLogin()"); await W.wait_for_timeout(2500)
@@ -68,7 +67,7 @@ async def main():
             chk('job done on the worker → office sees done', await until(O, "D.jobs.find(j=>j.id==='j_r1').status==='done'", 10000))
             # inventory screens
             await ev(O, "D.stock.push({id:'s_reg1',name:'Romex 12/2 250ft',unit:'roll',qty:0,min:0});save();0"); await until(W, "D.stock.some(s=>s.id==='s_reg1')", 10000)
-            await ev(O, "openStockIn();siLines=[{id:'s_reg1',name:'Romex 12/2 250ft',unit:'roll',qty:20}];document.getElementById('siSrc').value='Supplier delivery';saveStockIn();0")
+            await ev(O, "openStockIn();siLines=[{id:'s_reg1',name:'Romex 12/2 250ft',unit:'roll',qty:20}];(typeof siKindSet==='function'&&siKindSet('supplier'));document.getElementById('siSrc').value='Supplier delivery';saveStockIn();0")
             await until(O, "!stockQ().length", 8000)
             chk('put-back screen: 20 in on the server', (rec('stock', 's_reg1') or {}).get('data', {}).get('qty') == 20, rec('stock', 's_reg1'))
             chk('worker phone shows 20', await until(W, "D.stock.find(s=>s.id==='s_reg1').qty===20", 10000))

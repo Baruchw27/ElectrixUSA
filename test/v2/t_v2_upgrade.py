@@ -5,6 +5,7 @@
 #        … <release build dir + test/> <today's live files> <port> rollback   → the same test for an app rollback
 import asyncio, json, os, shutil, subprocess, sys, time, urllib.request
 from playwright.async_api import async_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); from testpw import team_passwords
 OLD, NEW, PORT = sys.argv[1], sys.argv[2], int(sys.argv[3]) if len(sys.argv) > 3 else 8799
 BASE = f'http://localhost:{PORT}'; FAKE = open(os.path.join(OLD, 'test', 'fakeclient.js')).read()
 CFG = f"window.EX_CFG={{url:'{BASE}',anonKey:'test',debug:false,trello:false,ai:false,vapid:'BBBB'}};"
@@ -44,9 +45,7 @@ async def main():
             cO, O, eO = await phone(b, 'owner')
             await O.evaluate("askPrompt=(t,f,cb)=>cb(['ownerpass1','clean']);0"); await O.evaluate("exSetup()")
             await until(O, "document.getElementById('m-login').classList.contains('hid')&&me()&&me().role==='owner'", 15000)
-            await until(O, "(D.keep||[]).some(n=>/Team passwords/.test(n.title||'')&&/: /.test(n.body||''))", 40000)
-            note = await O.evaluate("(D.keep||[]).find(n=>/Team passwords/.test(n.title||''))?.body||''")
-            pw = {l.split(': ')[0]: l.split(': ')[1] for l in note.split('\n') if ': ' in l}
+            pw = await team_passwords(O)   # C13: no passwords in records — fresh test passwords for this run
             ws = [x for x in await O.evaluate("D.emps.filter(e=>e.role==='worker'&&!e.inactive).map(e=>e.name)") if x in pw]
             if not ws: print('DEBUG note', repr(note[:200]), await O.evaluate("D.emps.map(e=>e.name+':'+e.role)"), eO)
             w = ws[0]

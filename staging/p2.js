@@ -179,7 +179,7 @@ document.addEventListener('touchend',()=>{if(!sw)return;const s=sw;sw=null;if(!s
   else{s.el.style.transform='';setTimeout(()=>{s.el.style.transition='';if(s.bg)s.bg.style.opacity=0;},200);}},{passive:true});
 
 // ───────── 5. stage colors everywhere ─────────
-if(typeof window.stageBadge==='function'){window.stageBadge=function(s){const k=(s&&s.stage)||'active';const st=STAGE[k]||STAGE.active;let ed=false;try{ed=canEditFolder(me());}catch(e){}const c=tint(k);
+if(typeof window.stageBadge==='function'){window.stageBadge=function(s){const k=(s&&s.stage)||'active';const st=STAGE[k]||STAGE.active;let ed=false;try{ed=canMoveStage(me());}catch(e){}const c=tint(k);
   return '<span class="badge" style="font-weight:600;background:'+c+'26;color:'+c+';'+(ed?'cursor:pointer':'')+'"'+(ed?' onclick="event.stopPropagation();pickStage(\''+jsq(s.id)+'\')"':'')+'>'+t(st[0])+(ed?' ▾':'')+'</span>'+(typeof trelloMoveTag==='function'?trelloMoveTag(s):'');};}
 if(typeof window.bCard==='function'){const _bc=window.bCard;window.bCard=function(j){let h=_bc.apply(this,arguments);try{const s=j.site&&D.sites.find(x=>x.id===j.site);if(s)h=h.replace('📍 ','<i class="stdot" style="background:'+tint(s.stage||'active')+'"></i>');
     if(P2.selMode){h=h.replace('class="card kbcard','class="card kbcard'+(P2.sel.has(j.id)?' p2on':'')).replace(/(<div class="card kbcard[^>]*>)/,'$1<i class="p2chk"></i>');}}catch(e){}return h;};}
@@ -190,7 +190,11 @@ if(typeof window.openJobDetail==='function'){const _oj=window.openJobDetail;wind
 function barSync(){let b=$('p2bar');if(!b){b=document.createElement('div');b.id='p2bar';b.hidden=true;document.body.appendChild(b);}
   const on=P2.selMode&&$('pg-jobs')&&$('pg-jobs').classList.contains('on');b.hidden=!on;if(!on)return;const n=P2.sel.size;
   b.innerHTML='<div class="in"><b>'+n+' '+tt('selected')+'</b><button class="go" '+(n?'':'disabled')+' onclick="P2.bulkDone()">✓ '+tt('Done')+'</button><button '+(n?'':'disabled')+' onclick="P2.bulkMove()">'+tt('Move')+'</button><button '+(n?'':'disabled')+' onclick="P2.bulkSend()">'+tt('Send')+'</button><button onclick="P2.toggleSel()">✕</button></div>';fabSync();}
-P2.bulkDone=()=>{const ids=[...P2.sel];askConfirm(tt('Mark these done?')+' ('+ids.length+' '+tt('tasks')+')',()=>{const m=M();ids.forEach(id=>{const j=D.jobs.find(x=>x.id===id);if(j&&j.status!=='done'){j.status='done';j.doneAt=Date.now();j.doneBy=m.id;}});save();P2.selMode=false;P2.sel.clear();renderJobs();barSync();toast('✓ '+ids.length+' '+tt('tasks'),'green');},tt('Mark done'));};
+P2.bulkDone=()=>{const all=[...P2.sel].map(id=>D.jobs.find(x=>x.id===id)).filter(j=>j&&j.status!=='done');
+  // H22: inspection call-ins are closed by booking them; tasks without a photo are named in the question
+  const blocked=all.filter(j=>typeof inspPending==='function'&&inspPending(j));const ok=all.filter(j=>!blocked.includes(j));const noPhoto=ok.filter(j=>!j.photo).length;
+  if(!ok.length){toast(tt('Book the inspection first (date and time) — the task closes by itself.'));return;}
+  askConfirm((noPhoto?tt('No photo on some of these. Mark done anyway?'):tt('Mark these done?'))+' ('+ok.length+' '+tt('tasks')+')'+(blocked.length?' — '+tt('Some were skipped — book their inspection first:')+' '+blocked.length:''),()=>{const m=M();ok.forEach(j=>{j.status='done';j.doneAt=Date.now();j.doneBy=m.id;});save();P2.selMode=false;P2.sel.clear();renderJobs();barSync();toast('✓ '+ok.length+' '+tt('tasks'),'green');},tt('Mark done'));};
 P2.bulkMove=()=>{const ids=[...P2.sel];askPrompt(tt('Move to list'),[{label:tt('Move to list'),options:bCols().map(c=>({v:c.id,l:t(c.name)}))}],([c])=>{ids.forEach(id=>{const j=D.jobs.find(x=>x.id===id);if(j)j['col_'+me().id]=c;});save();P2.selMode=false;P2.sel.clear();renderJobs();barSync();});};
 P2.bulkSend=()=>{const ids=[...P2.sel];let tg=[];try{tg=assignTargets();}catch(e){}askPrompt(tt('Send to'),[{label:tt('Send to'),options:tg.map(x=>({v:x.id,l:x.label}))}],async([to])=>{
     for(const id of ids){try{openRe(id);await new Promise(r=>setTimeout(r,30));document.querySelectorAll('#rePick input').forEach(i=>{i.checked=i.value===to;});await doRe();hide('m-re');}catch(e){}}
@@ -246,7 +250,14 @@ if(typeof window.openFolder==='function'){const _of=window.openFolder;window.ope
   const s=D.sites.find(x=>x.id===id);const f=$('m-folder');if(!s||!f||f.classList.contains('hid'))return r;tagFolder();
   if(P2.tabSite!==id){P2.tabSite=id;P2.tab='over';}
   const bar=$('p2tabs');bar.innerHTML=TABS.filter(([k])=>k!=='set'||!!($('fdSettings')&&$('fdSettings').innerHTML.trim())).map(([k,l])=>'<button data-k="'+k+'" onclick="P2.setTab(\''+k+'\')">'+tt(l)+'</button>').join('');
-  $('p2gal').innerHTML=gallery(s);P2.setTab(P2.tab);}catch(e){}return r;};}
+  $('p2gal').innerHTML=gallery(s);P2.setTab(P2.tab);
+  // H18: a merged copy opened from search → the owner can undo the merge (server keeps the log)
+  if(s.mergedInto&&s.mergeLog&&window.EX_REAL&&(M()||{}).role==='owner'&&!$('p2unmerge')){const k=(D.sites||[]).find(x=>x.id===s.mergedInto);const ti=$('fdTitle');
+    if(ti){const d=document.createElement('div');d.id='p2unmerge';d.className='card';d.style.cssText='padding:10px 12px;margin:8px 0;border-color:#f0c36d';
+      d.innerHTML='<div style="font-size:13px">'+tt('Merged into')+': <b>'+esc(k?k.name:s.mergedInto)+'</b></div><button class="btn sec2" style="margin-top:8px" onclick="P2.unmerge(\''+jsq(s.id)+'\')">↩ '+tt('Undo merge')+'</button>';ti.appendChild(d);}}}catch(e){}return r;};}
+P2.unmerge=async id=>{const s=(D.sites||[]).find(x=>x.id===id);if(!s||!s.mergeLog||!window.EX_sb)return;
+  askConfirm(tt('Undo merge')+'?',async()=>{const u=await window.EX_sb.rpc('unmerge_sites',{p_log:s.mergeLog});if(u.error){toast('⚠ '+(u.error.message||''));return;}
+    try{if(window.EX_refreshAll)await window.EX_refreshAll();}catch(e){}try{hide('m-folder');renderSites();}catch(e){}toast('↩ '+tt('Merge undone'),'green');},tt('Undo merge'));};
 
 // ───────── 10. duplicate job warning (owner, managers, office) ─────────
 function normName(n){return String(n||'').toLowerCase().replace(/[.,#]/g,' ').replace(/\b(drive|dr|road|rd|lane|ln|court|ct|street|st|avenue|ave|place|pl|way|terrace|ter|circle|cir|boulevard|blvd)\b/g,' ').replace(/\b(ny|new york|\d{5})\b/g,' ').replace(/\s+/g,' ').trim();}
@@ -267,19 +278,40 @@ P2.merge=(aId,bId)=>{const a=D.sites.find(x=>x.id===aId),b=D.sites.find(x=>x.id=
   const opt=s=>'<label style="display:flex;gap:10px;align-items:flex-start;padding:10px;border:1.5px solid var(--g2);border-radius:12px;margin-top:8px;cursor:pointer"><input type="radio" name="p2keep" value="'+esc(s.id)+'" style="width:auto;margin-top:3px"'+(s===best?' checked':'')+'><span><b>'+esc(s.name)+'</b><br><small style="color:var(--g4)">'+esc(info(s))+(s.trello?' · Trello':'')+(s.stage?' · '+esc(tt(({upcoming:'Upcoming',ready:'Confirmed jobs',active:'Roughing',roughdone:'Rough Complete',inspection:'Finishing',done:'Complete'})[s.stage]||s.stage)):'')+'</small></span></label>';
   ask(tt('Same job — merge'),'<div style="font-size:13.5px">'+tt('Which one do you keep? Everything from the other one (tasks, hours, schedule, material, O&R, files, notes) moves to it, and the other one disappears from the list.')+'</div>'+opt(a)+opt(b),()=>{
     const kid=(document.querySelector('input[name=p2keep]:checked')||{}).value||best.id;const keep=kid===a.id?a:b,dup=kid===a.id?b:a;
-    const n=moveRefs(dup.id,keep.id);
+    if(window.EX_REAL)P2.mergeServer(keep,dup);else P2.mergeLocal(keep,dup);},tt('Next'));};
+// H18 (2026-10-28): the live app merges on the server, in one step (merge_sites): every record pointing at the copy —
+// including hours and schedule days that are not on this phone — moves at once, with a preview first and an Undo after.
+P2.mergeServer=async(keep,dup)=>{const sb=window.EX_sb;if(!sb||navigator.onLine===false){toast(tt('Needs a signal to merge.'));return;}
+  try{if(window.EX_saveNow)await window.EX_saveNow();}catch(e){}
+  const pv=await sb.rpc('merge_sites',{p_keep:keep.id,p_dup:dup.id,p_dry:true});
+  if(pv.error){toast('⚠ '+tt('Could not merge')+': '+(pv.error.message||''));return;}
+  const v=pv.data||{};const KIND={jobs:'tasks',punches:'clock entries',sched:'schedule days',mats:'material requests',orr:'O&R',insp:'inspections',meets:'meetings',exps:'receipts',keep:'notes',inbox:'alerts',travel:'travel',stockLog:'stock moves',mtpl:'material lists'};
+  const rows=Object.keys(v.moves||{}).map(k=>'<div class="ln"><span>'+esc(tt(KIND[k]||k))+'</span><b>'+(+v.moves[k])+'</b></div>').join('')
+    +(v.files?'<div class="ln"><span>'+esc(tt('files'))+'</span><b>'+v.files+'</b></div>':'')+(v.notes?'<div class="ln"><span>'+esc(tt('notes'))+'</span><b>'+v.notes+'</b></div>':'')
+    +(v.punchList?'<div class="ln"><span>'+esc(tt('punch list'))+'</span><b>✓</b></div>':'')+(v.trello?'<div class="ln"><span>Trello</span><b>✓</b></div>':'');
+  ask(tt('Merge preview'),'<div style="font-size:13.5px"><b>'+esc(dup.name)+'</b> → <b>'+esc(keep.name)+'</b><br>'+tt('will move to the job you keep')+':</div><div class="card" style="padding:4px 12px;margin-top:8px">'+(rows||'<div class="ln"><span>—</span></div>')+'</div>',async()=>{
+    const r=await sb.rpc('merge_sites',{p_keep:keep.id,p_dup:dup.id,p_dry:false});
+    if(r.error){toast('⚠ '+tt('Could not merge')+': '+(r.error.message||''));return;}
+    D.dupok=(D.dupok||[]).filter(k=>!k.split('|').includes(dup.id));
+    try{if(window.EX_refreshAll)await window.EX_refreshAll();}catch(e){}try{renderSites();}catch(e){}
+    const lid=r.data&&r.data.log;
+    if(typeof kUndo==='function'&&lid)kUndo('✓ '+tt('Merged')+' — '+(r.data.moved||0)+' '+tt('moved'),async()=>{const u=await sb.rpc('unmerge_sites',{p_log:lid});
+      if(u.error){toast('⚠ '+(u.error.message||''));return;}try{if(window.EX_refreshAll)await window.EX_refreshAll();}catch(e){}try{renderSites();}catch(e){}toast('↩ '+tt('Merge undone'),'green');});
+    else toast('✓ '+tt('Merged'),'green');},tt('Merge'));};
+// demo (no server): the old phone-only merge
+P2.mergeLocal=(keep,dup)=>{const n=moveRefs(dup.id,keep.id);
     ['files','links','notes'].forEach(k=>{if((dup[k]||[]).length)keep[k]=(keep[k]||[]).concat(dup[k]);});
     ['client','phone','manager','crew','lat','lng','rad','permit','email','addr'].forEach(k=>{if((keep[k]==null||keep[k]==='')&&dup[k]!=null&&dup[k]!=='')keep[k]=dup[k];});
     if(!keep.trello&&dup.trello){keep.trello=dup.trello;keep.trelloList=dup.trelloList;keep.tname=dup.tname;}
     // the hidden copy lets go of its Trello card so the Trello sync never brings it back
     Object.assign(dup,{stageBeforeMerge:dup.stage,stage:'lost',mergedInto:keep.id,mergedAt:Date.now(),mergedBy:(M()||{}).id,mergedTrello:dup.trello||undefined,trello:'',files:[],links:[],notes:[]});
     D.dupok=(D.dupok||[]).filter(k=>!k.split('|').includes(dup.id));
-    save();try{renderSites();}catch(e){}toast('✓ '+tt('Merged')+(n?' — '+n+' '+tt('moved'):''),'green');},tt('Merge'));};
+    save();try{renderSites();}catch(e){}toast('✓ '+tt('Merged')+(n?' — '+n+' '+tt('moved'):''),'green');};
 // Baruch 21:24: "Not a duplicate" kept coming back (it was only kept on the phone) — now saved on both jobs, so it syncs to everyone
 P2.dupOk=key=>{const [x,y]=key.split('|');const a=D.sites.find(s=>s.id===x),b=D.sites.find(s=>s.id===y);if(a&&b){a.notDup=[...new Set([...(a.notDup||[]),b.id])];b.notDup=[...new Set([...(b.notDup||[]),a.id])];}save();renderSites();};
 if(typeof window.renderSites==='function'){const _rs=window.renderSites;window.renderSites=function(){const r=_rs.apply(this,arguments);try{const m=M();const el=$('siteList');
   if(el&&m&&(m.role==='owner'||m.role==='manager'||m.role==='office'||m.all)&&!(($('siteFind')||{}).value||'').trim()){const d=P2.dups();if(d.length){const box=document.createElement('div');box.className='p2dup';
-    box.innerHTML='<b>⚠ '+tt('Possible duplicate jobs')+' ('+d.length+')</b>'+d.slice(0,6).map(([a,b,k])=>'<div class="r"><span style="min-width:0">'+esc(a.name)+'<br>'+esc(b.name)+'</span><span style="display:flex;flex-direction:column;gap:4px;flex:none"><button onclick="openFolder(\''+jsq(a.id)+'\')">'+tt('Open')+' 1</button><button onclick="openFolder(\''+jsq(b.id)+'\')">'+tt('Open')+' 2</button>'+((m.role==='owner'||m.role==='office'||m.all)?'<button style="background:#d93a2b;color:#fff" onclick="P2.merge(\''+jsq(a.id)+'\',\''+jsq(b.id)+'\')">'+tt('Same job — merge')+'</button>':'')+'<button onclick="P2.dupOk(\''+jsq(k)+'\')">'+tt('Not a duplicate')+'</button></span></div>').join('');el.prepend(box);}}}catch(e){}return r;};}
+    box.innerHTML='<b>⚠ '+tt('Possible duplicate jobs')+' ('+d.length+')</b>'+d.slice(0,6).map(([a,b,k])=>'<div class="r"><span style="min-width:0">'+esc(a.name)+'<br>'+esc(b.name)+'</span><span style="display:flex;flex-direction:column;gap:4px;flex:none"><button onclick="openFolder(\''+jsq(a.id)+'\')">'+tt('Open')+' 1</button><button onclick="openFolder(\''+jsq(b.id)+'\')">'+tt('Open')+' 2</button>'+((m.role==='owner')?'<button style="background:#d93a2b;color:#fff" onclick="P2.merge(\''+jsq(a.id)+'\',\''+jsq(b.id)+'\')">'+tt('Same job — merge')+'</button>':'')+'<button onclick="P2.dupOk(\''+jsq(k)+'\')">'+tt('Not a duplicate')+'</button></span></div>').join('');el.prepend(box);}}}catch(e){}return r;};}
 
 // ───────── 9. big-text crew mode (workers; on by default, can be turned off) ─────────
 function crewOn(){const m=M();if(!m||m.role!=='worker'||m.lead)return false;try{const v=localStorage.getItem('p2crew_'+m.id);return v===null?true:v==='1';}catch(e){return true;}}
@@ -298,7 +330,8 @@ setInterval(badgeSync,15000);
 try{if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',ev=>{const d=ev.data||{};if(d.type==='ex-act'&&d.id)P2.act(d.id,d.act);});}catch(e){}
 P2.act=(nidv,act)=>{let k=0;const go=()=>{const x=(D.inbox||[]).find(i=>i.id===nidv);const jid=x&&x.link&&x.link.job;if(!jid){if(k++<20)setTimeout(go,500);return;}
   try{x.read=true;save();}catch(e){}
-  if(act==='done'){const j=D.jobs.find(y=>y.id===jid);if(j&&j.status!=='done'){j.status='done';j.doneAt=Date.now();j.doneBy=me().id;save();try{renderJobs();}catch(e){}toast('✓ '+tt('Done'),'green');}}
+  if(act==='done'){const j=D.jobs.find(y=>y.id===jid);if(j&&j.status!=='done'){if((typeof inspPending==='function'&&inspPending(j))||!j.photo){try{markDone(jid);}catch(e){}return;}   // H22: same checks as the Done button
+    j.status='done';j.doneAt=Date.now();j.doneBy=me().id;save();try{renderJobs();}catch(e){}toast('✓ '+tt('Done'),'green');}}
   else{try{openJobDetail(jid);setTimeout(()=>{const c=document.querySelector('#m-jobd textarea,#m-jobd input[type=text],#m-jobd [contenteditable]');if(c)c.focus();},400);}catch(e){}}};go();};
 try{const q=new URLSearchParams(location.search);const a=q.get('act'),n=q.get('n');if(a&&n)setTimeout(()=>P2.act(n,a),1200);}catch(e){}
 

@@ -164,14 +164,14 @@ async def main():
         chk('shows "Pick the right item" with both', 'Pick the right item' in s and 'GFCI 20A' in s and 'GFCI 15A' in s, s[:300])
         await pg.locator('#scSheet .v2c', has_text='GFCI 15A').click(); await pg.wait_for_timeout(200)
         r = await E(f"(()=>{{const x=SV2.identify('{UC}',{{items:D.stock,maps:D.bc}});return x.status+':'+(x.item&&x.item.id)}})()")
-        chk('after picking: barcode belongs only to the chosen item', r == 'known:s_c2', r)
+        chk('after picking (worker): the other item\'s saved link stays — only the material office removes it (H46)', r == 'conflict:undefined', r)
         await E("scSkip();0")
 
         print('12. Wrong item → unlink and identify again')
         await scan(UC); await pg.wait_for_timeout(200)
         await E("_OCR='';0"); await E("scWrong();0"); await pg.wait_for_timeout(400)
         r = await E(f"SV2.identify('{UC}',{{items:D.stock,maps:D.bc}}).status")
-        chk('barcode removed from the wrong item', r == 'new', r)
+        chk('worker "Wrong item": nobody\'s link is removed (H46 — Menachem is told instead)', r == 'conflict', r)
         chk('asks again which item it is', 'Which item is this?' in await sheet())
         await E("scSkip();0")
 
