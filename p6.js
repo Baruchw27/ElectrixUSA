@@ -98,6 +98,8 @@ html[data-theme=dark] .orrrow{background:#1c1c1e;box-shadow:none}
 .pmtx{flex:1;min-width:0}.pmtx b{display:block;font-size:15px}.pmtx span{display:block;font-size:13px;color:var(--g4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pmline{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;margin:2px 0 6px;font-size:14px}.pmline .pmfull{width:100%;color:var(--g4);font-size:13px}
 .pmline a{display:inline-flex;align-items:center;gap:5px;color:#2f80ed;text-decoration:none}.pmline svg{width:15px;height:15px}
+.pmtx .pmem{color:#2f80ed}
+.pmcall.pmmail{background:#2f6fd0}
 .pmcall{width:36px;height:36px;border-radius:50%;background:#1f7a46;color:#fff;display:flex;align-items:center;justify-content:center;flex:none}
 .orrpm .ph{display:flex;align-items:center;gap:8px;margin-bottom:2px}
 .orrpm .ph b{font-size:17px}
@@ -272,8 +274,8 @@ P6.pmCard=n=>{const c=pmFind(n);if(!c)return;
    +'<button class="btn sec2" style="margin-top:12px" onclick="ORR.close()">'+esc(tt('Close'))+'</button>');};
 P6.pmBook=()=>{const areas=[...new Set(PMB.map(c=>c.area))];
   sheet('<h3 style="margin:0 0 4px">'+esc(tt('O&R contacts'))+'</h3>'+areas.map(a=>'<div class="pmarea">'+esc(a)+'</div><div class="pmlist">'
-   +PMB.filter(c=>c.area===a).map(c=>'<div class="pmli" onclick="ORR.pmCard(\''+jsq(c.k)+'\')"><div class="pmav sm">'+esc(ini(c.name)||'O&R')+'</div><div class="pmtx"><b>'+esc(c.name)+'</b><span>'+esc(c.phone||c.email)+'</span></div>'
-     +(c.phone?'<a class="pmcall" href="tel:'+esc(tel(c.phone))+'" onclick="event.stopPropagation()" aria-label="'+esc(tt('Call'))+'">'+IC.call+'</a>':'')+'</div>').join('')+'</div>').join('')
+   +PMB.filter(c=>c.area===a).map(c=>'<div class="pmli" onclick="ORR.pmCard(\''+jsq(c.k)+'\')"><div class="pmav sm">'+esc(ini(c.name)||'O&R')+'</div><div class="pmtx"><b>'+esc(c.name)+'</b>'+(c.phone?'<span>'+esc(c.phone)+'</span>':'')+(c.email?'<span class="pmem">'+esc(c.email)+'</span>':'')+'</div>'
+     +(c.email?'<a class="pmcall pmmail" href="mailto:'+esc(c.email)+'" onclick="event.stopPropagation()" aria-label="'+esc(tt('Email'))+'">'+IC.mail+'</a>':'')+(c.phone?'<a class="pmcall" href="tel:'+esc(tel(c.phone))+'" onclick="event.stopPropagation()" aria-label="'+esc(tt('Call'))+'">'+IC.call+'</a>':'')+'</div>').join('')+'</div>').join('')
    +'<button class="btn sec2" style="margin-top:14px" onclick="ORR.close()">'+esc(tt('Close'))+'</button>');};
 function siteOpts(sel){return '<option value="">—</option>'+liveSites().slice().sort((a,b)=>String(a.name).localeCompare(String(b.name))).map(s=>'<option value="'+esc(s.id)+'"'+(s.id===sel?' selected':'')+'>'+esc(s.name)+'</option>').join('');}
 function ownerOpts(sel){return people().map(e=>'<option value="'+esc(e.id)+'"'+(e.id===sel?' selected':'')+'>'+esc(e.name)+'</option>').join('');}
