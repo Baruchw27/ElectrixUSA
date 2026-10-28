@@ -84,6 +84,30 @@ html[data-theme=dark] .orrcard{background:#1c1c1e;box-shadow:none}
 #p6home{display:flex;align-items:center;gap:10px;cursor:pointer}
 #p6home .n{background:#d93a2b;color:#fff;border-radius:999px;min-width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px;padding:0 7px}
 .orrtaskbar{display:flex;align-items:center;gap:8px;background:#2f80ed14;border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px;cursor:pointer}
+.orrsec{font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--g4);margin:14px 2px 6px}
+.orrsec i{font-style:normal;background:var(--g1);border-radius:999px;padding:0 7px;margin-left:4px}
+.orrrow{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:6px;cursor:pointer;box-shadow:0 0 0 .5px rgba(0,0,0,.07)}
+html[data-theme=dark] .orrrow{background:#1c1c1e;box-shadow:none}
+.orrrow .w{flex:1;min-width:0}
+.orrrow b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.orrrow b small{font-weight:500;color:var(--g4);font-size:12px}
+.orrrow .s{font-size:12.5px;color:var(--g4);margin-top:2px}
+.orrrow .us{color:#c76a00;font-weight:600}.orrrow .late{color:#d93a2b;font-weight:600}
+.orrrow .chev{color:var(--g3,#aaa);font-size:18px}
+.orrgo{flex:none;border:none;border-radius:999px;padding:7px 13px;font:600 12.5px/1 inherit;font-family:inherit;background:var(--blue-mid);color:#fff;cursor:pointer}
+.orrgo.ous{background:#e8912d;color:#fff}
+.orrmore{text-align:center;color:var(--blue-mid);font-size:13px;font-weight:600;padding:12px;cursor:pointer}
+.orrk{font-size:11.5px;color:var(--g4);text-transform:uppercase;letter-spacing:.5px}
+.orrneed.blue{background:#2f80ed14}.orrneed.blue b{color:#2f80ed}
+.orrnow{background:var(--g1);border-radius:12px;padding:10px 12px;margin:8px 0;font-size:13.5px}
+.orrdet{margin-top:14px;border-top:1px solid var(--g2);padding-top:8px}
+.orrdet summary{cursor:pointer;color:var(--blue-mid);font-weight:600;font-size:13.5px;padding:4px 0}
+.orrkv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;margin:8px 0}
+.orrkv span{color:var(--g4)}
+.orrch{display:grid;gap:6px;margin-top:10px}
+.orrch button{text-align:left;border:1.5px solid var(--g2);background:none;border-radius:12px;padding:10px 12px;cursor:pointer;font-family:inherit;color:var(--g5)}
+.orrch button b{display:block;font-size:14px}.orrch button small{color:var(--g4);font-size:12px}
+.orrch button:active{background:var(--g1)}
 `;
 const st=document.createElement('style');st.id='p6css';st.textContent=css;document.body.appendChild(st);
 
@@ -106,39 +130,45 @@ try{if(typeof PRIMARY==='object')PRIMARY.office=['jobs','trello','orr','cal','mo
 if(typeof window.tab==='function'){const _tab=window.tab;window.tab=function(n,el){const r=_tab.apply(this,arguments);if(n==='orr')renderOrr();return r;};}
 try{applyTabs();}catch(e){}
 
-/* ───────── list ───────── */
-let filt='us',q='',mine=false;
-function lineFor(x){
-  if(x.status==='us')return '<span class="us">'+esc(tt('On us'))+': '+esc(x.need||'see request')+'</span>';
-  if(x.status==='sched'){const late=x.schedOn&&x.schedOn<dk(new Date());return late?'<span class="late">Scheduled '+fd(x.schedOn)+' — was it done?</span>':'Scheduled '+fd(x.schedOn,{weekday:'short',month:'short',day:'numeric'});}
-  if(x.status==='sent'){const d=idle(x);return '<span class="'+(d>=3?'late':'')+'">'+d+' work day'+(d===1?'':'s')+' with no update</span>';}
-  if(x.status==='done')return 'Done '+(x.closedAt?new Date(x.closedAt).toLocaleDateString(LOC(),{month:'short',day:'numeric'}):'');
-  return '';}
-function card(x){const s=ST[x.status]||ST.sent;const site=x.site?siteName(x.site):(x.addr||'—');const si=SIDX(x.stage);
-  const sub=TYPE(x.type)+(x.wo?' · #'+esc(x.wo):'')+(x.pm?' · '+esc(x.pm):'');
-  return '<div class="orrcard" style="border-left-color:'+s[1]+'" onclick="ORR.open(\''+jsq(x.id)+'\')"><div class="w"><b>'+esc(site.split(',')[0])+'</b><div class="s">'+sub+'</div><div class="s">'+lineFor(x)+'</div>'
-   +'<div class="orrdots" title="'+esc(STAGES[si][1])+'">'+STAGES.map((z,i)=>'<i class="'+(i<=si&&x.stage?'on':'')+'"></i>').join('')+'</div></div>'
-   +'<div class="rt"><span class="pill" style="background:'+s[1]+'22;color:'+s[1]+'">'+esc(tt(s[0]))+'</span>'+(x.owner?'<span class="orrav" title="'+esc(pname(x.owner))+'">'+esc(pname(x.owner).slice(0,1))+'</span>':'')+'</div></div>';}
+/* ───────── list (v3: simple — "To do" and "Waiting on O&R") ───────── */
+let q='',showDone=false;
+const sname=x=>String(x.site?siteName(x.site):(x.addr||'—')).split(',')[0];
+// what WE need to do now (null = nothing, it's on O&R)
+function todo(x){if(!OPEN(x))return null;
+  if(x.status==='us')return {t:x.need||'Send O&R what they asked for',b:'Sent',f:'delivered',us:1};
+  if(x.status==='sched'&&x.schedOn&&x.schedOn<dk(new Date()))return {t:'Was the '+TYPE(x.type).toLowerCase()+' done on '+fd(x.schedOn)+'?',b:'Update',f:'update'};
+  if(x.status==='sent'){const d=idle(x);if(d>=3)return {t:'Call O&R'+(x.pm?' ('+x.pm+')':'')+' — no news for '+d+' work days',b:'Called',f:'update',late:d>=10};}
+  return null;}
+function waitLine(x){if(x.status==='sched')return 'Scheduled '+fd(x.schedOn,{weekday:'short',month:'short',day:'numeric'});
+  const d=idle(x);return STAGES[SIDX(x.stage)][1]+' · '+(d===0?'updated today':d+' work day'+(d===1?'':'s')+' ago');}
+function row(x){const td=todo(x);
+  const sub=td?'<span class="'+(td.us?'us':td.late?'late':'')+'">'+esc(td.t)+'</span>':OPEN(x)?esc(waitLine(x)):'Done'+(x.closedAt?' '+new Date(x.closedAt).toLocaleDateString(LOC(),{month:'short',day:'numeric'}):'');
+  return '<div class="orrrow" onclick="ORR.open(\''+jsq(x.id)+'\')"><div class="w"><b>'+esc(sname(x))+' <small>'+esc(TYPE(x.type))+'</small></b><div class="s">'+sub+'</div></div>'
+   +(td?'<button class="orrgo'+(td.us?' ous':'')+'" onclick="event.stopPropagation();ORR.'+td.f+'(\''+jsq(x.id)+'\')">'+esc(td.b)+'</button>':'<span class="chev">›</span>')+'</div>';}
+const card=row;
 function list(){return (D.orr||[]).filter(x=>x&&!x.deleted);}
 function renderOrr(){ensurePage();const pg=$('pg-orr');const m=M();if(!pg||!m)return;
   if(!staff(m)){pg.innerHTML='<div class="orrempty">'+esc(tt('Not on your screens'))+'</div>';return;}
-  let L=list();if(mine)L=L.filter(x=>x.owner===m.id);
-  const by={us:L.filter(x=>x.status==='us'),follow:L.filter(needsFollow),sched:L.filter(x=>x.status==='sched'),sent:L.filter(x=>x.status==='sent'),done:L.filter(x=>x.status==='done'||x.status==='cancel'),all:L};
-  let show=by[filt]||L;const qq=q.trim().toLowerCase();if(qq)show=L.filter(x=>((x.site?siteName(x.site):x.addr||'')+' '+(x.wo||'')+' '+(x.pm||'')+' '+TYPE(x.type)+' '+pname(x.owner)).toLowerCase().includes(qq));
-  show=show.slice().sort((a,b)=>filt==='done'?(b.closedAt||b.upd||0)-(a.closedAt||a.upd||0):filt==='sched'?String(a.schedOn).localeCompare(String(b.schedOn)):idle(b)-idle(a));
-  if(filt==='done'&&!qq)show=show.slice(0,40);
-  const chip=(k,l)=>'<button class="'+(filt===k&&!qq?'on':'')+'" onclick="ORR.filter(\''+k+'\')">'+esc(tt(l))+' <i>'+by[k].length+'</i></button>';
+  const L=list();const qq=q.trim().toLowerCase();
+  const match=x=>!qq||(sname(x)+' '+(x.wo||'')+' '+(x.pm||'')+' '+TYPE(x.type)).toLowerCase().includes(qq);
+  const open=L.filter(x=>OPEN(x)&&match(x));
+  const todoL=open.filter(todo).sort((a,b)=>(b.status==='us')-(a.status==='us')||idle(b)-idle(a));
+  const waitL=open.filter(x=>!todo(x)).sort((a,b)=>((a.status==='sched'?0:1)-(b.status==='sched'?0:1))||String(a.schedOn||'').localeCompare(String(b.schedOn||''))||idle(a)-idle(b));
+  const doneL=L.filter(x=>!OPEN(x)&&match(x)).sort((a,b)=>(b.closedAt||b.upd||0)-(a.closedAt||a.upd||0)).slice(0,40);
   const keepQ=document.activeElement&&document.activeElement.id==='orrQ';
-  pg.innerHTML='<div class="orrhd"><h2>O&amp;R</h2><button class="btn" style="width:auto;padding:7px 12px;font-size:13px" onclick="ORR.add()">+ '+esc(tt('New request'))+'</button></div>'
-   +'<div class="orrseg"><button class="'+(mine?'':'on')+'" onclick="ORR.mine(false)">Everyone</button><button class="'+(mine?'on':'')+'" onclick="ORR.mine(true)">Mine</button></div>'
-   +'<div class="orrchips">'+chip('us','On us')+chip('follow','Follow up')+chip('sched','Scheduled')+chip('sent','Waiting on O&R')+chip('done','Done')+chip('all','All')+'</div>'
+  const hd=(t,n)=>'<div class="orrsec">'+esc(t)+' <i>'+n+'</i></div>';
+  pg.innerHTML='<div class="orrhd"><h2>O&amp;R</h2><button class="btn" style="width:auto;padding:7px 12px;font-size:13px" onclick="ORR.add()">+ '+esc(tt('New'))+'</button></div>'
    +'<input type="search" id="orrQ" placeholder="Search address, project #, PM" value="'+esc(q)+'" oninput="ORR.search(this.value)">'
-   +(show.length?show.map(card).join(''):'<div class="orrempty">'+(L.length?'Nothing here right now.':esc(tt('No O&R requests yet.'))+'<br><br><button class="btn" style="width:auto" onclick="ORR.add()">+ '+esc(tt('New request'))+'</button>')+'</div>');
+   +hd('To do',todoL.length)+(todoL.length?todoL.map(row).join(''):'<div class="orrempty">All caught up.</div>')
+   +hd('Waiting on O&R',waitL.length)+(waitL.length?waitL.map(row).join(''):'<div class="orrempty">Nothing waiting.</div>')
+   +(doneL.length?'<div class="orrmore" onclick="ORR.toggleDone()">'+(showDone?'Hide done':'Show done ('+doneL.length+')')+'</div>'+(showDone?doneL.map(row).join(''):''):'');
   if(keepQ){const i=$('orrQ');i.focus();i.setSelectionRange(i.value.length,i.value.length);}}
-P6.filter=k=>{filt=k;q='';renderOrr();};
+P6.filter=()=>{q='';renderOrr();};
 P6.search=v=>{q=v;renderOrr();};
-P6.mine=v=>{mine=!!v;renderOrr();};
+P6.toggleDone=()=>{showDone=!showDone;renderOrr();};
+P6.mine=()=>{};
 P6.render=renderOrr;
+P6.todo=todo;
 
 /* ───────── sheet ───────── */
 function sheet(html){let o=$('p6ov');if(!o){o=document.createElement('div');o.id='p6ov';o.className='p2ov';o.onclick=e=>{if(e.target===o)close();};document.body.appendChild(o);}
@@ -163,23 +193,42 @@ P6.saveNew=()=>{const m=M();const site=$('orrSite').value;if(!site){toast('Pick 
   D.orr.unshift(x);closeAutoFor(site,x.type);save();close();toast('✓ Saved','green');renderOrr();refreshFolder();
   if(x.owner!==m.id)try{assignPush([x.owner],()=>'⚡ '+pname(m.id)+' gave you an O&R request: '+siteName(site).split(',')[0]+' — '+TYPE(x.type),'info',{tab:'orr'});}catch(e){}};
 function openTasks(x){return (D.jobs||[]).filter(j=>j.orr===x.id&&j.status!=='done');}
-P6.open=id=>{const x=list().find(y=>y.id===id);if(!x)return;const site=x.site?siteName(x.site):(x.addr||'—');const si=SIDX(x.stage);const tasks=openTasks(x);
-  sheet('<div style="font-size:11.5px;color:var(--g4);text-transform:uppercase;letter-spacing:.5px">O&amp;R · '+esc(TYPE(x.type))+(x.wo?' · #'+esc(x.wo):'')+'</div>'
-   +'<h3 style="margin:2px 0 2px;font-size:17px">'+esc(site)+'</h3>'
-   +'<div style="font-size:13px;color:var(--g4)">PM '+esc(x.pm||'—')+' · handled by <b style="color:var(--g5)">'+esc(pname(x.owner))+'</b> · sent '+fd(x.sent)+'</div>'
-   +(x.status==='us'?'<div class="orrneed"><b>On us:</b> '+esc(x.need||'—')+'<div class="orrbtns" style="margin-top:8px"><button class="btn" style="background:#e8912d" onclick="ORR.delivered(\''+jsq(x.id)+'\')">Done — sent to O&amp;R</button></div></div>':'')
-   +'<label>Where it stands at O&amp;R</label><div class="orrstep">'+STAGES.map((z,i)=>'<button class="'+(x.stage?(i<si?'done':i===si?'cur':''):'')+'" onclick="ORR.setStage(\''+jsq(x.id)+'\',\''+z[0]+'\')">'+esc(z[1])+'</button>').join('')+'</div>'
-   +'<label>Who\'s waiting</label><div class="orrst">'+Object.keys(ST).map(k=>'<button class="'+(x.status===k?'on':'')+'" style="'+(x.status===k?'background:'+ST[k][1]:'')+'" onclick="ORR.setStatus(\''+jsq(x.id)+'\',\''+k+'\')">'+esc(ST[k][0])+'</button>').join('')+'</div>'
-   +(x.status==='us'?'':'<div style="font-size:13px;margin-top:2px">'+lineFor(x)+'</div>')
+P6.open=id=>{const x=list().find(y=>y.id===id);if(!x)return;const site=x.site?siteName(x.site):(x.addr||'—');const tasks=openTasks(x);const td=todo(x);const I=jsq(x.id);
+  sheet('<div class="orrk">O&amp;R · '+esc(TYPE(x.type))+'</div>'
+   +'<h3 style="margin:2px 0 8px;font-size:17px">'+esc(site)+'</h3>'
+   +(td?'<div class="orrneed'+(td.us?'':' blue')+'"><b>To do:</b> '+esc(td.t)+'</div>'
+       :'<div class="orrnow">'+(OPEN(x)?'Waiting on O&amp;R — '+esc(waitLine(x)):'Done')+'</div>')
+   +'<div class="orrbtns">'+(x.status==='us'?'<button class="btn" style="background:#e8912d" onclick="ORR.delivered(\''+I+'\')">Sent to O&amp;R</button>':'')
+     +'<button class="btn" onclick="ORR.update(\''+I+'\')">Update</button><button class="btn sec2" onclick="ORR.note(\''+I+'\')">Note</button></div>'
    +(tasks.length?'<label>Open tasks</label>'+tasks.map(j=>'<div class="orrtask" onclick="ORR.close();openJobDetail(\''+jsq(j.id)+'\')"><span>'+esc(j.desc)+'</span><span style="color:var(--g4);white-space:nowrap">'+esc(pname((j.to||[])[0]))+' ›</span></div>').join(''):'')
-   +'<div class="orrbtns">'+(OPEN(x)?'<button class="btn" onclick="ORR.follow(\''+jsq(x.id)+'\')">Followed up</button>':'')+'<button class="btn sec2" onclick="ORR.note(\''+jsq(x.id)+'\')">Add note</button></div>'
-   +'<div class="orrbtns" style="margin-top:8px"><button class="btn sec2" onclick="ORR.task(\''+jsq(x.id)+'\')">+ Task</button><button class="btn sec2" onclick="ORR.edit(\''+jsq(x.id)+'\')">Edit</button>'+(x.site?'<button class="btn sec2" onclick="ORR.close();openFolder(\''+jsq(x.site)+'\')">Job</button>':'')+'</div>'
-   +'<label>History</label>'+((x.log||[]).slice().reverse().map(l=>'<div class="orrlog">'+esc(l.txt)+'<small>'+esc(pname(l.by))+' · '+new Date(l.ts).toLocaleString(LOC(),{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'</small></div>').join('')||'<div class="orrlog">—</div>'));};
+   +'<details class="orrdet"><summary>Details</summary>'
+     +'<div class="orrkv"><span>O&amp;R project #</span><b>'+esc(x.wo||'—')+'</b><span>O&amp;R PM</span><b>'+esc(x.pm||'—')+'</b><span>Handled by</span><b>'+esc(pname(x.owner))+'</b><span>Sent</span><b>'+fd(x.sent)+'</b><span>Step at O&amp;R</span><b>'+esc(STAGES[SIDX(x.stage)][1])+'</b></div>'
+     +'<div class="orrbtns"><button class="btn sec2" onclick="ORR.edit(\''+I+'\')">Edit</button><button class="btn sec2" onclick="ORR.task(\''+I+'\')">+ Task</button>'+(x.site?'<button class="btn sec2" onclick="ORR.close();openFolder(\''+jsq(x.site)+'\')">Job</button>':'')+'</div>'
+     +'<label>History</label>'+((x.log||[]).slice().reverse().map(l=>'<div class="orrlog">'+esc(l.txt)+'<small>'+esc(pname(l.by))+' · '+new Date(l.ts).toLocaleString(LOC(),{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'</small></div>').join('')||'<div class="orrlog">—</div>')
+   +'</details>');};
+// one "Update" with plain choices instead of status/stage buttons
+P6.update=id=>{const x=list().find(y=>y.id===id);if(!x)return;const I=jsq(x.id);const nx=STAGES[Math.min(SIDX(x.stage)+1,STAGES.length-1)];
+  const ch=[['wait','Still waiting on O&R','I’ll remind you again in 3 work days'],['us','O&R needs something from us','Makes a task'],['sched','O&R scheduled a date',''],
+    ['step','Moved to the next step','Next: '+nx[1]],['done','Done / connected','']];
+  sheet('<div class="orrk">Update · '+esc(sname(x))+'</div><h3 style="margin:2px 0 6px;font-size:17px">What’s the news from O&amp;R?</h3>'
+   +'<textarea id="orrUN" rows="2" placeholder="What did O&amp;R say? (optional)"></textarea>'
+   +'<div class="orrch">'+ch.map(c=>'<button onclick="ORR.upd(\''+I+'\',\''+c[0]+'\')"><b>'+esc(c[1])+'</b>'+(c[2]?'<small>'+esc(c[2])+'</small>':'')+'</button>').join('')+'</div>'
+   +'<div class="orrbtns"><button class="btn sec2" onclick="ORR.open(\''+I+'\')">Back</button></div>');};
+P6.upd=(id,k)=>{const x=list().find(y=>y.id===id);if(!x)return;const n=(($('orrUN')||{}).value||'').trim();const nt=n?': '+n:'';close();
+  if(k==='wait'){closeTasks(x,['follow','sched']);bump(x,'Called O&R — still waiting'+nt,{status:'sent'});return;}
+  if(k==='us'){askPrompt('O&R needs from us',[{label:'What does O&R need?',value:n||x.need||''},{label:'Who handles it',options:[{v:x.owner||'',l:pname(x.owner)}].concat(people().filter(e=>e.id!==x.owner).map(e=>({v:e.id,l:e.name})))}],([v,o])=>{closeTasks(x,['follow','sched']);
+      if(o&&o!==x.owner){(D.jobs||[]).forEach(j=>{if(j.orr===x.id&&j.status!=='done')j.to=[o];});try{assignPush([o],()=>'⚡ '+pname(M().id)+' gave you an O&R request: '+sname(x),'info',{tab:'orr'});}catch(e){}}
+      bump(x,'O&R needs from us: '+(String(v||'').trim()||'—')+(o&&o!==x.owner?' · handed to '+pname(o):''),{status:'us',need:String(v||'').trim(),usAt:Date.now(),owner:o||x.owner});});return;}
+  if(k==='sched'){askPrompt('Scheduled for',[{label:'Date',value:x.schedOn||dk(Date.now()+86400000),type:'date'}],([d])=>{if(!d)return;closeTasks(x,['follow','sched','us']);bump(x,'Scheduled for '+new Date(d+'T12:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+nt,{status:'sched',schedOn:d,need:''});});return;}
+  if(k==='step'){const i=Math.min(SIDX(x.stage)+(x.stage?1:0),STAGES.length-1);const z=STAGES[i];
+    if(z[0]==='done'){closeTasks(x);bump(x,'Done'+nt,{stage:'done',status:'done',closedAt:Date.now(),need:''});return;}
+    closeTasks(x,['follow','sched','us']);bump(x,'O&R step: '+z[1]+nt,{stage:z[0],status:'sent',need:''});return;}
+  if(k==='done'){closeTasks(x);bump(x,'Done'+nt,{stage:'done',status:'done',closedAt:Date.now(),need:''});}};
 function bump(x,txt,extra,reopen){const m=M();const now=Date.now();Object.assign(x,extra||{});x.upd=now;x.log=(x.log||[]).concat([{ts:now,by:m.id,txt}]);save();renderOrr();refreshFolder();if(reopen!==false)P6.open(x.id);}
 // tasks made for a reason that is now gone are finished right away (the server does the same within 15 minutes)
 function closeTasks(x,kinds){const m=M();(D.jobs||[]).forEach(j=>{if(j.orr===x.id&&j.status!=='done'&&(!kinds||kinds.includes(j.orrAuto))){j.status='done';j.doneAt=Date.now();j.doneBy=m.id;}});}
 function closeAutoFor(site,type){const m=M();(D.jobs||[]).forEach(j=>{if(j.site===site&&j.status!=='done'&&(j.orrAuto==='apply'||(j.orrAuto==='meter'&&type==='meter')||(j.orrAuto==='tempout'&&type==='tempout'))){j.status='done';j.doneAt=Date.now();j.doneBy=m.id;}});}
-P6.follow=id=>{const x=list().find(y=>y.id===id);if(!x)return;askPrompt('Followed up',[{label:'What did O&R say?',value:''}],([v])=>{closeTasks(x,['follow']);bump(x,'Followed up'+(String(v||'').trim()?': '+String(v).trim():''));});};
+P6.follow=id=>P6.update(id);
 P6.note=id=>{const x=list().find(y=>y.id===id);if(!x)return;askPrompt('Add note',[{label:'Note',value:''}],([v])=>{if(!String(v||'').trim())return;bump(x,String(v).trim());});};
 P6.delivered=id=>{const x=list().find(y=>y.id===id);if(!x)return;closeTasks(x,['us']);bump(x,'Sent to O&R what they needed'+(x.need?': '+x.need:''),{status:'sent',need:''});};
 P6.setStage=(id,k)=>{const x=list().find(y=>y.id===id);if(!x||x.stage===k)return;const ex={stage:k};if(k==='done'){ex.status='done';ex.closedAt=Date.now();closeTasks(x);}bump(x,'O&R step: '+STAGES[SIDX(k)][1],ex);};
@@ -205,9 +254,8 @@ P6.task=id=>{const x=list().find(y=>y.id===id);if(!x)return;const m=M();
 if(typeof window.markDone==='function'){const _md=window.markDone;window.markDone=function(id){const j=(D.jobs||[]).find(x=>x.id===id);if(!j||!(j.orr||j.orrAuto))return _md.apply(this,arguments);
   if(!j.photo)j.photo='na';const r=_md.apply(this,arguments);
   setTimeout(()=>{try{const x=j.orr&&list().find(y=>y.id===j.orr);
-    if(j.orrAuto==='follow'&&x)askPrompt('Followed up with O&R',[{label:'What did O&R say? (optional)',value:''}],([v])=>bump(x,'Followed up'+(String(v||'').trim()?': '+String(v).trim():' (task done)'),null,false));
+    if((j.orrAuto==='follow'||j.orrAuto==='sched')&&x)P6.update(x.id);
     else if(j.orrAuto==='us'&&x)bump(x,'Sent to O&R what they needed'+(x.need?': '+x.need:''),{status:'sent',need:''},false);
-    else if(j.orrAuto==='sched'&&x)askConfirm('Was the '+TYPE(x.type).toLowerCase()+' done?',()=>bump(x,'Done',{status:'done',stage:'done',closedAt:Date.now()},false),'Yes, done');
     else if(j.orrAuto==='apply')P6.add(j.site);
     else if(j.orrAuto==='meter')P6.add(j.site,'meter');
     else if(j.orrAuto==='tempout')P6.add(j.site,'tempout');
@@ -228,7 +276,7 @@ function refreshFolder(){try{const f=$('m-folder');if(f&&!f.classList.contains('
 if(typeof window.openFolder==='function'){const _of=window.openFolder;window.openFolder=function(id){const r=_of.apply(this,arguments);try{const s=D.sites.find(x=>x.id===id);const ov=$('fdOverview');if(s&&ov&&!$('orrJob')){const h=folderBox(s);if(h){const d=document.createElement('div');d.innerHTML=h;ov.insertBefore(d.firstChild,ov.firstChild);}}}catch(e){console.error('p6 folder',e);}return r;};}
 
 /* ───────── Home ───────── */
-if(typeof window.renderHome==='function'){const _rh=window.renderHome;window.renderHome=function(){const r=_rh.apply(this,arguments);try{const m=M();const el=$('homeBody');if(m&&el&&staff(m)&&!$('p6home')){const L=list();const us=L.filter(x=>x.status==='us').length,fu=L.filter(needsFollow).length;if(us||fu){const d=document.createElement('div');d.className='card';d.id='p6home';d.setAttribute('onclick',"ORR.filter('"+(us?'us':'follow')+"');goTab('orr')");
-    d.innerHTML='<span class="n">'+(us+fu)+'</span><div style="flex:1"><b style="font-size:14px">O&amp;R</b><div style="font-size:12px;color:var(--g4)">'+[us?us+' on us':'',fu?fu+' need a follow-up':''].filter(Boolean).join(' · ')+'</div></div><span style="color:var(--g4)">›</span>';
+if(typeof window.renderHome==='function'){const _rh=window.renderHome;window.renderHome=function(){const r=_rh.apply(this,arguments);try{const m=M();const el=$('homeBody');if(m&&el&&staff(m)&&!$('p6home')){const L=list();const us=L.filter(x=>x.status==='us').length,fu=L.filter(x=>todo(x)&&x.status!=='us').length;if(us||fu){const d=document.createElement('div');d.className='card';d.id='p6home';d.setAttribute('onclick',"ORR.filter();goTab('orr')");
+    d.innerHTML='<span class="n">'+(us+fu)+'</span><div style="flex:1"><b style="font-size:14px">O&amp;R</b><div style="font-size:12px;color:var(--g4)">'+[us?us+' waiting on us':'',fu?fu+' to call O&R about':''].filter(Boolean).join(' · ')+'</div></div><span style="color:var(--g4)">›</span>';
     const anchor=$('p5short')||$('p4next');el.insertBefore(d,anchor?anchor.nextSibling:el.children[1]||null);}}}catch(e){console.error('p6 home',e);}return r;};}
 })();
