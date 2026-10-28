@@ -81,6 +81,17 @@ html[data-theme=dark] .orrseg button.on{background:#2c2c2e}
 .orrrow{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:9px 12px;margin-bottom:6px;cursor:pointer;box-shadow:0 0 0 .5px rgba(0,0,0,.07);border-left:4px solid #ccc}
 html[data-theme=dark] .orrrow{background:#1c1c1e;box-shadow:none}
 .orrrow .w{flex:1;min-width:0}
+.orrpm{margin:14px 0 6px}
+.orrpm .ph{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.orrpm .ph b{font-size:17px}
+.orrpm .ph i{font-style:normal;font-size:13px;font-weight:600;color:var(--g4)}
+.orrpm .ph button{margin-left:auto;border:none;background:var(--g1);color:var(--g5);border-radius:999px;padding:5px 11px;font:600 12px/1 inherit;font-family:inherit;cursor:pointer}
+html[data-theme=dark] .orrpm .ph button{background:#2c2c2e;color:#fff}
+.orrpm .sm{font-size:12.5px;font-weight:600;margin-bottom:7px}
+.orrpr .s{white-space:normal}
+.orrpr .kv{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:4px;font-size:11.5px;color:var(--g4)}
+.orrpr .kv b{display:inline;font-size:11.5px;color:var(--g5);font-weight:600}
+html[data-theme=dark] .orrpr .kv b{color:#fff}
 .orrrow b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .orrrow b small{font-weight:500;color:var(--g4);font-size:12px}
 .orrrow .s{font-size:12.5px;color:var(--g4);margin-top:1px}
@@ -150,6 +161,18 @@ function row(x){const td=todo(x),w=who(x),col=WHO[w][1],L=steps(x);const pct=OPE
   return '<div class="orrrow" style="border-left-color:'+col+'" onclick="ORR.open(\''+jsq(x.id)+'\')"><div class="w"><b>'+esc(sname(x))+' <small>'+esc(TYPE(x.type))+'</small></b><div class="s">'+sub+'</div>'
    +(td?'<div class="s" style="font-size:11.5px">'+esc(td.t===cur(x)[1]?nowLine(x).replace(' · '+cur(x)[1],''):nowLine(x))+'</div>':'')+(OPEN(x)?'<div class="orrbar"><i style="width:'+pct+'%"></i></div>':'')+'</div>'+right+'</div>';}
 function list(){return (D.orr||[]).filter(x=>x&&!x.deleted);}
+function pmRow(x){const c=cur(x),w=who(x),L=steps(x),i=idx(x),d=daysSince(x.stepAt||x.ts);
+  const kv=[['Project #',x.wo||'—'],['Sent',x.sent?fd(x.sent):'—'],['Follow up',x.fuOn?fd(x.fuOn):'—']];
+  return '<div class="orrrow orrpr" style="border-left-color:'+WHO[w][1]+'" onclick="ORR.open(\''+jsq(x.id)+'\')"><div class="w">'
+   +'<b>'+esc(sname(x))+' <small>'+esc(TYPE(x.type))+'</small></b>'
+   +'<div class="s"><span style="color:'+WHO[w][1]+';font-weight:600">'+esc(tt(WHO[w][0]==='O&R'?'Waiting on O&R':WHO[w][0]==='Customer'?'Customer pays':'Our move'))+'</span> · '+esc(tt('Step'))+' '+(i+1)+'/'+L.length+': '+esc(c[1])+' · '+d+' '+esc(tt(d===1?'day':'days'))+'</div>'
+   +(x.need?'<div class="s" style="color:#c0392b">'+esc(tt('Needs'))+': '+esc(x.need)+'</div>':'')
+   +'<div class="kv">'+kv.map(k=>'<span>'+esc(tt(k[0]))+' <b>'+esc(k[1])+'</b></span>').join('')+'</div></div><span class="chev">›</span></div>';}
+P6.copyPm=k=>{const g=list().filter(x=>OPEN(x)&&(x.pm||'').trim()===k).sort((a,b)=>(a.stepAt||a.ts||0)-(b.stepAt||b.ts||0));
+  const txt=(k||'No O&R site manager')+' — '+g.length+' open\n\n'+g.map(x=>{const c=cur(x);const d=daysSince(x.stepAt||x.ts);
+    return '• '+sname(x)+' ('+TYPE(x.type)+')'+(x.wo?' — project #'+x.wo:'')+'\n   '+c[1]+' — '+d+(d===1?' day':' days')+(x.sent?' · sent '+fd(x.sent):'');}).join('\n');
+  const ok=()=>toast('📋 '+tt('Copied'),'green');
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(ok,()=>{});};
 function renderOrr(){ensurePage();const pg=$('pg-orr');const m=M();if(!pg||!m)return;
   if(!staff(m)){pg.innerHTML='<div class="orrempty">'+esc(tt('Not on your screens'))+'</div>';return;}
   const L=list();const qq=q.trim().toLowerCase();
@@ -165,12 +188,13 @@ function renderOrr(){ensurePage();const pg=$('pg-orr');const m=M();if(!pg||!m)re
     const wait=shown.filter(x=>!todo(x)).sort((a,b)=>String(a.fuOn||'9').localeCompare(String(b.fuOn||'9')));
     body=sec('Needs action today',act.length)+(act.length?act.map(row).join(''):'<div class="orrempty">'+esc(tt('All caught up.'))+'</div>')
         +sec('Waiting',wait.length)+(wait.length?wait.map(row).join(''):'<div class="orrempty">'+esc(tt('Nothing waiting.'))+'</div>');
-  }else if(view==='mgr'){   // Baruch 10/28 00:21: all O&R jobs of each site manager, to go over them together
-    const mg=x=>{const st=x.site&&(D.sites||[]).find(y=>y.id===x.site);return st?(Array.isArray(st.managers)&&st.managers.length?st.managers:(st.manager?[st.manager]:[])):[];};
-    const G={};shown.forEach(x=>{const L2=mg(x);(L2.length?L2:['']).forEach(k=>(G[k]=G[k]||[]).push(x));});
-    const nm=k=>k?pname(k):tt('No site manager');
-    Object.keys(G).sort((a,b)=>(!a)-(!b)||nm(a).localeCompare(nm(b))).forEach(k=>{const g=G[k];
-      body+=sec(nm(k),g.length)+g.sort((a,b)=>(!!todo(b)-!!todo(a))||(a.stepAt||0)-(b.stepAt||0)).map(row).join('');});
+  }else if(view==='mgr'){   // Baruch 10/28 00:23: grouped by O&R's site manager (DeLalla, Rohrer…) — everything to go over on one call with him
+    const G={};shown.forEach(x=>{const k=(x.pm||'').trim();(G[k]=G[k]||[]).push(x);});
+    Object.keys(G).sort((a,b)=>(!a)-(!b)||G[b].length-G[a].length||a.localeCompare(b)).forEach(k=>{const g=G[k].sort((a,b)=>(a.stepAt||a.ts||0)-(b.stepAt||b.ts||0));
+      const n=w=>g.filter(x=>who(x)===w).length;const parts=[[n('oru'),'on O&R','#2f80ed'],[n('us'),'on us','#e8912d'],[n('cust'),'on customer','#9b51e0']].filter(p=>p[0]);
+      body+='<div class="orrpm"><div class="ph"><b>'+esc(k||tt('No O&R site manager'))+'</b><i>'+g.length+'</i><button onclick="ORR.copyPm(\''+jsq(k)+'\')">'+esc(tt('Copy list'))+'</button></div>'
+        +'<div class="sm">'+parts.map(p=>'<span style="color:'+p[2]+'">'+p[0]+' '+esc(tt(p[1]))+'</span>').join(' · ')+'</div>'
+        +g.map(pmRow).join('')+'</div>';});
     if(!shown.length)body='<div class="orrempty">Nothing here.</div>';
   }else{
     const groups={};shown.forEach(x=>{const c=cur(x);(groups[c[0]]=groups[c[0]]||{l:c[1],L:[]}).L.push(x);});
