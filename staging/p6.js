@@ -83,6 +83,22 @@ html[data-theme=dark] .orrrow{background:#1c1c1e;box-shadow:none}
 .orrrow .w{flex:1;min-width:0}
 .orrpm{margin:14px 0 6px}
 .orrpml{color:var(--blue-mid,#2f80ed);text-decoration:none}
+.pmcard{text-align:center;padding-top:4px}.pmcard h3{margin:8px 0 2px;font-size:20px}.pmsub{font-size:13px;color:var(--g4);margin-bottom:14px}
+.pmav{width:64px;height:64px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;background:#e8f0fb;color:#2f6fd0;font-weight:700;font-size:22px}
+.pmav.sm{width:38px;height:38px;font-size:14px;margin:0;flex:none}
+.pmacts{display:flex;gap:10px;justify-content:center;margin-bottom:14px}
+.pmact{flex:1;max-width:96px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:12px;background:var(--g1,#f2f2f7);color:#2f6fd0;text-decoration:none;font-size:12px;font-weight:600}
+.pmact.on{background:#1f7a46;color:#fff}
+.pmrows{text-align:left;border-radius:12px;background:var(--g1,#f2f2f7);overflow:hidden}
+.pmrows a{display:block;padding:10px 14px;text-decoration:none;color:inherit;border-top:1px solid rgba(0,0,0,.06)}.pmrows a:first-child{border-top:0}
+.pmrows span{display:block;font-size:12px;color:var(--g4)}.pmrows b{color:#2f6fd0;font-weight:500;word-break:break-all}
+.pmarea{font-size:12px;font-weight:600;color:var(--g4);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 6px}
+.pmlist{border-radius:12px;background:var(--g1,#f2f2f7);overflow:hidden}
+.pmli{display:flex;align-items:center;gap:10px;padding:9px 12px;border-top:1px solid rgba(0,0,0,.06);cursor:pointer}.pmli:first-child{border-top:0}
+.pmtx{flex:1;min-width:0}.pmtx b{display:block;font-size:15px}.pmtx span{display:block;font-size:13px;color:var(--g4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pmline{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;margin:2px 0 6px;font-size:14px}.pmline .pmfull{width:100%;color:var(--g4);font-size:13px}
+.pmline a{display:inline-flex;align-items:center;gap:5px;color:#2f80ed;text-decoration:none}.pmline svg{width:15px;height:15px}
+.pmcall{width:36px;height:36px;border-radius:50%;background:#1f7a46;color:#fff;display:flex;align-items:center;justify-content:center;flex:none}
 .orrpm .ph{display:flex;align-items:center;gap:8px;margin-bottom:2px}
 .orrpm .ph b{font-size:17px}
 .orrpm .ph i{font-style:normal;font-size:13px;font-weight:600;color:var(--g4)}
@@ -190,11 +206,12 @@ function renderOrr(){ensurePage();const pg=$('pg-orr');const m=M();if(!pg||!m)re
     body=sec('Needs action today',act.length)+(act.length?act.map(row).join(''):'<div class="orrempty">'+esc(tt('All caught up.'))+'</div>')
         +sec('Waiting',wait.length)+(wait.length?wait.map(row).join(''):'<div class="orrempty">'+esc(tt('Nothing waiting.'))+'</div>');
   }else if(view==='mgr'){
-    body+='<button class="bs b" style="margin:4px 0 6px" onclick="ORR.pmBook()">📞 '+esc(tt('O&R contacts'))+'</button>';   // Baruch 10/28 00:23: grouped by O&R's site manager (DeLalla, Rohrer…) — everything to go over on one call with him
+    body+='<button class="bs b" style="margin:4px 0 6px" onclick="ORR.pmBook()">'+esc(tt('O&R contacts'))+'</button>';   // Baruch 10/28 00:23: grouped by O&R's site manager (DeLalla, Rohrer…) — everything to go over on one call with him
     const G={};shown.forEach(x=>{const k=(x.pm||'').trim();(G[k]=G[k]||[]).push(x);});
     Object.keys(G).sort((a,b)=>(!a)-(!b)||G[b].length-G[a].length||a.localeCompare(b)).forEach(k=>{const g=G[k].sort((a,b)=>(a.stepAt||a.ts||0)-(b.stepAt||b.ts||0));
       const n=w=>g.filter(x=>who(x)===w).length;const parts=[[n('oru'),'on O&R','#2f80ed'],[n('us'),'on us','#e8912d'],[n('cust'),'on customer','#9b51e0']].filter(p=>p[0]);
       body+='<div class="orrpm"><div class="ph"><b>'+(k?pmLink(k):esc(tt('No O&R site manager')))+'</b><i>'+g.length+'</i><button onclick="ORR.copyPm(\''+jsq(k)+'\')">'+esc(tt('Copy list'))+'</button></div>'
+        +(()=>{const c=pmFind(k);if(!c)return '';return '<div class="pmline">'+'<span class="pmfull">'+esc(c.name)+'</span>'+(c.phone?'<a href="tel:'+esc(tel(c.phone))+'">'+IC.call+esc(c.phone)+'</a>':'')+(c.email?'<a href="mailto:'+esc(c.email)+'">'+IC.mail+esc(c.email)+'</a>':'')+'</div>';})()
         +'<div class="sm">'+parts.map(p=>'<span style="color:'+p[2]+'">'+p[0]+' '+esc(tt(p[1]))+'</span>').join(' · ')+'</div>'
         +g.map(pmRow).join('')+'</div>';});
     if(!shown.length)body='<div class="orrempty">Nothing here.</div>';
@@ -228,29 +245,35 @@ P6.close=close;
 // O&R contact book (Baruch 10/28): tap an O&R site manager's name → call, text or email them.
 // k = what we type in the "O&R site manager" field (last name, or first name when that's all we have).
 const PMB=[
- ['Rockland','Joe Pillmeier','845-238-6445','','pillmeier'],['Rockland','Dave Fiol','646-483-2370','','fiol'],
- ['Rockland','Philip Florie','845-597-7122','','florie'],['Rockland','Joseph T DeLalla','646-208-2647','','delalla'],
- ['Rockland','Christopher Rohrer','845-916-2981','','rohrer'],['Rockland','James French','917-567-7614','','french'],
- ['Rockland','Paul','646-385-5008','','paul'],
- ['Orange','O&R Orange office','845-783-5503','','office'],['Orange','Cristina Peifer','646-887-5754','PeiferC@oru.com','peifer'],
- ['Orange','Boris Sabovic','646-832-8058','','sabovic'],['Orange','Transformer guy','845-742-5396','','transformer'],
- ['Chester','Major Enjoiner','845-925-5162','','enjoiner'],['Chester','Gerard J Friedler','845-587-3897','','friedler'],
+ ['Rockland','Joe Pillmeier','845-238-6445','pillmeierj@oru.com','pillmeier'],['Rockland','Dave Fiol','646-483-2370','fiold@oru.com','fiol'],
+ ['Rockland','Philip Florie','845-597-7122','floriep@oru.com','florie'],['Rockland','Joseph T DeLalla','646-208-2647','delallajo@oru.com','delalla'],
+ ['Rockland','Christopher Rohrer','845-916-2981','rohrerc@oru.com','rohrer'],['Rockland','James French','917-567-7614','frenchj@oru.com','french'],
+ ['Rockland','Paul','646-385-5008','','paul'],['Rockland','Bartges','','bartgesa@oru.com','bartges'],
+ ['Orange','O&R Orange office','845-783-5503','','office'],['Orange','Cristina Peifer','646-887-5754','peiferc@oru.com','peifer'],
+ ['Orange','Boris Sabovic','646-832-8058','sabovicb@oru.com','sabovic'],['Orange','Transformer guy','845-742-5396','','transformer'],
+ ['Chester','Major Enjoiner','845-925-5162','','enjoiner'],['Chester','Gerard J Friedler','845-587-3897','friedlerg@oru.com','friedler'],
  ['NJ','David Micallef','201-236-6017','','micallef']
 ].map(a=>({area:a[0],name:a[1],phone:a[2],email:a[3],k:a[4]}));
 const pmFind=n=>{const q=String(n||'').trim().toLowerCase();if(!q)return null;
   return PMB.find(c=>c.k===q)||PMB.find(c=>c.name.toLowerCase()===q)||PMB.find(c=>c.name.toLowerCase().split(' ').some(w=>w===q))||null;};
 const tel=p=>String(p).replace(/[^\d+]/g,'');
-const pmLink=n=>{const c=pmFind(n);return c?'<a href="#" class="orrpml" onclick="event.preventDefault();event.stopPropagation();ORR.pmCard(\''+jsq(n)+'\')">'+esc(n)+' <span aria-hidden="true">📞</span></a>':esc(n);};
+const ini=n=>String(n).replace(/^O&R /,'').split(' ').filter(w=>/^[A-Za-z]/.test(w)&&w.length>1).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+const IC={call:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>',
+ text:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+ mail:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>'};
+const pmLink=n=>{const c=pmFind(n);return c?'<a href="#" class="orrpml" onclick="event.preventDefault();event.stopPropagation();ORR.pmCard(\''+jsq(n)+'\')">'+esc(n)+'</a>':esc(n);};
 P6.pmLink=pmLink;P6.pmFind=pmFind;
+const act=(href,ic,l,main)=>'<a class="pmact'+(main?' on':'')+'" href="'+esc(href)+'">'+ic+'<span>'+esc(tt(l))+'</span></a>';
 P6.pmCard=n=>{const c=pmFind(n);if(!c)return;
-  sheet('<div class="orrk">O&amp;R · '+esc(c.area)+'</div><h3 style="margin:2px 0 12px">'+esc(c.name)+'</h3>'
-   +'<a class="btn gr" style="display:block;text-align:center;text-decoration:none;margin-bottom:8px" href="tel:'+esc(tel(c.phone))+'">'+esc(tt('Call'))+' '+esc(c.phone)+'</a>'
-   +'<a class="btn" style="display:block;text-align:center;text-decoration:none;margin-bottom:8px" href="sms:'+esc(tel(c.phone))+'">'+esc(tt('Text'))+'</a>'
-   +(c.email?'<a class="btn" style="display:block;text-align:center;text-decoration:none;margin-bottom:8px" href="mailto:'+esc(c.email)+'">'+esc(tt('Email'))+' '+esc(c.email)+'</a>':'')
-   +'<button class="btn sec2" onclick="ORR.close()">'+esc(tt('Close'))+'</button>');};
+  sheet('<div class="pmcard"><div class="pmav">'+esc(ini(c.name)||'O&R')+'</div><h3>'+esc(c.name)+'</h3><div class="pmsub">O&amp;R site manager · '+esc(c.area)+'</div>'
+   +'<div class="pmacts">'+(c.phone?act('tel:'+tel(c.phone),IC.call,'Call',1)+act('sms:'+tel(c.phone),IC.text,'Text'):'')+(c.email?act('mailto:'+c.email,IC.mail,'Email'):'')+'</div>'
+   +'<div class="pmrows">'+(c.phone?'<a href="tel:'+esc(tel(c.phone))+'"><span>'+esc(tt('Phone'))+'</span><b>'+esc(c.phone)+'</b></a>':'')
+   +(c.email?'<a href="mailto:'+esc(c.email)+'"><span>'+esc(tt('Email'))+'</span><b>'+esc(c.email)+'</b></a>':'')+'</div></div>'
+   +'<button class="btn sec2" style="margin-top:12px" onclick="ORR.close()">'+esc(tt('Close'))+'</button>');};
 P6.pmBook=()=>{const areas=[...new Set(PMB.map(c=>c.area))];
-  sheet('<h3 style="margin:0 0 8px">'+esc(tt('O&R contacts'))+'</h3>'+areas.map(a=>'<div class="orrk" style="margin-top:10px">'+esc(a)+'</div>'
-   +PMB.filter(c=>c.area===a).map(c=>'<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--g2,#e5e5ea)"><div style="flex:1"><b>'+esc(c.name)+'</b><div style="font-size:13px;color:var(--g4)">'+esc(c.phone)+(c.email?' · '+esc(c.email):'')+'</div></div><a class="bs b" style="text-decoration:none" href="tel:'+esc(tel(c.phone))+'">'+esc(tt('Call'))+'</a></div>').join('')).join('')
+  sheet('<h3 style="margin:0 0 4px">'+esc(tt('O&R contacts'))+'</h3>'+areas.map(a=>'<div class="pmarea">'+esc(a)+'</div><div class="pmlist">'
+   +PMB.filter(c=>c.area===a).map(c=>'<div class="pmli" onclick="ORR.pmCard(\''+jsq(c.k)+'\')"><div class="pmav sm">'+esc(ini(c.name)||'O&R')+'</div><div class="pmtx"><b>'+esc(c.name)+'</b><span>'+esc(c.phone||c.email)+'</span></div>'
+     +(c.phone?'<a class="pmcall" href="tel:'+esc(tel(c.phone))+'" onclick="event.stopPropagation()" aria-label="'+esc(tt('Call'))+'">'+IC.call+'</a>':'')+'</div>').join('')+'</div>').join('')
    +'<button class="btn sec2" style="margin-top:14px" onclick="ORR.close()">'+esc(tt('Close'))+'</button>');};
 function siteOpts(sel){return '<option value="">—</option>'+liveSites().slice().sort((a,b)=>String(a.name).localeCompare(String(b.name))).map(s=>'<option value="'+esc(s.id)+'"'+(s.id===sel?' selected':'')+'>'+esc(s.name)+'</option>').join('');}
 function ownerOpts(sel){return people().map(e=>'<option value="'+esc(e.id)+'"'+(e.id===sel?' selected':'')+'>'+esc(e.name)+'</option>').join('');}
