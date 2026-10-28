@@ -1,13 +1,15 @@
-/* Electrix USA — P6 O&R tracker v2 (Baruch 2026-10-27). One record per request to Orange & Rockland in D.orr:
-   { id, site, type, wo (O&R project #), pm (O&R project manager), owner (who handles it: Shia / Matty / Baruch …),
-     stage (app · design · pay · constr · insp · meter · done — same steps as O&R Project Center),
-     status (sent = waiting on O&R · us = O&R waits on us [need, usAt] · sched [schedOn] · done · cancel),
-     sent, ts, upd, log[{ts,by,txt}], by, closedAt }
-   Everyone on the office team + owner + managers can see and change everything; every change is written in the history
-   with the person's name. Tasks: the server (private.orr_tick, every 15 min) makes a task for the owner when O&R waits on
-   us, when there's no update for 3 work days, when a scheduled date passed, when a new job needs an O&R application,
-   when a job goes Rough Complete (cut-in / meter), and when a job is Complete with a temp still up (removal). Finishing
-   such a task here updates the O&R request (and the server closes tasks whose reason is gone). Off: window.EX_P6_OFF. */
+/* Electrix USA — P6 O&R tracker v4 "steps" (Baruch 2026-10-27).
+   Every O&R request follows the real O&R checklist for its type, one step at a time:
+     Temp service:  application → O&R invoice → customer pays → temp set up → inspection → O&R hook-up
+     New service / upgrade: application → incomplete letter + list → site meeting → updated site plan → O&R design
+                    → customer pays → meter + unit # pictures → O&R schedules electric → (gas pictures → gas certificate) → hook-up
+   Each step is "our move", "the customer's" or "O&R's". The person handling it sets the follow-up date themselves
+   (each step fills in a normal one). The server (private.orr_tick, every 15 min) makes the tasks:
+     our step → a task right away · invoice step → "forward the invoice to the customer" right away
+     O&R / customer step → a "Follow up" task on the follow-up date.
+   Record in D.orr: { id, site|addr, type, wo, pm, owner, flow:1, step, stepAt, gas, fuOn, did{step:ms}, need, usAt,
+     status (us·sent·done·cancel — kept in step with the step for older screens), sent, ts, upd, log[{ts,by,txt}], by, closedAt }
+   Off: window.EX_P6_OFF. */
 (function(){
 if(window.EX_P6_OFF)return;
 const $=id=>document.getElementById(id);
@@ -15,24 +17,50 @@ const M=()=>{try{return me();}catch(e){return null;}};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const jsq=s=>String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 const tt=s=>{try{return t(s);}catch(e){return s;}};
-const TYPES=[['temp','Temp service'],['tempout','Temp removal'],['newsvc','New service'],['meter','Meter set / cut-in'],['upgrade','Service upgrade'],
+const TYPES=[['temp','Temp service'],['newsvc','New service'],['upgrade','Service upgrade'],['tempout','Temp removal'],['meter','Meter set / cut-in'],
  ['disc','Disconnect / reconnect'],['demo','Demolition removal'],['reloc','Pole / service relocation'],['other','Other']];
 const TYPE=k=>{const x=TYPES.find(y=>y[0]===k);return x?x[1]:k||'—';};
-const STAGES=[['app','Application'],['design','Design'],['pay','Cost / payment'],['constr','O&R construction'],['insp','Inspection / cut-in'],['meter','Meter / connect'],['done','Complete']];
-const SIDX=k=>Math.max(0,STAGES.findIndex(s=>s[0]===k));
-const ST={us:['On us','#e8912d'],sent:['Waiting on O&R','#2f80ed'],sched:['Scheduled','#9b51e0'],done:['Done','#2fb36b'],cancel:['Cancelled','#8e8e93']};
-const OPEN=x=>x&&!x.deleted&&(x.status==='sent'||x.status==='us'||x.status==='sched');
+// [key, label, whose move (us · oru · cust), normal wait in days before a follow-up, only-if]
+const SVC=[['app','Send the application','us',0],['inc','O&R sends the incomplete letter + list','oru',3],['meet','Site meeting with O&R','oru',7],
+  ['plan','Send the updated site plan','us',0],['design','O&R design (30–60 days)','oru',30],['pay','Customer pays the O&R invoice','cust',3],
+  ['pics','Send pictures of the meters + unit numbers','us',0],['sched','O&R schedules the electric','oru',5],
+  ['gaspics','Gas: send the pictures','us',0,'gas'],['gascert','Gas: send the certificate','us',0,'gas'],['hook','O&R hooks it up','oru',5],['done','Hooked up','',0]];
+const FLOWS={
+  temp:[['app','Send the application','us',0],['inv','O&R sends the invoice','oru',3],['pay','Customer pays the O&R invoice','cust',3],
+    ['setup','Set up the temp service on site','us',0],['insp','Schedule the inspection','us',0],['hook','O&R hooks it up','oru',5],['done','Hooked up','',0]],
+  newsvc:SVC, upgrade:SVC,
+  _:[['app','Send the request to O&R','us',0],['wait','O&R does it','oru',5],['done','Done','',0]]};
+const ORDER=['app','inc','inv','meet','plan','design','pay','setup','insp','pics','sched','gaspics','gascert','wait','hook'];
+const WHO={us:['Our move','#e8912d'],cust:['Customer','#9b51e0'],oru:['O&R','#2f80ed'],done:['Done','#2fb36b']};
+const ST={us:['Our move','#e8912d'],sent:['Waiting on O&R','#2f80ed'],sched:['Scheduled','#9b51e0'],done:['Done','#2fb36b'],cancel:['Cancelled','#8e8e93']};
+const OPEN=x=>x&&!x.deleted&&x.status!=='done'&&x.status!=='cancel';
 const staff=m=>!!m&&(m.role==='owner'||m.role==='manager'||!!m.all||(m.role==='office'&&m.title!=='Accountant'));
 const dk=d=>{const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');};
+const today=()=>dk(new Date());
 const fd=(s,o)=>s?new Date(s+'T12:00').toLocaleDateString(LOC(),o||{month:'short',day:'numeric'}):'—';
 function workDays(fromMs,toMs){const a=new Date(fromMs);a.setHours(12,0,0,0);const b=new Date(toMs);b.setHours(12,0,0,0);let n=0;
-  for(let d=new Date(a);d<b;){d.setDate(d.getDate()+1);const w=d.getDay();if(w>0&&w<6)n++;if(n>400)break;}return n;}
-function touched(x){const s=x.sent?new Date(x.sent+'T12:00').getTime():0;return Math.max(x.upd||0,s||0,x.ts||0);}
-function idle(x){return workDays(touched(x),Date.now());}
-function needsFollow(x){if(!OPEN(x))return false;if(x.status==='sched')return !!x.schedOn&&x.schedOn<dk(new Date());if(x.status==='us')return false;return idle(x)>=3;}
+  for(let d=new Date(a);d<b;){d.setDate(d.getDate()+1);const w=d.getDay();if(w>0&&w<6)n++;if(n>2000)break;}return n;}
+function addDays(n){const d=new Date();d.setHours(12,0,0,0);if(n>=10){d.setDate(d.getDate()+n);}else{let k=0;while(k<n){d.setDate(d.getDate()+1);const w=d.getDay();if(w>0&&w<6)k++;}}
+  while(d.getDay()===0||d.getDay()===6)d.setDate(d.getDate()+1);return dk(d);}
+const daysSince=ms=>ms?Math.max(0,Math.floor((Date.now()-ms)/86400000)):0;
 const people=()=>(D.emps||[]).filter(e=>!e.inactive&&staff(e)&&e.role!=='manager');
 const pname=id=>{try{return (nameOf(id)||'').split(' ')[0]||'—';}catch(e){return '—';}};
-const P6=window.ORR={TYPES,ST,STAGES,needsFollow,idle,workDays};
+const sname=x=>String(x.site?siteName(x.site):(x.addr||'—')).split(',')[0];
+function steps(x){return (FLOWS[x.type]||FLOWS._).filter(s=>!s[4]||x[s[4]]);}
+function cur(x){const L=steps(x);return L.find(s=>s[0]===x.step)||(x.status==='done'?L[L.length-1]:L[0]);}
+function idx(x){const L=steps(x);return Math.max(0,L.findIndex(s=>s[0]===cur(x)[0]));}
+function who(x){if(!OPEN(x))return 'done';if(x.need)return 'us';return cur(x)[2]||'oru';}
+const fuDue=x=>OPEN(x)&&who(x)!=='us'&&!!x.fuOn&&x.fuOn<=today();
+// what we must do now (null = it's on O&R / the customer and the follow-up date isn't here yet)
+function todo(x){if(!OPEN(x))return null;const c=cur(x);
+  if(x.need)return {t:x.need,b:'Sent',f:'delivered',us:1};
+  if(c[2]==='us')return {t:c[1],b:'Done',f:'next',us:1};
+  if(fuDue(x))return {t:(c[2]==='cust'?'Check if the customer paid the O&R invoice':'Follow up'+(x.pm?' with '+x.pm:' with O&R')+': '+c[1]),b:'Followed up',f:'follow',late:x.fuOn<today()};
+  return null;}
+function nowLine(x){if(!OPEN(x))return x.status==='cancel'?'Cancelled':'Done'+(x.closedAt?' '+new Date(x.closedAt).toLocaleDateString(LOC(),{month:'short',day:'numeric'}):'');
+  const c=cur(x),L=steps(x),d=daysSince(x.stepAt||x.upd||x.ts);
+  return 'Step '+(idx(x)+1)+'/'+(L.length-1)+' · '+c[1]+(d?' · '+d+' day'+(d===1?'':'s'):'');}
+const P6=window.ORR={TYPES,ST,FLOWS,steps,cur,who,todo,workDays,needsFollow:x=>!!todo(x)&&!x.need&&cur(x)[2]!=='us',idle:x=>workDays(x.stepAt||x.upd||x.ts||Date.now(),Date.now())};
 D.orr=D.orr||[];
 
 /* ───────── look ───────── */
@@ -43,49 +71,56 @@ const css=`
 .orrseg button{flex:1;border:none;background:none;border-radius:8px;padding:6px;font:600 12.5px/1.2 inherit;font-family:inherit;color:var(--g4);cursor:pointer}
 .orrseg button.on{background:#fff;color:var(--g5);box-shadow:0 1px 2px rgba(0,0,0,.08)}
 html[data-theme=dark] .orrseg button.on{background:#2c2c2e}
-#pg-orr .orrchips{display:flex;gap:6px;overflow-x:auto;margin-bottom:8px;padding-bottom:2px}
-#pg-orr .orrchips button{flex:none;border:none;border-radius:999px;padding:6px 11px;font-size:12.5px;font-weight:600;font-family:inherit;background:var(--g1);color:var(--g5);cursor:pointer;display:flex;gap:6px;align-items:center}
-#pg-orr .orrchips button.on{background:var(--blue-mid);color:#fff}
-#pg-orr .orrchips i{font-style:normal;background:rgba(127,127,127,.18);border-radius:999px;padding:0 6px;font-size:11.5px}
-#pg-orr .orrchips button.on i{background:rgba(255,255,255,.25)}
-#pg-orr input[type=search]{margin-bottom:8px}
-.orrcard{display:flex;gap:10px;background:#fff;border-radius:14px;padding:10px 12px;margin-bottom:8px;cursor:pointer;box-shadow:0 0 0 .5px rgba(0,0,0,.07);border-left:4px solid #ccc}
-html[data-theme=dark] .orrcard{background:#1c1c1e;box-shadow:none}
-.orrcard .w{flex:1;min-width:0}
-.orrcard b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.orrcard .s{font-size:12px;color:var(--g4);margin-top:2px}
-.orrcard .late{color:#d93a2b;font-weight:600}
-.orrcard .us{color:#c76a00;font-weight:600}
-.orrcard .rt{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
-.orrcard .pill{font-size:11px;font-weight:700;border-radius:999px;padding:3px 8px;white-space:nowrap}
-.orrav{width:24px;height:24px;border-radius:50%;background:var(--g2);color:var(--g5);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
-.orrdots{display:flex;gap:3px;margin-top:6px}
-.orrdots i{height:4px;flex:1;border-radius:2px;background:var(--g2);max-width:26px}
-.orrdots i.on{background:#2fb36b}
-.orrempty{color:var(--g4);text-align:center;padding:28px 6px;font-size:13.5px}
+#pg-orr input[type=search]{margin-bottom:4px}
+.orrsum{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0 4px}
+.orrsum button{border:none;border-radius:12px;padding:8px 6px;background:var(--g1);cursor:pointer;font-family:inherit;color:var(--g5);text-align:center}
+.orrsum button b{display:block;font-size:19px;line-height:1.1}.orrsum button span{font-size:11.5px;color:var(--g4)}
+.orrsum button.on{box-shadow:inset 0 0 0 2px currentColor}
+.orrsec{font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--g4);margin:14px 2px 6px;display:flex;justify-content:space-between}
+.orrsec i{font-style:normal;background:var(--g1);border-radius:999px;padding:0 7px}
+.orrrow{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:9px 12px;margin-bottom:6px;cursor:pointer;box-shadow:0 0 0 .5px rgba(0,0,0,.07);border-left:4px solid #ccc}
+html[data-theme=dark] .orrrow{background:#1c1c1e;box-shadow:none}
+.orrrow .w{flex:1;min-width:0}
+.orrrow b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.orrrow b small{font-weight:500;color:var(--g4);font-size:12px}
+.orrrow .s{font-size:12.5px;color:var(--g4);margin-top:1px}
+.orrrow .us{color:#c76a00;font-weight:600}.orrrow .late{color:#d93a2b;font-weight:600}
+.orrbar{height:3px;background:var(--g2);border-radius:2px;margin-top:6px;overflow:hidden}.orrbar i{display:block;height:100%;background:#2fb36b}
+.orrrow .chev{color:var(--g4);font-size:18px}
+.orrrow .fu{font-size:11.5px;color:var(--g4);white-space:nowrap;text-align:right}
+.orrgo{flex:none;border:none;border-radius:999px;padding:7px 12px;font:600 12.5px/1 inherit;font-family:inherit;background:var(--blue-mid);color:#fff;cursor:pointer}
+.orrgo.ous{background:#e8912d;color:#fff}
+.orrmore{text-align:center;color:var(--blue-mid);font-size:13px;font-weight:600;padding:12px;cursor:pointer}
+.orrempty{color:var(--g4);text-align:center;padding:18px 6px;font-size:13.5px}
+.orrk{font-size:11.5px;color:var(--g4);text-transform:uppercase;letter-spacing:.5px}
+.orrnow{border-radius:12px;padding:10px 12px;margin:8px 0;font-size:13.5px;background:var(--g1)}
+.orrnow b{display:block;font-size:15px}
+.orrneed{background:#e8912d1f;border-radius:12px;padding:10px 12px;margin:8px 0;font-size:13.5px}.orrneed b{color:#c76a00}
 .orrform label{display:block;font-size:12px;font-weight:600;color:var(--g4);margin:10px 0 4px}
 .orrform input,.orrform select,.orrform textarea{width:100%;font-size:16px}
-.orrbtns{display:flex;gap:8px;margin-top:12px}
-.orrbtns .btn{flex:1}
-.orrst{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
-.orrst button{border:1.5px solid var(--g2);background:none;border-radius:999px;padding:6px 11px;font-size:12.5px;font-weight:600;color:var(--g5);cursor:pointer;font-family:inherit}
-.orrst button.on{color:#fff;border-color:transparent}
-.orrstep{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:6px 0 2px}
-.orrstep button{flex:1;border:none;background:var(--g1);border-radius:8px;padding:6px 2px;font-size:10.5px;font-weight:600;color:var(--g4);cursor:pointer;font-family:inherit;line-height:1.15}
-.orrstep button.done{background:#2fb36b22;color:#1f8a4c}
-.orrstep button.cur{background:#2fb36b;color:#fff}
-.orrneed{background:#e8912d1f;border-radius:12px;padding:10px 12px;margin:8px 0;font-size:13.5px}
-.orrneed b{color:#c76a00}
-.orrlog{font-size:13px;border-top:1px solid var(--g2);padding:7px 0}
-.orrlog small{display:block;color:var(--g4);font-size:11.5px}
+.orrbtns{display:flex;gap:8px;margin-top:10px}.orrbtns .btn{flex:1}
+.orrfu{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}
+.orrfu button{border:1.5px solid var(--g2);background:none;border-radius:999px;padding:6px 10px;font-size:12.5px;font-weight:600;color:var(--g5);cursor:pointer;font-family:inherit}
+.orrfu button.on{background:var(--blue-mid);border-color:transparent;color:#fff}
+.orrchk{margin:6px 0 0;padding:0;list-style:none}
+.orrchk li{display:flex;gap:10px;align-items:flex-start;padding:6px 0;font-size:13.5px;color:var(--g4);cursor:pointer}
+.orrchk li .c{flex:none;width:20px;height:20px;border-radius:50%;border:2px solid var(--g2);display:flex;align-items:center;justify-content:center;font-size:12px;margin-top:1px}
+.orrchk li.ok{color:var(--g5)}.orrchk li.ok .c{background:#2fb36b;border-color:#2fb36b;color:#fff}
+.orrchk li.now{color:var(--g5);font-weight:700}.orrchk li.now .c{border-color:var(--blue-mid);box-shadow:inset 0 0 0 4px var(--blue-mid)}
+.orrchk li small{display:block;font-weight:400;font-size:11.5px;color:var(--g4)}
+.orrchk li .wh{margin-left:auto;font-size:11px;font-weight:600;white-space:nowrap}
+.orrdet{margin-top:12px;border-top:1px solid var(--g2);padding-top:8px}
+.orrdet summary{cursor:pointer;color:var(--blue-mid);font-weight:600;font-size:13.5px;padding:4px 0}
+.orrkv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;margin:8px 0}.orrkv span{color:var(--g4)}
+.orrlog{font-size:13px;border-top:1px solid var(--g2);padding:7px 0}.orrlog small{display:block;color:var(--g4);font-size:11.5px}
 .orrtask{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:13px;background:var(--g1);border-radius:10px;padding:8px 10px;margin:6px 0;cursor:pointer}
 .orrgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
-#orrJob .orrcard{margin-bottom:6px}
+#orrJob .orrrow{margin-bottom:6px}
 #p6home{display:flex;align-items:center;gap:10px;cursor:pointer}
 #p6home .n{background:#d93a2b;color:#fff;border-radius:999px;min-width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px;padding:0 7px}
 .orrtaskbar{display:flex;align-items:center;gap:8px;background:#2f80ed14;border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px;cursor:pointer}
 `;
-const st=document.createElement('style');st.id='p6css';st.textContent=css;document.body.appendChild(st);
+const stEl=document.createElement('style');stEl.id='p6css';stEl.textContent=css;document.body.appendChild(stEl);
 
 /* ───────── page + tab ───────── */
 const BOLT='<path d="M13 2L3 14h9l-1 8 10-12h-9z"/>';
@@ -106,41 +141,53 @@ try{if(typeof PRIMARY==='object')PRIMARY.office=['jobs','trello','orr','cal','mo
 if(typeof window.tab==='function'){const _tab=window.tab;window.tab=function(n,el){const r=_tab.apply(this,arguments);if(n==='orr')renderOrr();return r;};}
 try{applyTabs();}catch(e){}
 
-/* ───────── list ───────── */
-let filt='us',q='',mine=false;
-function lineFor(x){
-  if(x.status==='us')return '<span class="us">'+esc(tt('On us'))+': '+esc(x.need||'see request')+'</span>';
-  if(x.status==='sched'){const late=x.schedOn&&x.schedOn<dk(new Date());return late?'<span class="late">Scheduled '+fd(x.schedOn)+' — was it done?</span>':'Scheduled '+fd(x.schedOn,{weekday:'short',month:'short',day:'numeric'});}
-  if(x.status==='sent'){const d=idle(x);return '<span class="'+(d>=3?'late':'')+'">'+d+' work day'+(d===1?'':'s')+' with no update</span>';}
-  if(x.status==='done')return 'Done '+(x.closedAt?new Date(x.closedAt).toLocaleDateString(LOC(),{month:'short',day:'numeric'}):'');
-  return '';}
-function card(x){const s=ST[x.status]||ST.sent;const site=x.site?siteName(x.site):(x.addr||'—');const si=SIDX(x.stage);
-  const sub=TYPE(x.type)+(x.wo?' · #'+esc(x.wo):'')+(x.pm?' · '+esc(x.pm):'');
-  return '<div class="orrcard" style="border-left-color:'+s[1]+'" onclick="ORR.open(\''+jsq(x.id)+'\')"><div class="w"><b>'+esc(site.split(',')[0])+'</b><div class="s">'+sub+'</div><div class="s">'+lineFor(x)+'</div>'
-   +'<div class="orrdots" title="'+esc(STAGES[si][1])+'">'+STAGES.map((z,i)=>'<i class="'+(i<=si&&x.stage?'on':'')+'"></i>').join('')+'</div></div>'
-   +'<div class="rt"><span class="pill" style="background:'+s[1]+'22;color:'+s[1]+'">'+esc(tt(s[0]))+'</span>'+(x.owner?'<span class="orrav" title="'+esc(pname(x.owner))+'">'+esc(pname(x.owner).slice(0,1))+'</span>':'')+'</div></div>';}
+/* ───────── overview ───────── */
+let q='',view='list',whoF='',showDone=false;
+function row(x){const td=todo(x),w=who(x),col=WHO[w][1],L=steps(x);const pct=OPEN(x)?Math.round(idx(x)/(L.length-1)*100):100;
+  const sub=td?'<span class="'+(td.us?'us':td.late?'late':'')+'">'+esc(td.t)+'</span>':esc(nowLine(x));
+  const right=td?'<button class="orrgo'+(td.us?' ous':'')+'" onclick="event.stopPropagation();ORR.'+td.f+'(\''+jsq(x.id)+'\')">'+esc(td.b)+'</button>'
+    :(OPEN(x)&&x.fuOn?'<span class="fu">follow up<br><b style="display:inline;font-size:12px;color:var(--g5)">'+fd(x.fuOn)+'</b></span>':'<span class="chev">›</span>');
+  return '<div class="orrrow" style="border-left-color:'+col+'" onclick="ORR.open(\''+jsq(x.id)+'\')"><div class="w"><b>'+esc(sname(x))+' <small>'+esc(TYPE(x.type))+'</small></b><div class="s">'+sub+'</div>'
+   +(td?'<div class="s" style="font-size:11.5px">'+esc(td.t===cur(x)[1]?nowLine(x).replace(' · '+cur(x)[1],''):nowLine(x))+'</div>':'')+(OPEN(x)?'<div class="orrbar"><i style="width:'+pct+'%"></i></div>':'')+'</div>'+right+'</div>';}
 function list(){return (D.orr||[]).filter(x=>x&&!x.deleted);}
 function renderOrr(){ensurePage();const pg=$('pg-orr');const m=M();if(!pg||!m)return;
   if(!staff(m)){pg.innerHTML='<div class="orrempty">'+esc(tt('Not on your screens'))+'</div>';return;}
-  let L=list();if(mine)L=L.filter(x=>x.owner===m.id);
-  const by={us:L.filter(x=>x.status==='us'),follow:L.filter(needsFollow),sched:L.filter(x=>x.status==='sched'),sent:L.filter(x=>x.status==='sent'),done:L.filter(x=>x.status==='done'||x.status==='cancel'),all:L};
-  let show=by[filt]||L;const qq=q.trim().toLowerCase();if(qq)show=L.filter(x=>((x.site?siteName(x.site):x.addr||'')+' '+(x.wo||'')+' '+(x.pm||'')+' '+TYPE(x.type)+' '+pname(x.owner)).toLowerCase().includes(qq));
-  show=show.slice().sort((a,b)=>filt==='done'?(b.closedAt||b.upd||0)-(a.closedAt||a.upd||0):filt==='sched'?String(a.schedOn).localeCompare(String(b.schedOn)):idle(b)-idle(a));
-  if(filt==='done'&&!qq)show=show.slice(0,40);
-  const chip=(k,l)=>'<button class="'+(filt===k&&!qq?'on':'')+'" onclick="ORR.filter(\''+k+'\')">'+esc(tt(l))+' <i>'+by[k].length+'</i></button>';
+  const L=list();const qq=q.trim().toLowerCase();
+  const match=x=>!qq||(sname(x)+' '+(x.wo||'')+' '+(x.pm||'')+' '+TYPE(x.type)+' '+pname(x.owner)+' '+cur(x)[1]).toLowerCase().includes(qq);
+  const open=L.filter(x=>OPEN(x)&&match(x));
+  const cnt=k=>open.filter(x=>who(x)===k).length;
+  const shown=whoF?open.filter(x=>who(x)===whoF):open;
   const keepQ=document.activeElement&&document.activeElement.id==='orrQ';
-  pg.innerHTML='<div class="orrhd"><h2>O&amp;R</h2><button class="btn" style="width:auto;padding:7px 12px;font-size:13px" onclick="ORR.add()">+ '+esc(tt('New request'))+'</button></div>'
-   +'<div class="orrseg"><button class="'+(mine?'':'on')+'" onclick="ORR.mine(false)">Everyone</button><button class="'+(mine?'on':'')+'" onclick="ORR.mine(true)">Mine</button></div>'
-   +'<div class="orrchips">'+chip('us','On us')+chip('follow','Follow up')+chip('sched','Scheduled')+chip('sent','Waiting on O&R')+chip('done','Done')+chip('all','All')+'</div>'
-   +'<input type="search" id="orrQ" placeholder="Search address, project #, PM" value="'+esc(q)+'" oninput="ORR.search(this.value)">'
-   +(show.length?show.map(card).join(''):'<div class="orrempty">'+(L.length?'Nothing here right now.':esc(tt('No O&R requests yet.'))+'<br><br><button class="btn" style="width:auto" onclick="ORR.add()">+ '+esc(tt('New request'))+'</button>')+'</div>');
+  const sec=(t,n,extra)=>'<div class="orrsec"><span>'+esc(t)+' <i>'+n+'</i></span>'+(extra||'')+'</div>';
+  let body='';
+  if(view==='list'){
+    const act=shown.filter(todo).sort((a,b)=>(!!b.need-!!a.need)||((cur(b)[2]==='us')-(cur(a)[2]==='us'))||String(a.fuOn||'').localeCompare(String(b.fuOn||'')));
+    const wait=shown.filter(x=>!todo(x)).sort((a,b)=>String(a.fuOn||'9').localeCompare(String(b.fuOn||'9')));
+    body=sec('Needs action today',act.length)+(act.length?act.map(row).join(''):'<div class="orrempty">All caught up.</div>')
+        +sec('Waiting',wait.length)+(wait.length?wait.map(row).join(''):'<div class="orrempty">Nothing waiting.</div>');
+  }else{
+    const groups={};shown.forEach(x=>{const c=cur(x);(groups[c[0]]=groups[c[0]]||{l:c[1],L:[]}).L.push(x);});
+    ORDER.filter(k=>groups[k]).forEach(k=>{const g=groups[k];body+=sec(g.l,g.L.length)+g.L.sort((a,b)=>(a.stepAt||0)-(b.stepAt||0)).map(row).join('');});
+    if(!shown.length)body='<div class="orrempty">Nothing here.</div>';
+  }
+  const doneL=L.filter(x=>!OPEN(x)&&match(x)).sort((a,b)=>(b.closedAt||b.upd||0)-(a.closedAt||a.upd||0)).slice(0,40);
+  const sb=(k)=>'<button class="'+(whoF===k?'on':'')+'" style="color:'+WHO[k][1]+'" onclick="ORR.whoFilter(\''+k+'\')"><b>'+cnt(k)+'</b><span>'+esc(WHO[k][0]==='O&R'?'O&R’s move':WHO[k][0]==='Customer'?'Customer pays':'Our move')+'</span></button>';
+  pg.innerHTML='<div class="orrhd"><h2>O&amp;R</h2><button class="btn" style="width:auto;padding:7px 12px;font-size:13px" onclick="ORR.add()">+ '+esc(tt('New'))+'</button></div>'
+   +'<div class="orrseg"><button class="'+(view==='list'?'on':'')+'" onclick="ORR.view(\'list\')">To do</button><button class="'+(view==='step'?'on':'')+'" onclick="ORR.view(\'step\')">By step</button></div>'
+   +'<input type="search" id="orrQ" placeholder="Search address, project #, PM, step" value="'+esc(q)+'" oninput="ORR.search(this.value)">'
+   +'<div class="orrsum">'+sb('us')+sb('cust')+sb('oru')+'</div>'
+   +body
+   +(doneL.length?'<div class="orrmore" onclick="ORR.toggleDone()">'+(showDone?'Hide done':'Show done ('+doneL.length+')')+'</div>'+(showDone?doneL.map(row).join(''):''):'');
   if(keepQ){const i=$('orrQ');i.focus();i.setSelectionRange(i.value.length,i.value.length);}}
-P6.filter=k=>{filt=k;q='';renderOrr();};
+P6.filter=()=>{q='';whoF='';renderOrr();};
 P6.search=v=>{q=v;renderOrr();};
-P6.mine=v=>{mine=!!v;renderOrr();};
+P6.view=v=>{view=v;renderOrr();};
+P6.whoFilter=k=>{whoF=whoF===k?'':k;renderOrr();};
+P6.toggleDone=()=>{showDone=!showDone;renderOrr();};
+P6.mine=()=>{};
 P6.render=renderOrr;
 
-/* ───────── sheet ───────── */
+/* ───────── sheets ───────── */
 function sheet(html){let o=$('p6ov');if(!o){o=document.createElement('div');o.id='p6ov';o.className='p2ov';o.onclick=e=>{if(e.target===o)close();};document.body.appendChild(o);}
   o.innerHTML='<div class="p2sheet orrform" role="dialog"><div class="hd"></div>'+html+'</div>';o.hidden=false;o.style.display='';}
 function close(){const o=$('p6ov');if(o){o.hidden=true;o.style.display='none';o.innerHTML='';}}
@@ -148,53 +195,96 @@ P6.close=close;
 function siteOpts(sel){return '<option value="">—</option>'+liveSites().slice().sort((a,b)=>String(a.name).localeCompare(String(b.name))).map(s=>'<option value="'+esc(s.id)+'"'+(s.id===sel?' selected':'')+'>'+esc(s.name)+'</option>').join('');}
 function ownerOpts(sel){return people().map(e=>'<option value="'+esc(e.id)+'"'+(e.id===sel?' selected':'')+'>'+esc(e.name)+'</option>').join('');}
 function pmList(){return [...new Set(list().map(x=>x.pm).filter(Boolean))].sort();}
-P6.add=(siteId,type)=>{const m=M();if(!staff(m))return;
-  sheet('<h3 style="margin:0 0 4px">'+esc(tt('New request'))+'</h3>'
+const defOwner=m=>m.role==='office'?m.id:((people().find(e=>/^shia/i.test(e.name))||{}).id||m.id);
+function stepOpts(type,gas,sel){return (FLOWS[type]||FLOWS._).filter(s=>!s[4]||gas).filter(s=>s[0]!=='done').map(s=>'<option value="'+s[0]+'"'+(s[0]===sel?' selected':'')+'>'+esc(s[1])+'</option>').join('');}
+P6.add=(siteId,type)=>{const m=M();if(!staff(m))return;type=type||'temp';
+  sheet('<h3 style="margin:0 0 4px">'+esc(tt('New O&R request'))+'</h3>'
    +'<label>Job</label><select id="orrSite">'+siteOpts(siteId||(typeof fdSite!=='undefined'&&$('m-folder')&&!$('m-folder').classList.contains('hid')?fdSite:''))+'</select>'
-   +'<label>Type</label><select id="orrType">'+TYPES.map(([k,l])=>'<option value="'+k+'"'+(k===type?' selected':'')+'>'+esc(l)+'</option>').join('')+'</select>'
-   +'<div class="orrgrid"><div><label>O&amp;R project #</label><input id="orrWo" autocomplete="off" placeholder="optional"></div><div><label>Date sent</label><input id="orrSent" type="date" value="'+dk(new Date())+'"></div></div>'
-   +'<div class="orrgrid"><div><label>O&amp;R PM</label><input id="orrPm" list="orrPmL" autocomplete="off" placeholder="e.g. French"><datalist id="orrPmL">'+pmList().map(p=>'<option value="'+esc(p)+'">').join('')+'</datalist></div>'
-   +'<div><label>Who handles it</label><select id="orrOwn">'+ownerOpts(m.role==='office'?m.id:((people().find(e=>/^shia/i.test(e.name))||{}).id||m.id))+'</select></div></div>'
+   +'<label>What for</label><select id="orrType" onchange="ORR._steps()">'+TYPES.map(([k,l])=>'<option value="'+k+'"'+(k===type?' selected':'')+'>'+esc(l)+'</option>').join('')+'</select>'
+   +'<label id="orrGasL" style="display:flex;gap:8px;align-items:center;font-size:14px;color:var(--g5)"><input type="checkbox" id="orrGas" style="width:auto" onchange="ORR._steps()"> Gas too</label>'
+   +'<label>Where is it now</label><select id="orrStep">'+stepOpts(type,false,'inc')+'</select>'
+   +'<div class="orrgrid"><div><label>O&amp;R project #</label><input id="orrWo" autocomplete="off" placeholder="optional"></div><div><label>Date sent</label><input id="orrSent" type="date" value="'+today()+'"></div></div>'
+   +'<div class="orrgrid"><div><label>O&amp;R site manager</label><input id="orrPm" list="orrPmL" autocomplete="off" placeholder="e.g. French"><datalist id="orrPmL">'+pmList().map(p=>'<option value="'+esc(p)+'">').join('')+'</datalist></div>'
+   +'<div><label>Who handles it</label><select id="orrOwn">'+ownerOpts(defOwner(m))+'</select></div></div>'
    +'<label>Note <span style="font-weight:400">(optional)</span></label><textarea id="orrNote" rows="2"></textarea>'
-   +'<div class="orrbtns"><button class="btn" onclick="ORR.saveNew()">Save</button><button class="btn sec2" onclick="ORR.close()">Cancel</button></div>');};
+   +'<div class="orrbtns"><button class="btn" onclick="ORR.saveNew()">Save</button><button class="btn sec2" onclick="ORR.close()">Cancel</button></div>');
+  P6._steps();};
+P6._steps=()=>{const ty=$('orrType').value,g=$('orrGas').checked;$('orrGasL').style.display=(ty==='newsvc'||ty==='upgrade')?'flex':'none';
+  const L=(FLOWS[ty]||FLOWS._);const sel=$('orrStep').value;$('orrStep').innerHTML=stepOpts(ty,g,L.some(s=>s[0]===sel)?sel:L[1][0]);};
 P6.saveNew=()=>{const m=M();const site=$('orrSite').value;if(!site){toast('Pick the job');return;}
-  const note=$('orrNote').value.trim();const now=Date.now();
-  const x={id:nid('or'),site,type:$('orrType').value,wo:$('orrWo').value.trim(),pm:$('orrPm').value.trim(),owner:$('orrOwn').value||m.id,stage:'app',sent:$('orrSent').value||dk(new Date()),status:'sent',by:m.id,ts:now,upd:now,log:[{ts:now,by:m.id,txt:'Sent to O&R'+(note?' — '+note:'')}]};
-  D.orr.unshift(x);closeAutoFor(site,x.type);save();close();toast('✓ Saved','green');renderOrr();refreshFolder();
-  if(x.owner!==m.id)try{assignPush([x.owner],()=>'⚡ '+pname(m.id)+' gave you an O&R request: '+siteName(site).split(',')[0]+' — '+TYPE(x.type),'info',{tab:'orr'});}catch(e){}};
-function openTasks(x){return (D.jobs||[]).filter(j=>j.orr===x.id&&j.status!=='done');}
-P6.open=id=>{const x=list().find(y=>y.id===id);if(!x)return;const site=x.site?siteName(x.site):(x.addr||'—');const si=SIDX(x.stage);const tasks=openTasks(x);
-  sheet('<div style="font-size:11.5px;color:var(--g4);text-transform:uppercase;letter-spacing:.5px">O&amp;R · '+esc(TYPE(x.type))+(x.wo?' · #'+esc(x.wo):'')+'</div>'
-   +'<h3 style="margin:2px 0 2px;font-size:17px">'+esc(site)+'</h3>'
-   +'<div style="font-size:13px;color:var(--g4)">PM '+esc(x.pm||'—')+' · handled by <b style="color:var(--g5)">'+esc(pname(x.owner))+'</b> · sent '+fd(x.sent)+'</div>'
-   +(x.status==='us'?'<div class="orrneed"><b>On us:</b> '+esc(x.need||'—')+'<div class="orrbtns" style="margin-top:8px"><button class="btn" style="background:#e8912d" onclick="ORR.delivered(\''+jsq(x.id)+'\')">Done — sent to O&amp;R</button></div></div>':'')
-   +'<label>Where it stands at O&amp;R</label><div class="orrstep">'+STAGES.map((z,i)=>'<button class="'+(x.stage?(i<si?'done':i===si?'cur':''):'')+'" onclick="ORR.setStage(\''+jsq(x.id)+'\',\''+z[0]+'\')">'+esc(z[1])+'</button>').join('')+'</div>'
-   +'<label>Who\'s waiting</label><div class="orrst">'+Object.keys(ST).map(k=>'<button class="'+(x.status===k?'on':'')+'" style="'+(x.status===k?'background:'+ST[k][1]:'')+'" onclick="ORR.setStatus(\''+jsq(x.id)+'\',\''+k+'\')">'+esc(ST[k][0])+'</button>').join('')+'</div>'
-   +(x.status==='us'?'':'<div style="font-size:13px;margin-top:2px">'+lineFor(x)+'</div>')
+  const note=$('orrNote').value.trim();const now=Date.now();const type=$('orrType').value;const gas=$('orrGas').checked&&(type==='newsvc'||type==='upgrade');
+  const x={id:nid('or'),flow:1,site,type,gas,wo:$('orrWo').value.trim(),pm:$('orrPm').value.trim(),owner:$('orrOwn').value||m.id,sent:$('orrSent').value||today(),by:m.id,ts:now,upd:now,did:{},log:[]};
+  const L=steps(x);const k=$('orrStep').value;const i=Math.max(0,L.findIndex(s=>s[0]===k));L.slice(0,i).forEach(s=>x.did[s[0]]=now);
+  setStep(x,L[i],now);x.log.push({ts:now,by:m.id,txt:'New O&R request — now: '+L[i][1]+(note?' — '+note:'')});
+  D.orr.unshift(x);closeAutoFor(site,type);save();close();toast('✓ Saved','green');renderOrr();refreshFolder();
+  if(x.owner!==m.id)try{assignPush([x.owner],()=>'⚡ '+pname(m.id)+' gave you an O&R request: '+sname(x)+' — '+TYPE(x.type),'info',{tab:'orr'});}catch(e){}};
+function setStep(x,s,now){x.step=s[0];x.stepAt=now||Date.now();x.need='';
+  if(s[0]==='done'){x.status='done';x.closedAt=x.stepAt;x.fuOn='';}
+  else{x.status=s[2]==='us'?'us':'sent';x.fuOn=s[2]==='us'?'':addDays(s[3]||5);x.closedAt=null;}}
+function openTasks(x){return (D.jobs||[]).filter(j=>j.orr===x.id&&j.status!=='done'&&!j.deleted);}
+const FU=[['Tomorrow',1],['3 days',3],['1 week',5],['2 weeks',14],['30 days',30]];
+function fuChips(x){const I=jsq(x.id);return '<div class="orrfu">'+FU.map(([l,n])=>{const d=addDays(n);return '<button class="'+(x.fuOn===d?'on':'')+'" onclick="ORR.setFu(\''+I+'\',\''+d+'\')">'+esc(l)+'</button>';}).join('')
+  +'<button onclick="ORR.pickFu(\''+I+'\')">'+(x.fuOn&&!FU.some(([l,n])=>addDays(n)===x.fuOn)?fd(x.fuOn):'Pick a date')+'</button></div>';}
+P6.open=id=>{const x=list().find(y=>y.id===id);if(!x)return;const site=x.site?siteName(x.site):(x.addr||'—');const tasks=openTasks(x);const c=cur(x),w=who(x),L=steps(x),I=jsq(x.id);
+  const nx=L[Math.min(idx(x)+1,L.length-1)];
+  sheet('<div class="orrk">O&amp;R · '+esc(TYPE(x.type))+(x.gas?' + gas':'')+'</div>'
+   +'<h3 style="margin:2px 0 6px;font-size:17px">'+esc(site)+'</h3>'
+   +(OPEN(x)?'<div class="orrnow" style="background:'+WHO[w][1]+'1f"><span style="font-size:11.5px;font-weight:700;color:'+WHO[w][1]+'">NOW · '+esc(w==='oru'?'O&R’S MOVE':w==='cust'?'CUSTOMER':'OUR MOVE')+'</span><b>'+esc(c[1])+'</b>'
+       +'<span style="color:var(--g4);font-size:12.5px">Step '+(idx(x)+1)+' of '+(L.length-1)+' · since '+new Date(x.stepAt||x.ts).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' · handled by '+esc(pname(x.owner))+'</span></div>'
+     :'<div class="orrnow"><b>'+esc(nowLine(x))+'</b></div>')
+   +(x.need?'<div class="orrneed"><b>O&amp;R needs from us:</b> '+esc(x.need)+'<div class="orrbtns"><button class="btn" style="background:#e8912d" onclick="ORR.delivered(\''+I+'\')">Sent to O&amp;R</button></div></div>':'')
+   +(OPEN(x)?'<div class="orrbtns"><button class="btn" onclick="ORR.next(\''+I+'\')">✓ Done'+(nx[0]!=='done'?' → '+esc(nx[1]):'')+'</button></div>'
+     +(w!=='us'?'<label>Follow up on'+(x.fuOn?' · '+fd(x.fuOn,{weekday:'short',month:'short',day:'numeric'}):'')+'</label>'+fuChips(x):'')
+     +'<div class="orrbtns">'+(w!=='us'?'<button class="btn sec2" onclick="ORR.follow(\''+I+'\')">Followed up</button>':'')+'<button class="btn sec2" onclick="ORR.note(\''+I+'\')">Note</button><button class="btn sec2" onclick="ORR.needs(\''+I+'\')">O&amp;R needs…</button></div>':'')
    +(tasks.length?'<label>Open tasks</label>'+tasks.map(j=>'<div class="orrtask" onclick="ORR.close();openJobDetail(\''+jsq(j.id)+'\')"><span>'+esc(j.desc)+'</span><span style="color:var(--g4);white-space:nowrap">'+esc(pname((j.to||[])[0]))+' ›</span></div>').join(''):'')
-   +'<div class="orrbtns">'+(OPEN(x)?'<button class="btn" onclick="ORR.follow(\''+jsq(x.id)+'\')">Followed up</button>':'')+'<button class="btn sec2" onclick="ORR.note(\''+jsq(x.id)+'\')">Add note</button></div>'
-   +'<div class="orrbtns" style="margin-top:8px"><button class="btn sec2" onclick="ORR.task(\''+jsq(x.id)+'\')">+ Task</button><button class="btn sec2" onclick="ORR.edit(\''+jsq(x.id)+'\')">Edit</button>'+(x.site?'<button class="btn sec2" onclick="ORR.close();openFolder(\''+jsq(x.site)+'\')">Job</button>':'')+'</div>'
-   +'<label>History</label>'+((x.log||[]).slice().reverse().map(l=>'<div class="orrlog">'+esc(l.txt)+'<small>'+esc(pname(l.by))+' · '+new Date(l.ts).toLocaleString(LOC(),{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'</small></div>').join('')||'<div class="orrlog">—</div>'));};
+   +'<label>Steps</label><ul class="orrchk">'+L.filter(s=>s[0]!=='done').map((s,i)=>{const ok=!OPEN(x)||i<idx(x);const now=OPEN(x)&&i===idx(x);const dd=(x.did||{})[s[0]];
+      return '<li class="'+(ok?'ok':now?'now':'')+'" onclick="ORR.jump(\''+I+'\',\''+s[0]+'\')"><span class="c">'+(ok?'✓':'')+'</span><span>'+esc(s[1])+(ok&&dd?'<small>'+new Date(dd).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+'</small>':'')+'</span><span class="wh" style="color:'+WHO[s[2]||'oru'][1]+'">'+esc(s[2]==='us'?'us':s[2]==='cust'?'customer':'O&R')+'</span></li>';}).join('')+'</ul>'
+   +'<details class="orrdet"><summary>Details</summary>'
+     +'<div class="orrkv"><span>O&amp;R project #</span><b>'+esc(x.wo||'—')+'</b><span>O&amp;R site manager</span><b>'+esc(x.pm||'—')+'</b><span>Handled by</span><b>'+esc(pname(x.owner))+'</b><span>Sent</span><b>'+fd(x.sent)+'</b>'
+     +((x.type==='newsvc'||x.type==='upgrade')?'<span>Gas</span><b>'+(x.gas?'Yes':'No')+' · <u style="cursor:pointer;font-weight:500" onclick="ORR.gas(\''+I+'\')">change</u></b>':'')+'</div>'
+     +'<div class="orrbtns"><button class="btn sec2" onclick="ORR.edit(\''+I+'\')">Edit</button><button class="btn sec2" onclick="ORR.task(\''+I+'\')">+ Task</button>'+(x.site?'<button class="btn sec2" onclick="ORR.close();openFolder(\''+jsq(x.site)+'\')">Job</button>':'')+'</div>'
+     +(OPEN(x)?'<div class="orrbtns"><button class="btn sec2" style="color:#d93a2b" onclick="ORR.cancel(\''+I+'\')">Cancel this request</button></div>':'')
+     +'<label>History</label>'+((x.log||[]).slice().reverse().map(l=>'<div class="orrlog">'+esc(l.txt)+'<small>'+esc(pname(l.by))+' · '+new Date(l.ts).toLocaleString(LOC(),{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'</small></div>').join('')||'<div class="orrlog">—</div>')
+   +'</details>');};
 function bump(x,txt,extra,reopen){const m=M();const now=Date.now();Object.assign(x,extra||{});x.upd=now;x.log=(x.log||[]).concat([{ts:now,by:m.id,txt}]);save();renderOrr();refreshFolder();if(reopen!==false)P6.open(x.id);}
-// tasks made for a reason that is now gone are finished right away (the server does the same within 15 minutes)
 function closeTasks(x,kinds){const m=M();(D.jobs||[]).forEach(j=>{if(j.orr===x.id&&j.status!=='done'&&(!kinds||kinds.includes(j.orrAuto))){j.status='done';j.doneAt=Date.now();j.doneBy=m.id;}});}
 function closeAutoFor(site,type){const m=M();(D.jobs||[]).forEach(j=>{if(j.site===site&&j.status!=='done'&&(j.orrAuto==='apply'||(j.orrAuto==='meter'&&type==='meter')||(j.orrAuto==='tempout'&&type==='tempout'))){j.status='done';j.doneAt=Date.now();j.doneBy=m.id;}});}
-P6.follow=id=>{const x=list().find(y=>y.id===id);if(!x)return;askPrompt('Followed up',[{label:'What did O&R say?',value:''}],([v])=>{closeTasks(x,['follow']);bump(x,'Followed up'+(String(v||'').trim()?': '+String(v).trim():''));});};
-P6.note=id=>{const x=list().find(y=>y.id===id);if(!x)return;askPrompt('Add note',[{label:'Note',value:''}],([v])=>{if(!String(v||'').trim())return;bump(x,String(v).trim());});};
-P6.delivered=id=>{const x=list().find(y=>y.id===id);if(!x)return;closeTasks(x,['us']);bump(x,'Sent to O&R what they needed'+(x.need?': '+x.need:''),{status:'sent',need:''});};
-P6.setStage=(id,k)=>{const x=list().find(y=>y.id===id);if(!x||x.stage===k)return;const ex={stage:k};if(k==='done'){ex.status='done';ex.closedAt=Date.now();closeTasks(x);}bump(x,'O&R step: '+STAGES[SIDX(k)][1],ex);};
-P6.setStatus=(id,k)=>{const x=list().find(y=>y.id===id);if(!x)return;
-  if(k==='sched'){askPrompt('Scheduled for',[{label:'Date',value:x.schedOn||dk(Date.now()+86400000),type:'date'}],([d])=>{if(!d)return;closeTasks(x,['follow','sched']);bump(x,'Scheduled for '+new Date(d+'T12:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}),{status:'sched',schedOn:d});});return;}
-  if(k==='us'){askPrompt('O&R is waiting on us',[{label:'What does O&R need from us?',value:x.need||''},{label:'Who handles it',options:[{v:x.owner||'',l:pname(x.owner)}].concat(people().filter(e=>e.id!==x.owner).map(e=>({v:e.id,l:e.name})))}],([v,o])=>{closeTasks(x,['follow']);bump(x,'O&R needs from us: '+(String(v||'').trim()||'—')+(o&&o!==x.owner?' · handed to '+pname(o):''),{status:'us',need:String(v||'').trim(),usAt:Date.now(),owner:o||x.owner});});return;}
-  if(x.status===k)return;closeTasks(x);
-  bump(x,({sent:'Back to waiting on O&R',done:'Done',cancel:'Cancelled'})[k]||k,{status:k,need:k==='sent'?'':x.need,closedAt:(k==='done'||k==='cancel')?Date.now():null,stage:k==='done'?'done':x.stage});};
-P6.edit=id=>{const x=list().find(y=>y.id===id);if(!x)return;
-  askPrompt('Edit',[{label:'O&R project #',value:x.wo||''},{label:'O&R PM',value:x.pm||''},{label:'Who handles it',options:[{v:x.owner||'',l:pname(x.owner)}].concat(people().filter(e=>e.id!==x.owner).map(e=>({v:e.id,l:e.name})))},{label:'Type',options:[{v:x.type,l:TYPE(x.type)}].concat(TYPES.filter(y=>y[0]!==x.type).map(([v,l])=>({v,l})))},{label:'Date sent',value:x.sent||'',type:'date'}],
-   ([wo,pm,own,ty,se])=>{const ch=[];if((wo||'')!==(x.wo||''))ch.push('project # '+(wo||'—'));if((pm||'')!==(x.pm||''))ch.push('PM '+(pm||'—'));if(own&&own!==x.owner)ch.push('handled by '+pname(own));if(ty!==x.type)ch.push(TYPE(ty));if(se&&se!==x.sent)ch.push('sent '+se);if(!ch.length)return;
-    if(own&&own!==x.owner){(D.jobs||[]).forEach(j=>{if(j.orr===x.id&&j.status!=='done')j.to=[own];});try{assignPush([own],()=>'⚡ '+pname(M().id)+' gave you an O&R request: '+siteName(x.site).split(',')[0],'info',{tab:'orr'});}catch(e){}}
-    bump(x,'Changed: '+ch.join(', '),{wo:(wo||'').trim(),pm:(pm||'').trim(),owner:own||x.owner,type:ty,sent:se||x.sent});});};
-// a task by hand, tied to this request
-P6.task=id=>{const x=list().find(y=>y.id===id);if(!x)return;const m=M();
+const get=id=>list().find(y=>y.id===id);
+// ✓ current step done → next step (with a normal follow-up date)
+P6.next=(id,reopen)=>{const x=get(id);if(!x||!OPEN(x))return;const L=steps(x),i=idx(x),c=L[i],n=L[Math.min(i+1,L.length-1)];const now=Date.now();
+  x.did=Object.assign({},x.did,{[c[0]]:now});closeTasks(x);setStep(x,n,now);
+  bump(x,'✓ '+c[1]+(n[0]==='done'?' — all done':' → now: '+n[1]),null,reopen);
+  if(n[0]!=='done')toast('Next: '+n[1]+(x.fuOn?' · follow up '+fd(x.fuOn):''),'green');};
+// tap a step in the checklist to correct where it is
+P6.jump=(id,k)=>{const x=get(id);if(!x)return;const L=steps(x),i=L.findIndex(s=>s[0]===k);if(i<0||(OPEN(x)&&i===idx(x)))return;
+  askConfirm('Move it to "'+L[i][1]+'"?',()=>{const now=Date.now();x.did=Object.assign({},x.did);L.slice(0,i).forEach(s=>{if(!x.did[s[0]])x.did[s[0]]=now;});L.slice(i).forEach(s=>delete x.did[s[0]]);
+    closeTasks(x);setStep(x,L[i],now);bump(x,'Moved to: '+L[i][1]);},'Move');};
+P6.setFu=(id,d)=>{const x=get(id);if(!x)return;closeTasks(x,['follow']);bump(x,'Follow up on '+fd(d,{weekday:'short',month:'short',day:'numeric'}),{fuOn:d});};
+P6.pickFu=id=>{const x=get(id);if(!x)return;askPrompt('Follow up on',[{label:'Date',value:x.fuOn||addDays(3),type:'date'}],([d])=>{if(d)P6.setFu(id,d);});};
+// followed up: what O&R said + when to follow up next
+P6.follow=id=>{const x=get(id);if(!x)return;const I=jsq(x.id);const c=cur(x);
+  sheet('<div class="orrk">Followed up · '+esc(sname(x))+'</div><h3 style="margin:2px 0 6px;font-size:17px">'+esc(c[1])+'</h3>'
+   +'<textarea id="orrUN" rows="2" placeholder="What did '+(c[2]==='cust'?'the customer':'O&amp;R')+' say? (optional)"></textarea>'
+   +'<label>Next follow-up</label><div class="orrfu">'+FU.map(([l,n],i)=>'<button class="'+(i===1?'on':'')+'" data-d="'+addDays(n)+'" onclick="this.parentNode.querySelectorAll(\'button\').forEach(b=>b.classList.remove(\'on\'));this.classList.add(\'on\')">'+esc(l)+'</button>').join('')+'</div>'
+   +'<div class="orrbtns"><button class="btn" onclick="ORR._followed(\''+I+'\')">Save</button><button class="btn sec2" onclick="ORR.next(\''+I+'\')">It moved on ✓</button></div>'
+   +'<div class="orrbtns"><button class="btn sec2" onclick="ORR.open(\''+I+'\')">Back</button></div>');};
+P6._followed=id=>{const x=get(id);if(!x)return;const n=(($('orrUN')||{}).value||'').trim();const b=document.querySelector('#p6ov .orrfu button.on');const d=b?b.dataset.d:addDays(3);
+  closeTasks(x,['follow']);close();bump(x,'Followed up'+(n?': '+n:'')+' · next follow-up '+fd(d),{fuOn:d},false);toast('✓ Next follow-up '+fd(d),'green');};
+P6.update=P6.follow;
+P6.note=id=>{const x=get(id);if(!x)return;askPrompt('Add note',[{label:'Note',value:''}],([v])=>{if(!String(v||'').trim())return;bump(x,String(v).trim());});};
+P6.needs=id=>{const x=get(id);if(!x)return;askPrompt('O&R needs from us',[{label:'What does O&R need?',value:x.need||''},{label:'Who handles it',options:[{v:x.owner||'',l:pname(x.owner)}].concat(people().filter(e=>e.id!==x.owner).map(e=>({v:e.id,l:e.name})))}],([v,o])=>{v=String(v||'').trim();if(!v)return;closeTasks(x,['follow']);
+  if(o&&o!==x.owner){(D.jobs||[]).forEach(j=>{if(j.orr===x.id&&j.status!=='done')j.to=[o];});try{assignPush([o],()=>'⚡ '+pname(M().id)+' gave you an O&R request: '+sname(x),'info',{tab:'orr'});}catch(e){}}
+  bump(x,'O&R needs from us: '+v+(o&&o!==x.owner?' · handed to '+pname(o):''),{need:v,usAt:Date.now(),status:'us',owner:o||x.owner});});};
+P6.delivered=(id,reopen)=>{const x=get(id);if(!x)return;closeTasks(x,['us']);const c=cur(x);
+  bump(x,'Sent to O&R what they needed'+(x.need?': '+x.need:''),{need:'',status:c[2]==='us'?'us':'sent',fuOn:c[2]==='us'?'':addDays(3)},reopen);};
+P6.gas=id=>{const x=get(id);if(!x)return;bump(x,'Gas: '+(x.gas?'no':'yes'),{gas:!x.gas});};
+P6.cancel=id=>{const x=get(id);if(!x)return;askConfirm('Cancel this O&R request?',()=>{closeTasks(x);bump(x,'Cancelled',{status:'cancel',closedAt:Date.now(),fuOn:''});},'Cancel it');};
+P6.edit=id=>{const x=get(id);if(!x)return;
+  askPrompt('Edit',[{label:'O&R project #',value:x.wo||''},{label:'O&R site manager',value:x.pm||''},{label:'Who handles it',options:[{v:x.owner||'',l:pname(x.owner)}].concat(people().filter(e=>e.id!==x.owner).map(e=>({v:e.id,l:e.name})))},{label:'Date sent',value:x.sent||'',type:'date'}],
+   ([wo,pm,own,se])=>{const ch=[];if((wo||'')!==(x.wo||''))ch.push('project # '+(wo||'—'));if((pm||'')!==(x.pm||''))ch.push('site manager '+(pm||'—'));if(own&&own!==x.owner)ch.push('handled by '+pname(own));if(se&&se!==x.sent)ch.push('sent '+se);if(!ch.length)return;
+    if(own&&own!==x.owner){(D.jobs||[]).forEach(j=>{if(j.orr===x.id&&j.status!=='done')j.to=[own];});try{assignPush([own],()=>'⚡ '+pname(M().id)+' gave you an O&R request: '+sname(x),'info',{tab:'orr'});}catch(e){}}
+    bump(x,'Changed: '+ch.join(', '),{wo:(wo||'').trim(),pm:(pm||'').trim(),owner:own||x.owner,sent:se||x.sent});});};
+P6.task=id=>{const x=get(id);if(!x)return;const m=M();
   askPrompt('New task for this O&R request',[{label:'What needs to be done',value:''},{label:'For',options:[{v:x.owner||m.id,l:pname(x.owner||m.id)}].concat(people().filter(e=>e.id!==(x.owner||m.id)).map(e=>({v:e.id,l:e.name})))},{label:'When',options:[{v:'Today',l:'Today'},{v:'Tomorrow morning',l:'Tomorrow morning'},{v:'This week',l:'This week'}]}],([d,to,due])=>{d=String(d||'').trim();if(!d)return;
    const j={id:nid('j'),ts:Date.now(),to:[to],from:m.id,site:x.site,desc:'O&R: '+d,descLang:'en',descTr:'',due,status:'open',photo:'na',pri:false,media:[],orr:x.id};D.jobs.unshift(j);
    try{if(to!==m.id)assignPush([to],()=>'⚡ '+pname(m.id)+': O&R — '+d.slice(0,60),'info',{job:j.id});}catch(e){}
@@ -204,31 +294,32 @@ P6.task=id=>{const x=list().find(y=>y.id===id);if(!x)return;const m=M();
 // finishing an O&R task moves the request along
 if(typeof window.markDone==='function'){const _md=window.markDone;window.markDone=function(id){const j=(D.jobs||[]).find(x=>x.id===id);if(!j||!(j.orr||j.orrAuto))return _md.apply(this,arguments);
   if(!j.photo)j.photo='na';const r=_md.apply(this,arguments);
-  setTimeout(()=>{try{const x=j.orr&&list().find(y=>y.id===j.orr);
-    if(j.orrAuto==='follow'&&x)askPrompt('Followed up with O&R',[{label:'What did O&R say? (optional)',value:''}],([v])=>bump(x,'Followed up'+(String(v||'').trim()?': '+String(v).trim():' (task done)'),null,false));
-    else if(j.orrAuto==='us'&&x)bump(x,'Sent to O&R what they needed'+(x.need?': '+x.need:''),{status:'sent',need:''},false);
-    else if(j.orrAuto==='sched'&&x)askConfirm('Was the '+TYPE(x.type).toLowerCase()+' done?',()=>bump(x,'Done',{status:'done',stage:'done',closedAt:Date.now()},false),'Yes, done');
+  setTimeout(()=>{try{const x=j.orr&&get(j.orr);
+    if(j.orrAuto==='follow'&&x)P6.follow(x.id);
+    else if(j.orrAuto==='step'&&x){if(x.step===j.orrStep)P6.next(x.id,false);}
+    else if(j.orrAuto==='us'&&x)P6.delivered(x.id,false);
+    else if(j.orrAuto==='fwd'&&x)bump(x,'Invoice forwarded to the customer',null,false);
     else if(j.orrAuto==='apply')P6.add(j.site);
     else if(j.orrAuto==='meter')P6.add(j.site,'meter');
     else if(j.orrAuto==='tempout')P6.add(j.site,'tempout');
     else if(x)bump(x,'Task done: '+String(j.desc||'').replace(/^O&R: /,''),null,false);}catch(e){console.error('p6 task',e);}},250);
   return r;};}
 // a task that belongs to an O&R request shows a link to it
-if(typeof window.openJobDetail==='function'){const _oj=window.openJobDetail;window.openJobDetail=function(id){const r=_oj.apply(this,arguments);try{const j=(D.jobs||[]).find(x=>x.id===id);const x=j&&j.orr&&list().find(y=>y.id===j.orr);
+if(typeof window.openJobDetail==='function'){const _oj=window.openJobDetail;window.openJobDetail=function(id){const r=_oj.apply(this,arguments);try{const j=(D.jobs||[]).find(x=>x.id===id);const x=j&&j.orr&&get(j.orr);
   const md=document.querySelector('#m-jobd .md');if(md&&!md.querySelector('.orrtaskbar')&&(x||j&&j.orrAuto)&&staff(M())){const b=document.createElement('div');b.className='orrtaskbar';
-    b.innerHTML=x?'⚡ <span style="flex:1">O&amp;R request · '+esc(TYPE(x.type))+' · '+esc(ST[x.status][0])+'</span><b>Open ›</b>':'⚡ <span style="flex:1">O&amp;R — log the request when it\'s sent</span><b>New ›</b>';
-    b.onclick=()=>{try{hide('m-jobd');}catch(e){}x?P6.open(x.id):P6.add(j.site,j.orrAuto==='meter'?'meter':j.orrAuto==='tempout'?'tempout':undefined);};const pb=[...md.querySelectorAll('button')].find(x=>/Photo|Foto/.test(x.textContent));const row=pb&&pb.parentElement;if(row&&row.parentElement)row.parentElement.insertBefore(b,row);else md.appendChild(b);}}catch(e){}return r;};}
+    b.innerHTML=x?'⚡ <span style="flex:1">O&amp;R · '+esc(TYPE(x.type))+' · '+esc(cur(x)[1])+'</span><b>Open ›</b>':'⚡ <span style="flex:1">O&amp;R — log the request when it\'s sent</span><b>New ›</b>';
+    b.onclick=()=>{try{hide('m-jobd');}catch(e){}x?P6.open(x.id):P6.add(j.site,j.orrAuto==='meter'?'meter':j.orrAuto==='tempout'?'tempout':undefined);};const pb=[...md.querySelectorAll('button')].find(x=>/Photo|Foto/.test(x.textContent));const rw=pb&&pb.parentElement;if(rw&&rw.parentElement)rw.parentElement.insertBefore(b,rw);else md.appendChild(b);}}catch(e){}return r;};}
 
 /* ───────── job page box ───────── */
 function folderBox(s){const m=M();if(!staff(m))return '';const L=list().filter(x=>x.site===s.id).sort((a,b)=>(OPEN(b)-OPEN(a))||((b.ts||0)-(a.ts||0)));
   return '<div class="card" id="orrJob" data-p2t="over"><div class="row" style="align-items:center;margin-bottom:6px"><b style="font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--g4)">O&amp;R</b><span style="color:var(--blue-mid);cursor:pointer;font-size:13px;font-weight:600" onclick="ORR.add(\''+jsq(s.id)+'\')">+ New request</span></div>'
-   +(L.length?L.map(card).join(''):(s.orrNone?'<div style="font-size:13px;color:var(--g4)">No O&amp;R needed for this job. <u style="cursor:pointer" onclick="ORR.none(\''+jsq(s.id)+'\',false)">Undo</u></div>':'<div style="font-size:13px;color:var(--g4)">No O&amp;R request yet. <u style="cursor:pointer" onclick="ORR.none(\''+jsq(s.id)+'\',true)">No O&amp;R needed</u></div>'))+'</div>';}
+   +(L.length?L.map(row).join(''):(s.orrNone?'<div style="font-size:13px;color:var(--g4)">No O&amp;R needed for this job. <u style="cursor:pointer" onclick="ORR.none(\''+jsq(s.id)+'\',false)">Undo</u></div>':'<div style="font-size:13px;color:var(--g4)">No O&amp;R request yet. <u style="cursor:pointer" onclick="ORR.none(\''+jsq(s.id)+'\',true)">No O&amp;R needed</u></div>'))+'</div>';}
 P6.none=(sid,v)=>{const s=D.sites.find(x=>x.id===sid);if(!s)return;s.orrNone=!!v;if(v)(D.jobs||[]).forEach(j=>{if(j.site===sid&&j.orrAuto==='apply'&&j.status!=='done'){j.status='done';j.doneAt=Date.now();}});save();refreshFolder();};
 function refreshFolder(){try{const f=$('m-folder');if(f&&!f.classList.contains('hid')&&typeof fdSite!=='undefined'&&fdSite){const s=D.sites.find(x=>x.id===fdSite);const old=$('orrJob');if(s&&old){const d=document.createElement('div');d.innerHTML=folderBox(s);old.replaceWith(d.firstChild);}}}catch(e){}}
 if(typeof window.openFolder==='function'){const _of=window.openFolder;window.openFolder=function(id){const r=_of.apply(this,arguments);try{const s=D.sites.find(x=>x.id===id);const ov=$('fdOverview');if(s&&ov&&!$('orrJob')){const h=folderBox(s);if(h){const d=document.createElement('div');d.innerHTML=h;ov.insertBefore(d.firstChild,ov.firstChild);}}}catch(e){console.error('p6 folder',e);}return r;};}
 
 /* ───────── Home ───────── */
-if(typeof window.renderHome==='function'){const _rh=window.renderHome;window.renderHome=function(){const r=_rh.apply(this,arguments);try{const m=M();const el=$('homeBody');if(m&&el&&staff(m)&&!$('p6home')){const L=list();const us=L.filter(x=>x.status==='us').length,fu=L.filter(needsFollow).length;if(us||fu){const d=document.createElement('div');d.className='card';d.id='p6home';d.setAttribute('onclick',"ORR.filter('"+(us?'us':'follow')+"');goTab('orr')");
-    d.innerHTML='<span class="n">'+(us+fu)+'</span><div style="flex:1"><b style="font-size:14px">O&amp;R</b><div style="font-size:12px;color:var(--g4)">'+[us?us+' on us':'',fu?fu+' need a follow-up':''].filter(Boolean).join(' · ')+'</div></div><span style="color:var(--g4)">›</span>';
+if(typeof window.renderHome==='function'){const _rh=window.renderHome;window.renderHome=function(){const r=_rh.apply(this,arguments);try{const m=M();const el=$('homeBody');if(m&&el&&staff(m)&&!$('p6home')){const L=list().filter(OPEN);const n=L.filter(todo).length;if(L.length){const d=document.createElement('div');d.className='card';d.id='p6home';d.setAttribute('onclick',"ORR.filter();goTab('orr')");
+    d.innerHTML='<span class="n" style="'+(n?'':'background:#2fb36b')+'">'+n+'</span><div style="flex:1"><b style="font-size:14px">O&amp;R</b><div style="font-size:12px;color:var(--g4)">'+(n?n+' need action today · ':'')+L.length+' open jobs</div></div><span style="color:var(--g4)">›</span>';
     const anchor=$('p5short')||$('p4next');el.insertBefore(d,anchor?anchor.nextSibling:el.children[1]||null);}}}catch(e){console.error('p6 home',e);}return r;};}
 })();
