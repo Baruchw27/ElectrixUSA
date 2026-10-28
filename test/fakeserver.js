@@ -95,7 +95,7 @@ http.createServer(async (req,res)=>{
   // ---- server-side sign-in (stand-in for the "login" function: name/phone → account on the server)
   if(p==='/functions/v1/login'){const b=await body(req);const q=(b.q||'').trim().toLowerCase();const dig=q.replace(/\D/g,'');const e=emps().map(r=>r.data).filter(d=>!d.inactive);
     const hit=e.find(d=>d.name.toLowerCase()===q)||e.find(d=>(d.email||'').toLowerCase()===q||(d.authEmail||'').toLowerCase()===q||(dig.length>=7&&(d.phone||'').replace(/\D/g,'')===dig)||d.name.toLowerCase().split(' ')[0]===q);
-    const em=hit&&(hit.authEmail||'').toLowerCase();const x=em&&users[em];if(!x||x.pass!==b.password)return send(res,200,{session:null});const tk=crypto.randomUUID();tokens[tk]=em;return send(res,200,{session:{access_token:tk,refresh_token:'r'+tk}});}
+    const em=hit&&(hit.authEmail||'').toLowerCase();const x=em&&users[em];if(!x||x.pass!==b.password)return send(res,200,{session:null});const tk=crypto.randomUUID();tokens[tk]=em;return send(res,200,{session:{access_token:tk,refresh_token:'r'+tk,token_type:'bearer',expires_in:3600,expires_at:Math.floor(Date.now()/1000)+3600,user:{id:x.id,email:em}}});}
   // ---- stock transactions (stand-in for apply_stock_txn: atomic, idempotent by id, shortage refused)
   if(p==='/rpc/apply_stock_txn'){const em=who(req);if(!em||!isMember(em))return send(res,403,{error:'not allowed'});const b=await body(req);const txn=b.txn||{};
     global.__applied=global.__applied||{};const fp=JSON.stringify([txn.kind,txn.moves]);stats.stockTxn=(stats.stockTxn||0)+1;

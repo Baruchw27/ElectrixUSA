@@ -17,7 +17,7 @@ function createClient(url,key,opts){const base=url.replace(/\/$/,'');const persi
     async updateUser({password}){const r=await call('/auth/update',{password});return {data:{},error:r.error};}
   };
   function from(table){const q={_range:[0,999]};
-    q.select=()=>q;q.range=(a,b)=>{q._range=[a,b];return q;};q.order=()=>q;q.gt=(c,v)=>{q._after=v;return q;};
+    q.select=()=>q;['not','in','eq','neq','lt','lte','gte','is','limit','filter','match','or'].forEach(k=>{q[k]=()=>q;});q.range=(a,b)=>{q._range=[a,b];return q;};q.order=()=>q;q.gt=(c,v)=>{q._after=v;return q;};
     q.then=(ok,bad)=>call('/records?from='+q._range[0]+'&to='+q._range[1]+(q._after?'&after='+encodeURIComponent(q._after):''),undefined,'GET').then(ok,bad);
     q.upsert=(rows)=>call('/records',rows);
     return q;}
