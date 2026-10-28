@@ -56,6 +56,15 @@ body:has(#pg-home.on) html.o17 #homeBody .p7c,html.o17 #homeBody .p7c,html.o17 #
 html.o9 #homeBody .p7r,html.o9 #homeBody .p7more,html.o9 #homeBody .p7warn{border-top:none!important}
 html.o9 #homeBody .p7c{border-top:none!important;margin-bottom:14px!important}
 html.o9 #homeBody .p7c .p7h{padding-bottom:2px!important}
+/* Baruch 22:51: Needs action compact again — small chips side by side, tap one to go there */
+#homeBody .p7c[data-k=att] .bd{display:flex!important;flex-wrap:wrap;gap:6px;padding-bottom:4px!important}
+#homeBody .p7c[data-k=att].fold .bd{display:none!important}
+#homeBody .p7c[data-k=att] .p7r{display:inline-flex!important;flex:none;padding:5px 10px!important;gap:6px;border:none!important;border-radius:999px;background:#fff;box-shadow:0 0 0 .5px rgba(0,0,0,.12);font-size:12.5px;max-width:100%}
+html[data-theme=dark] #homeBody .p7c[data-k=att] .p7r{background:#232326}
+#homeBody .p7c[data-k=att] .p7r .w{flex:none;white-space:nowrap}
+#homeBody .p7c[data-k=att] .p7r>span:first-child{width:6px!important;height:6px!important}
+#homeBody .p7c[data-k=att] .p7r>span:last-child{display:none}
+#homeBody .p7c[data-k=att] .p7r.p9red{box-shadow:none;background:#d93a2b14;color:#c0392b;font-weight:600}
 /* 18 one action spot: the + goes into the ☰ */
 html.o18 #p2fab{display:none!important}
 html.o18 #p7fm{right:max(16px,env(safe-area-inset-right,0px))!important}
@@ -64,6 +73,7 @@ const st=document.createElement('style');st.id='p9css';st.textContent=css;docume
 function apply(){const h=document.documentElement;for(let i=1;i<=18;i++)h.classList.toggle('o'+i,window.P9_ON.includes(i)||h.classList.contains('o'+i)&&window.__p9keep);
   try{// 13: a section with a problem stays open
     document.querySelectorAll('#homeBody .p7c').forEach(c=>c.classList.toggle('p9bad',!!c.querySelector('.pill.bad,.p7warn,.n.r')));}catch(e){}
+  try{document.querySelectorAll('#homeBody .p7c[data-k=att] .p7r').forEach(r=>{const d=r.querySelector('span');r.classList.toggle('p9red',!!d&&/d93a2b/.test(d.getAttribute('style')||''));});}catch(e){}
   try{// 17: the pinned buttons move under the greeting
     const p=$('p8pin'),hb=$('homeBody');if(p&&hb){if(h.classList.contains('o17')){const d=$('p7date');const at=d&&d.nextSibling;if(p.parentNode!==hb)hb.insertBefore(p,at||hb.firstChild);}else if(p.parentNode!==document.body)document.body.appendChild(p);}}catch(e){}}
 window.P9={apply,set(L){window.P9_ON=L.slice();window.__p9keep=false;apply();}};
