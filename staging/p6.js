@@ -82,6 +82,7 @@ html[data-theme=dark] .orrseg button.on{background:#2c2c2e}
 html[data-theme=dark] .orrrow{background:#1c1c1e;box-shadow:none}
 .orrrow .w{flex:1;min-width:0}
 .orrpm{margin:14px 0 6px}
+.orrpml{color:var(--blue-mid,#2f80ed);text-decoration:none}
 .orrpm .ph{display:flex;align-items:center;gap:8px;margin-bottom:2px}
 .orrpm .ph b{font-size:17px}
 .orrpm .ph i{font-style:normal;font-size:13px;font-weight:600;color:var(--g4)}
@@ -188,11 +189,12 @@ function renderOrr(){ensurePage();const pg=$('pg-orr');const m=M();if(!pg||!m)re
     const wait=shown.filter(x=>!todo(x)).sort((a,b)=>String(a.fuOn||'9').localeCompare(String(b.fuOn||'9')));
     body=sec('Needs action today',act.length)+(act.length?act.map(row).join(''):'<div class="orrempty">'+esc(tt('All caught up.'))+'</div>')
         +sec('Waiting',wait.length)+(wait.length?wait.map(row).join(''):'<div class="orrempty">'+esc(tt('Nothing waiting.'))+'</div>');
-  }else if(view==='mgr'){   // Baruch 10/28 00:23: grouped by O&R's site manager (DeLalla, Rohrer…) — everything to go over on one call with him
+  }else if(view==='mgr'){
+    body+='<button class="bs b" style="margin:4px 0 6px" onclick="ORR.pmBook()">📞 '+esc(tt('O&R contacts'))+'</button>';   // Baruch 10/28 00:23: grouped by O&R's site manager (DeLalla, Rohrer…) — everything to go over on one call with him
     const G={};shown.forEach(x=>{const k=(x.pm||'').trim();(G[k]=G[k]||[]).push(x);});
     Object.keys(G).sort((a,b)=>(!a)-(!b)||G[b].length-G[a].length||a.localeCompare(b)).forEach(k=>{const g=G[k].sort((a,b)=>(a.stepAt||a.ts||0)-(b.stepAt||b.ts||0));
       const n=w=>g.filter(x=>who(x)===w).length;const parts=[[n('oru'),'on O&R','#2f80ed'],[n('us'),'on us','#e8912d'],[n('cust'),'on customer','#9b51e0']].filter(p=>p[0]);
-      body+='<div class="orrpm"><div class="ph"><b>'+esc(k||tt('No O&R site manager'))+'</b><i>'+g.length+'</i><button onclick="ORR.copyPm(\''+jsq(k)+'\')">'+esc(tt('Copy list'))+'</button></div>'
+      body+='<div class="orrpm"><div class="ph"><b>'+(k?pmLink(k):esc(tt('No O&R site manager')))+'</b><i>'+g.length+'</i><button onclick="ORR.copyPm(\''+jsq(k)+'\')">'+esc(tt('Copy list'))+'</button></div>'
         +'<div class="sm">'+parts.map(p=>'<span style="color:'+p[2]+'">'+p[0]+' '+esc(tt(p[1]))+'</span>').join(' · ')+'</div>'
         +g.map(pmRow).join('')+'</div>';});
     if(!shown.length)body='<div class="orrempty">Nothing here.</div>';
@@ -223,6 +225,33 @@ function sheet(html){let o=$('p6ov');if(!o){o=document.createElement('div');o.id
   o.innerHTML='<div class="p2sheet orrform" role="dialog"><div class="hd"></div>'+html+'</div>';o.hidden=false;o.style.display='';}
 function close(){const o=$('p6ov');if(o){o.hidden=true;o.style.display='none';o.innerHTML='';}}
 P6.close=close;
+// O&R contact book (Baruch 10/28): tap an O&R site manager's name → call, text or email them.
+// k = what we type in the "O&R site manager" field (last name, or first name when that's all we have).
+const PMB=[
+ ['Rockland','Joe Pillmeier','845-238-6445','','pillmeier'],['Rockland','Dave Fiol','646-483-2370','','fiol'],
+ ['Rockland','Philip Florie','845-597-7122','','florie'],['Rockland','Joseph T DeLalla','646-208-2647','','delalla'],
+ ['Rockland','Christopher Rohrer','845-916-2981','','rohrer'],['Rockland','James French','917-567-7614','','french'],
+ ['Rockland','Paul','646-385-5008','','paul'],
+ ['Orange','O&R Orange office','845-783-5503','','office'],['Orange','Cristina Peifer','646-887-5754','PeiferC@oru.com','peifer'],
+ ['Orange','Boris Sabovic','646-832-8058','','sabovic'],['Orange','Transformer guy','845-742-5396','','transformer'],
+ ['Chester','Major Enjoiner','845-925-5162','','enjoiner'],['Chester','Gerard J Friedler','845-587-3897','','friedler'],
+ ['NJ','David Micallef','201-236-6017','','micallef']
+].map(a=>({area:a[0],name:a[1],phone:a[2],email:a[3],k:a[4]}));
+const pmFind=n=>{const q=String(n||'').trim().toLowerCase();if(!q)return null;
+  return PMB.find(c=>c.k===q)||PMB.find(c=>c.name.toLowerCase()===q)||PMB.find(c=>c.name.toLowerCase().split(' ').some(w=>w===q))||null;};
+const tel=p=>String(p).replace(/[^\d+]/g,'');
+const pmLink=n=>{const c=pmFind(n);return c?'<a href="#" class="orrpml" onclick="event.preventDefault();event.stopPropagation();ORR.pmCard(\''+jsq(n)+'\')">'+esc(n)+' <span aria-hidden="true">📞</span></a>':esc(n);};
+P6.pmLink=pmLink;P6.pmFind=pmFind;
+P6.pmCard=n=>{const c=pmFind(n);if(!c)return;
+  sheet('<div class="orrk">O&amp;R · '+esc(c.area)+'</div><h3 style="margin:2px 0 12px">'+esc(c.name)+'</h3>'
+   +'<a class="btn gr" style="display:block;text-align:center;text-decoration:none;margin-bottom:8px" href="tel:'+esc(tel(c.phone))+'">'+esc(tt('Call'))+' '+esc(c.phone)+'</a>'
+   +'<a class="btn" style="display:block;text-align:center;text-decoration:none;margin-bottom:8px" href="sms:'+esc(tel(c.phone))+'">'+esc(tt('Text'))+'</a>'
+   +(c.email?'<a class="btn" style="display:block;text-align:center;text-decoration:none;margin-bottom:8px" href="mailto:'+esc(c.email)+'">'+esc(tt('Email'))+' '+esc(c.email)+'</a>':'')
+   +'<button class="btn sec2" onclick="ORR.close()">'+esc(tt('Close'))+'</button>');};
+P6.pmBook=()=>{const areas=[...new Set(PMB.map(c=>c.area))];
+  sheet('<h3 style="margin:0 0 8px">'+esc(tt('O&R contacts'))+'</h3>'+areas.map(a=>'<div class="orrk" style="margin-top:10px">'+esc(a)+'</div>'
+   +PMB.filter(c=>c.area===a).map(c=>'<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--g2,#e5e5ea)"><div style="flex:1"><b>'+esc(c.name)+'</b><div style="font-size:13px;color:var(--g4)">'+esc(c.phone)+(c.email?' · '+esc(c.email):'')+'</div></div><a class="bs b" style="text-decoration:none" href="tel:'+esc(tel(c.phone))+'">'+esc(tt('Call'))+'</a></div>').join('')).join('')
+   +'<button class="btn sec2" style="margin-top:14px" onclick="ORR.close()">'+esc(tt('Close'))+'</button>');};
 function siteOpts(sel){return '<option value="">—</option>'+liveSites().slice().sort((a,b)=>String(a.name).localeCompare(String(b.name))).map(s=>'<option value="'+esc(s.id)+'"'+(s.id===sel?' selected':'')+'>'+esc(s.name)+'</option>').join('');}
 function ownerOpts(sel){return people().map(e=>'<option value="'+esc(e.id)+'"'+(e.id===sel?' selected':'')+'>'+esc(e.name)+'</option>').join('');}
 function pmList(){return [...new Set(list().map(x=>x.pm).filter(Boolean))].sort();}
@@ -271,7 +300,7 @@ P6.open=id=>{const x=list().find(y=>y.id===id);if(!x)return;const site=x.site?si
    +'<label>Steps</label><ul class="orrchk">'+L.filter(s=>s[0]!=='done').map((s,i)=>{const ok=!OPEN(x)||i<idx(x);const now=OPEN(x)&&i===idx(x);const dd=(x.did||{})[s[0]];
       return '<li class="'+(ok?'ok':now?'now':'')+'" onclick="ORR.jump(\''+I+'\',\''+s[0]+'\')"><span class="c">'+(ok?'✓':'')+'</span><span>'+esc(s[1])+(ok&&dd?'<small>'+new Date(dd).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+'</small>':'')+'</span><span class="wh" style="color:'+WHO[s[2]||'oru'][1]+'">'+esc(s[2]==='us'?'us':s[2]==='cust'?'customer':'O&R')+'</span></li>';}).join('')+'</ul>'
    +'<details class="orrdet"><summary>Details</summary>'
-     +'<div class="orrkv"><span>O&amp;R project #</span><b>'+esc(x.wo||'—')+'</b><span>O&amp;R site manager</span><b>'+esc(x.pm||'—')+'</b><span>Handled by</span><b>'+esc(pname(x.owner))+'</b><span>Sent</span><b>'+fd(x.sent)+'</b>'
+     +'<div class="orrkv"><span>O&amp;R project #</span><b>'+esc(x.wo||'—')+'</b><span>O&amp;R site manager</span><b>'+(x.pm?pmLink(x.pm):'—')+'</b><span>Handled by</span><b>'+esc(pname(x.owner))+'</b><span>Sent</span><b>'+fd(x.sent)+'</b>'
      +((x.type==='newsvc'||x.type==='upgrade')?'<span>Gas</span><b>'+(x.gas?'Yes':'No')+' · <u style="cursor:pointer;font-weight:500" onclick="ORR.gas(\''+I+'\')">change</u></b>':'')+'</div>'
      +'<div class="orrbtns"><button class="btn sec2" onclick="ORR.edit(\''+I+'\')">Edit</button><button class="btn sec2" onclick="ORR.task(\''+I+'\')">+ Task</button>'+(x.site?'<button class="btn sec2" onclick="ORR.close();openFolder(\''+jsq(x.site)+'\')">Job</button>':'')+'</div>'
      +(OPEN(x)?'<div class="orrbtns"><button class="btn sec2" style="color:#d93a2b" onclick="ORR.cancel(\''+I+'\')">Cancel this request</button></div>':'')
