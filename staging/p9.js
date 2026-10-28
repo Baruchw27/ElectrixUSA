@@ -52,6 +52,10 @@ html.o16 .p7r{padding:8px 0!important}
 html.o17 #p8pin{position:static!important;flex-direction:row!important;justify-content:space-between;margin:0 0 14px;width:100%}
 html.o17 #p8pin .g{width:auto;flex:1}
 body:has(#pg-home.on) html.o17 #homeBody .p7c,html.o17 #homeBody .p7c,html.o17 #homeBody .p7nums,html.o17 #homeBody #p7date{margin-right:0!important}
+/* Baruch 22:49: no lines between rows or sections — just space */
+html.o9 #homeBody .p7r,html.o9 #homeBody .p7more,html.o9 #homeBody .p7warn{border-top:none!important}
+html.o9 #homeBody .p7c{border-top:none!important;margin-bottom:14px!important}
+html.o9 #homeBody .p7c .p7h{padding-bottom:2px!important}
 /* 18 one action spot: the + goes into the ☰ */
 html.o18 #p2fab{display:none!important}
 html.o18 #p7fm{right:max(16px,env(safe-area-inset-right,0px))!important}
