@@ -71,6 +71,8 @@ html[data-theme=dark] #homeBody .p7c[data-k=att] .p7r{background:#232326}
 #homeBody .p7c:not([data-k=att]) .p7r.one .w{flex:0 1 auto!important}
 #homeBody .p7c:not([data-k=att]) .p7r.one .pill{margin-right:auto;margin-left:2px}
 html.o18 #p8pin{bottom:calc(88px + env(safe-area-inset-bottom,0px))!important}
+/* Baruch 23:09: no count next to "Crews today / tomorrow" — the "No job" lines already say it */
+#homeBody .p7c[data-k=crews] .p7h .n,#homeBody .p7c[data-k=crewsT] .p7h .n{display:none!important}
 /* 18 one action spot: the + goes into the ☰ */
 html.o18 #p2fab{display:none!important}
 html.o18 #p7fm{right:max(16px,env(safe-area-inset-right,0px))!important}
