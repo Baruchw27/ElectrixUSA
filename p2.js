@@ -14,7 +14,7 @@ const ES2={"New":"Nuevo","Task":"Tarea","Material":"Material","Meeting":"Reunió
  "Show":"Mostrar","Hide":"Ocultar","Select":"Elegir","selected":"elegidas","Move":"Mover","Send":"Enviar","Move to list":"Mover a la lista",
  "Send to":"Enviar a","Mark done":"Marcar hecho","Overview":"Resumen","Files & photos":"Archivos y fotos","Notes":"Notas","Settings":"Ajustes",
  "Photos":"Fotos","No photos yet.":"Todavía no hay fotos.","Templates":"Plantillas","Save as template":"Guardar como plantilla",
- "Template name":"Nombre de la plantilla","Saved":"Guardado","Possible duplicate jobs":"Posibles trabajos duplicados","Not a duplicate":"No es duplicado",
+ "Template name":"Nombre de la plantilla","Saved":"Guardado","Possible duplicate jobs":"Posibles trabajos duplicados","Not a duplicate":"No es duplicado","Same job — merge":"Mismo trabajo — unir","Merge":"Unir","Merged":"Unido","moved":"movidos","things attached":"cosas adjuntas","nothing attached yet":"nada adjunto todavía","Which one do you keep? Everything from the other one (tasks, hours, schedule, material, O&R, files, notes) moves to it, and the other one disappears from the list.":"¿Cuál se queda? Todo lo del otro (tareas, horas, horario, material, O&R, archivos, notas) pasa a este, y el otro desaparece de la lista.",
  "Open":"Abrir","Simple mode":"Modo simple","Big buttons, only what you need":"Botones grandes, solo lo necesario","On":"Sí","Off":"No",
  "Speech is not available on this phone — type it instead.":"La voz no funciona en este teléfono — escríbelo.","What you said":"Lo que dijiste",
  "We'll fill in the form — check it and tap Save.":"Llenamos el formulario — revísalo y toca Guardar.","Mark these done?":"¿Marcar estas como hechas?",
@@ -253,10 +253,32 @@ function normName(n){return String(n||'').toLowerCase().replace(/[.,#]/g,' ').re
 function dupKey(n){const w=normName(n).split(' ');const i=w.findIndex(x=>/^\d+[a-z]?$/.test(x));if(i<0||!w[i+1])return null;return w[i]+' '+w[i+1];}
 P2.dups=function(){const L=(D.sites||[]).filter(s=>s&&s.stage!=='lost'&&!s.tgone);const by={};L.forEach(s=>{const k=dupKey(s.name);if(k)(by[k]=by[k]||[]).push(s);});
   const ok=new Set(D.dupok||[]);const out=[];Object.values(by).forEach(g=>{for(let a=0;a<g.length;a++)for(let b=a+1;b<g.length;b++){const key=[g[a].id,g[b].id].sort().join('|');if(!ok.has(key))out.push([g[a],g[b],key]);}});return out;};
+// Baruch 2026-10-27: "Same job — merge": everything that belongs to the extra copy (tasks, hours, schedule, material,
+// expenses, O&R, files, links, notes…) moves to the job you keep; the extra copy is hidden (stage "lost", mergedInto) — never erased.
+function refsTo(id){let n=0;const walk=(o,d)=>{if(!o||typeof o!=='object'||d>5)return;if(Array.isArray(o)){o.forEach(x=>walk(x,d+1));return;}
+  for(const k in o){const v=o[k];if((k==='site'||k==='siteId'||k==='sid')&&v===id)n++;else if(v&&typeof v==='object')walk(v,d+1);}};
+  Object.keys(D).forEach(c=>{if(c!=='sites')walk(D[c],0);});return n;}
+function moveRefs(from,to){let n=0;const walk=(o,d)=>{if(!o||typeof o!=='object'||d>5)return;if(Array.isArray(o)){o.forEach(x=>walk(x,d+1));return;}
+  for(const k in o){const v=o[k];if((k==='site'||k==='siteId'||k==='sid')&&v===from){o[k]=to;n++;}else if(Array.isArray(v)&&(k==='sites'||k==='siteIds')){const i=v.indexOf(from);if(i>=0){v[i]=to;n++;}}else if(v&&typeof v==='object')walk(v,d+1);}};
+  Object.keys(D).forEach(c=>{if(c!=='sites')walk(D[c],0);});return n;}
+P2.merge=(aId,bId)=>{const a=D.sites.find(x=>x.id===aId),b=D.sites.find(x=>x.id===bId);if(!a||!b)return;
+  const info=s=>{const n=refsTo(s.id)+(s.files||[]).length+(s.notes||[]).length;return n?n+' '+tt('things attached'):tt('nothing attached yet');};
+  const best=(refsTo(b.id)+(b.files||[]).length)>(refsTo(a.id)+(a.files||[]).length)?b:a;
+  const opt=s=>'<label style="display:flex;gap:10px;align-items:flex-start;padding:10px;border:1.5px solid var(--g2);border-radius:12px;margin-top:8px;cursor:pointer"><input type="radio" name="p2keep" value="'+esc(s.id)+'" style="width:auto;margin-top:3px"'+(s===best?' checked':'')+'><span><b>'+esc(s.name)+'</b><br><small style="color:var(--g4)">'+esc(info(s))+(s.trello?' · Trello':'')+(s.stage?' · '+esc(tt(({upcoming:'Upcoming',ready:'Confirmed jobs',active:'Roughing',roughdone:'Rough Complete',inspection:'Finishing',done:'Complete'})[s.stage]||s.stage)):'')+'</small></span></label>';
+  ask(tt('Same job — merge'),'<div style="font-size:13.5px">'+tt('Which one do you keep? Everything from the other one (tasks, hours, schedule, material, O&R, files, notes) moves to it, and the other one disappears from the list.')+'</div>'+opt(a)+opt(b),()=>{
+    const kid=(document.querySelector('input[name=p2keep]:checked')||{}).value||best.id;const keep=kid===a.id?a:b,dup=kid===a.id?b:a;
+    const n=moveRefs(dup.id,keep.id);
+    ['files','links','notes'].forEach(k=>{if((dup[k]||[]).length)keep[k]=(keep[k]||[]).concat(dup[k]);});
+    ['client','phone','manager','crew','lat','lng','rad','permit','email','addr'].forEach(k=>{if((keep[k]==null||keep[k]==='')&&dup[k]!=null&&dup[k]!=='')keep[k]=dup[k];});
+    if(!keep.trello&&dup.trello){keep.trello=dup.trello;keep.trelloList=dup.trelloList;keep.tname=dup.tname;}
+    // the hidden copy lets go of its Trello card so the Trello sync never brings it back
+    Object.assign(dup,{stageBeforeMerge:dup.stage,stage:'lost',mergedInto:keep.id,mergedAt:Date.now(),mergedBy:(M()||{}).id,mergedTrello:dup.trello||undefined,trello:'',files:[],links:[],notes:[]});
+    D.dupok=(D.dupok||[]).filter(k=>!k.split('|').includes(dup.id));
+    save();try{renderSites();}catch(e){}toast('✓ '+tt('Merged')+(n?' — '+n+' '+tt('moved'):''),'green');},tt('Merge'));};
 P2.dupOk=key=>{D.dupok=D.dupok||[];if(!D.dupok.includes(key))D.dupok.push(key);save();renderSites();};
 if(typeof window.renderSites==='function'){const _rs=window.renderSites;window.renderSites=function(){const r=_rs.apply(this,arguments);try{const m=M();const el=$('siteList');
   if(el&&m&&(m.role==='owner'||m.role==='manager'||m.role==='office'||m.all)&&!(($('siteFind')||{}).value||'').trim()){const d=P2.dups();if(d.length){const box=document.createElement('div');box.className='p2dup';
-    box.innerHTML='<b>⚠ '+tt('Possible duplicate jobs')+' ('+d.length+')</b>'+d.slice(0,6).map(([a,b,k])=>'<div class="r"><span style="min-width:0">'+esc(a.name)+'<br>'+esc(b.name)+'</span><span style="display:flex;flex-direction:column;gap:4px;flex:none"><button onclick="openFolder(\''+jsq(a.id)+'\')">'+tt('Open')+' 1</button><button onclick="openFolder(\''+jsq(b.id)+'\')">'+tt('Open')+' 2</button><button onclick="P2.dupOk(\''+jsq(k)+'\')">'+tt('Not a duplicate')+'</button></span></div>').join('');el.prepend(box);}}}catch(e){}return r;};}
+    box.innerHTML='<b>⚠ '+tt('Possible duplicate jobs')+' ('+d.length+')</b>'+d.slice(0,6).map(([a,b,k])=>'<div class="r"><span style="min-width:0">'+esc(a.name)+'<br>'+esc(b.name)+'</span><span style="display:flex;flex-direction:column;gap:4px;flex:none"><button onclick="openFolder(\''+jsq(a.id)+'\')">'+tt('Open')+' 1</button><button onclick="openFolder(\''+jsq(b.id)+'\')">'+tt('Open')+' 2</button>'+((m.role==='owner'||m.role==='office'||m.all)?'<button style="background:#d93a2b;color:#fff" onclick="P2.merge(\''+jsq(a.id)+'\',\''+jsq(b.id)+'\')">'+tt('Same job — merge')+'</button>':'')+'<button onclick="P2.dupOk(\''+jsq(k)+'\')">'+tt('Not a duplicate')+'</button></span></div>').join('');el.prepend(box);}}}catch(e){}return r;};}
 
 // ───────── 9. big-text crew mode (workers; on by default, can be turned off) ─────────
 function crewOn(){const m=M();if(!m||m.role!=='worker'||m.lead)return false;try{const v=localStorage.getItem('p2crew_'+m.id);return v===null?true:v==='1';}catch(e){return true;}}
