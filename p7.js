@@ -20,7 +20,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const jsq=s=>String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 const tt=s=>{try{return t(s);}catch(e){return s;}};
 const IC=n=>{try{return window.exIcon?window.exIcon(n):'';}catch(e){return '';}};
-const hubRole=m=>!!m&&(m.role==='owner'||m.role==='manager'||m.role==='office'||!!m.all);
+const hubRole=m=>!!m&&(m.role==='owner'||m.role==='manager'||m.role==='office'||m.role==='worker'||!!m.all);/* Baruch 10/28 19:35: one app for everyone — the same Home, only what each person may see */
 const short=s=>String(s||'').split(',')[0];
 try{if(typeof ES==='object')Object.assign(ES,{"Menu":"Menú","Needs action":"Requiere acción","My tasks":"Mis tareas","On site":"En obra","Crews out":"Cuadrillas","Material":"Material","Today":"Hoy","Settings":"Ajustes","Home":"Inicio",
   "Crews today":"Cuadrillas hoy","Crews tomorrow":"Cuadrillas mañana","On the job now":"En la obra ahora","Not in yet":"Aún no llegan","Meetings & inspections":"Reuniones e inspecciones",
@@ -151,6 +151,7 @@ const fold=k=>{try{return localStorage.getItem('p7f_'+k)==='1';}catch(e){return 
 const open_=k=>!!(window.__p7open||{})[k];
 P7.fold=k=>{const c=document.querySelector('.p7c[data-k="'+k+'"]');if(!c)return;const f=!c.classList.contains('fold');c.classList.toggle('fold',f);try{localStorage.setItem('p7f_'+k,f?'1':'0');}catch(e){}};
 P7.all=k=>{window.__p7open=window.__p7open||{};window.__p7open[k]=!window.__p7open[k];renderHome();};
+const fieldOff=()=>window.EX_FIELD_CLOCK===false;
 function card(k,icon,col,title,n,rows,lim,extra,red){if(!rows.length&&!extra)return '';const show=open_(k)?rows:rows.slice(0,lim);
   return '<div class="p7c'+(fold(k)?' fold':'')+'" data-k="'+k+'"><div class="p7h" onclick="P7.fold(\''+k+'\')"><span class="ic" style="background:'+col+'1f;color:'+col+'">'+icon+'</span><b>'+esc(tt(title))+'</b>'+(n!=null?'<span class="n'+(red?' r':'')+'">'+n+'</span>':'')+'<span class="ch">▾</span></div>'
     +'<div class="bd">'+(extra||'')+show.join('')+(rows.length>lim?'<div class="p7more" onclick="P7.all(\''+k+'\')">'+(open_(k)?esc(tt('Show less')):esc(tt('Show all'))+' ('+rows.length+')')+'</div>':'')+'</div></div>';}
@@ -169,11 +170,12 @@ function tasksCard(m){let L=[];try{L=myTasks(m);}catch(e){}const td=new Date();t
   let h=card('tasks',tabIcon('jobs'),'#2f80ed','My tasks',L.length,rows,6,body,lateN>0);
   if(wait)h=h.replace(/<\/div><\/div>$/,wait+'</div></div>');
   return h;}
-function crewCard(day){const k=dkey(day);const isT=day.toDateString()===new Date().toDateString();const td=new Date().toDateString();
-  const rows=[];let out=0;(D.crews||[]).forEach(c=>{const guys=(D.emps||[]).filter(e=>e.crew===c.id&&!e.inactive);if(!guys.length)return;const sl=schedDay(c.id+'|'+k);
+function crewCard(day){const k=dkey(day);const isT=day.toDateString()===new Date().toDateString();const td=new Date().toDateString();const me_=M();const own=me_&&me_.role==='worker';
+  const rows=[];let out=0;(own?[(D.crews||[]).find(c=>c.id===me_.crew)||(me_.crew?{id:me_.crew,name:tt('My crew')}:null)].filter(Boolean):(D.crews||[])).forEach(c=>{const guys=(D.emps||[]).filter(e=>e.crew===c.id&&!e.inactive);if(!guys.length)return;const sl=schedDay(c.id+'|'+k);
     if(!sl){if(day.getDay()!==0&&day.getDay()!==6)rows.push('<div class="p7r one" onclick="goTab(\'sched\')"><div class="w"><b>'+esc(c.name)+'</b><small>'+guys.map(e=>esc(e.name.split(' ')[0])).join(', ')+'</small></div><span class="pill bad">'+esc(tt('No job'))+'</span></div>');return;}
-    out++;const inN=isT?guys.filter(e=>(D.punches||[]).some(p=>p.who===e.id&&!p.out&&new Date(p.in).toDateString()===td)).length:null;
-    rows.push('<div class="p7r one" onclick="openCrew(\''+jsq(c.id)+'\')"><div class="w"><b>'+esc(c.name)+'</b>'+(sl.time?' <span style="color:var(--g4);font-size:12.5px">'+esc(sl.time)+'</span>':'')+'<small>'+esc(sl.site?short(siteName(sl.site)):(tt('Several jobs')))+'</small></div>'+(inN!=null?'<span class="pill '+(inN===guys.length?'ok':inN?'am':'bad')+'">'+inN+'/'+guys.length+'</span>':'')+'</div>');});
+    out++;const inN=isT&&!fieldOff()?guys.filter(e=>(D.punches||[]).some(p=>p.who===e.id&&!p.out&&new Date(p.in).toDateString()===td)).length:null;
+    rows.push('<div class="p7r one" onclick="'+(own?'goTab(\'sched\')':'openCrew(\''+jsq(c.id)+'\')')+'"><div class="w"><b>'+esc(own?short(siteName(sl.site||'')):c.name)+'</b>'+(sl.time?' <span style="color:var(--g4);font-size:12.5px">'+esc(sl.time)+'</span>':'')+'<small>'+(own?guys.map(e=>esc(e.name.split(' ')[0])+(e.lead?' ★':'')).join(', '):esc(sl.site?short(siteName(sl.site)):(tt('Several jobs'))))+'</small></div>'+(inN!=null?'<span class="pill '+(inN===guys.length?'ok':inN?'am':'bad')+'">'+inN+'/'+guys.length+'</span>':'')+'</div>');});
+  if(own)return card(isT?'myjob':'myjobT',IC('cal')||tabIcon('sched'),'#9b51e0',isT?'My job today':'My job tomorrow',null,rows,6,rows.length?'':'<div class="p7empty">'+esc(tt('No crew assigned.'))+'</div>',false);
   return card(isT?'crews':'crewsT',IC('cal')||tabIcon('sched'),'#9b51e0',isT?'Crews today':'Crews tomorrow',out+'/'+rows.length,rows,6,'',rows.some(r=>r.includes('pill bad'))&&!isT);}
 function onsiteCard(){const td=new Date().toDateString();const hr=new Date().getHours();const live=(D.punches||[]).filter(p=>!p.out&&new Date(p.in).toDateString()===td&&(D.emps||[]).some(e=>e.id===p.who));
   const by={};live.forEach(p=>{(by[p.site]=by[p.site]||[]).push(p);});const field=(D.emps||[]).filter(e=>e.role==='worker'&&!e.inactive&&!(typeof noClock==='function'&&noClock(e)));
@@ -206,8 +208,8 @@ P7.to=(k,tab)=>{const c=document.querySelector('.p7c[data-k="'+k+'"]');if(c){if(
 function hubHome(m,el,att){const d=new Date();const hr=d.getHours();const al=allowed();const greet=hr<12?tt('Good morning'):hr<17?tt('Good afternoon'):tt('Good evening');
   const can=n=>al.includes(n)||m.role==='owner';
   const tom=new Date();tom.setDate(tom.getDate()+1);
-  const C={tasks:()=>tasksCard(m),onsite:()=>can('hours')||m.role!=='office'?onsiteCard():'',crews:()=>can('sched')?crewCard(new Date()):'',crewsT:()=>can('sched')?crewCard(tom):'',meets:()=>meetCard(m),mat:()=>matCard(m)};
-  const order=hr<11?['crews','onsite','tasks','meets','mat']:hr<16?['tasks','onsite','meets','crews','mat']:['tasks','crewsT','meets','mat','onsite'];
+  const C={tasks:()=>tasksCard(m),onsite:()=>(can('hours')||m.role==='owner'||m.role==='manager'||m.all)&&!fieldOff()?onsiteCard():'',crews:()=>can('sched')?crewCard(new Date()):'',crewsT:()=>can('sched')?crewCard(tom):'',meets:()=>meetCard(m),mat:()=>matCard(m)};
+  const order=m.role==='worker'?['crews','tasks','crewsT','meets']:hr<11?['crews','onsite','tasks','meets','mat']:hr<16?['tasks','onsite','meets','crews','mat']:['tasks','crewsT','meets','mat','onsite'];
   let toq='';try{toq=typeof timeOffQueue==='function'?timeOffQueue():'';}catch(e){}
   el.innerHTML='<div id="p5hero"><img src="'+(document.documentElement.getAttribute('data-theme')==='dark'||(!document.documentElement.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches)?'logo-dark.svg':'logo-light.svg')+'" alt="Electrix"></div>'
    +'<button id="p7date" onclick="goTab(\'cal\')"><span class="cal"><i>'+esc(d.toLocaleDateString(LOC(),{month:'short'}))+'</i><b>'+d.getDate()+'</b></span><span><span class="d">'+esc(d.toLocaleDateString(LOC(),{weekday:'long',month:'long',day:'numeric'}))+'</span><h2>'+esc(greet)+', '+esc(String(m.name||'').split(' ')[0])+'</h2></span><span class="go">›</span></button>'

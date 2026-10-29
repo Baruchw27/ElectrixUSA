@@ -10,10 +10,10 @@
 html.exboot .top,html.exboot .pg,html.exboot .tabs,html.exboot #p2fab,html.exboot #p7fm,html.exboot #p8pin{visibility:hidden!important}
 html.exboot body{background:#f2f2f7 url(logo-light.svg) center 42%/min(62%,300px) no-repeat!important}
 @media (prefers-color-scheme:dark){html.exboot body{background:#000 url(logo-dark.svg) center 42%/min(62%,300px) no-repeat!important}}</style>
-<script>window.EX_VER='vg2w1028';</script><script src="config.js"></script>
+<script>window.EX_VER='vg2x1028';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vg2w1028"></script>
-<script src="extras.js?vg2w1028"></script>
+<script src="sync.js?vg2x1028"></script>
+<script src="extras.js?vg2x1028"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -1230,7 +1230,7 @@ const me=()=>D.emps.find(e=>e.id===D.role);
 const tos=j=>Array.isArray(j.to)?j.to:[j.to];
 const has=(j,id)=>tos(j).includes(id);
 const nameList=j=>tos(j).map(nameOf).join(' + ');
-const getsTasks=e=>e.role!=='worker'||!!e.lead;
+const getsTasks=e=>true;/* Baruch 10/28 19:35: everyone gets tasks — workers too, not only crew leaders */
 const isOffice=e=>e.role==='office';
 const seesAll=e=>e.role==='owner'||!!e.all;
 const W=()=>{const m=me();const f=typeof jobFilter!=='undefined'&&D.emps.find(e=>e.id===jobFilter);return true?{tab:'Tasks',one:'task',newb:'+ New task',title:'New task',send:'Send task',move:'Move task to',none:'No tasks here.',sent:'Task sent to',site:'Related to (optional)',from:'New task from',movedto:'Moved to you by'}:{tab:'Jobs',one:'job',newb:'+ New job',title:'New job',send:'Send job',move:'Move job to',none:'No jobs here.',sent:'Job sent to',site:'Job site',from:'New job from',movedto:'Moved to you by'};};
@@ -4758,7 +4758,7 @@ function saveNewTool(){const n=document.getElementById('ntName').value.trim();if
 function tab(n,el){navPush({t:n});document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));document.getElementById('pg-'+n).classList.add('on');if(_dirty.has(n)&&!['home','more','punch','code','van','mat','cal','hours','exp','rep','tools','est','svc','msg','trello'].includes(n))renderPage(n);_dirty.delete(n);const prim=primaryFor(me());document.querySelectorAll('.tab').forEach(b=>{b.classList.remove('on');const nn=b.getAttribute('onclick').match(/'([a-z]+)'/)[1];if(b.dataset.allowed==='1')b.style.display=(prim.includes(nn)||nn===n)?'':'none';});el.classList.add('on');window.scrollTo(0,0);if(n==='home')renderHome();if(n==='more')renderMore();if(n==='punch'){renderPunch();startWatch();}try{notifBanner();}catch(e){}if(n==='code')renderCode();if(n==='van')renderVan();if(n==='mat'){renderMat();const _m=me();if(_m.role==='worker'&&!_m.lead)setTimeout(openMat,60);}if(n==='cal')renderCal();if(n==='trello')renderTrello();if(n==='hours')renderHours();if(n==='exp')renderExp();if(n==='rep')renderRep();if(n==='tools')renderTools();if(n==='est')renderEst();if(n==='svc')renderSvc();if(n==='msg')renderMsg();}
 function applyTabs(){const m=me();try{const mb=document.querySelector('.tab[onclick*="\'mat\'"] span');if(mb)mb.textContent=(m.role==='worker'&&!m.lead)?t('Request'):t('Material');}catch(e){}const show=(n,v)=>{const b=document.querySelector(`.tab[onclick*="'${jsq(n)}'"]`);if(b){b.dataset.allowed=v?'1':'0';b.style.display=v?'':'none';}};
   show('home',m.role==='owner'||!!m.all||m.role==='manager'||!!(ownBar(m)&&ownBar(m).includes('home')));
-  const w=m.role==='worker',o=m.role==='office',lim=o&&m.title==='Accountant';show('jobs',o||!w||getsTasks(m));show('sched',!w&&!lim);show('team',(!w&&!o)||!!m.all);show('sites',!w&&!lim);show('punch',!o&&m.role!=='owner');show('mat',seesMat(m)&&!lim);show('exp',true);show('cal',canBook(m)&&!lim);show('hours',canEditHours(m));show('exp',seesExp(m));show('rep',seesRep(m));show('tools',!(m.role==='office'&&m.title==='Accountant'));show('est',seesEst(m));show('svc',seesSvc(m)&&!lim);show('msg',canMsg(m));show('code',true);show('trello',typeof ptAvail==='function'&&ptAvail());show('van',canVan(m));show('more',true);
+  const w=m.role==='worker',o=m.role==='office',lim=o&&m.title==='Accountant';show('jobs',o||!w||getsTasks(m));show('sched',!lim);/* Baruch 10/28: workers see their crew's schedule (read only) */show('team',(!w&&!o)||!!m.all);show('sites',!w&&!lim);show('punch',!o&&m.role!=='owner'&&!(w&&noClock(m)));show('mat',seesMat(m)&&!lim);show('exp',true);show('cal',canBook(m)&&!lim);show('hours',canEditHours(m));show('exp',seesExp(m)&&!w);show('rep',seesRep(m));show('tools',!w&&!(m.role==='office'&&m.title==='Accountant'));/* Baruch 10/28: field = Tasks, Material, Schedule, Code, Settings */show('est',seesEst(m));show('svc',seesSvc(m)&&!lim);show('msg',canMsg(m));show('code',true);show('trello',typeof ptAvail==='function'&&ptAvail());show('van',canVan(m)&&!w);show('more',true);
   const prim=primaryFor(m);[...document.querySelectorAll('.tab')].forEach(b=>{const n=b.getAttribute('onclick').match(/'([a-z]+)'/)[1];if(b.dataset.allowed==='1'&&!prim.includes(n))b.style.display='none';});
   const anyAllowedHidden=[...document.querySelectorAll('.tab')].some(b=>b.dataset.allowed==='1'&&b.style.display==='none');if(!anyAllowedHidden){const mb=document.querySelector(`.tab[onclick*="'more'"]`);if(mb)mb.style.display='none';}
   const cur=document.querySelector('.tab.on');if(cur&&cur.style.display==='none'){const first=(m.role==='owner'||m.all||m.role==='manager'||(ownBar(m)&&ownBar(m)[0]==='home'))?document.querySelector(`.tab[onclick*="'home'"]`):(w&&!o&&!noClock(me()))?document.querySelector(`.tab[onclick*="'punch'"]`):document.querySelector(`.tab[onclick*="'jobs'"]`);first.click();}}
@@ -4985,7 +4985,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vg2w1028"></script><script src="scanner-v2-ui.js?vg2w1028"></script><script src="sched-v21.js?vg2w1028"></script><script src="p2.js?vg2w1028"></script><script src="p4.js?vg2w1028"></script><script src="p5.js?vg2w1028"></script><script src="p6.js?vg2w1028"></script><script src="p7.js?vg2w1028"></script><script src="p8.js?vg2w1028"></script><script src="p9.js?vg2w1028"></script>
+<script src="scanner-v2.js?vg2x1028"></script><script src="scanner-v2-ui.js?vg2x1028"></script><script src="sched-v21.js?vg2x1028"></script><script src="p2.js?vg2x1028"></script><script src="p4.js?vg2x1028"></script><script src="p5.js?vg2x1028"></script><script src="p6.js?vg2x1028"></script><script src="p7.js?vg2x1028"></script><script src="p8.js?vg2x1028"></script><script src="p9.js?vg2x1028"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
