@@ -125,6 +125,7 @@ const tt=x=>{try{return typeof t==='function'?t(x):x;}catch(e){return x;}};
 const H=d=>(window.EX_workHours?EX_workHours(d):'8:00 AM – 7:00 PM');
 const PH=(s,c)=>tt(window.EX_jobPhase?EX_jobPhase(s,c):'Rough');
 const fcss=`
+html.p9w #homeBody .p7c{margin-right:66px!important}   /* field Home: room for the 4 glass buttons */
 .p9job{background:#fff;border-radius:16px;padding:14px 15px;box-shadow:0 0 0 .5px rgba(0,0,0,.07);cursor:pointer;margin:2px 0 4px}
 html[data-theme=dark] .p9job{background:#1c1c1e}
 .p9job .a{font-size:22px;font-weight:800;letter-spacing:-.3px;line-height:1.15}
@@ -166,6 +167,7 @@ function myDays(m){const el=document.getElementById('todayBoard');if(!el)return;
       +(meets.length?'<div class="sub">'+esc(tt('Meetings'))+'</div>'+meets.map(x=>'<div class="r"><span class="t">'+esc(fmt(x.at))+'</span><span>'+esc(x.title||tt('Meeting'))+(x.site?' · '+esc(siteName(x.site).split(',')[0]):'')+'</span></div>').join(''):'')
       +(tasks.length?'<div class="sub">'+esc(tt('Tasks'))+'</div>'+tasks.map(j=>'<div class="r" onclick="openJobDetail(\''+jsq(j.id)+'\')"><span>☐ '+esc(String((typeof jobText==='function'?jobText(j):j.desc)||'').slice(0,90))+'</span></div>').join(''):'')
       +'</div>';}).join('');}
+if(typeof window.renderHome==='function'){const _rh9=window.renderHome;window.renderHome=function(){try{document.documentElement.classList.toggle('p9w',!!W());}catch(e){}return _rh9.apply(this,arguments);};try{renderHome=window.renderHome;}catch(x){}}
 if(typeof window.renderTodayBoard==='function'){const _tb=window.renderTodayBoard;window.renderTodayBoard=function(){const m=W();if(m){try{renderGoHomeIn('goHomeBox2');}catch(e){}myDays(m);return;}return _tb.apply(this,arguments);};try{renderTodayBoard=window.renderTodayBoard;}catch(x){}}
 if(typeof window.renderSched==='function'){const _rs=window.renderSched;window.renderSched=function(){const m=W();if(m&&typeof schedView!=='undefined'&&schedView!=='today'){try{schedView='today';}catch(e){}}
   const r=_rs.apply(this,arguments);try{const sw=document.getElementById('schedSwitch');if(sw)sw.style.display=m?'none':'';const h=document.querySelector('#pg-sched .p8h2');if(h)h.textContent=tt(m?'My days':'Schedule');}catch(e){}return r;};try{renderSched=window.renderSched;}catch(x){}}
