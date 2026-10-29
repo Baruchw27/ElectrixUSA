@@ -10,10 +10,10 @@
 html.exboot .top,html.exboot .pg,html.exboot .tabs,html.exboot #p2fab,html.exboot #p7fm,html.exboot #p8pin{visibility:hidden!important}
 html.exboot body{background:#f2f2f7 url(logo-light.svg) center 42%/min(62%,300px) no-repeat!important}
 @media (prefers-color-scheme:dark){html.exboot body{background:#000 url(logo-dark.svg) center 42%/min(62%,300px) no-repeat!important}}</style>
-<script>window.EX_VER='vg2y1028';</script><script src="config.js"></script>
+<script>window.EX_VER='vg2z1028';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vg2y1028"></script>
-<script src="extras.js?vg2y1028"></script>
+<script src="sync.js?vg2z1028"></script>
+<script src="extras.js?vg2z1028"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -2238,7 +2238,7 @@ function openEmp(id){empEditId=id||null;const m=me();let crews=D.crews;const ex=
 function saveEmp(){const n=document.getElementById('eName').value.trim();if(!n){toast(t('Enter a name'));return;}
   const role=document.getElementById('eRole').value,crew=role==='worker'?document.getElementById('eCrew').value||null:null;
   const newPass=document.getElementById('ePass').value.trim();const email=document.getElementById('eEmail').value.trim(),dl=document.getElementById('eDL').classList.contains('on'),title=role==='office'?document.getElementById('eTitleSel').value:undefined,all=role==='office'&&me().role==='owner'?document.getElementById('eAll').classList.contains('on'):undefined;
-  if(empEditId){const e=D.emps.find(x=>x.id===empEditId);e.name=n;e.phone=document.getElementById('ePhone').value.trim();e.email=email;e.dl=dl;if(newPass&&window.EX_REAL){{const bad=pwBad(newPass);if(bad){toast(bad);return;}}EX_setPassword(e,newPass).then(r=>toast(r.ok?'🔑 '+t('Password changed for')+' '+n:'⚠ '+(r.err==='nouser'?t('No sign-in yet for')+' '+n:pwErr(r.err))));}else if(newPass)e.pass=newPass;if(e.role!=='owner'){e.role=role;e.crew=crew;if(role==='office'){e.title=title;if(all!==undefined)e.all=all;}else{delete e.title;delete e.all;}}e.lead=document.getElementById('eLead').classList.contains('on');e.inactive=!document.getElementById('eActive').classList.contains('on');if(canSetPay(me())){if(!document.getElementById('ePayM').classList.contains('on'))e.clock=false;else if(e.clock===false)e.clock=true;}save();hide('m-emp');renderAll();toast('✓ '+n,'green');return;}
+  if(empEditId){const e=D.emps.find(x=>x.id===empEditId);e.name=n;e.phone=document.getElementById('ePhone').value.trim();e.email=email;e.dl=dl;if(newPass&&window.EX_REAL){{const bad=pwBad(newPass);if(bad){toast(bad);return;}}EX_setPassword(e,newPass).then(r=>{if(r.ok){toast('🔑 '+t('Password changed for')+' '+n);return;}if(r.err==='nouser'){/* Baruch 10/28: no sign-in yet → make it now with this password */EX_createUser(e,newPass).then(c=>{if(c.ok)askConfirm(t('Sign-in created for')+' '+n+'.\n'+t('Tell them: sign in with their name and this password.'),()=>{},t('OK'));else toast('⚠ '+t('Could not create the sign-in')+': '+c.err);});return;}toast('⚠ '+pwErr(r.err));});}else if(newPass)e.pass=newPass;if(e.role!=='owner'){e.role=role;e.crew=crew;if(role==='office'){e.title=title;if(all!==undefined)e.all=all;}else{delete e.title;delete e.all;}}e.lead=document.getElementById('eLead').classList.contains('on');e.inactive=!document.getElementById('eActive').classList.contains('on');if(canSetPay(me())){if(!document.getElementById('ePayM').classList.contains('on'))e.clock=false;else if(e.clock===false)e.clock=true;}save();hide('m-emp');renderAll();toast('✓ '+n,'green');return;}
   const ne={id:nid('u'),name:n,role,crew,phone:document.getElementById('ePhone').value.trim(),email,dl,pass:newPass||'1234',lead:document.getElementById('eLead').classList.contains('on')};if(role==='office'){ne.title=title;if(all)ne.all=true;}if(canSetPay(me())&&!document.getElementById('ePayM').classList.contains('on'))ne.clock=false;D.emps.push(ne);
   if(window.EX_REAL){if(newPass&&pwBad(newPass)){D.emps.pop();toast(pwBad(newPass));return;}const pw=newPass||exGenPw();ne.pass='';save();EX_createUser(ne,pw).then(r=>{if(r.ok)askConfirm(t('Sign-in created for')+' '+n+'.\n'+t('Password')+': '+pw+'\n'+t('Tell them: sign in with their name and this password.'),()=>{},t('OK'));else toast('⚠ '+t('Could not create the sign-in')+': '+r.err);});}
   if(window.__placing){const ap=window.__placing;ap.status='placed';ap.emp=ne.id;ne.lang=ap.lang;
@@ -4987,7 +4987,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vg2y1028"></script><script src="scanner-v2-ui.js?vg2y1028"></script><script src="sched-v21.js?vg2y1028"></script><script src="p2.js?vg2y1028"></script><script src="p4.js?vg2y1028"></script><script src="p5.js?vg2y1028"></script><script src="p6.js?vg2y1028"></script><script src="p7.js?vg2y1028"></script><script src="p8.js?vg2y1028"></script><script src="p9.js?vg2y1028"></script>
+<script src="scanner-v2.js?vg2z1028"></script><script src="scanner-v2-ui.js?vg2z1028"></script><script src="sched-v21.js?vg2z1028"></script><script src="p2.js?vg2z1028"></script><script src="p4.js?vg2z1028"></script><script src="p5.js?vg2z1028"></script><script src="p6.js?vg2z1028"></script><script src="p7.js?vg2z1028"></script><script src="p8.js?vg2z1028"></script><script src="p9.js?vg2z1028"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
