@@ -8,6 +8,8 @@ const $=id=>document.getElementById(id);
 // H07: 18 (hide the "+" button) stays OFF until the + actions also live in the ☰ menu — Baruch: "17 and 18 not now"
 // Baruch 10/28 19:35: the time clock is not set up yet — off for the field (nothing is deleted; set true to bring it back)
 window.EX_FIELD_CLOCK=false;
+// switching person at the top right opens that person's own start page (Home for everyone now)
+try{if(typeof window.setRole==='function'){const _sr=window.setRole;window.setRole=function(v){const r=_sr.apply(this,arguments);try{const m=me();if(m&&String(m.id)===String(v)&&typeof goTab==='function')goTab(primaryFor(m)[0]);}catch(e){}return r;};try{setRole=window.setRole;}catch(x){}}}catch(e){}
 try{if(typeof window.noClock==='function'){const _nc=window.noClock;window.noClock=function(e){return _nc(e)||(window.EX_FIELD_CLOCK===false&&!!e&&e.role==='worker');};try{noClock=window.noClock;}catch(x){}}}catch(e){}
 window.P9_ON=window.P9_ON||[1,2,3,4,5,6,7,8,9,10,13,14,15,16];
 const css=`

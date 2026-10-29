@@ -1323,14 +1323,16 @@ function visibleJobs(){
 
 // ───────────── ROLE ─────────────
 function exIsOwner(){const r=(D.emps||[]).find(e=>e.id===window.EX_ME);return !!r&&r.role==='owner';}
+/* Baruch 10/28 22:48: Shia (office, viewAs) can switch to anyone at the top right, like the owner */
+function exCanViewAs(){const r=(D.emps||[]).find(e=>e.id===window.EX_ME);return !!r&&(r.role==='owner'||(r.role==='office'&&!!r.viewAs));}
 function exViewBar(){let b=document.getElementById('exViewAs');const on=window.EX_REAL&&window.EX_ME&&D.role!==window.EX_ME;if(!on){if(b)b.remove();return;}if(!b){b=document.createElement('div');b.id='exViewAs';b.style.cssText='position:sticky;top:0;z-index:300;background:#D53C36;color:#fff;font-size:14px;font-weight:600;padding:9px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px';document.body.prepend(b);}
   b.innerHTML='<span>👁 '+t('Viewing the app as')+' '+esc(nameOf(D.role))+'</span><button onclick="setRole(window.EX_ME)" style="border:0;background:#fff;color:#D53C36;font-weight:700;border-radius:99px;padding:6px 12px;font-size:13px">'+t('Back to me')+'</button>';}
 function renderRoleSel(){
-  const s=document.getElementById('roleSel');if(window.EX_REAL){exViewBar();if(!exIsOwner()){const m=me();s.innerHTML='<option>'+esc(m?m.name:'')+'</option>';s.disabled=true;return;}s.disabled=false;}
+  const s=document.getElementById('roleSel');if(window.EX_REAL){exViewBar();if(!exCanViewAs()){const m=me();s.innerHTML='<option>'+esc(m?m.name:'')+'</option>';s.disabled=true;return;}s.disabled=false;}
   s.innerHTML=D.emps.filter(e=>!e.inactive||e.id===D.role).map(e=>`<option value="${e.id}">${esc(e.name)} — ${e.role==='owner'?'Owner':e.role==='manager'?'Site mgr':e.role==='office'?(e.all?'Office — all access':(e.title||'Office')):e.lead?'Crew leader ★':'Worker'}</option>`).join('');
   s.value=D.role;
 }
-function setRole(v){if(window.EX_REAL&&!exIsOwner())return;try{localStorage.setItem(SESS,v);}catch(e){}moneyView='receipts';chatWith=null;if(mediaRec)voiceStop();jobFilter='all';jobView='open';doneDays=7;schedView='today';boardDay=0;D.role=v;save();renderAll();const m=me();if(m.role==='worker'&&!noClock(m))document.querySelector(`.tab[onclick*="'punch'"]`).click();else if(m.role==='worker')goTab('jobs');if(m.role==='office'&&!m.all)goTab(m.title==='Material'?'mat':m.title==='Payroll'?'hours':m.title==='Bookkeeper'?'exp':'jobs');if(m.role==='owner'||m.all)goTab('home');navReset();}
+function setRole(v){if(window.EX_REAL&&!exCanViewAs())return;try{localStorage.setItem(SESS,v);}catch(e){}moneyView='receipts';chatWith=null;if(mediaRec)voiceStop();jobFilter='all';jobView='open';doneDays=7;schedView='today';boardDay=0;D.role=v;save();renderAll();const m=me();if(m.role==='worker'&&!noClock(m))document.querySelector(`.tab[onclick*="'punch'"]`).click();else if(m.role==='worker')goTab('jobs');if(m.role==='office'&&!m.all)goTab(m.title==='Material'?'mat':m.title==='Payroll'?'hours':m.title==='Bookkeeper'?'exp':'jobs');if(m.role==='owner'||m.all)goTab('home');navReset();}
 
 // ───────────── JOBS ─────────────
 let jobFilter='all',jobView='open',doneDays=7;
