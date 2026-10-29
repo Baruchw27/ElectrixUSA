@@ -107,6 +107,80 @@ if(typeof window.applyTabs==='function'){const _a9=window.applyTabs;window.apply
   return r;};}
 window.P9={apply,set(L){window.P9_ON=L.slice();window.__p9keep=false;apply();}};
 if(typeof window.renderHome==='function'){const _rh=window.renderHome;window.renderHome=function(){const r=_rh.apply(this,arguments);try{apply();}catch(e){}return r;};}
+
+/* ───────── Baruch 10/28 23:36: the field guys' app — their days, their job page ───────── */
+(function(){
+const W=()=>{try{const m=me();return m&&m.role==='worker'?m:null;}catch(e){return null;}};
+const tt=x=>{try{return typeof t==='function'?t(x):x;}catch(e){return x;}};
+const H=()=>(window.EX_workHours?EX_workHours():'7:00 AM – 6:00 PM');
+const PH=(s,c)=>tt(window.EX_jobPhase?EX_jobPhase(s,c):'Rough');
+const fcss=`
+.p9job{background:#fff;border-radius:16px;padding:14px 15px;box-shadow:0 0 0 .5px rgba(0,0,0,.07);cursor:pointer;margin:2px 0 4px}
+html[data-theme=dark] .p9job{background:#1c1c1e}
+.p9job .a{font-size:22px;font-weight:800;letter-spacing:-.3px;line-height:1.15}
+.p9job .m{font-size:13.5px;color:var(--g4);margin-top:4px;font-weight:600}
+.p9job .g{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.p9job .g span{background:var(--g1);border-radius:999px;padding:3px 10px;font-size:12.5px}
+html[data-theme=dark] .p9job .g span{background:#2c2c2e}
+.p9job .b{display:flex;gap:8px;margin-top:11px}.p9job .b a,.p9job .b button{flex:1;text-align:center;border:none;border-radius:11px;padding:10px;font:600 14px/1.1 inherit;font-family:inherit;text-decoration:none;cursor:pointer}
+.p9job .b a{background:var(--g5);color:#fff}html[data-theme=dark] .p9job .b a{background:#fff;color:#000}.p9job .b button{background:var(--g1);color:var(--g5)}
+.p9day{background:#fff;border-radius:16px;padding:13px 15px;margin-bottom:10px;box-shadow:0 0 0 .5px rgba(0,0,0,.06)}
+html[data-theme=dark] .p9day{background:#1c1c1e}
+.p9day .k{font-size:11.5px;font-weight:700;letter-spacing:.5px;color:var(--g4);text-transform:uppercase}
+.p9day .j{font-size:18px;font-weight:700;margin-top:4px;cursor:pointer}.p9day .m{font-size:13px;color:var(--g4);margin-top:2px}
+.p9day .sub{font-size:11px;font-weight:700;letter-spacing:.4px;color:var(--g4);text-transform:uppercase;margin:11px 0 3px}
+.p9day .r{display:flex;gap:8px;align-items:baseline;padding:5px 0;font-size:14px;cursor:pointer}.p9day .r .t{font-weight:700;color:#e8912d;flex:none}
+.p9day .none{color:var(--g3);font-size:14px;margin-top:4px}
+#m-folder.fdfield #fdFilesHdr,#m-folder.fdfield #fdFiles,#m-folder.fdfield #fdUpload,#m-folder.fdfield #fdInsp,#m-folder.fdfield #fdLinks,#m-folder.fdfield #fdLinkAdd,#m-folder.fdfield #fdSettings,#m-folder.fdfield #fdAssign{display:none!important}
+#m-folder.fdfield .sec[data-i18n=Links],#m-folder.fdfield .sec[data-i18n="Site settings"],#m-folder.fdfield button[onclick*="openMatHist"]{display:none!important}
+.p9fh .ph{display:inline-block;background:#2563eb1a;color:#2563eb;font-weight:700;font-size:12px;border-radius:999px;padding:3px 10px;margin-top:6px}
+.p9fh .hr{font-size:13.5px;color:var(--g4);font-weight:600;margin-top:6px}
+.p9fh .dir{display:block;text-align:center;background:var(--g5);color:#fff;border-radius:12px;padding:11px;font-weight:700;text-decoration:none;margin:10px 0 4px;font-size:15px}
+html[data-theme=dark] .p9fh .dir{background:#fff;color:#000}
+.p9fh .mg{display:flex;align-items:center;gap:8px;font-size:14px;padding:6px 0}.p9fh .mg a{margin-left:auto;color:var(--blue-mid);font-weight:600;text-decoration:none}
+.p9ph{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0}.p9ph img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;background:var(--g1);cursor:pointer}
+#m-folder.fdfield #p2tabs,#m-folder.fdfield .p8sum,#m-folder.fdfield #p2gal{display:none!important}
+#m-folder.fdfield.p2t-over [data-p2t~="notes"],#m-folder.fdfield.p2t-over [data-p2t~="over"]{display:block!important}
+#m-folder .p9add{background:var(--g1)!important;box-shadow:none!important}
+#m-folder.fdfield.p2t-over [hidden][data-p2t],#m-folder.fdfield [hidden]{display:none!important}
+.p9add{display:block;width:100%;border:none;background:var(--g1);border-radius:12px;padding:11px;font:600 14px/1 inherit;font-family:inherit;color:var(--g5);cursor:pointer;margin:4px 0 6px}
+`;
+const st=document.createElement('style');st.id='p9field';st.textContent=fcss;document.body.appendChild(st);
+const day0=off=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+off);return d;};
+// their "calendar": today + tomorrow — job, hours, meetings, tasks (no inspections, no week view)
+function myDays(m){const el=document.getElementById('todayBoard');if(!el)return;const fmt=at=>new Date(at).toLocaleTimeString(LOC(),{hour:'numeric',minute:'2-digit'});
+  el.innerHTML=[0,1].map(off=>{const d=day0(off);const k=dkey(d);const sl=m.crew?schedDay(m.crew+'|'+k):null;const s=sl&&(D.sites||[]).find(x=>x.id===sl.site);const c=(D.crews||[]).find(x=>x.id===m.crew);
+    let meets=[];try{meets=(D.meets||[]).filter(x=>inMeet(x,m.id)&&new Date(x.at).toDateString()===d.toDateString()).sort((a,b)=>a.at-b.at);}catch(e){}
+    let tasks=[];try{const end=d.getTime()+86400000;tasks=visibleJobs().filter(j=>j.status!=='done').filter(j=>{const due=gpDue(j);return due!==null&&(off===0?due<end:(due>=d.getTime()&&due<end));});}catch(e){}
+    return '<div class="p9day"><div class="k">'+esc(off?tt('Tomorrow'):tt('Today'))+' · '+esc(d.toLocaleDateString(LOC(),{weekday:'long',month:'short',day:'numeric'}))+'</div>'
+      +(s?'<div class="j" onclick="openFolder(\''+jsq(s.id)+'\')">📍 '+esc(s.name.split(',')[0])+' ›</div><div class="m">'+esc(PH(s,c))+' · '+esc(H())+'</div>':'<div class="none">'+esc(tt(d.getDay()===6?'No work':'No job scheduled'))+'</div>')
+      +(meets.length?'<div class="sub">'+esc(tt('Meetings'))+'</div>'+meets.map(x=>'<div class="r"><span class="t">'+esc(fmt(x.at))+'</span><span>'+esc(x.title||tt('Meeting'))+(x.site?' · '+esc(siteName(x.site).split(',')[0]):'')+'</span></div>').join(''):'')
+      +(tasks.length?'<div class="sub">'+esc(tt('Tasks'))+'</div>'+tasks.map(j=>'<div class="r" onclick="openJobDetail(\''+jsq(j.id)+'\')"><span>☐ '+esc(String((typeof jobText==='function'?jobText(j):j.desc)||'').slice(0,90))+'</span></div>').join(''):'')
+      +'</div>';}).join('');}
+if(typeof window.renderTodayBoard==='function'){const _tb=window.renderTodayBoard;window.renderTodayBoard=function(){const m=W();if(m){try{renderGoHomeIn('goHomeBox2');}catch(e){}myDays(m);return;}return _tb.apply(this,arguments);};try{renderTodayBoard=window.renderTodayBoard;}catch(x){}}
+if(typeof window.renderSched==='function'){const _rs=window.renderSched;window.renderSched=function(){const m=W();if(m&&typeof schedView!=='undefined'&&schedView!=='today'){try{schedView='today';}catch(e){}}
+  const r=_rs.apply(this,arguments);try{const sw=document.getElementById('schedSwitch');if(sw)sw.style.display=m?'none':'';const h=document.querySelector('#pg-sched .p8h2');if(h)h.textContent=tt(m?'My days':'Schedule');}catch(e){}return r;};try{renderSched=window.renderSched;}catch(x){}}
+// their crew's scheduled jobs (this week ± a few days) open for them
+const onMySched=(s,m)=>{if(!m||!m.crew||!s)return false;for(let o=-7;o<=7;o++){const sl=schedDay(m.crew+'|'+dkey(day0(o)));if(sl&&sl.site===s.id)return true;}return false;};
+if(typeof window.siteVisible==='function'){const _sv=window.siteVisible;window.siteVisible=function(s,m){if(_sv.apply(this,arguments))return true;try{m=m||me();return m&&m.role==='worker'&&onMySched(s,m);}catch(e){return false;}};try{siteVisible=window.siteVisible;}catch(x){}}
+// their job page: name, Rough/Finishing, hours, directions, site manager, their tasks, photos (see all + add), notes
+if(typeof window.openFolder==='function'){const _of=window.openFolder;window.openFolder=function(id){const r=_of.apply(this,arguments);const f=document.getElementById('m-folder');const m=W();
+  try{if(f)f.classList.toggle('fdfield',!!m);if(m&&window.P2&&typeof P2.setTab==='function')P2.setTab('over');if(!m||!f||f.classList.contains('hid'))return r;const s=(D.sites||[]).find(x=>x.id===id);if(!s)return r;const c=(D.crews||[]).find(x=>x.id===m.crew);
+    const mg=(typeof mgrIds==='function'?mgrIds(s):[]).map(i=>(D.emps||[]).find(e=>e.id===i)).filter(Boolean);
+    document.getElementById('fdTitle').innerHTML='<div class="p9fh"><div style="font-size:11px;color:var(--g4);text-transform:uppercase;letter-spacing:.5px">'+esc(tt('Job'))+'</div>'
+      +'<div style="font-size:23px;font-weight:800;letter-spacing:-.4px;line-height:1.15">'+esc(s.name)+'</div><span class="ph">'+esc(PH(s,c))+'</span><div class="hr">🕖 '+esc(H())+'</div>'
+      +'<a class="dir" href="'+esc(safeHref(gmapsDir(s)))+'" target="_blank" rel="noopener">🧭 '+esc(tt('Directions'))+'</a>'
+      +(mg.length?'<div style="font-size:11px;color:var(--g4);text-transform:uppercase;letter-spacing:.5px;margin-top:8px">'+esc(tt('Site manager'))+'</div>'+mg.map(e=>'<div class="mg"><b>'+esc(e.name)+'</b>'+(e.phone?'<a href="tel:'+esc(String(e.phone).replace(/[^\d+]/g,''))+'">📞 '+esc(tt('Call'))+'</a>':'')+'</div>').join(''):'')+'</div>';
+    const imgs=(s.files||[]).filter(x=>x&&x.kind==='img'&&(x.d||x.url)).slice().sort((a,b)=>(b.ts||0)-(a.ts||0));
+    const ov=document.getElementById('fdOverview');
+    ov.innerHTML=(typeof fdTasks==='function'?fdTasks(s):'')+'<div class="sec">📷 '+esc(tt('Photos'))+' <span style="color:var(--g4);font-weight:500">'+(imgs.length||'')+'</span></div>'
+      +(imgs.length?'<div class="p9ph">'+imgs.map(x=>'<img loading="lazy" src="'+esc(safeSrc(x.d||x.url))+'" onclick="P9F.view(\''+jsq(x.id)+'\')">').join('')+'</div>':'<div style="font-size:13px;color:var(--g3);padding:2px 0 6px">'+esc(tt('No photos yet.'))+'</div>')
+      +'<button class="p9add" onclick="document.getElementById(\'fdCam\').value=\'\';document.getElementById(\'fdCam\').click()">📷 '+esc(tt('Add photo'))+'</button>';
+  }catch(e){console.error('p9 field folder',e);}return r;};try{openFolder=window.openFolder;}catch(x){}}
+window.P9F={view(fid){try{const s=(D.sites||[]).find(x=>x.id===fdSite);const f=s&&(s.files||[]).find(x=>x.id===fid);if(!f)return;const u=safeSrc(f.d||f.url);if(!u)return;
+  let v=document.getElementById('p9view');if(!v){v=document.createElement('div');v.id='p9view';v.style.cssText='position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center';v.onclick=()=>v.remove();document.body.appendChild(v);}
+  v.innerHTML='<img src="'+esc(u)+'" style="max-width:100%;max-height:100%;object-fit:contain">';}catch(e){}}};
+try{if(typeof ES==='object')Object.assign(ES,{"My days":"Mis días","Directions":"Cómo llegar","Open job":"Abrir trabajo","Rough":"Rough","Finishing":"Terminación","Site manager":"Encargado","Call":"Llamar","Photos":"Fotos","No photos yet.":"Todavía no hay fotos.","Add photo":"Agregar foto","Meetings":"Reuniones","No work":"No se trabaja","No work today.":"Hoy no se trabaja.","No job scheduled yet — ask your crew leader.":"Todavía no hay trabajo asignado — pregunta a tu jefe de cuadrilla.","7:00 AM":"7:00 a.m.","6:00 PM":"6:00 p.m.","Job":"Trabajo"});}catch(e){}
+})();
 apply();
 // first screen is drawn with everything loaded → show the app (index.html hides it until now)
 try{const h=$('pg-home');if(h&&h.classList.contains('on'))renderHome();}catch(e){}
