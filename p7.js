@@ -152,8 +152,8 @@ const open_=k=>!!(window.__p7open||{})[k];
 P7.fold=k=>{const c=document.querySelector('.p7c[data-k="'+k+'"]');if(!c)return;const f=!c.classList.contains('fold');c.classList.toggle('fold',f);try{localStorage.setItem('p7f_'+k,f?'1':'0');}catch(e){}};
 P7.all=k=>{window.__p7open=window.__p7open||{};window.__p7open[k]=!window.__p7open[k];renderHome();};
 const fieldOff=()=>window.EX_FIELD_CLOCK===false;
-/* Baruch 10/28 23:46: all crews work 8 AM – 6:30 PM */
-const workHours=()=>window.EX_WORK_HOURS||(tt('8:00 AM')+' – '+tt('6:30 PM'));
+/* Baruch 10/28 23:48: all crews work 8 AM – 7 PM; Friday 8 AM – 1:15 PM */
+const workHours=d=>{d=d||new Date();return window.EX_WORK_HOURS||(tt('8:00 AM')+' – '+tt(new Date(d).getDay()===5?'1:15 PM':'7:00 PM'));};   /* Baruch 10/28 23:48: 8 AM – 7 PM, Friday 8 AM – 1:15 PM */
 const jobPhase=(s,c)=>{const p=(s&&s.phase)||(c&&c.type==='finish'?'finish':'rough');return p==='finish'?'Finishing':'Rough';};
 window.EX_jobPhase=jobPhase;window.EX_workHours=workHours;
 function card(k,icon,col,title,n,rows,lim,extra,red){if(!rows.length&&!extra)return '';const show=open_(k)?rows:rows.slice(0,lim);

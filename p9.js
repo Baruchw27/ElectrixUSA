@@ -112,7 +112,7 @@ if(typeof window.renderHome==='function'){const _rh=window.renderHome;window.ren
 (function(){
 const W=()=>{try{const m=me();return m&&m.role==='worker'?m:null;}catch(e){return null;}};
 const tt=x=>{try{return typeof t==='function'?t(x):x;}catch(e){return x;}};
-const H=()=>(window.EX_workHours?EX_workHours():'7:00 AM – 6:00 PM');
+const H=d=>(window.EX_workHours?EX_workHours(d):'8:00 AM – 7:00 PM');
 const PH=(s,c)=>tt(window.EX_jobPhase?EX_jobPhase(s,c):'Rough');
 const fcss=`
 .p9job{background:#fff;border-radius:16px;padding:14px 15px;box-shadow:0 0 0 .5px rgba(0,0,0,.07);cursor:pointer;margin:2px 0 4px}
@@ -152,7 +152,7 @@ function myDays(m){const el=document.getElementById('todayBoard');if(!el)return;
     let meets=[];try{meets=(D.meets||[]).filter(x=>inMeet(x,m.id)&&new Date(x.at).toDateString()===d.toDateString()).sort((a,b)=>a.at-b.at);}catch(e){}
     let tasks=[];try{const end=d.getTime()+86400000;tasks=visibleJobs().filter(j=>j.status!=='done').filter(j=>{const due=gpDue(j);return due!==null&&(off===0?due<end:(due>=d.getTime()&&due<end));});}catch(e){}
     return '<div class="p9day"><div class="k">'+esc(off?tt('Tomorrow'):tt('Today'))+' · '+esc(d.toLocaleDateString(LOC(),{weekday:'long',month:'short',day:'numeric'}))+'</div>'
-      +(s?'<div class="j" onclick="openFolder(\''+jsq(s.id)+'\')">📍 '+esc(s.name.split(',')[0])+' ›</div><div class="m">'+esc(PH(s,c))+' · '+esc(H())+'</div>':'<div class="none">'+esc(tt(d.getDay()===6?'No work':'No job scheduled'))+'</div>')
+      +(s?'<div class="j" onclick="openFolder(\''+jsq(s.id)+'\')">📍 '+esc(s.name.split(',')[0])+' ›</div><div class="m">'+esc(PH(s,c))+' · '+esc(H(d))+'</div>':'<div class="none">'+esc(tt(d.getDay()===6?'No work':'No job scheduled'))+'</div>')
       +(meets.length?'<div class="sub">'+esc(tt('Meetings'))+'</div>'+meets.map(x=>'<div class="r"><span class="t">'+esc(fmt(x.at))+'</span><span>'+esc(x.title||tt('Meeting'))+(x.site?' · '+esc(siteName(x.site).split(',')[0]):'')+'</span></div>').join(''):'')
       +(tasks.length?'<div class="sub">'+esc(tt('Tasks'))+'</div>'+tasks.map(j=>'<div class="r" onclick="openJobDetail(\''+jsq(j.id)+'\')"><span>☐ '+esc(String((typeof jobText==='function'?jobText(j):j.desc)||'').slice(0,90))+'</span></div>').join(''):'')
       +'</div>';}).join('');}
@@ -179,7 +179,7 @@ if(typeof window.openFolder==='function'){const _of=window.openFolder;window.ope
 window.P9F={view(fid){try{const s=(D.sites||[]).find(x=>x.id===fdSite);const f=s&&(s.files||[]).find(x=>x.id===fid);if(!f)return;const u=safeSrc(f.d||f.url);if(!u)return;
   let v=document.getElementById('p9view');if(!v){v=document.createElement('div');v.id='p9view';v.style.cssText='position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center';v.onclick=()=>v.remove();document.body.appendChild(v);}
   v.innerHTML='<img src="'+esc(u)+'" style="max-width:100%;max-height:100%;object-fit:contain">';}catch(e){}}};
-try{if(typeof ES==='object')Object.assign(ES,{"My days":"Mis días","Directions":"Cómo llegar","Open job":"Abrir trabajo","Rough":"Rough","Finishing":"Terminación","Site manager":"Encargado","Call":"Llamar","Photos":"Fotos","No photos yet.":"Todavía no hay fotos.","Add photo":"Agregar foto","Meetings":"Reuniones","No work":"No se trabaja","No work today.":"Hoy no se trabaja.","No job scheduled yet — ask your crew leader.":"Todavía no hay trabajo asignado — pregunta a tu jefe de cuadrilla.","8:00 AM":"8:00 a.m.","6:30 PM":"6:30 p.m.","Job":"Trabajo"});}catch(e){}
+try{if(typeof ES==='object')Object.assign(ES,{"My days":"Mis días","Directions":"Cómo llegar","Open job":"Abrir trabajo","Rough":"Rough","Finishing":"Terminación","Site manager":"Encargado","Call":"Llamar","Photos":"Fotos","No photos yet.":"Todavía no hay fotos.","Add photo":"Agregar foto","Meetings":"Reuniones","No work":"No se trabaja","No work today.":"Hoy no se trabaja.","No job scheduled yet — ask your crew leader.":"Todavía no hay trabajo asignado — pregunta a tu jefe de cuadrilla.","8:00 AM":"8:00 a.m.","7:00 PM":"7:00 p.m.","1:15 PM":"1:15 p.m.","Job":"Trabajo"});}catch(e){}
 })();
 apply();
 // first screen is drawn with everything loaded → show the app (index.html hides it until now)
