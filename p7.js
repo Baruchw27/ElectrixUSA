@@ -223,7 +223,7 @@ function hubHome(m,el,att){const d=new Date();const hr=d.getHours();const al=all
   const order=m.role==='worker'?['crews','tasks','crewsT','meets']:hr<11?['crews','onsite','tasks','meets','mat']:hr<16?['tasks','onsite','meets','crews','mat']:['tasks','crewsT','meets','mat','onsite'];
   let toq='';try{toq=typeof timeOffQueue==='function'?timeOffQueue():'';}catch(e){}
   el.innerHTML='<div id="p5hero"><img src="'+(document.documentElement.getAttribute('data-theme')==='dark'||(!document.documentElement.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches)?'logo-dark.svg':'logo-light.svg')+'" alt="Electrix"></div>'
-   +'<button id="p7date" onclick="goTab(\''+(m.role==='worker'?'sched':'cal')+'\')"><span class="cal"><i>'+esc(d.toLocaleDateString(LOC(),{month:'short'}))+'</i><b>'+d.getDate()+'</b></span><span><span class="d">'+esc(d.toLocaleDateString(LOC(),{weekday:'long',month:'long',day:'numeric'}))+'</span><h2>'+esc(greet)+', '+esc(String(m.name||'').split(' ')[0])+'</h2></span><span class="go">›</span></button>'
+   +'<button id="p7date" onclick="goTab(\'cal\')"><span class="cal"><i>'+esc(d.toLocaleDateString(LOC(),{month:'short'}))+'</i><b>'+d.getDate()+'</b></span><span><span class="d">'+esc(d.toLocaleDateString(LOC(),{weekday:'long',month:'long',day:'numeric'}))+'</span><h2>'+esc(greet)+', '+esc(String(m.name||'').split(' ')[0])+'</h2></span><span class="go">›</span></button>'
    +nums(m,al)+toq+attCard(att||[])+order.map(k=>{try{return C[k]();}catch(e){console.error('p7 card',k,e);return '';}}).join('');}
 if(typeof window.renderHome==='function'){const _rh=window.renderHome;window.renderHome=function(){const m=M();const el=$('homeBody');
   if(!m||!el||!hubRole(m))return _rh.apply(this,arguments);

@@ -163,6 +163,7 @@ const st=document.createElement('style');st.textContent=css;document.body.append
 
 /* pinned glass buttons on Home (Baruch 22:20: Tasks, Jobs, Schedule, O&R always on the right side of Home; ☰ for the rest) */
 const PIN=['jobs','sites','sched','orr'];
+const pinFor=m=>m&&m.role==='worker'?['jobs','sched','mat','code']:PIN;   /* Baruch 10/29: field Home buttons */
 const pcss=`
 #p8pin{position:fixed;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:59;display:none;flex-direction:column;gap:12px;align-items:center}
 body:has(#pg-home.on) #p8pin{display:flex}
@@ -182,7 +183,7 @@ html[data-theme=dark] #p8pin .lab{color:#fff}
 `;
 const pst=document.createElement('style');pst.textContent=pcss;document.body.appendChild(pst);
 function pins(){const m=M();let p=$('p8pin');if(!p){p=document.createElement('div');p.id='p8pin';document.body.appendChild(p);}if(!m){p.innerHTML='';return;}
-  const al=allowed();const L=PIN.filter(n=>al.includes(n));
+  const al=allowed();const L=pinFor(m).filter(n=>al.includes(n));
   p.innerHTML=L.map(n=>{const c=count(n,m);return '<button class="g" onclick="goTab(\''+n+'\')"><span class="ball">'+tabIcon(n)+(c?'<i class="n">'+c+'</i>':'')+'</span><span class="lab">'+esc(tt(LABEL[n]||(TABMETA[n]||[])[1]||n))+'</span></button>';}).join('');
   if(!L.length)p.style.display='none';else p.style.display='';}
 if(typeof window.renderHome==='function'){const _rh2=window.renderHome;window.renderHome=function(){const r=_rh2.apply(this,arguments);try{pins();}catch(e){}return r;};}
@@ -191,7 +192,7 @@ try{pins();}catch(e){}
 function build(){const m=M();let g=$('p8glass');if(!g){g=document.createElement('div');g.id='p8glass';document.body.appendChild(g);}if(!m)return g;
   const al=allowed();let start='home';try{start=primaryFor(m)[0];}catch(e){}
   const cur=((document.querySelector('.pg.on')||{}).id||'').replace('pg-','');
-  const onHome=cur==='home';const L=ORDER.filter(n=>(n===start||(n!=='home'&&al.includes(n)))&&!(onHome&&PIN.includes(n))).concat(['more']);
+  const onHome=cur==='home';const L=ORDER.filter(n=>(n===start||(n!=='home'&&al.includes(n)))&&!(onHome&&pinFor(m).includes(n))).concat(['more']);
   g.innerHTML='<div class="dim" onclick="P7.close()"></div><div class="col">'+L.map((n,i)=>{const c=n==='more'?0:count(n,m);
     return '<button class="g'+(cur===n?' on':'')+'" style="transition-delay:'+(i*18)+'ms" onclick="P7.go(\''+n+'\')"><span class="ball">'+(n==='home'?HOME:n==='more'?GEAR:tabIcon(n))+(c?'<i class="n">'+c+'</i>':'')+'</span><span class="lab">'+esc(tt(LABEL[n]||(TABMETA[n]||[])[1]||n))+'</span></button>';}).join('')+'</div>';
   return g;}

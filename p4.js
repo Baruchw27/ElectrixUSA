@@ -121,14 +121,14 @@ function siteN(id){try{return siteName(id);}catch(e){return id;}}
 function myTask(j,m){try{return has(j,m.id)||(m.crew&&has(j,m.crew));}catch(e){return false;}}
 function eventsFor(k,m){ // one day's list: [{kind,at,tm,title,sub,open}]
   const L=[];const dayStart=new Date(k+'T00:00').getTime(),dayEnd=dayStart+86400000;
-  (D.meets||[]).forEach(x=>{if(!(x.at>=dayStart&&x.at<dayEnd))return;let mine=true;try{mine=inMeet(x,m.id);}catch(e){}if(!mine)return;
+  (D.meets||[]).forEach(x=>{if(!(x.at>=dayStart&&x.at<dayEnd))return;if(x.insp&&m.role==='worker')return;let mine=true;try{mine=inMeet(x,m.id);}catch(e){}if(!mine)return;
     L.push({kind:x.insp?'insp':'meet',at:x.at,tm:fmtT(x.at),title:x.title,sub:(x.site?siteN(x.site):'')+(x.note&&!x.insp?' · '+x.note:''),open:()=>{try{if(canEditMeet(x,m))openMeet(x.id);else if(x.site)openFolder(x.site);}catch(e){}}});});
   (D.jobs||[]).forEach(j=>{if(j.status==='done')return;if(!(myTask(j,m)||(boss(m)&&P4.filter==='all'&&false)))return;if(dueKey(j)!==k)return;
     L.push({kind:'task',at:dayStart+8*3600000,tm:tt('Due'),title:j.desc,sub:(j.site?siteN(j.site):'')+(j.from&&j.from!==m.id?' · '+nameOf(j.from):''),open:()=>{try{openJobDetail(j.id);}catch(e){}}});});
   if(boss(m)){(D.crews||[]).forEach(c=>{let r=null;try{r=schedDay(c.id+'|'+k);}catch(e){}if(!r||!r.site)return;let mins=null;try{const a=rawDayAsgs(c.id+'|'+k)[0];if(a&&a.start!=null)mins=a.start;}catch(e){}
       const tm=r.time||(mins!=null?fMin(mins):'');const at=dayStart+(mins!=null?mins*60000:7*3600000);
       L.push({kind:'crew',at,tm:tm||'',title:c.name+' → '+siteN(r.site),sub:r.note||'',open:()=>{try{openFolder(r.site);}catch(e){}}});});}
-  else if(m.crew){let r=null;try{r=schedDay(m.crew+'|'+k);}catch(e){}if(r&&r.site)L.push({kind:'crew',at:dayStart+7*3600000,tm:r.time||'',title:siteN(r.site),sub:tt('Crew')+' '+crewName(m.crew),open:()=>{try{openFolder(r.site);}catch(e){}}});}
+  else if(m.crew&&(m.role!=='worker'||k===todayK()||k===dk(Date.now()+86400000))){let r=null;try{r=schedDay(m.crew+'|'+k);}catch(e){}if(r&&r.site)   /* Baruch 10/29: the guys see their job for today and tomorrow only */L.push({kind:'crew',at:dayStart+7*3600000,tm:r.time||'',title:siteN(r.site),sub:tt('Crew')+' '+crewName(m.crew),open:()=>{try{openFolder(r.site);}catch(e){}}});}
   (D.insp||[]).forEach(i=>{if(i.at)return; /* booked ones already show through their meeting */ if(i.status!=='requested')return;if(!boss(m))return;if(dk(i.ts||0)!==k)return;
     L.push({kind:'insp',at:dayStart+9*3600000,tm:tt('requested'),title:(i.kind==='final'?tt('Final inspection'):tt('Rough inspection'))+' — '+siteN(i.site),sub:nameOf(i.by),open:()=>{try{openFolder(i.site);}catch(e){}}});});
   (D.timeoff||[]).forEach(r=>{if(r.status!=='approved')return;if(!(r.from<=k&&r.to>=k))return;if(!(boss(m)||r.who===m.id))return;
@@ -154,7 +154,7 @@ function renderCalP4(){
   host.innerHTML='<div class="p4hd"><h2>'+tt('Calendar')+'</h2></div>'
    +'<div class="p4cal"><div class="p4nav"><button onclick="P4.move(-1)">‹</button><b>'+esc(title)+'</b><div style="display:flex;gap:6px"><button class="td" onclick="P4.today()">'+tt('Today')+'</button><button onclick="P4.move(1)">›</button></div></div>'
    +'<div class="p4dn">'+dn.map(x=>'<span>'+x+'</span>').join('')+'</div><div class="p4grid">'+grid+'</div>'
-   +'<div class="p4leg"><span><i style="background:'+COL.meet+'"></i>'+tt('Meetings')+'</span><span><i style="background:'+COL.task+'"></i>'+tt('Tasks')+'</span>'+(boss(m)||m.crew?'<span><i style="background:'+COL.crew+'"></i>'+tt('Crews')+'</span>':'')+'<span><i style="background:'+COL.insp+'"></i>'+tt('Inspection')+'</span><span><i style="background:'+COL.off+'"></i>'+tt('Time off')+'</span></div></div>'
+   +'<div class="p4leg"><span><i style="background:'+COL.meet+'"></i>'+tt('Meetings')+'</span><span><i style="background:'+COL.task+'"></i>'+tt('Tasks')+'</span>'+(boss(m)||m.crew?'<span><i style="background:'+COL.crew+'"></i>'+tt('Crews')+'</span>':'')+(m.role==='worker'?'':'<span><i style="background:'+COL.insp+'"></i>'+tt('Inspection')+'</span>')+'<span><i style="background:'+COL.off+'"></i>'+tt('Time off')+'</span></div></div>'
    +'<div class="p4dayhd"><b>'+esc(dayTitle)+'</b><div class="add">'+(canM?'<button onclick="P4.addMeet()">+ '+tt('Meeting')+'</button>':'')+(canT?'<button onclick="P4.addTask()">+ '+tt('Task')+'</button>':'')+'</div></div>'
    +(ev.length?ev.map((e,i)=>evHtml(e,'P4.open('+i+')')).join(''):'<div class="p4empty">'+tt('Nothing on this day.')+'</div>')
    +comingUp(m);
