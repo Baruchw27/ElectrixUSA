@@ -83,7 +83,13 @@ function checkCard(j){const I=jsq(j.id);const ph=(j.photos||[]).filter(p=>p&&p.d
 
 function render(){const m=M();const el=$('jobList');const pg=$('pg-jobs');if(!m||!el||!pg)return;
   const searching=(()=>{const fr=$('jobFindRes');return fr&&fr.innerHTML.trim();})();
-  const on=typeof jobView==='undefined'||jobView==='open';pg.classList.toggle('p10',on&&!searching);
+  const on=typeof jobView==='undefined'||jobView==='open';
+  /* Baruch 10/29 01:27: the new page is a trial for the field guys only — the office and owner keep their board.
+     They only get the small "Check it" list above the board when someone finished a task they asked to check. */
+  const field=m.role==='worker';pg.classList.toggle('p10',field&&on&&!searching);
+  let cb=$('p10chkbox');if(!cb){cb=document.createElement('div');cb.id='p10chkbox';el.parentNode.insertBefore(cb,el);}cb.innerHTML='';
+  if(!field){if(on&&!searching){const ck=(D.jobs||[]).filter(j=>j&&!j.deleted&&j.status==='done'&&j.check&&j.chk==='wait'&&j.from===m.id);
+      if(ck.length)cb.innerHTML='<div class="p10sec g"><span>✅ '+esc(tt('Check it'))+'</span><span>'+ck.length+'</span></div>'+ck.map(checkCard).join('');}return;}
   if(!on||searching)return;
   let L=[];try{L=visibleJobs().filter(OPEN);}catch(e){L=(D.jobs||[]).filter(OPEN);}
   const chk=(D.jobs||[]).filter(j=>j&&!j.deleted&&j.status==='done'&&j.check&&j.chk==='wait'&&j.from===m.id).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
@@ -145,6 +151,6 @@ if(typeof window.openJobDetail==='function'){const _oj2=window.openJobDetail;win
     if(h){const d=document.createElement('div');d.id='p10each';d.className='card';d.style.cssText='padding:10px 13px;margin:8px 0';d.innerHTML=h;ch.parentNode.insertBefore(d,ch);}
   }catch(e){}return r;};try{openJobDetail=window.openJobDetail;}catch(x){}}
 // the board's "List" picker goes with the board
-if(typeof window.bDetailCol==='function'){window.bDetailCol=function(){return '';};try{bDetailCol=window.bDetailCol;}catch(x){}}
+if(typeof window.bDetailCol==='function'){const _bd=window.bDetailCol;window.bDetailCol=function(){const m=M();return m&&m.role==='worker'?'':_bd.apply(this,arguments);};try{bDetailCol=window.bDetailCol;}catch(x){}}
 try{if($('pg-jobs')&&$('pg-jobs').classList.contains('on'))renderJobs();}catch(e){}
 })();
