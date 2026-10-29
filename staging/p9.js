@@ -186,6 +186,35 @@ if(typeof window.openFolder==='function'){const _of=window.openFolder;window.ope
       +(imgs.length?'<div class="p9ph">'+imgs.map(x=>'<img loading="lazy" src="'+esc(safeSrc(x.d||x.url))+'" onclick="P9F.view(\''+jsq(x.id)+'\')">').join('')+'</div>':'<div style="font-size:13px;color:var(--g3);padding:2px 0 6px">'+esc(tt('No photos yet.'))+'</div>')
       +'<button class="p9add" onclick="document.getElementById(\'fdCam\').value=\'\';document.getElementById(\'fdCam\').click()">📷 '+esc(tt('Add photo'))+'</button>';
   }catch(e){console.error('p9 field folder',e);}return r;};try{openFolder=window.openFolder;}catch(x){}}
+// Baruch 10/29 00:22: the schedule's red button is "Stay late" (by crew) — they get "stay later today" right away and no end-of-day
+// reminder; once a crew is staying late, the button sends them home ("pack up — go home in 15 minutes").
+const today_=()=>new Date().toDateString();
+function lateNow(){const last={};(D.goHomeLog||[]).filter(x=>x&&new Date(x.ts).toDateString()===today_()).sort((a,b)=>a.ts-b.ts).forEach(x=>{last[x.who]=x;});return Object.keys(last).filter(id=>last[id].kind==='late');}
+function workingToday(){const k=dkey(new Date());const crews=(D.crews||[]).filter(c=>schedDay(c.id+'|'+k)).map(c=>c.id);return (D.emps||[]).filter(e=>e.role==='worker'&&!e.inactive&&crews.includes(e.crew));}
+window.P9L={
+  late(){const m=me();const late=lateNow();const sel=(typeof ghSel!=='undefined'&&ghSel.length)?ghSel:null;const ids=workingToday().filter(e=>(!sel||sel.includes(e.crew))&&!late.includes(e.id)).map(e=>e.id);
+    if(!ids.length){toast(tt('Nobody to keep late'));return;}
+    askConfirm(tt('Keep these guys late today?')+'\n'+ids.map(id=>nameOf(id)).join(', '),()=>{const ts=Date.now();ids.forEach(who=>D.goHomeLog.push({id:nid('g'),who,by:m.id,ts,kind:'late'}));save();
+      try{pushTo(ids,()=>('🕖 '+t('Stay later today — don\'t leave at the usual time. You\'ll get a message when to go home.')),'info',{tab:'home'});}catch(e){}
+      toast('🕖 '+ids.length+' '+tt('staying late'),'green');try{renderSched();}catch(e){}},tt('Keep late'));},
+  home(crew){const late=lateNow();const ids=(D.emps||[]).filter(e=>late.includes(e.id)&&(!crew||e.crew===crew)).map(e=>e.id);if(!ids.length)return;
+    askConfirm(tt('Send them home now?')+'\n'+ids.map(id=>nameOf(id)).join(', '),()=>{ids.forEach(id=>{try{goHome(id,true);}catch(e){}const L=D.goHomeLog;const x=L[L.length-1];if(x&&x.who===id)x.kind='home';});save();toast('🏠 '+tt('Go-home sent to')+' '+ids.length,'green');try{renderSched();}catch(e){}},tt('Send home'));}};
+if(typeof window.renderGoHomeIn==='function'){window.renderGoHomeIn=function(boxId){const m=me();const box=document.getElementById(boxId);if(!box)return;
+  if(boxId==='goHomeBox2'&&typeof schedView!=='undefined'&&schedView!=='today'){box.innerHTML='';return;}
+  const can=m&&(m.role==='manager'||m.role==='owner'||m.all);if(!can){box.innerHTML='';return;}
+  const late=lateNow();const work=workingToday();const k=dkey(new Date());const crews=(D.crews||[]).filter(c=>schedDay(c.id+'|'+k));const sel=(typeof ghSel!=='undefined')?ghSel:[];
+  const chips='<div class="chips" style="margin-bottom:8px"><div class="chip '+(!sel.length?'on':'')+'" onclick="ghToggle(\'all\')">'+esc(tt('Everyone'))+'</div>'+crews.map(c=>'<div class="chip '+(sel.includes(c.id)?'on':'')+'" onclick="ghToggle(\''+jsq(c.id)+'\')">'+(sel.includes(c.id)?'✓ ':'')+esc(c.name)+'</div>').join('')+'</div>';
+  const n=work.filter(e=>(!sel.length||sel.includes(e.crew))&&!late.includes(e.id)).length;
+  const byCrew={};late.forEach(id=>{const e=(D.emps||[]).find(x=>x.id===id);const c=e&&e.crew||'none';(byCrew[c]=byCrew[c]||[]).push(id);});
+  box.innerHTML='<div class="sec">🕖 '+esc(tt('Stay late'))+'</div>'+chips
+    +'<button class="btn" style="background:#d93a2b" '+(n?'':'disabled')+' onclick="P9L.late()">🕖 '+esc(tt('Keep late'))+' · '+n+'</button>'
+    +'<div style="font-size:11.5px;color:var(--g4);margin:5px 0 8px">'+esc(tt('They get a message right away to stay later, and no "time to leave" reminder today.'))+'</div>'
+    +(late.length?'<div class="card" style="padding:10px 13px"><div style="font-size:11px;color:var(--g4);text-transform:uppercase;margin-bottom:6px">'+esc(tt('Staying late now'))+'</div>'
+      +Object.keys(byCrew).map(c=>'<div class="ln" style="display:flex;align-items:center;gap:8px;padding:5px 0"><span style="flex:1"><b>'+esc(c==='none'?tt('No crew'):nameOf(c))+'</b> <span style="color:var(--g4);font-size:12px">'+byCrew[c].map(id=>esc(nameOf(id).split(' ')[0])).join(', ')+'</span></span><button class="bs" style="background:#2fb36b;color:#fff;border:none" onclick="P9L.home(\''+jsq(c)+'\')">🏠 '+esc(tt('Send them home'))+'</button></div>').join('')+'</div>':'');};
+  try{renderGoHomeIn=window.renderGoHomeIn;}catch(x){}}
+// the red button on the schedule: "Stay late" — or "Send them home" while someone is staying late
+if(typeof window.renderSched==='function'){const _rs2=window.renderSched;window.renderSched=function(){const r=_rs2.apply(this,arguments);try{document.querySelectorAll('.sc-home').forEach(b=>{b.textContent=lateNow().length?'🏠 '+tt('Send them home'):'🕖 '+tt('Stay late');});}catch(e){}return r;};try{renderSched=window.renderSched;}catch(x){}}
+try{if(typeof ES==='object')Object.assign(ES,{"Stay late":"Quedarse más tarde","Keep late":"Quedarse más tarde","Keep these guys late today?":"¿Quedan estos trabajadores más tarde hoy?","staying late":"se quedan más tarde","Nobody to keep late":"No hay nadie para dejar más tarde","Send them home":"Mandarlos a casa","Send them home now?":"¿Mandarlos a casa ahora?","Send home":"Mandar a casa","Staying late now":"Se quedan más tarde ahora","They get a message right away to stay later, and no \"time to leave\" reminder today.":"Reciben un mensaje ahora para quedarse más tarde, y hoy no reciben el aviso de salida.","Stay later today — don't leave at the usual time. You'll get a message when to go home.":"Hoy se quedan más tarde — no salgan a la hora de siempre. Recibirán un mensaje cuando puedan irse a casa."});}catch(e){}
 window.P9F={view(fid){try{const s=(D.sites||[]).find(x=>x.id===fdSite);const f=s&&(s.files||[]).find(x=>x.id===fid);if(!f)return;const u=safeSrc(f.d||f.url);if(!u)return;
   let v=document.getElementById('p9view');if(!v){v=document.createElement('div');v.id='p9view';v.style.cssText='position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center';v.onclick=()=>v.remove();document.body.appendChild(v);}
   v.innerHTML='<img src="'+esc(u)+'" style="max-width:100%;max-height:100%;object-fit:contain">';}catch(e){}}};
