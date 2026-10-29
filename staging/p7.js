@@ -154,6 +154,10 @@ const open_=k=>!!(window.__p7open||{})[k];
 P7.fold=k=>{const c=document.querySelector('.p7c[data-k="'+k+'"]');if(!c)return;const f=!c.classList.contains('fold');c.classList.toggle('fold',f);try{localStorage.setItem('p7f_'+k,f?'1':'0');}catch(e){}};
 P7.all=k=>{window.__p7open=window.__p7open||{};window.__p7open[k]=!window.__p7open[k];renderHome();};
 const fieldOff=()=>window.EX_FIELD_CLOCK===false;
+/* Baruch 10/28 23:36: all crews work 7 AM – 6 PM */
+const workHours=()=>window.EX_WORK_HOURS||(tt('7:00 AM')+' – '+tt('6:00 PM'));
+const jobPhase=(s,c)=>{const p=(s&&s.phase)||(c&&c.type==='finish'?'finish':'rough');return p==='finish'?'Finishing':'Rough';};
+window.EX_jobPhase=jobPhase;window.EX_workHours=workHours;
 function card(k,icon,col,title,n,rows,lim,extra,red){if(!rows.length&&!extra)return '';const show=open_(k)?rows:rows.slice(0,lim);
   return '<div class="p7c'+(fold(k)?' fold':'')+'" data-k="'+k+'"><div class="p7h" onclick="P7.fold(\''+k+'\')"><span class="ic" style="background:'+col+'1f;color:'+col+'">'+icon+'</span><b>'+esc(tt(title))+'</b>'+(n!=null?'<span class="n'+(red?' r':'')+'">'+n+'</span>':'')+'<span class="ch">▾</span></div>'
     +'<div class="bd">'+(extra||'')+show.join('')+(rows.length>lim?'<div class="p7more" onclick="P7.all(\''+k+'\')">'+(open_(k)?esc(tt('Show less')):esc(tt('Show all'))+' ('+rows.length+')')+'</div>':'')+'</div></div>';}
@@ -177,6 +181,13 @@ function crewCard(day){const k=dkey(day);const isT=day.toDateString()===new Date
     if(!sl){if(day.getDay()!==6)rows.push('<div class="p7r one" onclick="goTab(\'sched\')"><div class="w"><b>'+esc(c.name)+'</b><small>'+guys.map(e=>esc(e.name.split(' ')[0])).join(', ')+'</small></div><span class="pill bad">'+esc(tt('No job'))+'</span></div>');return;}
     out++;const inN=isT&&!fieldOff()?guys.filter(e=>(D.punches||[]).some(p=>p.who===e.id&&!p.out&&new Date(p.in).toDateString()===td)).length:null;
     rows.push('<div class="p7r one" onclick="'+(own?'goTab(\'sched\')':'openCrew(\''+jsq(c.id)+'\')')+'"><div class="w"><b>'+esc(own?short(siteName(sl.site||'')):c.name)+'</b>'+(sl.time?' <span style="color:var(--g4);font-size:12.5px">'+esc(sl.time)+'</span>':'')+'<small>'+(own?guys.map(e=>esc(e.name.split(' ')[0])+(e.lead?' ★':'')).join(', '):esc(sl.site?short(siteName(sl.site)):(tt('Several jobs'))))+'</small></div>'+(inN!=null?'<span class="pill '+(inN===guys.length?'ok':inN?'am':'bad')+'">'+inN+'/'+guys.length+'</span>':'')+'</div>');});
+  if(own&&isT){const c=(own?[(D.crews||[]).find(c=>c.id===me_.crew)]:[])[0]||{};const sl=me_.crew?schedDay(me_.crew+'|'+k):null;const st=sl&&(D.sites||[]).find(x=>x.id===sl.site);
+    const guys=(D.emps||[]).filter(e=>e.crew===me_.crew&&!e.inactive);
+    const big=sl&&st?'<div class="p9job" onclick="openFolder(\''+jsq(st.id)+'\')"><div class="a">'+esc(st.name.split(',')[0])+'</div><div class="m">'+esc(tt(jobPhase(st,c)))+' · '+esc(workHours())+'</div>'
+        +'<div class="g">'+guys.map(e=>'<span>'+esc(e.name.split(' ')[0])+(e.lead?' ★':'')+'</span>').join('')+'</div>'
+        +'<div class="b"><a href="'+esc(safeHref(gmapsDir(st)))+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">'+esc(tt('Directions'))+'</a><button onclick="event.stopPropagation();openFolder(\''+jsq(st.id)+'\')">'+esc(tt('Open job'))+'</button></div></div>'
+      :'<div class="p7empty">'+esc(tt(new Date().getDay()===6?'No work today.':'No job scheduled yet — ask your crew leader.'))+'</div>';
+    return card('myjob',IC('pin')||tabIcon('sched'),'#9b51e0','My job today',null,[],0,big,false);}
   if(own)return card(isT?'myjob':'myjobT',IC('cal')||tabIcon('sched'),'#9b51e0',isT?'My job today':'My job tomorrow',null,rows,6,rows.length?'':'<div class="p7empty">'+esc(tt('No crew assigned.'))+'</div>',false);
   return card(isT?'crews':'crewsT',IC('cal')||tabIcon('sched'),'#9b51e0',isT?'Crews today':'Crews tomorrow',out+'/'+rows.length,rows,6,'',rows.some(r=>r.includes('pill bad'))&&!isT);}
 function onsiteCard(){const td=new Date().toDateString();const hr=new Date().getHours();const live=(D.punches||[]).filter(p=>!p.out&&new Date(p.in).toDateString()===td&&(D.emps||[]).some(e=>e.id===p.who));
@@ -214,7 +225,7 @@ function hubHome(m,el,att){const d=new Date();const hr=d.getHours();const al=all
   const order=m.role==='worker'?['crews','tasks','crewsT','meets']:hr<11?['crews','onsite','tasks','meets','mat']:hr<16?['tasks','onsite','meets','crews','mat']:['tasks','crewsT','meets','mat','onsite'];
   let toq='';try{toq=typeof timeOffQueue==='function'?timeOffQueue():'';}catch(e){}
   el.innerHTML='<div id="p5hero"><img src="'+(document.documentElement.getAttribute('data-theme')==='dark'||(!document.documentElement.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches)?'logo-dark.svg':'logo-light.svg')+'" alt="Electrix"></div>'
-   +'<button id="p7date" onclick="goTab(\'cal\')"><span class="cal"><i>'+esc(d.toLocaleDateString(LOC(),{month:'short'}))+'</i><b>'+d.getDate()+'</b></span><span><span class="d">'+esc(d.toLocaleDateString(LOC(),{weekday:'long',month:'long',day:'numeric'}))+'</span><h2>'+esc(greet)+', '+esc(String(m.name||'').split(' ')[0])+'</h2></span><span class="go">›</span></button>'
+   +'<button id="p7date" onclick="goTab(\''+(m.role==='worker'?'sched':'cal')+'\')"><span class="cal"><i>'+esc(d.toLocaleDateString(LOC(),{month:'short'}))+'</i><b>'+d.getDate()+'</b></span><span><span class="d">'+esc(d.toLocaleDateString(LOC(),{weekday:'long',month:'long',day:'numeric'}))+'</span><h2>'+esc(greet)+', '+esc(String(m.name||'').split(' ')[0])+'</h2></span><span class="go">›</span></button>'
    +nums(m,al)+toq+attCard(att||[])+order.map(k=>{try{return C[k]();}catch(e){console.error('p7 card',k,e);return '';}}).join('');}
 if(typeof window.renderHome==='function'){const _rh=window.renderHome;window.renderHome=function(){const m=M();const el=$('homeBody');
   if(!m||!el||!hubRole(m))return _rh.apply(this,arguments);
