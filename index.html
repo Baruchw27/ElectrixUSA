@@ -10,10 +10,10 @@
 html.exboot .top,html.exboot .pg,html.exboot .tabs,html.exboot #p2fab,html.exboot #p7fm,html.exboot #p8pin{visibility:hidden!important}
 html.exboot body{background:#f2f2f7 url(logo-light.svg) center 42%/min(62%,300px) no-repeat!important}
 @media (prefers-color-scheme:dark){html.exboot body{background:#000 url(logo-dark.svg) center 42%/min(62%,300px) no-repeat!important}}</style>
-<script>window.EX_VER='vg2x1028';</script><script src="config.js"></script>
+<script>window.EX_VER='vg2y1028';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vg2x1028"></script>
-<script src="extras.js?vg2x1028"></script>
+<script src="sync.js?vg2y1028"></script>
+<script src="extras.js?vg2y1028"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -1321,14 +1321,16 @@ function visibleJobs(){
 
 // ───────────── ROLE ─────────────
 function exIsOwner(){const r=(D.emps||[]).find(e=>e.id===window.EX_ME);return !!r&&r.role==='owner';}
+/* Baruch 10/28 22:48: Shia (office, viewAs) can switch to anyone at the top right, like the owner */
+function exCanViewAs(){const r=(D.emps||[]).find(e=>e.id===window.EX_ME);return !!r&&(r.role==='owner'||(r.role==='office'&&!!r.viewAs));}
 function exViewBar(){let b=document.getElementById('exViewAs');const on=window.EX_REAL&&window.EX_ME&&D.role!==window.EX_ME;if(!on){if(b)b.remove();return;}if(!b){b=document.createElement('div');b.id='exViewAs';b.style.cssText='position:sticky;top:0;z-index:300;background:#D53C36;color:#fff;font-size:14px;font-weight:600;padding:9px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px';document.body.prepend(b);}
   b.innerHTML='<span>👁 '+t('Viewing the app as')+' '+esc(nameOf(D.role))+'</span><button onclick="setRole(window.EX_ME)" style="border:0;background:#fff;color:#D53C36;font-weight:700;border-radius:99px;padding:6px 12px;font-size:13px">'+t('Back to me')+'</button>';}
 function renderRoleSel(){
-  const s=document.getElementById('roleSel');if(window.EX_REAL){exViewBar();if(!exIsOwner()){const m=me();s.innerHTML='<option>'+esc(m?m.name:'')+'</option>';s.disabled=true;return;}s.disabled=false;}
+  const s=document.getElementById('roleSel');if(window.EX_REAL){exViewBar();if(!exCanViewAs()){const m=me();s.innerHTML='<option>'+esc(m?m.name:'')+'</option>';s.disabled=true;return;}s.disabled=false;}
   s.innerHTML=D.emps.filter(e=>!e.inactive||e.id===D.role).map(e=>`<option value="${e.id}">${esc(e.name)} — ${e.role==='owner'?'Owner':e.role==='manager'?'Site mgr':e.role==='office'?(e.all?'Office — all access':(e.title||'Office')):e.lead?'Crew leader ★':'Worker'}</option>`).join('');
   s.value=D.role;
 }
-function setRole(v){if(window.EX_REAL&&!exIsOwner())return;try{localStorage.setItem(SESS,v);}catch(e){}moneyView='receipts';chatWith=null;if(mediaRec)voiceStop();jobFilter='all';jobView='open';doneDays=7;schedView='today';boardDay=0;D.role=v;save();renderAll();const m=me();if(m.role==='worker'&&!noClock(m))document.querySelector(`.tab[onclick*="'punch'"]`).click();else if(m.role==='worker')goTab('jobs');if(m.role==='office'&&!m.all)goTab(m.title==='Material'?'mat':m.title==='Payroll'?'hours':m.title==='Bookkeeper'?'exp':'jobs');if(m.role==='owner'||m.all)goTab('home');navReset();}
+function setRole(v){if(window.EX_REAL&&!exCanViewAs())return;try{localStorage.setItem(SESS,v);}catch(e){}moneyView='receipts';chatWith=null;if(mediaRec)voiceStop();jobFilter='all';jobView='open';doneDays=7;schedView='today';boardDay=0;D.role=v;save();renderAll();const m=me();if(m.role==='worker'&&!noClock(m))document.querySelector(`.tab[onclick*="'punch'"]`).click();else if(m.role==='worker')goTab('jobs');if(m.role==='office'&&!m.all)goTab(m.title==='Material'?'mat':m.title==='Payroll'?'hours':m.title==='Bookkeeper'?'exp':'jobs');if(m.role==='owner'||m.all)goTab('home');navReset();}
 
 // ───────────── JOBS ─────────────
 let jobFilter='all',jobView='open',doneDays=7;
@@ -4985,7 +4987,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vg2x1028"></script><script src="scanner-v2-ui.js?vg2x1028"></script><script src="sched-v21.js?vg2x1028"></script><script src="p2.js?vg2x1028"></script><script src="p4.js?vg2x1028"></script><script src="p5.js?vg2x1028"></script><script src="p6.js?vg2x1028"></script><script src="p7.js?vg2x1028"></script><script src="p8.js?vg2x1028"></script><script src="p9.js?vg2x1028"></script>
+<script src="scanner-v2.js?vg2y1028"></script><script src="scanner-v2-ui.js?vg2y1028"></script><script src="sched-v21.js?vg2y1028"></script><script src="p2.js?vg2y1028"></script><script src="p4.js?vg2y1028"></script><script src="p5.js?vg2y1028"></script><script src="p6.js?vg2y1028"></script><script src="p7.js?vg2y1028"></script><script src="p8.js?vg2y1028"></script><script src="p9.js?vg2y1028"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
