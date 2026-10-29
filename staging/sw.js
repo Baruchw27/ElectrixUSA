@@ -1,5 +1,5 @@
 // Offline support: the app opens even with no signal; data waits on the phone and syncs later.
-const C='electrix-staging-v47'; // STAGING: own cache name
+const C='electrix-staging-v48'; // STAGING: own cache name
 const SHELL=['./','index.html','sync.js','extras.js','config.js','manifest.json','icon-192.png','icon-512.png','apple-touch-icon.png','logo-light.svg','logo-dark.svg','scanner-v2.js','scanner-v2-ui.js','catalog-real.json','sched-v21.js','p2.js','p4.js','p5.js','p6.js','p7.js','p8.js','p9.js'];
 // H49: the scanner's barcode reader (ZXing) and label reader (Tesseract: script, worker, engine, English data) are saved
 // when the app is installed/updated while online — so a phone that never scanned before still scans with no signal.
