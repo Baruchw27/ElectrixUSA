@@ -36,7 +36,7 @@ zap:'<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
 bulb:'<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5M9 18h6M10 22h4"/>',
 pipe:'<path d="M3 7h13a5 5 0 0 1 5 5v9"/><path d="M3 13h9a3 3 0 0 1 3 3v5"/>',
 wifi:'<path d="M12 20h.01M2 8.82a15 15 0 0 1 20 0M5 12.86a10 10 0 0 1 14 0M8.5 16.43a5 5 0 0 1 7 0"/>',
-tape:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/>',
+wrench:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',tape:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/>',
 star:'<path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/>',
 pen:'<path d="M21.2 6.8a2.8 2.8 0 0 0-4-4L3.8 16.2a2 2 0 0 0-.5.8l-1.3 4.4a.5.5 0 0 0 .6.6l4.4-1.3a2 2 0 0 0 .8-.5z"/>',
 kit:'<path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/>',
@@ -83,7 +83,7 @@ const S_ES={"New request":"Nuevo pedido","Open":"Abiertos","Done":"Terminados","
 "Missing at the job":"Falta en la obra","Arrived — all here":"Llegó — todo completo","Photos":"Fotos","Voice doesn't work on this phone — type it or use the keyboard mic.":"La voz no funciona en este teléfono — escríbelo o usa el micrófono del teclado.",
 "Nothing found":"No se encontró nada","More":"Más","Other":"Otros","Show English":"Ver en inglés","No job picked":"Sin trabajo","Garage / van stock":"Garaje / camioneta",
 "Not for a job":"No es para un trabajo","Plastic":"Plástico","Metal":"Metal","Order again added":"Pedir otra vez agregó","Kit":"Kit",
-"Wire & cable":"Cable y alambre","Boxes & covers":"Cajas y tapas","Devices & plates":"Dispositivos y tapas","Panels & breakers":"Paneles y breakers",
+"Wire & cable":"Cable y alambre","Boxes & rings":"Cajas y anillos","Lighting":"Iluminación","Fittings & fasteners":"Conectores y fijaciones","Tape & misc":"Cinta y varios","Fittings":"Conectores","Switches, outlets":"Switches, tomacorrientes","Type it instead":"Escribirlo","Say what you need, e.g. “40 1-gang boxes, 3 rolls of 12/2”":"Di lo que necesitas, ej. “40 cajas de 1 gang, 3 rollos de 12/2”","Say it again":"Decirlo otra vez","Show {n} more":"Ver {n} más","Show less":"Ver menos","Boxes & covers":"Cajas y tapas","Devices & plates":"Dispositivos y tapas","Panels & breakers":"Paneles y breakers",
 "Lighting & fans":"Luces y abanicos","Conduit & fittings":"Tubería y conectores","Low voltage":"Bajo voltaje","Tape & supplies":"Cinta y varios",
 "Wire":"Cable","Boxes":"Cajas","Devices":"Dispositivos","Breakers":"Breakers","Lights":"Luces","Conduit":"Tubería","Low volt":"Bajo volt.","Misc":"Varios",
 "pc":"pza","ft":"pies","coil":"rollo","roll":"rollo","reel":"carrete","spool":"carrete","box":"caja","pack":"paquete","bag":"bolsa","stick":"tramo","pair":"par","set":"juego","kit":"kit","tube":"tubo","bottle":"botella","can":"lata","sheet":"hoja",
@@ -116,13 +116,13 @@ const vis=s=>{try{return mcVis(s)}catch(e){return !!s&&!s.hidden&&!s.mergedInto}
 const allSt=()=>(D.stock||[]).filter(s=>s&&s.name&&vis(s));
 const isFt=s=>{try{return mcIsFeet(s)}catch(e){return (s.unit||'')==='ft'}};
 const GROUPS=[['wire','Wire & cable','Wire','wire',/romex|uf-b|service & feeder|building wire|mc & ac|commercial wire/i],
-['box','Boxes & covers','Boxes','box',/^boxes|commercial boxes/i],
-['dev','Devices & plates','Devices','plug',/receptacle|switches|wall plates|commercial lighting, devices/i],
+['box','Boxes & rings','Boxes','box',/^boxes|commercial boxes/i],
+['dev','Devices','Devices','plug',/receptacle|switches|wall plates|commercial lighting, devices|low voltage|fire alarm/i],
 ['pan','Panels & breakers','Breakers','zap',/breaker|panels|meters|disconnects|3-phase|generator|grounding/i],
-['light','Lighting & fans','Lights','bulb',/lighting|led tape|smoke|fans/i],
-['cond','Conduit & fittings','Conduit','pipe',/conduit|rigid|strut|raceway/i],
-['lv','Low voltage','Low volt','wifi',/low voltage|fire alarm/i],
-['misc','Tape & supplies','Misc','tape',/./]];
+['light','Lighting','Lighting','bulb',/lighting|led tape|smoke|fans/i],
+['cond','Fittings & fasteners','Fittings','wrench',/conduit|rigid|strut|raceway|staples|connectors & splicing/i],
+['misc','Tape & misc','Misc','tape',/./]];
+const GSUB={dev:'Switches, outlets',pan:'Leviton'};
 const grpOf=s=>{const c=String(s.cat||'');for(const g of GROUPS){if(g[0]!=='misc'&&g[4].test(c))return g[0];}return 'misc';};
 let grpCache=null,grpSig='';
 function groups(){const L0=allSt();const sig=L0.length+'|'+((D.stock||[]).length);if(grpCache&&grpSig===sig)return grpCache;const G={};GROUPS.forEach(g=>G[g[0]]=[]);L0.forEach(s=>G[grpOf(s)].push(s));grpCache=G;grpSig=sig;return G;}
@@ -230,15 +230,17 @@ function myUsual(){const m=M();const c={};(D.mats||[]).forEach(r=>{if(!r||r.from
   return L0;}
 function jobCard(){const nm=JOB.site?sName(JOB.site):JOB.addr;const sub=JOB.site?[L(JOB.sub||"Today's job"),phaseOf(JOB.site)].filter(Boolean).join(' · '):JOB.addr?L('Use this address'):L('Which job?');
   return '<button class="p11job" onclick="P11.jobPick()"><span class="p11ji">'+I('pin',19)+'</span><span class="p11w"><b>'+E(nm||L('Pick the job'))+'</b><small>'+E(sub)+'</small></span><span class="p11lnk">'+E(L('Change'))+'</span></button>';}
-function kitsH(){const T=(D.mtpl||[]).filter(x=>x&&(x.items||[]).length);if(!T.length)return '';
+function kitsH(){const ORD=Object.keys(KSH);const T=(D.mtpl||[]).filter(x=>x&&(x.items||[]).length).sort((a,b)=>{const i=ORD.indexOf(a.name),j=ORD.indexOf(b.name);return (i<0?99:i)-(j<0?99:j);});if(!T.length)return '';
   return '<div class="p11sec">'+E(L('Kits'))+'</div><div class="p11kits">'+T.map(x=>'<button class="p11kit" onclick="P11.kit(\''+J(x.id)+'\')">'+I('kit',17)+'<span><b>'+E(kitName(x))+'</b><small>'+(x.items||[]).length+' '+E(L('items'))+'</small></span></button>').join('')+'</div>';}
-function kitName(x){const n=String(x.name||'');if(!ES_ON())return n;return ({'Residential rough-in':'Rough residencial','Residential finish':'Finish residencial','Complete house (rough + finish)':'Casa completa (rough + finish)','Apartment (one unit)':'Apartamento (una unidad)','Renovation (old work)':'Renovación (old work)','Service upgrade (200A)':'Cambio de servicio (200A)','Panel replacement':'Cambio de panel','Commercial job (light commercial)':'Trabajo comercial (ligero)'})[n]||n;}
+const KSH={'Residential rough-in':['Rough-in','Rough'],'Residential finish':['Finish','Finish'],'Service upgrade (200A)':['Service','Servicio'],'Complete house (rough + finish)':['Whole house','Casa completa'],'Apartment (one unit)':['Apartment','Apartamento'],'Renovation (old work)':['Old work','Old work'],'Panel replacement':['Panel swap','Cambio de panel'],'Commercial job (light commercial)':['Commercial','Comercial']};
+function kitName(x){const n=String(x.name||'');const k=KSH[n];return k?k[ES_ON()?1:0]:n;}
+function kitFull(x){const n=String(x.name||'');if(!ES_ON())return n;return ({'Residential rough-in':'Rough residencial','Residential finish':'Finish residencial','Complete house (rough + finish)':'Casa completa (rough + finish)','Apartment (one unit)':'Apartamento (una unidad)','Renovation (old work)':'Renovación (old work)','Service upgrade (200A)':'Cambio de servicio (200A)','Panel replacement':'Cambio de panel','Commercial job (light commercial)':'Trabajo comercial (ligero)'})[n]||n;}
 function searchBox(id,ph,val){return '<div class="p11srch">'+I('srch',18)+'<input id="'+id+'" class="p11in" type="text" inputmode="search" enterkeyhint="search" data-nomic="1" autocomplete="off" placeholder="'+E(ph)+'" value="'+E(val||'')+'" oninput="P11.find(this.value,\''+id+'\')"><button class="p11mic" onclick="P11.dict(\''+id+'\')" aria-label="'+E(L('Say it'))+'">'+I('mic',18)+'</button></div>';}
 function resultsH(q){const R=search(q,40);return R.length?'<div class="p11list">'+R.map(itemRow).join('')+'</div>':'<div class="p11empty sm">'+E(L('Nothing found'))+'<button class="p11btn p11ghost" onclick="P11.custom(\''+J(q)+'\')">'+I('pen',17)+E(L('Something else'))+': '+E(q)+'</button></div>';}
 P11.newReq=function(re){const m=M();if(!m)return;esLoad();
   if(!re){if(!loadCart()||(!JOB.site&&!JOB.addr)){const d=defaultJob();if(!JOB.site&&!JOB.addr)JOB=d;}else if(!CART.length){JOB=defaultJob();}}
   const body=hdr(L('New request'),'x',"P11.closeNew()")+'<div class="p11body">'+jobCard()
-   +'<div class="p11trio"><button onclick="P11.say()"><span class="p11ic">'+I('mic',21)+'</span>'+E(L('Say it'))+'</button><button onclick="P11.photo()"><span class="p11ic">'+I('cam',21)+'</span>'+E(L('Photo'))+'</button><button onclick="P11.again()"><span class="p11ic">'+I('rep',21)+'</span>'+E(L('Order again'))+'</button></div>'
+   +'<div class="p11trio p11duo"><button onclick="P11.say()"><span class="p11ic">'+I('mic',21)+'</span>'+E(L('Say it'))+'</button><button onclick="P11.again()"><span class="p11ic">'+I('rep',21)+'</span>'+E(L('Order again'))+'</button></div>'
    +kitsH()+'<div style="margin-top:14px">'+searchBox('p11bq',L('Search 12/2, GFI, 4 square…'),bq)+'</div><div id="p11bres">'+(bq?resultsH(bq):usualH())+'</div>'
    +'<button class="p11link" onclick="P11.all()">'+E(L('Browse all materials'))+'</button><div style="height:110px"></div></div>'+cartBar();
   const sc=re&&$('m-p11b')?($('m-p11b').querySelector('.p11body')||{}).scrollTop:0;open('m-p11b',body);if(sc){const b=$('m-p11b').querySelector('.p11body');if(b)b.scrollTop=sc;}};
@@ -275,7 +277,7 @@ P11.again=function(){const m=M();const L0=(D.mats||[]).filter(r=>r&&r.from===m.i
 let kitSel=null;
 P11.kit=function(id){const x=(D.mtpl||[]).find(y=>y.id===id);if(!x)return;kitSel={id,rows:(x.items||[]).map(it=>{const s=it.sid?gst(it.sid):null;return {sid:s&&vis(s)?s.id:null,name:s?s.name:it.t,unit:it.u||(s&&s.unit)||'pc',n:num(it.q)||1,on:true};}).filter(r=>r.name)};drawKit();};
 function drawKit(){const x=(D.mtpl||[]).find(y=>y.id===kitSel.id)||{};const n=kitSel.rows.filter(r=>r.on).length;
-  const h=hdr(kitName(x),'back',"P11.close('m-p11k')")+'<div class="p11body"><div class="p11meta" style="margin:0 2px 10px">'+E(L("Uncheck what you don't need, change amounts"))+'</div><div class="p11list">'+kitSel.rows.map((r,i)=>{const nm=nmOf(r.name);
+  const h=hdr(kitFull(x),'back',"P11.close('m-p11k')")+'<div class="p11body"><div class="p11meta" style="margin:0 2px 10px">'+E(L("Uncheck what you don't need, change amounts"))+'</div><div class="p11list">'+kitSel.rows.map((r,i)=>{const nm=nmOf(r.name);
     return '<div class="p11it'+(r.on?'':' dim')+'"><button class="p11ck'+(r.on?' on':'')+'" onclick="P11.kitT('+i+')" aria-label="✓">'+(r.on?I('chk',15,2.6):'')+'</button><div class="p11w"><b>'+E(nm.a)+'</b>'+(nm.b?'<small>'+E(nm.b)+'</small>':'')+'</div><div class="p11stp"><button onclick="P11.kitQ('+i+','+Math.max(0,r.n-1)+')">'+I('minus',16,2.2)+'</button><input data-nomic="1" inputmode="decimal" value="'+E(fmt(r.n))+'" onchange="P11.kitQ('+i+',this.value)"><button onclick="P11.kitQ('+i+','+(r.n+1)+')">'+I('plus',16,2.2)+'</button></div></div>';}).join('')+'</div><div style="height:100px"></div></div>'
    +'<div class="p11foot"><button class="p11btn" onclick="P11.kitAdd()"'+(n?'':' disabled')+'>'+E(L('Add {n} to my list').replace('{n}',n))+'</button></div>';
   open('m-p11k',h);}
@@ -284,7 +286,7 @@ P11.kitAdd=()=>{let n=0;kitSel.rows.filter(r=>r.on&&r.n>0).forEach(r=>{if(r.sid)
 
 /* ---------- C + D: browse ---------- */
 let cq='',dq='',curG='wire';
-function tilesH(){const G=groups();return '<div class="p11sec">'+E(L('Categories'))+'</div><div class="p11grid">'+GROUPS.map(g=>'<button class="p11tile" onclick="P11.cat(\''+g[0]+'\')"><span class="p11ic">'+I(g[3],20)+'</span><b>'+E(L(g[1]))+'</b><small>'+G[g[0]].length+' '+E(L('items'))+'</small></button>').join('')
+function tilesH(){const G=groups();return '<div class="p11sec">'+E(L('Categories'))+'</div><div class="p11grid">'+GROUPS.map(g=>'<button class="p11tile" onclick="P11.cat(\''+g[0]+'\')"><span class="p11ic">'+I(g[3],20)+'</span><b>'+E(L(g[1]))+'</b><small>'+E(GSUB[g[0]]?L(GSUB[g[0]]):G[g[0]].length+' '+L('items'))+'</small></button>').join('')
   +'<button class="p11tile" onclick="P11.custom(\'\')"><span class="p11ic">'+I('pen',20)+'</span><b>'+E(L('Something else'))+'</b><small>'+E(L('Type it, add a photo'))+'</small></button></div>';}
 P11.all=function(re){const h=hdr(L('All materials'),'back',"P11.close('m-p11c')")+'<div class="p11body">'+searchBox('p11cq',L('Search all materials'),cq)+'<div id="p11cres">'+(cq?resultsH(cq):tilesH())+'</div><div style="height:110px"></div></div>'+cartBar();open('m-p11c',h);};
 P11.cat=function(g,re){curG=g||curG;if(!re)dq='';const gi=GROUPS.find(x=>x[0]===curG)||GROUPS[0];
@@ -312,25 +314,23 @@ P11.cuAdd=()=>{const n=(($('p11oN')||{}).value||'').trim();if(!n)return;addCusto
 
 /* ---------- E: say it / photo ---------- */
 let rec=null,listening=false,eMode='say';
-P11.say=function(){eMode='say';SPOKEN='';FOUND=[];eNote='';ePhoto='';drawE(true);setTimeout(()=>P11.listen(),150);};
-P11.photo=function(){eMode='photo';const h='<div class="p11sh"><div class="p11grab"></div><h2>'+E(L('Photo'))+'</h2><div class="p11meta" style="margin-bottom:12px">'+E(L('Photo of a list'))+' · '+E(L('What is it?'))+'</div>'
-  +'<label class="p11btn">'+I('cam',18)+E(L('Take a photo'))+'<input type="file" accept="image/*" capture="environment" hidden onchange="P11.gotPhoto(this)"></label>'
-  +'<label class="p11btn p11ghost" style="margin-top:10px">'+I('img',18)+E(L('Choose from gallery'))+'<input type="file" accept="image/*" hidden onchange="P11.gotPhoto(this)"></label></div>';open('m-p11p',h,true);};
-let ePhoto='',eBusy=false,eNote='';
-P11.gotPhoto=function(inp){const f=(inp.files||[])[0];if(!f)return;close('m-p11p');shrink(f,async d=>{ePhoto=d;PHOTOS.push({d,name:f.name||'photo.jpg'});FOUND=[];eBusy=true;eNote='';SPOKEN='';drawE(true);
-  const items=await aiRead('',d);eBusy=false;if(items&&items.length){FOUND=items.map(matchOne);}else{eNote=L("Couldn't read the photo — it is attached, Menachem will read it.");}drawE();});};
-function drawE(force){if(!force&&!opened('m-p11e'))return;const n=FOUND.filter(f=>f.on!==false).length;
-  let h=hdr(L('Check the list'),'back',"P11.stopE()")+'<div class="p11body">';
-  if(eMode==='say'){h+='<div class="p11said"><button class="p11bigmic'+(listening?' on':'')+'" onclick="P11.listen()" aria-label="'+E(L('Say it'))+'">'+I('mic',30,1.8)+'</button><div class="p11w"><small>'+E(listening?L('Listening…'):SPOKEN?L('You said'):L('Tap to talk'))+'</small><q>'+(SPOKEN?'“'+E(SPOKEN)+'”':'')+'</q></div></div>'
-    +'<div class="p11srch p11ta"><textarea id="p11et" data-nomic="1" class="p11in" rows="2" placeholder="'+E(L('Type what you need, e.g. 40 1-gang boxes, 3 rolls 12/2'))+'">'+E(SPOKEN)+'</textarea><button class="p11mini" onclick="P11.readText()">'+E(L('Read it'))+'</button></div>';}
-  else{h+='<div class="p11said"><span class="p11thumb">'+(ePhoto?'<img src="'+E(ePhoto)+'">':I('img',22))+'</span><div class="p11w"><small>'+E(L('Photo of a list'))+'</small><q>'+E(eBusy?L('Reading…'):(FOUND.length?FOUND.length+' '+L('items'):''))+'</q></div></div>';}
-  if(eBusy)h+='<div class="p11empty sm"><span class="p11spin"></span>'+E(L('Reading…'))+'</div>';
-  if(eNote)h+='<div class="p11note">'+I('img',16)+'<span>'+E(eNote)+'</span></div>';
+P11.say=function(){eMode='say';eType=false;SPOKEN='';FOUND=[];eNote='';ePhoto='';drawE(true);setTimeout(()=>P11.listen(),150);};
+let eType=false,ePhoto='',eBusy=false,eNote='';
+function drawE(force){if(!force&&!opened('m-p11e'))return;const n=FOUND.filter(f=>f.on!==false).length;const res=FOUND.length||(SPOKEN&&!listening);
+  let h=hdr(L(res?'Check the list':'Say it'),'back',"P11.stopE()")+'<div class="p11body">';
+  if(!res&&!eBusy){/* listening (approved idea 4): one big mic */
+    h+='<div class="p11listen"><button class="p11bigmic'+(listening?' on':'')+'" onclick="P11.listen()" aria-label="'+E(L('Say it'))+'">'+I('mic',44,1.7)+'</button><div class="p11lt">'+E(listening?L('Listening…'):L('Tap to talk'))+'</div><div class="p11meta p11lq">'+(SPOKEN?'“'+E(SPOKEN)+'”':E(L('Say what you need, e.g. “40 1-gang boxes, 3 rolls of 12/2”')))+'</div>'+(listening?'<div class="p11meta">'+E(L('Tap when you finish'))+'</div>':'')+'</div>';}
+  else{h+='<div class="p11said"><span class="p11ic sm">'+I('mic',18)+'</span><div class="p11w"><small>'+E(L('You said'))+'</small><q>“'+E(SPOKEN)+'”</q></div><button class="p11hb" onclick="P11.again2()" aria-label="'+E(L('Say it again'))+'">'+I('rep',18)+'</button></div>';}
+  if(eType||(!res&&!listening))h+='<div class="p11srch p11ta">'+I('pen',18)+'<textarea id="p11et" data-nomic="1" class="p11in" rows="2" placeholder="'+E(L('Or type it here'))+'">'+E(eType?SPOKEN:'')+'</textarea><button class="p11mini" onclick="P11.readText()">'+E(L('Read it'))+'</button></div>';
+  else if(res)h+='<button class="p11quiet" onclick="P11.typeIt()">'+I('pen',14)+E(L('Type it instead'))+'</button>';
+  if(eBusy)h+='<div class="p11empty sm"><span class="p11spin"></span></div>';
   if(FOUND.length){h+='<div class="p11sec">'+E(L('Found'))+' '+FOUND.length+' — '+E(L('fix anything that is off'))+'</div><div class="p11list">'+FOUND.map((f,i)=>{
-     if(f.sid){const nm=nmOf(gst(f.sid).name);return '<div class="p11it'+(f.on===false?' dim':'')+'"><div class="p11w" onclick="P11.alt('+i+')"><b>'+E(nm.a)+'</b><small>'+E(nm.b||f.said||'')+'</small></div><div class="p11stp"><button onclick="P11.fq('+i+','+Math.max(0,f.n-1)+')">'+I('minus',16,2.2)+'</button><input data-nomic="1" inputmode="decimal" value="'+E(fmt(f.n))+'" onchange="P11.fq('+i+',this.value)"><button onclick="P11.fq('+i+','+(f.n+1)+')">'+I('plus',16,2.2)+'</button></div></div>'+(f.open?altH(i):'');}
+     if(f.sid){const nm=nmOf(gst(f.sid).name);return '<div class="p11it'+(f.on===false?' dim':'')+'"><div class="p11w" onclick="P11.alt('+i+')"><b>'+E(nm.a)+'</b>'+(nm.b?'<small>'+E(nm.b)+'</small>':'')+'</div><div class="p11stp"><button onclick="P11.fq('+i+','+Math.max(0,f.n-1)+')">'+I('minus',16,2.2)+'</button><input data-nomic="1" inputmode="decimal" value="'+E(fmt(f.n))+'" onchange="P11.fq('+i+',this.value)"><button onclick="P11.fq('+i+','+(f.n+1)+')">'+I('plus',16,2.2)+'</button></div></div>'+(f.open?altH(i):'');}
      return '<div class="p11it p11warn"><div class="p11w" onclick="P11.alt('+i+')"><b>'+E(f.said)+'?</b><small>'+E(L('Not sure — tap to pick the right one'))+'</small></div><span class="p11wi">'+I('alert',20)+'</span></div>'+(f.open?altH(i):'');}).join('')+'</div>';}
-  h+='<div style="height:110px"></div></div>'+(n||(eMode==='photo'&&ePhoto)?'<div class="p11foot"><button class="p11btn" onclick="P11.eAdd()">'+E(n?L('Add {n} to my list').replace('{n}',n):L('Add to my list'))+'</button></div>':'');
+  h+='<div style="height:110px"></div></div>'+(n?'<div class="p11foot"><button class="p11btn" onclick="P11.eAdd()">'+E(L('Add {n} to my list').replace('{n}',n))+'</button></div>':'');
   open('m-p11e',h);}
+P11.typeIt=()=>{eType=true;drawE();setTimeout(()=>{const t=$('p11et');if(t)t.focus();},60);};
+P11.again2=()=>{eType=false;SPOKEN='';FOUND=[];drawE();P11.listen();};
 function altH(i){const f=FOUND[i];const A=(f.alts||[]).slice(0,6);return '<div class="p11alts"><div class="p11meta">'+E(L('Pick the right one'))+'</div>'+A.map(s=>'<button onclick="P11.pickAlt('+i+',\''+J(s.id)+'\')">'+E(nmOf(s.name).a)+'</button>').join('')+'<button class="p11k" onclick="P11.keepAs('+i+')">'+E(L('Keep as written'))+': “'+E(f.said)+'”</button></div>';}
 P11.alt=i=>{FOUND[i].open=!FOUND[i].open;drawE();};
 P11.pickAlt=(i,sid)=>{FOUND[i].sid=sid;FOUND[i].open=false;FOUND[i].on=true;drawE();};
@@ -341,11 +341,11 @@ P11.eAdd=()=>{try{if(rec&&listening)rec.abort();}catch(e){}listening=false;let n
 P11.listen=function(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast(L("Voice doesn't work on this phone — type it or use the keyboard mic."));const ta=$('p11et');if(ta)ta.focus();return;}
   if(listening&&rec){try{rec.stop();}catch(e){}return;}
   rec=new SR();rec.lang=ES_ON()?'es-US':'en-US';rec.interimResults=true;rec.continuous=false;rec.maxAlternatives=1;let fin='';
-  rec.onresult=ev=>{let s='';for(let i=0;i<ev.results.length;i++)s+=ev.results[i][0].transcript;SPOKEN=s;const q=document.querySelector('#m-p11e .p11said q');if(q)q.textContent='“'+s+'”';const ta=$('p11et');if(ta)ta.value=s;};
+  rec.onresult=ev=>{let s='';for(let i=0;i<ev.results.length;i++)s+=ev.results[i][0].transcript;SPOKEN=s;const q=document.querySelector('#m-p11e .p11lq');if(q)q.textContent='“'+s+'”';};
   rec.onend=()=>{listening=false;if(!opened('m-p11e'))return;if(SPOKEN.trim())P11.readText(SPOKEN);else drawE();};rec.onerror=()=>{listening=false;drawE();};
   try{rec.start();listening=true;drawE();}catch(e){listening=false;}};
-P11.readText=async function(txt){if(!opened('m-p11e'))return;txt=txt!=null?txt:(($('p11et')||{}).value||'');txt=String(txt).trim();if(!txt)return;SPOKEN=txt;eBusy=true;FOUND=[];drawE();
-  let items=parse(txt);const ai=await aiRead(txt,'');if(ai&&ai.length)items=ai;eBusy=false;FOUND=items.map(matchOne);drawE();};
+P11.readText=async function(txt){if(!opened('m-p11e'))return;eType=false;txt=txt!=null?txt:(($('p11et')||{}).value||'');txt=String(txt).trim();if(!txt)return;SPOKEN=txt;eBusy=true;FOUND=[];drawE();
+  let items=parse(txt);eBusy=false;FOUND=items.map(matchOne);drawE();};
 /* split what was said into items: "40 cajas de un gang, 3 rollos 12/2 y 2 cajas para abanico" */
 function parse(txt){let s=' '+norm(txt).replace(/[;\n]+/g,',')+' ';
   s=s.replace(/\b(\d+|un|uno|una|dos|tres|cuatro|one|two|three|four)\s*-?\s*(gang|polos?|poles?|vias|way)\b/g,(w,n,u)=>' '+(NUMW[n]||n)+'~'+u+' ');
@@ -365,16 +365,7 @@ function matchOne(it){const raw=norm(it.said||'').trim();let q=it.en||toEn(raw);
     let v=cov*100+Math.min(fq[s.id]||0,10)*3-String(s.name).length*0.15;if(coil&&/250ft coil/i.test(s.name))v+=8;if(size&&/romex/i.test(s.name))v+=6;if(/\bbox\b/.test(q)&&!/old work|metal|fs|weatherproof|deep|junction|4"|square/.test(q)){if(/new work/i.test(s.name))v+=12;if(/plastic/i.test(s.name))v+=4;}if(!/black|ivory|almond|gray|grey|brown|red|blue|stainless/.test(q)){if(/white/i.test(s.name))v+=5;else if(/black|ivory|almond|gray|brown|stainless/i.test(s.name))v-=4;}if(/leviton/i.test(s.name))v+=2;if(/gfci/.test(q)&&!/breaker/.test(q)&&/receptacle/i.test(s.name))v+=6;return {s,v,cov};}).sort((a,b)=>b.v-a.v);
   const best=sc[0];const sure=!!best&&best.cov>=0.99;
   return {said:it.said||it.name||'',n:Math.max(1,+it.q||1),sid:sure?best.s.id:null,alts:sc.map(x=>x.s).slice(0,8),on:true,unit:'pc'};}
-/* the AI helper (server function "ai") — only when it is switched on; otherwise the app reads it itself */
-let aiOff=false;
-async function aiRead(text,img){if(aiOff||!window.EX_sb||!window.EX_sb.functions||!navigator.onLine)return null;
-  const prompt=(img?'This is a photo an electrician took: a handwritten or printed material list, a packing slip, or a part they need. ':'An electrician said this (English or Spanish) to order material: "'+text+'". ')
-   +'List every item and quantity. Reply ONLY with JSON {"items":[{"q":number,"name":"short plain ENGLISH name an electrical supply house uses, with sizes, e.g. 1-gang new work box, 12/2 Romex 250ft coil, 20A GFCI receptacle"}]}. If you cannot tell the quantity use 1. If nothing is there return {"items":[]}.';
-  try{const body={messages:[{role:'user',content:prompt}],tier:'quick'};if(img)body.images=[{type:'image/jpeg',data:String(img).split(',')[1]||''}];
-    const r=await Promise.race([window.EX_sb.functions.invoke('ai',{body}),new Promise(res=>setTimeout(()=>res({error:{message:'timeout'}}),img?25000:9000))]);
-    if(!r||r.error){if(r&&r.error&&/switched on|503|not allowed|401/i.test(String(r.error.message||r.error.context&&r.error.context.status||'')))aiOff=true;return null;}
-    const tx=(r.data&&r.data.text)||'';const j=JSON.parse(tx.slice(tx.indexOf('{'),tx.lastIndexOf('}')+1));
-    return (j.items||[]).filter(x=>x&&x.name).map(x=>({q:+x.q||1,said:String(x.name),en:String(x.name)}));}catch(e){return null;}}
+/* photo reading and the AI helper are off until Baruch turns the AI on (10/30) */
 
 /* ---------- F: review & send ---------- */
 const WHENS=[['Now','Now','clock'],['Tomorrow morning','Tomorrow',''],['This week','This week','']];
@@ -383,14 +374,16 @@ P11.review=function(re){if(!cartN()&&!PHOTOS.length&&!re){toast(L('Your list is 
   const nm=JOB.site?sName(JOB.site):JOB.addr;
   let h='<div class="p11sh p11shbig"><div class="p11grab"></div><div class="p11rhd"><h2>'+E(L('My list'))+' · '+cartN()+' '+E(L(cartN()===1?'item':'items'))+'</h2><button class="p11hb" onclick="P11.close(\'m-p11f\')">'+I('x',20,2)+'</button></div>'
    +'<button class="p11joblink" onclick="P11.jobPick()">'+I('pin',14)+'<span>'+E(nm||L('Pick the job'))+'</span>'+I('chev',14,2)+'</button>'
-   +'<div class="p11rlist">'+CART.map(c=>{const nmx=c.sid?nmOf(c.name):{a:c.name,b:c.desc||''};const key=c.sid||'c:'+c.name;
-     return '<div class="p11it"><div class="p11w"><b>'+E(nmx.a)+(c.cu?' <span class="p11tag">'+E(L('custom'))+'</span>':'')+'</b><small>'+E([nmx.b,unitL(c.unit)].filter(Boolean).join(' · '))+'</small></div>'+stepper(key,c.n,c.sid?stepOf(gst(c.sid)):1)+'<button class="p11x" onclick="P11.q(\''+J(key)+'\',0)" aria-label="'+E(L('Remove'))+'">'+I('trash',17)+'</button></div>';}).join('')+'</div>'
+   +'<div class="p11rlist">'+CART.slice(0,fMore?999:3).map(c=>{const nmx=c.sid?nmOf(c.name):{a:c.name,b:c.desc||''};const key=c.sid||'c:'+c.name;
+     return '<div class="p11it"><div class="p11w"><b>'+E(nmx.a)+(c.cu?' <span class="p11tag">'+E(L('custom'))+'</span>':'')+'</b>'+(nmx.b?'<small>'+E(nmx.b)+'</small>':'')+'</div>'+stepper(key,c.n,c.sid?stepOf(gst(c.sid)):1)+'</div>';}).join('')+'</div>'
+   +(CART.length>3?'<button class="p11link p11l" onclick="P11.fMore()">'+E(fMore?L('Show less'):L('Show {n} more').replace('{n}',CART.length-3))+'</button>':'')
    +(PHOTOS.length?'<div class="p11sec">'+E(L('Photos'))+'</div><div class="p11thumbs">'+PHOTOS.map((p,i)=>'<span><img src="'+E(p.d)+'"><button onclick="P11.rmPhoto('+i+')">'+I('x',13,2.4)+'</button></span>').join('')+'</div>':'')
    +'<div class="p11sec">'+E(L('Needed'))+'</div><div class="p11chips">'+WHENS.map(w=>'<button class="'+(WHEN===w[0]?'on':'')+'" onclick="P11.when(\''+w[0]+'\')">'+(w[2]?I(w[2],16):'')+E(L(w[1]))+'</button>').join('')+'</div>'
    +'<div class="p11sec">'+E(L('Get it'))+'</div><div class="p11chips">'+SRCS.map(w=>'<button class="'+(SRC===w[0]?'on':'')+'" onclick="P11.src(\''+w[0]+'\')">'+I(w[2],16)+E(L(w[1]))+'</button>').join('')+'</div>'
    +'<div class="p11srch p11ta" style="margin-top:16px">'+I('note',18)+'<textarea id="p11note" class="p11in" rows="1" placeholder="'+E(L('Note for Menachem'))+'" oninput="P11.note(this.value)">'+E(NOTE)+'</textarea></div>'
    +'<button class="p11btn" id="p11send" style="margin-top:14px" onclick="P11.send()">'+E(L('Send to Menachem'))+'</button></div>';
   open('m-p11f',h,true);};
+let fMore=false;P11.fMore=()=>{fMore=!fMore;P11.review(true);};
 P11.when=v=>{WHEN=v;saveCart();P11.review(true);};P11.src=v=>{SRC=v;saveCart();P11.review(true);};P11.note=v=>{NOTE=v;saveCart();};
 P11.rmPhoto=i=>{PHOTOS.splice(i,1);P11.review(true);};
 P11.send=function(){const m=M();if(!m)return;if(!cartN()&&!PHOTOS.length){toast(L('Your list is empty'));return;}if(!JOB.site&&!JOB.addr){toast('📍 '+L('Pick the job first'));P11.jobPick();return;}
@@ -407,7 +400,7 @@ P11.send=function(){const m=M();if(!m)return;if(!cartN()&&!PHOTOS.length){toast(
 
 /* ---------- G: track it ---------- */
 let curT=null;
-P11.track=function(id,re){const r=(D.mats||[]).find(x=>x.id===id);if(!r){toast(tt('That list is not on this phone (yet).'));return;}curT=id;esLoad();const m=M();
+P11.track=function(id,re){if(!re&&id!==curT)gMore=false;const r=(D.mats||[]).find(x=>x.id===id);if(!r){toast(tt('That list is not on this phone (yet).'));return;}curT=id;esLoad();const m=M();
   const its=(()=>{try{return liItems(r)}catch(e){return []}})();const ix=stepIx(r);const st=stOf(r);const v=srcL(r);
   const srcTxt=v==='garage'?L('Pick up at the garage'):v==='pickup'?L('Pick up at the store'):L('Deliver to the job');
   const tm=ts=>ts?(()=>{try{return fmtT(ts)}catch(e){return new Date(ts).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}})():'';
@@ -417,19 +410,20 @@ P11.track=function(id,re){const r=(D.mats||[]).find(x=>x.id===id);if(!r){toast(t
    +'<div class="p11card p11tl">'+steps.map((s,i)=>'<div class="p11tli'+(i<ix?'':' off')+'"><span class="p11d'+(i<ix?'':' o')+'">'+(i<ix?I('chk',14,2.6):'')+'</span><span class="p11w">'+E(s[0])+'</span><span class="p11tm">'+E(i<ix?String(s[1]).trim():'')+'</span></div>').join('')+'</div>';
   if(r.miss&&!r.got)h+='<div class="p11card p11bad">'+I('alert',18)+'<div class="p11w"><b>'+E(L('Missing at the job'))+'</b><small>'+E((r.miss.items||[]).map(k=>{const i=r[k];return i?nmItem(i).a:'';}).filter(Boolean).join(', ')+(r.miss.note?' — '+r.miss.note:''))+'</small></div></div>';
   if(r.note)h+='<div class="p11note">'+I('note',16)+'<span>'+E(r.note)+'</span></div>';
-  h+='<div class="p11list">'+its.map(i=>{const n=nmItem(i);const q=num(i.q);const ok=i.done||(num(i.pk)||0)>0;return '<div class="p11it"><span class="p11d'+(ok?'':' o')+'" title="'+E(L('Ready'))+'">'+(ok?I('chk',13,2.6):'')+'</span><div class="p11w"><b>'+E(n.a)+(i.cu?' <span class="p11tag">'+E(L('custom'))+'</span>':'')+'</b>'+(n.b?'<small>'+E(n.b)+'</small>':'')+'</div><b class="p11qty">'+E(q!==null?fmt(q):i.q||'')+' <small>'+E(unitL(i.u))+'</small></b></div>';}).join('')+'</div>';
+  h+='<div class="p11list">'+its.slice(0,gMore?999:3).map(i=>{const n=nmItem(i);const q=num(i.q);return '<div class="p11it"><div class="p11w"><b>'+E(n.a)+(i.cu?' <span class="p11tag">'+E(L('custom'))+'</span>':'')+'</b>'+(n.b?'<small>'+E(n.b)+'</small>':'')+'</div><b class="p11qty">'+E(q!==null?fmt(q):i.q||'')+'</b></div>';}).join('')
+   +(its.length>3?'<div class="p11it"><button class="p11link p11l" onclick="P11.gMore()">'+E(gMore?L('Show less'):L('Show {n} more').replace('{n}',its.length-3))+'</button></div>':'')+'</div>';
   if(r.photos&&r.photos.length)h+='<div class="p11thumbs" onclick="viewMatPhotos(\''+J(r.id)+'\')">'+r.photos.slice(0,6).map(p=>'<span><img src="'+E(p.d)+'"></span>').join('')+'</div>';
   const cs=(()=>{try{return liComments(r)}catch(e){return []}})();const ed=(()=>{try{return liCanEdit('mats',r,m)}catch(e){return r.from===m.id}})();const prep=(()=>{try{return mcPrep(r,m)}catch(e){return false}})();
   const canMsg=ed&&(prep||cs.some(c=>c.by!==m.id));
-  h+='<div class="p11card p11msgs"><div class="p11meta" style="display:flex;gap:6px;align-items:center;margin:0 0 6px">'+I('msg',14)+E(L('Messages'))+'</div>'+(cs.length?cs.map(c=>'<div class="p11m'+(c.by===m.id?' me':'')+'"><small>'+E(nameOf(c.by).split(' ')[0])+' · '+E(day(c.ts))+'</small><div>'+E(c.text||'')+'</div></div>').join(''):'<div class="p11meta">'+E(L('Menachem will message you here if he has a question.'))+'</div>')
-   +(canMsg?'<div class="p11reply"><textarea id="p11rep" class="p11in" rows="1" placeholder="'+E(L('Reply…'))+'"></textarea><button class="p11mini" onclick="P11.reply()">'+E(L('Send'))+'</button></div>':'')+'</div>';
+  h+='<div class="p11card p11msgs">'+(cs.length?cs.map(c=>'<div class="p11m'+(c.by===m.id?' me':'')+'"><small>'+I('msg',13)+E(c.by===m.id?L('You'):nameOf(c.by).split(' ')[0])+' · '+E(day(c.ts))+'</small><div>'+E(c.text||'')+'</div></div>').join(''):'<div class="p11meta" style="display:flex;gap:6px;align-items:center;margin:0">'+I('msg',14)+E(L('Menachem will message you here if he has a question.'))+'</div>')
+   +(canMsg?'<div class="p11reply"><textarea id="p11rep" class="p11in" rows="1" placeholder="'+E(L('Reply…'))+'"></textarea><button class="p11send" onclick="P11.reply()" aria-label="'+E(L('Send'))+'">'+I('chev',18,2.4)+'</button></div>':'')+'</div>';
   const more=[];if(prep&&r.from!==m.id)more.push('<button class="p11btn p11ghost" onclick="P11.check(\''+J(r.id)+'\')">'+I('list',18)+E(L('Open checklist'))+'</button>');
   if(ed&&!isDone(r))more.push('<button class="p11link" onclick="P11.check(\''+J(r.id)+'\')">'+E(L('Edit list'))+'</button>');
   h+=more.join('')+'<div style="height:120px"></div></div>';
   if(ed&&r.from&&!r.got&&ix>=2)h+='<div class="p11foot"><div class="p11dual"><button class="p11btn p11ok" onclick="P11.gotAll()">'+I('chk',18,2.4)+E(L('All here'))+'</button><button class="p11btn p11ghost p11redt" onclick="P11.missing()">'+E(L('Something missing'))+'</button></div></div>';
   else if(ed&&r.from&&!r.got&&!isDone(r))h+='<div class="p11foot"><button class="p11btn p11ghost p11redt" onclick="P11.missing()">'+E(L('Something missing'))+'</button></div>';
   open('m-p11x',h);};
-let _openList=null;
+let _openList=null,gMore=false;P11.gMore=()=>{gMore=!gMore;P11.track(curT,true);};
 P11.check=id=>{try{(_openList||openList)('mats',id);}catch(e){}};
 P11.reply=function(){const ta=$('p11rep');if(!ta||!ta.value.trim())return;const r=(D.mats||[]).find(x=>x.id===curT);if(!r)return;r['lc_'+nid('c')]={by:M().id,ts:Date.now(),text:ta.value.trim()};try{liTouch('mats',r);}catch(e){save();}P11.track(curT,true);};
 P11.gotAll=function(){const r=(D.mats||[]).find(x=>x.id===curT);if(!r)return;const m=M();r.got={by:m.id,at:Date.now()};try{liTouch('mats',r);}catch(e){save();}
@@ -472,7 +466,7 @@ html[data-theme=dark]{--p11bg:#000;--p11card:#1c1c1e;--p11line:#2c2c2e;--p11ink:
 .p11{color:var(--p11ink);-webkit-font-smoothing:antialiased}
 .p11 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .p11 .p11in{font:inherit;color:var(--p11ink);background:transparent;border:0;outline:0;box-shadow:none;padding:0;margin:0;width:100%;min-width:0;-webkit-appearance:none;appearance:none}
-.p11 textarea.p11in{resize:none;line-height:1.35}
+.p11 textarea.p11in{resize:none;line-height:1.35;min-height:0!important;height:auto;field-sizing:content;max-height:120px}
 .p11 .p11in::placeholder{color:var(--p11mut);opacity:1}
 .p11ov.ov{position:fixed!important;inset:0!important;display:flex!important;flex-direction:column!important;align-items:stretch!important;background:var(--p11bg)!important;box-shadow:none!important;border:0!important;padding:0!important}
 .p11ov.ov.hid{display:none!important}
@@ -488,7 +482,7 @@ html[data-theme=dark]{--p11bg:#000;--p11card:#1c1c1e;--p11line:#2c2c2e;--p11ink:
 .p11it:last-child{border-bottom:0}.p11it.dim .p11w b{color:var(--p11mut);font-weight:500}.p11it.dim2{opacity:.6}
 .p11w{flex:1;min-width:0}.p11w b{display:block;font-weight:600;font-size:15px;line-height:1.3;color:var(--p11ink)}.p11w small{display:block;color:var(--p11mut);font-size:12.5px;margin-top:2px;line-height:1.3}
 .p11meta{color:var(--p11mut);font-size:12.5px;margin-top:3px;line-height:1.35}
-.p11 .p11job{display:flex;box-sizing:border-box;align-items:center;gap:12px;width:100%;text-align:left;background:var(--p11card);border:1px solid var(--p11line);border-radius:16px;padding:11px 14px}
+.p11 .p11job .p11w b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.p11 .p11job{display:flex;box-sizing:border-box;align-items:center;gap:12px;width:100%;text-align:left;background:var(--p11card);border:1px solid var(--p11line);border-radius:16px;padding:11px 14px}
 .p11ji{width:38px;height:38px;border-radius:11px;background:var(--p11redSoft);color:var(--p11redInk);display:flex;align-items:center;justify-content:center;flex:none}
 .p11pick .p11ji{width:34px;height:34px}
 .p11lnk{color:var(--p11redInk);font-weight:600;font-size:13.5px;flex:none}
@@ -506,7 +500,7 @@ html[data-theme=dark] .p11add{border-color:#48484a!important}
 .p11btn.p11red{background:var(--p11red)!important;color:#fff!important}.p11btn.p11ok{background:var(--p11okBtn)!important;color:#fff!important}
 .p11btn.p11ghost{background:var(--p11card)!important;color:var(--p11ink)!important;border:1px solid var(--p11line)!important}
 .p11btn.p11redt{color:var(--p11redInk)!important}
-.p11link{display:block;margin:16px auto 0;color:var(--p11redInk)!important;font-weight:600!important;font-size:14px}
+.p11link.p11l{margin:6px 0 0;font-size:13.5px;text-align:left}.p11ic.sm{width:36px;height:36px;margin:0;border-radius:11px;flex:none}.p11duo{grid-template-columns:1fr 1fr!important}.p11listen{text-align:center;padding:36px 10px 20px}.p11listen .p11bigmic{width:120px;height:120px;margin:0 auto}.p11listen .p11lt{font-size:18px;font-weight:600;margin:26px 0 8px;color:var(--p11ink)}.p11listen .p11lq{font-size:15px;margin:0 10px 6px}.p11link{display:block;margin:16px auto 0;color:var(--p11redInk)!important;font-weight:600!important;font-size:14px}
 .p11foot{position:absolute;left:0;right:0;bottom:0;padding:14px 16px calc(env(safe-area-inset-bottom) + 14px);background:linear-gradient(rgba(245,246,248,0),var(--p11bg) 34%)}
 html[data-theme=dark] .p11foot{background:linear-gradient(rgba(0,0,0,0),#000 34%)}
 .p11cart{display:flex!important;align-items:center;width:100%;background:var(--p11btn)!important;color:var(--p11btnInk)!important;border-radius:16px!important;padding:14px 16px!important;font-weight:600;font-size:15.5px}
@@ -526,15 +520,15 @@ html:not([data-theme=dark]) .p11seg{background:#e9ebf0}
 html[data-theme=dark] .p11seg button.on{background:#3a3a3c!important}
 .p11seg2{width:60%;margin-top:-4px}
 #p11home{padding-bottom:20px}
-.p11newwrap{position:sticky;bottom:calc(env(safe-area-inset-bottom) + 84px);padding-top:10px;z-index:5}
+.p11newwrap{position:fixed;left:16px;right:calc(max(16px,env(safe-area-inset-right,0px)) + 68px);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:59}.p11newwrap .p11btn{height:56px;padding:0 16px!important;border-radius:28px!important;box-shadow:0 6px 18px rgba(217,58,43,.28)}#p11home{padding-bottom:96px}
 .p11empty{text-align:center;color:var(--p11mut);padding:40px 20px;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:15px}
 .p11empty.sm{padding:22px 10px}.p11empty small{font-size:13px}.p11empty .p11btn{margin-top:8px;width:auto}
 .p11trio{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}
 .p11trio button{background:var(--p11card)!important;border:1px solid var(--p11line)!important;border-radius:16px!important;padding:14px 4px 12px!important;text-align:center;font-size:13.5px;font-weight:600}
 .p11ic{width:42px;height:42px;border-radius:13px;background:var(--p11soft);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;color:var(--p11ink)}
 .p11kits{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}.p11kits::-webkit-scrollbar{display:none}
-.p11kit{flex:none;display:flex!important;gap:9px;align-items:center;background:var(--p11card)!important;border:1px solid var(--p11line)!important;border-radius:14px!important;padding:10px 12px!important;text-align:left;color:var(--p11mut)}
-.p11kit b{display:block;color:var(--p11ink);font-size:13.5px;font-weight:600;white-space:nowrap}.p11kit small{display:block;font-size:11.5px}
+.p11kit{flex:0 0 calc((100% - 16px)/3);box-sizing:border-box;min-width:0;display:flex!important;gap:9px;align-items:center;background:var(--p11card)!important;border:1px solid var(--p11line)!important;border-radius:14px!important;padding:10px 12px!important;text-align:left;color:var(--p11mut)}
+.p11kit b{display:block;color:var(--p11ink);font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.p11kit span{min-width:0}.p11kit small{display:block;font-size:11.5px}
 .p11grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .p11tile{background:var(--p11card)!important;border:1px solid var(--p11line)!important;border-radius:16px!important;padding:14px!important;min-height:104px;text-align:left}
 .p11tile .p11ic{margin:0 0 12px;width:40px;height:40px}.p11tile b{display:block;font-size:14.5px;font-weight:600;line-height:1.25}.p11tile small{color:var(--p11mut);font-size:12px}
@@ -568,8 +562,8 @@ select.p11box{width:auto}
 .p11said{display:flex;gap:14px;align-items:center;background:var(--p11card);border:1px solid var(--p11line);border-radius:16px;padding:14px;margin-bottom:10px}
 .p11said q{display:block;font-size:15px;line-height:1.4;quotes:none;color:var(--p11ink);margin-top:2px}
 .p11bigmic{width:58px;height:58px;border-radius:50%;background:var(--p11soft)!important;display:flex!important;align-items:center;justify-content:center;flex:none;color:var(--p11ink)}
-.p11bigmic.on{background:var(--p11red)!important;color:#fff;box-shadow:0 0 0 8px rgba(217,58,43,.15);animation:p11pulse 1.2s infinite}
-@keyframes p11pulse{50%{box-shadow:0 0 0 14px rgba(217,58,43,.08)}}
+.p11bigmic.on{background:var(--p11red)!important;color:#fff;box-shadow:0 0 0 18px rgba(217,58,43,.15);animation:p11pulse 1.2s infinite}
+@keyframes p11pulse{50%{box-shadow:0 0 0 30px rgba(217,58,43,.07)}}
 @media (prefers-reduced-motion:reduce){.p11bigmic.on{animation:none}}
 .p11thumb{width:58px;height:58px;border-radius:12px;flex:none;background:var(--p11soft);display:flex;align-items:center;justify-content:center;color:var(--p11mut);overflow:hidden}.p11thumb img{width:100%;height:100%;object-fit:cover}
 .p11mini{flex:none;background:var(--p11btn)!important;color:var(--p11btnInk)!important;border-radius:10px!important;padding:7px 12px!important;font-size:13.5px;font-weight:600}
@@ -591,9 +585,9 @@ select.p11box{width:auto}
 .p11qty{flex:none;font-weight:650;font-size:15px}.p11qty small{font-weight:500;color:var(--p11mut);font-size:12px}
 .p11 .p11bad{display:flex;gap:10px;align-items:flex-start;background:var(--p11redSoft);border-color:transparent;color:var(--p11redInk)}.p11bad .p11w b{color:var(--p11redInk)}.p11bad .p11w small{color:var(--p11redInk);opacity:.85}
 .p11msgs{margin-top:10px}
-.p11m{background:var(--p11soft);border-radius:12px;padding:8px 11px;margin:6px 30px 6px 0;font-size:14.5px}.p11m.me{margin:6px 0 6px 30px}
-.p11m small{display:block;color:var(--p11mut);font-size:11.5px;margin-bottom:2px}
-.p11reply{display:flex;gap:8px;align-items:flex-end;margin-top:10px;background:var(--p11soft);border-radius:12px;padding:9px 10px 9px 12px}
+.p11m{padding:2px 0 8px;font-size:14.5px;line-height:1.4}.p11m+.p11m{border-top:1px solid var(--p11line);padding-top:8px}.p11m.me div{color:var(--p11mut)}
+.p11m small{display:flex;gap:5px;align-items:center;color:var(--p11mut);font-size:12.5px;margin-bottom:3px}
+.p11reply{display:flex;gap:8px;align-items:center;margin-top:8px;background:var(--p11soft);border-radius:12px;padding:8px 8px 8px 12px}.p11send{width:32px;height:32px;border-radius:10px;background:var(--p11btn)!important;color:var(--p11btnInk)!important;display:flex!important;align-items:center;justify-content:center;flex:none}.p11quiet{display:inline-flex!important;gap:6px;align-items:center;color:var(--p11mut)!important;font-size:13px;margin:2px 2px 0}
 .p11dual{display:flex;gap:8px}.p11dual .p11btn{flex:1;padding:15px 6px!important;font-size:15px!important}
 .p11ck{width:26px;height:26px;border-radius:8px;border:2px solid var(--p11line)!important;flex:none;display:flex!important;align-items:center;justify-content:center;color:#fff}
 .p11ck.on{background:var(--p11btn)!important;border-color:var(--p11btn)!important;color:var(--p11btnInk)}.p11ck.on.red{background:var(--p11red)!important;border-color:var(--p11red)!important;color:#fff}
