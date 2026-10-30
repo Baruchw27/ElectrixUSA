@@ -83,7 +83,7 @@ const S_ES={"New request":"Nuevo pedido","Open":"Abiertos","Done":"Terminados","
 "Missing at the job":"Falta en la obra","Arrived — all here":"Llegó — todo completo","Photos":"Fotos","Voice doesn't work on this phone — type it or use the keyboard mic.":"La voz no funciona en este teléfono — escríbelo o usa el micrófono del teclado.",
 "Nothing found":"No se encontró nada","More":"Más","Other":"Otros","Show English":"Ver en inglés","No job picked":"Sin trabajo","Garage / van stock":"Garaje / camioneta",
 "Not for a job":"No es para un trabajo","Plastic":"Plástico","Metal":"Metal","Order again added":"Pedir otra vez agregó","Kit":"Kit",
-"Wire & cable":"Cable y alambre","Boxes & rings":"Cajas y anillos","Lighting":"Iluminación","Fittings & fasteners":"Conectores y fijaciones","Tape & misc":"Cinta y varios","Fittings":"Conectores","Switches, outlets":"Switches, tomacorrientes","Type it instead":"Escribirlo","Say what you need, e.g. “40 1-gang boxes, 3 rolls of 12/2”":"Di lo que necesitas, ej. “40 cajas de 1 gang, 3 rollos de 12/2”","Say it again":"Decirlo otra vez","Show {n} more":"Ver {n} más","Show less":"Ver menos","Boxes & covers":"Cajas y tapas","Devices & plates":"Dispositivos y tapas","Panels & breakers":"Paneles y breakers",
+"Wire & cable":"Cable y alambre","What's in the garage":"Lo que hay en el garaje","Search the garage":"Buscar en el garaje","In stock":"En existencia","Took":"Saqué","Put back":"Devolví","In the garage":"En el garaje","Not in the garage":"No hay en el garaje","None in the garage":"No hay en el garaje","in the garage":"en el garaje","garage will have":"el garaje tendrá","Fix the count":"Corregir la cantidad","how many are on the shelf?":"¿cuántos hay en el estante?","Save the count":"Guardar cantidad","Not enough in the garage":"No hay suficiente en el garaje","Saved on the phone — it sends when there is signal.":"Guardado en el teléfono — se envía cuando haya señal.","Garage now":"Garaje ahora","Nothing counted in the garage yet.":"Todavía no hay nada contado en el garaje.","It's in the garage — go pick it up and tap Took, instead of asking Menachem.":"Está en el garaje — ve a recogerlo y toca Saqué, en vez de pedírselo a Menachem.","Manage Materials":"Administrar materiales","Could not save":"No se pudo guardar","Boxes & rings":"Cajas y anillos","Lighting":"Iluminación","Fittings & fasteners":"Conectores y fijaciones","Tape & misc":"Cinta y varios","Fittings":"Conectores","Switches, outlets":"Switches, tomacorrientes","Type it instead":"Escribirlo","Say what you need, e.g. “40 1-gang boxes, 3 rolls of 12/2”":"Di lo que necesitas, ej. “40 cajas de 1 gang, 3 rollos de 12/2”","Say it again":"Decirlo otra vez","Show {n} more":"Ver {n} más","Show less":"Ver menos","Boxes & covers":"Cajas y tapas","Devices & plates":"Dispositivos y tapas","Panels & breakers":"Paneles y breakers",
 "Lighting & fans":"Luces y abanicos","Conduit & fittings":"Tubería y conectores","Low voltage":"Bajo voltaje","Tape & supplies":"Cinta y varios",
 "Wire":"Cable","Boxes":"Cajas","Devices":"Dispositivos","Breakers":"Breakers","Lights":"Luces","Conduit":"Tubería","Low volt":"Bajo volt.","Misc":"Varios",
 "pc":"pza","ft":"pies","coil":"rollo","roll":"rollo","reel":"carrete","spool":"carrete","box":"caja","pack":"paquete","bag":"bolsa","stick":"tramo","pair":"par","set":"juego","kit":"kit","tube":"tubo","bottle":"botella","can":"lata","sheet":"hoja",
@@ -181,12 +181,12 @@ let zTop=120;
 function ovEl(id){let el=$(id);if(!el){el=document.createElement('div');el.id=id;el.className='ov hid p11ov p11';document.body.appendChild(el);}return el;}
 function open(id,html,sheet){const el=ovEl(id);el.classList.toggle('p11sheet',!!sheet);el.innerHTML=html;el.style.zIndex=String(zTop++);if(el.classList.contains('hid'))show(id);if(sheet){el.onclick=e=>{if(e.target===el)close(id);};}return el;}
 function close(id){const el=$(id);if(el&&!el.classList.contains('hid'))hide(id);}
-function closeAll(){['m-p11b','m-p11c','m-p11d','m-p11e','m-p11f','m-p11j','m-p11k','m-p11o','m-p11x','m-p11m','m-p11p'].forEach(close);}
+function closeAll(){['m-p11g','m-p11h','m-p11b','m-p11c','m-p11d','m-p11e','m-p11f','m-p11j','m-p11k','m-p11o','m-p11x','m-p11m','m-p11p'].forEach(close);}
 const opened=id=>{const el=$(id);return !!el&&!el.classList.contains('hid');};
 function hdr(title,left,act){return '<div class="p11hdr"><button class="p11hb" onclick="'+(act||'')+'" aria-label="'+E(L('Back'))+'">'+I(left||'back',22,2)+'</button><h3>'+E(title)+'</h3><span class="p11hb"></span></div>';}
 function stepper(key,n,st){const K=J(key);return '<div class="p11stp"><button onclick="P11.q(\''+K+'\','+(Math.max(0,(+n||0)-(st||1)))+')" aria-label="'+E(L('Less'))+'">'+I('minus',16,2.2)+'</button><input data-nomic="1" inputmode="decimal" value="'+E(fmt(n))+'" onchange="P11.q(\''+K+'\',this.value)" aria-label="'+E(L('How many'))+'"><button onclick="P11.q(\''+K+'\','+((+n||0)+(st||1))+')" aria-label="'+E(L('More'))+'">'+I('plus',16,2.2)+'</button></div>';}
 function itemRow(s){const c=cartGet(s.id);const n=nmOf(s.name);const st=stepOf(s);
-  return '<div class="p11it" data-sid="'+E(s.id)+'"><div class="p11w"><b>'+E(n.a)+'</b>'+(n.b?'<small>'+E(n.b)+'</small>':'')+'</div>'+(c?stepper(s.id,c.n,st):'<button class="p11add" onclick="P11.add(\''+J(s.id)+'\')" aria-label="'+E(L('Add'))+'">'+I('plus',17,2.2)+'</button>')+'</div>';}
+  return '<div class="p11it" data-sid="'+E(s.id)+'"><div class="p11w"><b>'+E(n.a)+'</b>'+(n.b?'<small>'+E(n.b)+'</small>':'')+garBadge(s)+'</div>'+(c?stepper(s.id,c.n,st):'<button class="p11add" onclick="P11.add(\''+J(s.id)+'\')" aria-label="'+E(L('Add'))+'">'+I('plus',17,2.2)+'</button>')+'</div>';}
 function cartBar(){const n=cartN();return '<div class="p11foot"><button class="p11cart'+(n?'':' off')+'" onclick="P11.review()"><span class="p11cn">'+n+'</span>'+E(L('My list'))+'<span class="p11r">'+E(L('Review & send'))+' '+I('chev',16,2.2)+'</span></button></div>';}
 function redraw(){if(opened('m-p11b'))P11.newReq(true);if(opened('m-p11c'))P11.all(true);if(opened('m-p11d'))P11.cat(curG,true);if(opened('m-p11f'))P11.review(true);if(opened('m-p11e'))drawE();if(opened('m-p11x'))P11.track(curT,true);try{if(ON()&&$('p11home'))home();}catch(e){}}
 
@@ -217,9 +217,16 @@ function home(){const m=M();const pg=$('pg-mat');if(!pg)return;pg.classList.add(
   esLoad();const L0=mineList(m);const op=L0.filter(r=>!isDone(r)),dn=L0.filter(isDone);const list=(tabA==='open'?op:dn).slice().sort((a,b)=>(b.ts||0)-(a.ts||0));
   let h='<div class="p11seg"><button class="'+(tabA==='open'?'on':'')+'" onclick="P11.tab(\'open\')">'+E(L('Open'))+' · '+op.length+'</button><button class="'+(tabA==='done'?'on':'')+'" onclick="P11.tab(\'done\')">'+E(L('Done'))+'</button></div>';
   if(canHandleMat(m))h+='<div class="p11seg p11seg2"><button class="'+(whoA==='mine'?'on':'')+'" onclick="P11.who(\'mine\')">'+E(L('Mine'))+'</button><button class="'+(whoA==='all'?'on':'')+'" onclick="P11.who(\'all\')">'+E(L('Everyone'))+'</button></div>';
+  {let mgr=false;try{mgr=mcIsMgr(m);}catch(e){}
+   h+='<div class="p11acts"><button class="p11act" id="p11garbtn" onclick="P11.garage()"><span class="p11ic">'+I('gar',19)+'</span><span>'+E(L("What's in the garage"))+'</span>'+I('chev',16,2)+'</button>'+(mgr?'<button class="p11act" onclick="mcManOpen()"><span class="p11ic">'+I('list',19)+'</span><span>'+E(L('Manage Materials'))+'</span>'+I('chev',16,2)+'</button>':'')+'</div>';}
   h+=list.length?list.slice(0,tabA==='done'?40:200).map(reqCard).join(''):'<div class="p11empty">'+I('box',30,1.5)+'<div>'+E(L(tabA==='open'?'Nothing open.':'Nothing done yet.'))+'</div>'+(tabA==='open'?'<small>'+E(L('Tap New request to ask for material.'))+'</small>':'')+'</div>';
   h+='<div class="p11newwrap"><button class="p11btn p11red" id="p11new" onclick="P11.newReq()">'+I('plus',19,2.4)+E(L('New request'))+(cartN()?' <span class="p11cn2">'+cartN()+'</span>':'')+'</button></div>';
-  el.innerHTML=h;rAt=Date.now();}
+  el.innerHTML=h;rAt=Date.now();requestAnimationFrame(fitNew);}
+/* the pinned New request button leaves room for the app's round buttons at the bottom right (menu, +) */
+function fitNew(){const w=document.querySelector('#p11home .p11newwrap');if(!w)return;let left=innerWidth;
+  ['p7fm','p2fab'].forEach(id=>{const b=$(id);if(!b)return;const r=b.getBoundingClientRect();if(r.width&&r.bottom>innerHeight-130&&getComputedStyle(b).display!=='none'&&getComputedStyle(b).visibility!=='hidden')left=Math.min(left,r.left);});
+  w.style.right=(left<innerWidth?Math.max(16,innerWidth-left+10):16)+'px';}
+window.addEventListener('resize',()=>{try{fitNew();}catch(e){}});
 P11.tab=v=>{tabA=v;home();};P11.who=v=>{whoA=v;home();};
 
 /* ---------- B: new request ---------- */
@@ -236,7 +243,7 @@ const KSH={'Residential rough-in':['Rough-in','Rough'],'Residential finish':['Fi
 function kitName(x){const n=String(x.name||'');const k=KSH[n];return k?k[ES_ON()?1:0]:n;}
 function kitFull(x){const n=String(x.name||'');if(!ES_ON())return n;return ({'Residential rough-in':'Rough residencial','Residential finish':'Finish residencial','Complete house (rough + finish)':'Casa completa (rough + finish)','Apartment (one unit)':'Apartamento (una unidad)','Renovation (old work)':'Renovación (old work)','Service upgrade (200A)':'Cambio de servicio (200A)','Panel replacement':'Cambio de panel','Commercial job (light commercial)':'Trabajo comercial (ligero)'})[n]||n;}
 function searchBox(id,ph,val){return '<div class="p11srch">'+I('srch',18)+'<input id="'+id+'" class="p11in" type="text" inputmode="search" enterkeyhint="search" data-nomic="1" autocomplete="off" placeholder="'+E(ph)+'" value="'+E(val||'')+'" oninput="P11.find(this.value,\''+id+'\')"><button class="p11mic" onclick="P11.dict(\''+id+'\')" aria-label="'+E(L('Say it'))+'">'+I('mic',18)+'</button></div>';}
-function resultsH(q){const R=search(q,40);return R.length?'<div class="p11list">'+R.map(itemRow).join('')+'</div>':'<div class="p11empty sm">'+E(L('Nothing found'))+'<button class="p11btn p11ghost" onclick="P11.custom(\''+J(q)+'\')">'+I('pen',17)+E(L('Something else'))+': '+E(q)+'</button></div>';}
+function resultsH(q){const R=search(q,40);return R.length?'<div class="p11list">'+R.map(itemRow).join('')+'</div>'+(R.some(s=>gq(s)>0)?'<div class="p11gnote">'+I('gar',18)+'<span>'+E(L("It's in the garage — go pick it up and tap Took, instead of asking Menachem."))+'</span></div>':''):'<div class="p11empty sm">'+E(L('Nothing found'))+'<button class="p11btn p11ghost" onclick="P11.custom(\''+J(q)+'\')">'+I('pen',17)+E(L('Something else'))+': '+E(q)+'</button></div>';}
 P11.newReq=function(re){const m=M();if(!m)return;esLoad();
   if(!re){if(!loadCart()||(!JOB.site&&!JOB.addr)){const d=defaultJob();if(!JOB.site&&!JOB.addr)JOB=d;}else if(!CART.length){JOB=defaultJob();}}
   const body=hdr(L('New request'),'x',"P11.closeNew()")+'<div class="p11body">'+jobCard()
@@ -247,7 +254,7 @@ P11.newReq=function(re){const m=M();if(!m)return;esLoad();
 function usualH(){const U=myUsual();return U.length?'<div class="p11sec">'+E(L('My usual'))+'</div><div class="p11list">'+U.map(itemRow).join('')+'</div>':'';}
 P11.closeNew=()=>{saveCart();close('m-p11b');try{home();}catch(e){}};
 let findT=null;
-P11.find=(v,id)=>{clearTimeout(findT);findT=setTimeout(()=>{if(id==='p11bq'){bq=v;const el=$('p11bres');if(el)el.innerHTML=v.trim()?resultsH(v):usualH();}else if(id==='p11cq'){cq=v;const el=$('p11cres');if(el)el.innerHTML=v.trim()?resultsH(v):tilesH();}else if(id==='p11dq'){dq=v;drawD();}},140);};
+P11.find=(v,id)=>{clearTimeout(findT);findT=setTimeout(()=>{if(id==='p11bq'){bq=v;const el=$('p11bres');if(el)el.innerHTML=v.trim()?resultsH(v):usualH();}else if(id==='p11cq'){cq=v;const el=$('p11cres');if(el)el.innerHTML=v.trim()?resultsH(v):tilesH();}else if(id==='p11dq'){dq=v;drawD();}else if(id==='p11gq'){gQ=v;gN=120;drawG();}},140);};
 P11.add=sid=>{addStock(sid);refreshRows(sid);};
 P11.q=(key,v)=>{if(!CART.find(x=>(x.sid||'c:'+x.name)===key)&&gst(key)){addStock(key,num(v)||0);}else setQty(key,v);refreshRows(key);if(opened('m-p11f'))P11.review(true);};
 function refreshRows(sid){document.querySelectorAll('.p11it[data-sid="'+(window.CSS&&CSS.escape?CSS.escape(sid):sid)+'"]').forEach(row=>{const s=gst(sid);if(s){const tmp=document.createElement('div');tmp.innerHTML=itemRow(s);row.replaceWith(tmp.firstChild);}});
@@ -398,6 +405,52 @@ P11.send=function(){const m=M();if(!m)return;if(!cartN()&&!PHOTOS.length){toast(
     save();clearCart();bq='';closeAll();tabA='open';home();try{renderMat();}catch(e){}
     toast('📦 '+L('Sent to Menachem')+' — '+n+' '+L('items'),'green');}catch(e){if(b)b.disabled=false;toast('⚠ '+(e&&e.message||e));}};
 
+/* ---------- Garage stock (Baruch 10/30): see what's on the shelves; Took / Put back keep the count; office fixes the count ---------- */
+function gq(s){const n=+((s&&s.qty)||0);return n>0?n:0;}
+function garBadge(s){const n=gq(s);return n>0?'<span class="p11gb">'+I('gar',13,2)+E(L('In the garage'))+': '+E(fmt(n))+'</span>':'<span class="p11gb no">'+E(L('Not in the garage'))+'</span>';}
+const canSet=m=>{m=m||M();return !!m&&(['owner','manager','office'].includes(m.role)||!!m.all);};
+let gF='all',gQ='',gN=120;
+P11.garage=function(re){esLoad();if(!re){gQ='';gN=120;}const chips=[['all','All'],['in','In stock']].concat(GROUPS.map(g=>[g[0],g[2]]));
+  const h=hdr(L("What's in the garage"),'back',"P11.close('m-p11g')")+'<div class="p11dtop">'+searchBox('p11gq',L('Search the garage'),gQ)
+   +'<div class="p11chips p11gchips">'+chips.map(c=>'<button class="'+(gF===c[0]?'on':'')+'" onclick="P11.gF(\''+c[0]+'\')">'+E(L(c[1]))+'</button>').join('')+'</div></div><div class="p11body" id="p11glist"></div>';
+  open('m-p11g',h);drawG();};
+P11.gF=v=>{gF=v;gN=120;P11.garage(true);};
+function drawG(){const el=$('p11glist');if(!el)return;let L0=gQ.trim()?search(gQ,400):allSt();
+  if(gF==='in')L0=L0.filter(s=>gq(s)>0);else if(gF!=='all')L0=L0.filter(s=>grpOf(s)===gF);
+  if(!gQ.trim())L0=L0.slice().sort((a,b)=>(gq(b)>0)-(gq(a)>0)||srt(a,b));
+  const tot=L0.length;L0=L0.slice(0,gN);let h='';
+  if(!tot)h='<div class="p11empty">'+I('gar',30,1.5)+'<div>'+E(L(gF==='in'?'Nothing counted in the garage yet.':'Nothing found'))+'</div></div>';
+  else if(gQ.trim()||gF==='in')h='<div class="p11list" style="margin-top:4px">'+L0.map(gRow).join('')+'</div>';
+  else{const by={};L0.forEach(s=>{const g=grpOf(s);(by[g]=by[g]||[]).push(s);});h=GROUPS.filter(g=>by[g[0]]).map(g=>'<div class="p11sec">'+E(L(g[1]))+'</div><div class="p11list">'+by[g[0]].map(gRow).join('')+'</div>').join('');}
+  if(tot>gN)h+='<button class="p11link" onclick="P11.gMore2()">'+E(L('Show {n} more').replace('{n}',Math.min(120,tot-gN)))+'</button>';
+  el.innerHTML=h+'<div style="height:60px"></div>';}
+P11.gMore2=()=>{gN+=120;drawG();};
+function gRow(s){const n=nmOf(s.name);const c=gq(s);const K=J(s.id);
+  return '<div class="p11it p11grow" data-gid="'+E(s.id)+'"><div class="p11w"><b>'+E(n.a)+'</b><small>'+E(n.b||L(c?'In the garage':'None in the garage'))+'</small></div><div class="p11cnt'+(c?'':' z')+'">'+E(fmt(c))+'<small>'+E(unitL(s.unit))+'</small></div><div class="p11gact"><button class="out" onclick="P11.gMove(\''+K+'\',\'out\')"'+(c?'':' disabled')+'>'+E(L('Took'))+'</button><button onclick="P11.gMove(\''+K+'\',\'in\')">'+E(L('Put back'))+'</button></div></div>';}
+let gMv=null;
+P11.gMove=function(sid,kind){const s=gst(sid);if(!s)return;const c=gq(s);if(kind==='out'&&!c)return;gMv={sid,kind,n:kind==='set'?c:(isFt(s)?10:1)};drawH();};
+function drawH(){const s=gst(gMv.sid);if(!s)return;const c=gq(s);const k=gMv.kind;const u=unitL(s.unit);const n=gMv.n;const after=k==='out'?Math.max(0,c-n):k==='in'?c+n:n;const nm=nmOf(s.name);
+  const h='<div class="p11sh"><div class="p11grab"></div><h2>'+E(nm.a)+'</h2>'+(nm.b?'<div class="p11meta">'+E(nm.b)+'</div>':'')+'<div class="p11meta">'+E(fmt(c))+' '+E(u)+' '+E(L('in the garage'))+'</div>'
+   +(k==='set'?'<div class="p11sec" style="margin-top:14px">'+E(L('Fix the count'))+' — '+E(L('how many are on the shelf?'))+'</div>':'<div class="p11seg" style="margin:14px 0 0"><button class="'+(k==='out'?'on':'')+'" onclick="P11.hK(\'out\')"'+(c?'':' disabled')+'>'+E(L('Took'))+'</button><button class="'+(k==='in'?'on':'')+'" onclick="P11.hK(\'in\')">'+E(L('Put back'))+'</button></div>')
+   +'<div class="p11bigq"><button onclick="P11.hN(-1)" aria-label="'+E(L('Less'))+'">'+I('minus',24,2.2)+'</button><input data-nomic="1" inputmode="decimal" value="'+E(fmt(n))+'" onchange="P11.hN(0,this.value)"><button onclick="P11.hN(1)" aria-label="'+E(L('More'))+'">'+I('plus',24,2.2)+'</button></div>'
+   +'<div class="p11meta" style="text-align:center">'+E(u)+' · '+E(L('garage will have'))+' '+E(fmt(after))+'</div>'
+   +'<button class="p11btn" id="p11hgo" style="margin-top:20px" onclick="P11.hGo()"'+((k!=='set'&&!n)?' disabled':'')+'>'+E(k==='out'?L('Took')+' '+fmt(n):k==='in'?L('Put back')+' '+fmt(n):L('Save the count')+': '+fmt(n))+'</button>'
+   +(canSet()&&k!=='set'?'<button class="p11link" onclick="P11.hK(\'set\')">'+E(L('Fix the count'))+'</button>':'')+'</div>';
+  open('m-p11h',h,true);}
+P11.hK=k=>{const s=gst(gMv.sid);gMv.kind=k;gMv.n=k==='set'?gq(s):(isFt(s)?10:1);if(k==='out')gMv.n=Math.min(gMv.n,gq(s));drawH();};
+P11.hN=(d,v)=>{const s=gst(gMv.sid);const st=isFt(s)?10:1;let n=v!=null?(num(v)||0):gMv.n+d*st;n=Math.max(0,n);if(gMv.kind==='out')n=Math.min(n,gq(s));gMv.n=n;drawH();};
+let gBusy=false;
+P11.hGo=async function(){if(gBusy||!gMv)return;const s=gst(gMv.sid);if(!s)return;const k=gMv.kind,n=gMv.n;if(k!=='set'&&!n)return;if(k==='out'&&n>gq(s)){toast(L('Not enough in the garage'));return;}
+  gBusy=true;const b=$('p11hgo');if(b)b.disabled=true;
+  try{const txn=commitStockTxn(k,[{id:s.id,name:s.name,unit:s.unit||'pc',qty:n}],null,{reason:k==='set'?'garage count (material page)':undefined});
+    close('m-p11h');drawG();refreshRows(s.id);
+    if(txn){const r=await confirmStockTxn(txn.id);
+      if(r&&r.status==='rejected'){toast('⚠ '+(r.reason||L('Could not save')));}
+      else if(r&&r.status==='queued')toast(L('Saved on the phone — it sends when there is signal.'));
+      else toast('✓ '+L('Garage now')+': '+fmt(gq(gst(s.id)))+' '+unitL(s.unit),'green');}
+    drawG();refreshRows(s.id);}catch(e){toast('⚠ '+(e&&e.message||e));}
+  gBusy=false;};
+
 /* ---------- G: track it ---------- */
 let curT=null;
 P11.track=function(id,re){if(!re&&id!==curT)gMore=false;const r=(D.mats||[]).find(x=>x.id===id);if(!r){toast(tt('That list is not on this phone (yet).'));return;}curT=id;esLoad();const m=M();
@@ -520,6 +573,15 @@ html:not([data-theme=dark]) .p11seg{background:#e9ebf0}
 html[data-theme=dark] .p11seg button.on{background:#3a3a3c!important}
 .p11seg2{width:60%;margin-top:-4px}
 #p11home{padding-bottom:20px}
+.p11acts{display:flex;flex-direction:column;gap:8px;margin:0 0 12px}.p11 .p11act{display:flex;align-items:center;gap:12px;width:100%;box-sizing:border-box;background:var(--p11card);border:1px solid var(--p11line);border-radius:16px;padding:10px 14px;font-weight:600;font-size:15px;text-align:left}.p11act span:nth-child(2){flex:1}.p11act .p11ic{width:36px;height:36px;margin:0;border-radius:11px}.p11act>svg{color:var(--p11mut)}
+.p11gb{display:inline-flex;gap:4px;align-items:center;background:var(--p11okSoft);color:var(--p11ok);font-size:11.5px;font-weight:600;border-radius:7px;padding:2px 7px;margin-top:4px}.p11gb.no{background:var(--p11soft);color:var(--p11mut)}
+.p11gnote{display:flex;gap:10px;align-items:flex-start;background:var(--p11okSoft);color:var(--p11ok);border-radius:14px;padding:12px 14px;margin-top:12px;font-size:13.5px;line-height:1.35}.p11gnote svg{flex:none;margin-top:1px}
+.p11gchips{flex-wrap:nowrap!important;overflow-x:auto;margin-top:10px;padding-bottom:2px;scrollbar-width:none}.p11gchips::-webkit-scrollbar{display:none}.p11gchips button{white-space:nowrap;flex:none}
+.p11grow .p11w b{font-size:14.5px}.p11cnt{flex:none;text-align:right;font-size:19px;font-weight:700;min-width:36px;line-height:1.1}.p11cnt small{display:block;font-size:11px;color:var(--p11mut);font-weight:500}.p11cnt.z{color:var(--p11mut);opacity:.6}
+.p11gact{display:flex;gap:6px;flex:none}.p11gact button{border:1px solid var(--p11line)!important;border-radius:10px!important;padding:7px 9px!important;font-size:13px;font-weight:600;background:var(--p11card)!important}
+.p11gact button.out{background:var(--p11btn)!important;color:var(--p11btnInk)!important;border-color:var(--p11btn)!important}.p11gact button[disabled]{background:var(--p11soft)!important;color:var(--p11mut)!important;border-color:var(--p11soft)!important;opacity:.7}
+.p11seg button[disabled]{opacity:.4}
+.p11bigq{display:flex;align-items:center;justify-content:center;gap:20px;margin:22px 0 8px}.p11bigq button{width:54px;height:54px;border-radius:16px!important;background:var(--p11soft)!important;display:flex!important;align-items:center;justify-content:center}.p11bigq input{width:96px;text-align:center;font:inherit;font-size:40px;font-weight:700;background:transparent;border:0;color:var(--p11ink);outline:0;padding:0}
 .p11newwrap{position:fixed;left:16px;right:calc(max(16px,env(safe-area-inset-right,0px)) + 68px);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:59}.p11newwrap .p11btn{height:56px;padding:0 16px!important;border-radius:28px!important;box-shadow:0 6px 18px rgba(217,58,43,.28)}#p11home{padding-bottom:96px}
 .p11empty{text-align:center;color:var(--p11mut);padding:40px 20px;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:15px}
 .p11empty.sm{padding:22px 10px}.p11empty small{font-size:13px}.p11empty .p11btn{margin-top:8px;width:auto}
