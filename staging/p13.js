@@ -19,7 +19,7 @@ const ES_ON=()=>{try{return lang()==='es'}catch(e){return false}};
 const S_ES={'Mark rough done':'Marcar rough terminado','Ready for finishing':'Listo para terminación','Site manager':'Encargado','Site managers':'Encargados',
 'No site manager yet':'Sin encargado todavía','here':'aquí','on site':'en el sitio','people here':'personas aquí','Directions':'Cómo llegar','Job info':'Info del trabajo','Reports':'Reportes',
 'Tasks':'Tareas','All':'Todas','Notes':'Notas','Note':'Nota','Files':'Archivos','No open tasks':'No hay tareas abiertas','No notes yet — add the first one so everyone on the job sees it.':'Todavía no hay notas — agrega la primera para que todos en el trabajo la vean.',
-'No files yet':'Todavía no hay archivos','Add file':'Agregar archivo','Add link':'Agregar enlace','Inspection scheduled':'Inspección agendada','Inspection booked':'Inspección agendada','Inspection requested':'Inspección pedida','Inspections':'Inspecciones','Booked':'Agendada','Passed':'Pasó','Failed':'Falló','Waiting to be booked':'Esperando agendar','booked by':'agendada por','No inspections yet':'Todavía no hay inspecciones','Rough inspection':'Inspección de rough','Final inspection':'Inspección final','Inspection':'Inspección','Inspection requested — waiting to be booked':'Inspección pedida — esperando agendar',
+'No files yet':'Todavía no hay archivos','Add file':'Agregar archivo','Add link':'Agregar enlace','Inspection scheduled':'Inspección agendada','Inspection booked':'Inspección agendada','O&R request':'Pedido O&R','Photo':'Foto','Remove job':'Quitar trabajo','Remove this job?':'¿Quitar este trabajo?','Remove this file?':'¿Quitar este archivo?','Remove this link?':'¿Quitar este enlace?','Rename file':'Cambiar nombre','Rename':'Cambiar nombre','Replace':'Reemplazar','Delete':'Borrar','Share':'Compartir','Open':'Abrir','Link':'Enlace','File':'Archivo','More':'Más','Inspection requested':'Inspección pedida','Inspections':'Inspecciones','Booked':'Agendada','Passed':'Pasó','Failed':'Falló','Waiting to be booked':'Esperando agendar','booked by':'agendada por','No inspections yet':'Todavía no hay inspecciones','Rough inspection':'Inspección de rough','Final inspection':'Inspección final','Inspection':'Inspección','Inspection requested — waiting to be booked':'Inspección pedida — esperando agendar',
 'Ready for inspection':'Listo para inspección','All details':'Todos los detalles','photos':'fotos','No photos yet':'Todavía no hay fotos','Add the first photo':'Agrega la primera foto',
 'Owner':'Dueño','Name':'Nombre','Phone':'Teléfono','Permit':'Permiso','Permit #':'Permiso #','Job':'Trabajo','Address':'Dirección','GPS fence':'Cerca GPS','Edit':'Editar','Save':'Guardar','Cancel':'Cancelar',
 'Add a field':'Agregar un campo','Field name':'Nombre del campo','Value':'Valor','Not set':'Sin poner','This week':'Esta semana','Last week':'Semana pasada','This month':'Este mes',
@@ -40,7 +40,7 @@ const ic={back:'<path d="m15 6-6 6 6 6"/>',more:'<circle cx="5" cy="12" r="1.3"/
  insp:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',phone:'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',
  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
  box:'<path d="M21 8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/>',
- dollar:'<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',x:'<path d="M18 6 6 18M6 6l12 12"/>',msg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'};
+ dollar:'<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',x:'<path d="M18 6 6 18M6 6l12 12"/>',edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m14 6 4 4"/>',upload:'<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>',share:'<path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>',msg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'};
 const I=(n,cls)=>'<svg class="j2i'+(cls?' '+cls:'')+'" viewBox="0 0 24 24">'+(ic[n]||'')+'</svg>';
 
 /* ---------- styles ---------- */
@@ -123,6 +123,7 @@ html[data-theme=dark] .j2card{box-shadow:0 0 0 1px var(--j2line)}
 .j2in{width:100%;font-size:16px;padding:11px 12px;border-radius:11px;border:1px solid var(--j2line);background:var(--j2card);color:var(--j2ink);box-sizing:border-box}
 .j2grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}.j2grid div{aspect-ratio:1;background-size:cover;background-position:center;border-radius:6px;cursor:pointer;background-color:#3a3c42}
 .j2save{display:block;width:100%;height:46px;border-radius:13px;border:0;background:var(--j2ink);color:var(--j2card);font-size:15px;font-weight:600;cursor:pointer;margin-top:14px}
+.j2more{position:absolute;right:5px;top:5px;width:28px;height:28px;border-radius:50%;border:0;background:rgba(20,20,22,.55);color:#fff;display:flex;align-items:center;justify-content:center;padding:0}.j2more2{width:32px;height:32px;border-radius:50%;border:0;background:none;color:var(--j2mut);display:flex;align-items:center;justify-content:center;flex:none;padding:0}
 .j2pick{display:block;width:100%;text-align:left;padding:13px 16px;font-size:15px;background:none;border:0;color:var(--j2ink);cursor:pointer}.j2pick+.j2pick{border-top:1px solid var(--j2line)}
 `;document.head.appendChild(css);
 
@@ -142,7 +143,7 @@ const tm=ms=>{try{return new Date(ms).toLocaleTimeString(LOC(),{hour:'numeric',m
 const isOffice=m=>!!m&&(m.role==='office');
 const seesReports=m=>!!m&&(can(isBoss,m)||m.role==='office'||m.role==='manager'||m.role==='owner'||!!m.all);
 function photos(s){const m=M();const L=[];
-  (s.files||[]).forEach(f=>{let ok=true;try{ok=fileVisible(f,m);}catch(e){}if(ok&&f.kind==='img'&&(f.d||f.url))L.push({src:f.d||f.url,ts:f.ts||0});});
+  (s.files||[]).forEach(f=>{let ok=true;try{ok=fileVisible(f,m);}catch(e){}if(ok&&f.kind==='img'&&(f.d||f.url))L.push({src:f.d||f.url,ts:f.ts||0,fid:f.id});});
   (s.notes||[]).forEach(n=>{if(n&&n.photo)L.push({src:n.photo,ts:n.ts||0});});
   (D.jobs||[]).forEach(j=>{if(j.site!==s.id)return;(j.photos||[]).forEach(p=>{const src=typeof p==='string'?p:(p&&(p.d||p.url));if(src)L.push({src,ts:(p&&p.ts)||j.doneAt||j.ts||0});});if(typeof j.photo==='string'&&j.photo.length>20)L.push({src:j.photo,ts:j.doneAt||j.ts||0});});
   L.sort((a,b)=>(b.ts||0)-(a.ts||0));return L;}
@@ -205,7 +206,7 @@ function draw(){
   const title=(String(s.name||'').split(',')[0]||s.name||'');const rest=String(s.name||'').split(',').slice(1).join(',').trim();
   B.classList.toggle('j2es',ES_ON());B.innerHTML=
    '<div class="j2ph">'+gal+'<div class="sh"></div><button class="j2cb" style="left:14px;top:calc(env(safe-area-inset-top,0px) + 12px)" onclick="P13.back()" aria-label="Back">'+I('back')+'</button>'
-   +'<button class="j2cb" style="right:14px;top:calc(env(safe-area-inset-top,0px) + 12px)" onclick="P13.old()" aria-label="'+E(T('All details'))+'">'+I('more')+'</button>'
+
    +'<div class="j2phb">'+(ph.length?'<button class="j2glass" onclick="P13.photos()">'+I('img','s')+' '+ph.length+'</button>':'')+'<button class="j2camb" onclick="P13.cam()" aria-label="Photo">'+I('cam','s')+'</button></div></div>'
    +'<div class="j2top"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:32px">'
      +'<button class="j2stage'+(canStage?' ed':'')+'" '+(canStage?'onclick="P13.pickStage()"':'')+'><i style="background:'+st.col+'"></i>'+E(st.label)+(canStage?' <span style="color:#b3b6bd;font-size:10px">▼</span>':'')+'</button>'+mark+'</div>'
@@ -225,7 +226,7 @@ function draw(){
      +(or.length?'<div class="j2card" style="padding:0">'+or.map(x=>'<div class="j2line" onclick="P13.orr(\''+J(x.id)+'\')">'+I('bolt','s')+'<span>O&amp;R · '+E(T(orrType(x)))+'</span><em>'+E(T(orrStep(x)))+I('chev','s')+'</em></div>').join('')+'</div>':'')
      +'<div class="j2small">'
        +inspLine(s)
-       +'<button onclick="P13.old()">'+I('more','s')+E(T('All details'))+'</button></div>'
+       +(!or.length&&orrStaff(m)?'<button onclick="P13.orrNew()">'+I('bolt','s')+'+ '+E(T('O&R request'))+'</button>':'')+'</div>'
    +'</div>';
   B.scrollTop=keep;}
 function taskRow(j){const d=j.status==='done';return '<div class="j2t'+(d?' dn':'')+'" onclick="P13.task(\''+J(j.id)+'\')"><button class="ck" aria-label="'+E(T('Done'))+'" onclick="event.stopPropagation();P13.done(\''+J(j.id)+'\')">'+(d?'<svg class="j2i s" viewBox="0 0 24 24" style="color:#fff"><path d="m5 12 5 5 9-10"/></svg>':'')+'</button><span class="nm">'+E(j.desc||j.title||'')+'</span><em>'+E(who(j))+'</em></div>';}
@@ -260,16 +261,16 @@ function refresh(){if(!$('m-job2')||$('m-job2').classList.contains('hid'))return
 P13.refresh=refresh;
 
 /* ---------- sheets ---------- */
-function sheet(id,title,sub,html,right){const B=body(id);B.innerHTML='<div class="j2nav"><button class="bk" onclick="P13.close(\''+id+'\')" aria-label="Back">'+I('back')+'</button><div><b>'+E(title)+'</b><small>'+E(sub||'')+'</small></div>'+(right||'')+'</div>'+html;B.scrollTop=0;open(id);}
-P13.photos=()=>{const s=site();if(!s)return;const ph=photos(s);P13._gal=ph.map(x=>x.src);
-  sheet('m-j2s',T('Photos'),s.name+' · '+ph.length,'<div style="padding:4px 10px 30px"><div class="j2grid">'+ph.map((x,i)=>'<div style="background-image:url(\''+String(x.src).replace(/'/g,'%27')+'\')" onclick="P13.photo('+i+')"></div>').join('')+'</div></div>','<button class="rt" onclick="P13.cam()">'+I('cam')+'</button>');};
+function sheet(id,title,sub,html,right){if(id==='m-j2s'){P13._cur=P13._next||null;P13._next=null;}const B=body(id);B.innerHTML='<div class="j2nav"><button class="bk" onclick="P13.close(\''+id+'\')" aria-label="Back">'+I('back')+'</button><div><b>'+E(title)+'</b><small>'+E(sub||'')+'</small></div>'+(right||'')+'</div>'+html;B.scrollTop=0;open(id);}
+P13.photos=()=>{const s=site();if(!s)return;P13._next='photos';const ph=photos(s);P13._gal=ph.map(x=>x.src);
+  sheet('m-j2s',T('Photos'),s.name+' · '+ph.length,'<div style="padding:4px 10px 30px"><div class="j2grid">'+ph.map((x,i)=>'<div style="position:relative;background-image:url(\''+String(x.src).replace(/'/g,'%27')+'\')" onclick="P13.photo('+i+')">'+(x.fid&&fileMenuOk()?'<button class="j2more" aria-label="'+E(T('More'))+'" onclick="event.stopPropagation();P13.fmenu(\''+J(x.fid)+'\')">'+I('more','s')+'</button>':'')+'</div>').join('')+'</div></div>','<button class="rt" onclick="P13.cam()">'+I('cam')+'</button>');};
 P13.tasks=()=>{const s=site();if(!s)return;const tk=tasks(s);const canAdd=can(isBoss)||isOffice(M());
   sheet('m-j2s',T('Tasks'),s.name,'<div class="j2body"><div class="j2lb" style="margin-top:4px">'+E(T('Open tasks'))+' · '+tk.open.length+'</div><div class="j2card">'+(tk.open.length?tk.open.map(taskRow).join(''):'<div class="j2muted">'+E(T('No open tasks'))+'</div>')+'</div>'
    +(tk.done.length?'<div class="j2lb">'+E(T('Done tasks'))+' · '+tk.done.length+'</div><div class="j2card">'+tk.done.slice(0,40).map(taskRow).join('')+'</div>':'')+'</div>',canAdd?'<button class="rt" onclick="P13.addTask()">+ '+E(T('Add task'))+'</button>':'');};
 P13.notes=()=>{const s=site();if(!s)return;const m=M();const nt=notes(s);
   sheet('m-j2s',T('Notes'),s.name,'<div class="j2body"><div class="j2card">'+nt.map(n=>noteRow(n,s,m)).join('')+'</div></div>','<button class="rt" onclick="P13.addNote()">+ '+E(T('Note'))+'</button>');};
-P13.files=()=>{const s=site();if(!s)return;const fl=files(s);const ed=can(canEditFolder);
-  const row=f=>{const k=f.kind;const inner='<span class="fi" style="width:30px;height:36px;border-radius:7px;color:#fff;font-size:8px;font-weight:800;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;flex:none;background:'+(FCOL[k]||'#5d6470')+'">'+k+'</span><span style="flex:1;min-width:0"><span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+E(f.name)+'</span><small style="font-size:12.5px;color:var(--j2mut)">'+E(k==='LINK'?String(f.url||'').replace(/^https?:\/\//,'').slice(0,40):(f.ts?dt(f.ts):''))+'</small></span>'+I('chev','s');
+P13.files=()=>{const s=site();if(!s)return;P13._next='files';const fl=files(s);const ed=can(canEditFolder);
+  const row=f=>{const k=f.kind;const inner='<span class="fi" style="width:30px;height:36px;border-radius:7px;color:#fff;font-size:8px;font-weight:800;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;flex:none;background:'+(FCOL[k]||'#5d6470')+'">'+k+'</span><span style="flex:1;min-width:0"><span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+E(f.name)+'</span><small style="font-size:12.5px;color:var(--j2mut)">'+E(k==='LINK'?String(f.url||'').replace(/^https?:\/\//,'').slice(0,40):(f.ts?dt(f.ts):''))+'</small></span>'+(fileMenuOk()?'<button class="j2more2" aria-label="'+E(T('More'))+'" onclick="event.preventDefault();event.stopPropagation();P13.fmenu(\''+J(f.id)+'\','+(k==='LINK'?1:0)+')">'+I('more','s')+'</button>':I('chev','s'));
     return k==='LINK'?'<a class="j2line" style="text-decoration:none;color:inherit" href="'+E((()=>{try{return safeHref(f.url)}catch(e){return '#'}})())+'" target="_blank" rel="noopener">'+inner+'</a>':'<div class="j2line" onclick="P13.openFile(\''+J(f.id)+'\')">'+inner+'</div>';};
   sheet('m-j2s',T('Files'),s.name+' · '+fl.length,'<div class="j2body">'+(fl.length?'<div class="j2card" style="padding:0">'+fl.map(row).join('')+'</div>':'<div class="j2muted" style="padding:10px 6px">'+E(T('No files yet'))+'</div>')
    +(ed?'<div class="j2btns" style="margin-top:6px"><button class="j2btn" onclick="P13.upload()">'+I('plus','s')+E(T('Add file'))+'</button><button class="j2btn" onclick="P13.addLink()">'+I('plus','s')+E(T('Add link'))+'</button></div>':'')+'</div>');};
@@ -287,8 +288,33 @@ P13.info=()=>{const s=site();if(!s)return;const m=M();const ed=can(canEditFolder
      +'<div class="j2kv"><span>'+E(T(mgr.length>1?'Site managers':'Site manager'))+'</span><b>'+(mgr.length?mgr.map(id=>E(nm(id))+(can(canAssignMgr)?' <button class="j2plus" style="width:20px;height:20px;vertical-align:-4px" onclick="P13.rmMgr(\''+J(id)+'\')" aria-label="'+E(T('Remove'))+'">'+I('x','s')+'</button>':'')).join('<br>'):E(T('Not set'))+'')+'</b></div>'
      +'<div class="j2kv" style="cursor:pointer" onclick="P13.fence()"><span>'+E(T('GPS fence'))+'</span><b>'+(s.lat?E((s.rad||300)+' ft'):E(T('Not set')))+'</b></div>'
      +extra.map(x=>'<div class="j2kv"><span>'+E(x.k)+'</span><b>'+E(x.v)+'</b></div>').join('')+'</div>'
-   +(ed?'<button class="j2btn" style="margin-top:14px;width:100%;height:44px" onclick="P13.addField()">'+I('plus','s')+E(T('Add a field'))+'</button>':'')+'</div>',
+   +(ed?'<button class="j2btn" style="margin-top:14px;width:100%;height:44px" onclick="P13.addField()">'+I('plus','s')+E(T('Add a field'))+'</button>':'')
+   +(m&&m.role==='owner'?'<button class="j2btn" style="margin-top:26px;width:100%;height:44px;color:#c0392b" onclick="P13.removeJob()">'+E(T('Remove job'))+'</button>':'')+'</div>',
    ed?'<button class="rt" onclick="P13.editInfo()">'+E(T('Edit'))+'</button>':'');};
+/* file & photo menu: Open · Share · Rename · Replace · Delete (Baruch 11/3: no more old page) */
+function fileMenuOk(){return can(canEditFolder)||can(isAdmin)||can(isBoss);}
+function after(){try{refresh();}catch(e){}try{const o=$('m-j2s');if(o&&!o.classList.contains('hid')){const k=o.querySelector('.md').scrollTop;if(P13._cur==='files')P13.files();else if(P13._cur==='photos')P13.photos();o.querySelector('.md').scrollTop=k;}}catch(e){}}
+P13._after=after;
+P13.fmenu=(id,isLink)=>{const s=site();if(!s)return;const f=isLink?(s.links||[]).find(x=>x.id===id):(s.files||[]).find(x=>x.id===id);if(!f)return;
+  const ed=can(canEditFolder),adm=can(isAdmin),boss=can(isBoss);const b=(fn,ic,t,red)=>'<button class="j2pick" style="display:flex;align-items:center;gap:12px'+(red?';color:#c0392b':'')+'" onclick="'+fn+'">'+I(ic,'s')+E(T(t))+'</button>';
+  const q="'"+J(id)+"'";
+  const L=isLink?[b("P13.lopen("+q+")",'chev','Open')].concat(adm?[b('P13.fdel('+q+',1)','x','Delete',1)]:[])
+   :[b("P13.close('m-j2t');P13.openFile("+q+")",'chev','Open')].concat(boss&&f.kind!=='img'?[b('P13.fshare('+q+')','share','Share')]:[],ed&&f.kind!=='img'?[b('P13.fren('+q+')','edit','Rename'),b('P13.frep('+q+')','upload','Replace')]:[],adm?[b('P13.fdel('+q+')','x','Delete',1)]:[]);
+  sheet('m-j2t',isLink?(f.title||f.url):f.name,isLink?T('Link'):T(f.kind==='img'?'Photo':'File'),'<div class="j2body"><div class="j2card" style="padding:0">'+L.join('')+'</div></div>');};
+P13.lopen=id=>{const s=site();const f=s&&(s.links||[]).find(x=>x.id===id);close('m-j2t');if(!f)return;let u='#';try{u=safeHref(f.url);}catch(e){}if(u!=='#')window.open(u,'_blank','noopener');};
+P13.fshare=id=>{close('m-j2t');try{fileShare(id);lift();}catch(e){}};
+P13.fren=id=>{const s=site();const f=s&&(s.files||[]).find(x=>x.id===id);if(!f)return;close('m-j2t');
+  askPrompt(T('Rename file'),[{label:T('Name'),value:f.name}],([n])=>{n=String(n||'').trim();if(!n)return;f.name=n;f.editedBy=(M()||{}).id;f.editedAt=Date.now();save();after();});lift();};
+P13.frep=id=>{close('m-j2t');try{fdReplace(id);}catch(e){}};
+P13.fdel=(id,isLink)=>{const s=site();if(!s||!can(isAdmin))return;close('m-j2t');
+  askConfirm(T(isLink?'Remove this link?':'Remove this file?'),()=>{if(isLink)s.links=(s.links||[]).filter(x=>x.id!==id);else s.files=(s.files||[]).filter(x=>x.id!==id);save();after();try{renderSites();}catch(e){}},T('Remove'));lift();};
+P13.removeJob=()=>{const s=site();const m=M();if(!s||!m||m.role!=='owner')return;
+  askConfirm(T('Remove this job?'),()=>{try{if(typeof fdRemoveSite==='function')fdRemoveSite(s.id);else{D.sites=D.sites.filter(x=>x.id!==s.id);save();renderAll();}}catch(e){}['m-j2t','m-j2s','m-job2'].forEach(close);},T('Remove'));lift();};
+P13.orrNew=()=>{const s=site();if(s)try{ORR.add(s.id);lift();}catch(e){}};
+function orrStaff(m){return !!m&&(m.role==='owner'||m.role==='manager'||!!m.all||(m.role==='office'&&m.title!=='Accountant'));}
+// pop-ups from the main app (confirm, rename, O&R form, share) must sit above the job screen
+function lift(){setTimeout(()=>{const top=Math.max(0,...['m-job2','m-j2s','m-j2t'].map(i=>{const o=$(i);return o&&!o.classList.contains('hid')?(parseInt(getComputedStyle(o).zIndex,10)||0):0}));
+  document.querySelectorAll('.ov:not(.hid)').forEach(o=>{if(!/^m-j2|^m-job2$/.test(o.id)&&(parseInt(getComputedStyle(o).zIndex,10)||0)<=top)o.style.zIndex=String(top+5);});},0);}
 P13.fence=()=>{const s=site();if(s)try{openFence(s.id);}catch(e){}};
 P13.editInfo=()=>{const s=site();if(!s)return;const extra=(s.info||[]).filter(x=>x&&x.k);
   const f=(id,l,v,type)=>'<div class="j2lb" style="margin:12px 4px 6px">'+E(l)+'</div><input id="'+id+'" class="j2in" value="'+E(v||'')+'"'+(type?' inputmode="'+type+'"':'')+'>';
@@ -331,7 +357,8 @@ P13.rMoney=()=>{const s=site();const L=rExps(s).sort((a,b)=>String(b.date||'').l
 if(typeof window.openFolder==='function'){
   const _of=window.openFolder;
   window.openFolder=function(id){
-    const f0=$('m-folder');const wasOpen=!!f0&&!f0.classList.contains('hid');   // the old folder is already open ("All details") → keep it
+    const f0=$('m-folder');const wasOpen=!!f0&&!f0.classList.contains('hid');
+    const j0=$('m-job2');const j2open=!P13._legacy&&!!j0&&!j0.classList.contains('hid');   // the old folder is already open ("All details") → keep it
     const r=_of.apply(this,arguments);
     if(wasOpen)return r;
     try{
@@ -340,6 +367,7 @@ if(typeof window.openFolder==='function'){
       // hide the old folder without leaving it in the back history
       f.classList.add('hid');try{for(let i=navStack.length-1;i>=0;i--){if(navStack[i].m==='m-folder'){navStack.splice(i,1);break;}}}catch(e){}
       try{lastHid=null;}catch(e){}
+      if(j2open){after();return r;}
       draw();open('m-job2');
     }catch(e){try{console.warn('p13',e)}catch(_){}}
     return r;};
