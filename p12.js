@@ -16,7 +16,7 @@ const S_ES={'Code book':'Libro del código','Search the code book':'Buscar en el
 'Match':'Resultado','of':'de','Front of the book':'Inicio del libro','Back':'Atrás','The book is in English.':'El libro está en inglés.',
 'Could not load this page. Check your connection.':'No se pudo cargar esta página. Revisa tu conexión.','Rules 1–4 (Chapters 1–4)':'Reglas 1–4 (Capítulos 1–4)',
 'Chapters 5–9':'Capítulos 5–9','Chapters 1–4':'Capítulos 1–4','Read about this in the code book':'Leer sobre esto en el libro del código','No such page in this volume.':'No existe esa página en este volumen.',
-'Only the team can open the code book. Sign in first.':'Solo el equipo puede abrir el libro. Inicia sesión primero.','Recent searches':'Búsquedas recientes','Read the whole book':'Leer el libro completo','Stop':'Parar','Pause':'Pausa','Continue':'Seguir','Slow':'Lento','Normal speed':'Velocidad normal','This page has no words to read.':'Esta página no tiene palabras para leer.','This phone cannot read aloud.':'Este teléfono no puede leer en voz alta.','section':'sección','sections':'secciones','pages':'páginas','Other pages (index, review questions)':'Otras páginas (índice, preguntas de repaso)','e.g. code for kitchens, bonding by pool, 210.8':'ej. código para cocinas, bonding de piscina, 210.8','Zoom':'Zoom'};
+'Only the team can open the code book. Sign in first.':'Solo el equipo puede abrir el libro. Inicia sesión primero.','Recent searches':'Búsquedas recientes','Getting the book ready to work with no service…':'Preparando el libro para usarlo sin señal…','No service — the book will finish saving when you have signal.':'Sin señal — el libro terminará de guardarse cuando tengas señal.','Try again':'Intentar de nuevo','Search works with no service.':'La búsqueda funciona sin señal.','All pages saved on this phone.':'Todas las páginas guardadas en este teléfono.','Saving pages…':'Guardando páginas…','Save all pages on this phone':'Guardar todas las páginas en este teléfono','use Wi-Fi':'usa Wi-Fi','No service right now. Pages you already opened, and saved pages, still work.':'Sin señal ahora. Las páginas que ya abriste y las guardadas siguen funcionando.','Voice':'Voz','Choose a voice':'Elige una voz','Tap a voice to hear it. ★ = best quality.':'Toca una voz para escucharla. ★ = mejor calidad.','No voices found on this phone.':'No se encontraron voces en este teléfono.','More natural voices: on iPhone go to Settings → Accessibility → Spoken Content → Voices → English, and download a Premium voice like Ava or Zoe. Then come back here and pick it.':'Voces más naturales: en el iPhone ve a Configuración → Accesibilidad → Contenido leído → Voces → Inglés, y descarga una voz Premium como Ava o Zoe. Luego vuelve aquí y elígela.','Read the whole book':'Leer el libro completo','Stop':'Parar','Pause':'Pausa','Continue':'Seguir','Slow':'Lento','Normal speed':'Velocidad normal','This page has no words to read.':'Esta página no tiene palabras para leer.','This phone cannot read aloud.':'Este teléfono no puede leer en voz alta.','section':'sección','sections':'secciones','pages':'páginas','Other pages (index, review questions)':'Otras páginas (índice, preguntas de repaso)','e.g. code for kitchens, bonding by pool, 210.8':'ej. código para cocinas, bonding de piscina, 210.8','Zoom':'Zoom'};
 const T=s=>ES_ON()&&S_ES[s]?S_ES[s]:s;
 const LS={get(k,d){try{const v=localStorage.getItem('cb_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('cb_'+k,JSON.stringify(v))}catch(e){}}};
 const VOLN={1:'Chapters 1–4',2:'Chapters 5–9'};
@@ -77,7 +77,18 @@ html[data-theme=dark] #cbR .cbmatch{background:#3a2b05;color:#f5c26b}
 #cbR .cbsay{display:none;padding:10px 14px;background:#1f5fbf;color:#fff;font-size:19px;line-height:1.35;max-height:28vh;overflow:auto}
 #cbR .cbsay.on{display:block}
 #cbR .cbsayc{display:flex;gap:8px;margin-top:8px}
+#cbR .cbsayc{flex-wrap:wrap}
 #cbR .cbsayc button{border:0;border-radius:10px;padding:9px 14px;font-size:15px;font-weight:600;background:rgba(255,255,255,.2);color:#fff}
+#cbR .cbspd{display:flex;background:rgba(0,0,0,.18);border-radius:10px;padding:2px}
+#cbR .cbspd button{background:transparent;padding:7px 12px;min-width:44px}
+#cbR .cbspd button.on{background:#fff;color:#1f5fbf}
+#cbVoc{position:fixed;inset:0;z-index:2002;background:rgba(0,0,0,.35);display:flex;align-items:flex-end}
+#cbVoc.hid{display:none}
+#cbVoc>div{background:var(--g1);width:100%;max-height:75vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px 12px calc(env(safe-area-inset-bottom,0px) + 14px)}
+#cbVoc .vrow{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;text-align:left;font:inherit;color:inherit;background:#fff;border:1px solid var(--g2);border-radius:12px;padding:12px 14px;margin-bottom:6px}
+html[data-theme=dark] #cbVoc .vrow{background:#1c1c1e}
+#cbVoc .vrow.on{border:2px solid #1f5fbf}
+#cbVoc .vrow small{color:var(--g4)}
 #cbR .cbpg i.rd{background:rgba(60,140,255,.35);mix-blend-mode:multiply}
 #cbR button.ib.on{background:#1f5fbf;color:#fff}
 #cbTocS{position:fixed;inset:0;z-index:2001;background:rgba(0,0,0,.35);display:flex;align-items:flex-end}
@@ -85,23 +96,75 @@ html[data-theme=dark] #cbR .cbmatch{background:#3a2b05;color:#f5c26b}
 #cbTocS>div{background:var(--g1);width:100%;max-height:82vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px 12px calc(env(safe-area-inset-bottom,0px) + 14px)}
 `;document.head.appendChild(css);
 
-/* ---------- data ---------- */
+/* ---------- data: kept on the phone so the book works with no service ----------
+   The text of every page (for search, highlights and read aloud) is saved in the phone's storage (IndexedDB) the
+   first time the Code book is opened (~10 MB). Page pictures are saved as they're viewed; "Save all pages" saves
+   the whole book (~160 MB, best on Wi-Fi). Search runs on the phone: instant, and works with no signal. */
 const meta={1:null,2:null};        // per volume: [{idx,label,head}]
 let toc=null;                       // {1:[...],2:[...]}
+let LOCAL=null;                     // {pages:{'v/i':{vol,idx,label,head,body,boxes}}, toc:[...]} once on the phone
+const DBN='ex-codebook',DBV=1;
+function idb(){return new Promise((ok,no)=>{try{const r=indexedDB.open(DBN,DBV);r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains('kv'))d.createObjectStore('kv');};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);}catch(e){no(e)}});}
+async function kvGet(k){const d=await idb();return new Promise((ok,no)=>{const q=d.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>ok(q.result);q.onerror=()=>no(q.error);});}
+async function kvPut(k,v){const d=await idb();return new Promise((ok,no)=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=()=>ok();t.onerror=()=>no(t.error);});}
+const BOOKV=1; // bump if the book data changes
+let localP=null,dl={busy:false,done:0,total:1280,err:''};
+function cleanTitle(t){return String(t||'').replace(/[\x00-\x1f]/g,' ').replace(/\s*([—–])\s*/g,'$1').replace(/\s+/g,' ').trim();}
+function useLocal(L){
+  LOCAL=L;const P=L.pages;
+  [1,2].forEach(v=>{meta[v]=Object.values(P).filter(p=>p.vol===v).sort((a,b)=>a.idx-b.idx).map(p=>({idx:p.idx,label:p.label,head:p.head}));});
+  toc={1:[],2:[]};L.toc.forEach(r=>(toc[r.vol]||(toc[r.vol]=[])).push({vol:r.vol,ord:r.ord,title:cleanTitle(r.title),idx:r.idx}));
+  Object.values(toc).forEach(a=>a.sort((x,y)=>x.ord-y.ord));
+  buildIndex();
+}
+// load the saved copy; if there is none yet, download the text once (in parts, so a bad signal can pick up where it stopped)
+function ensureLocal(){
+  if(LOCAL)return Promise.resolve(LOCAL);
+  if(localP)return localP;
+  localP=(async()=>{
+    try{const L=await kvGet('book');if(L&&L.v===BOOKV&&L.pages&&Object.keys(L.pages).length>=1280){useLocal(L);return LOCAL;}}catch(e){}
+    const c=client();if(!c)throw new Error('nosb');
+    dl.busy=true;dl.err='';drawDl();
+    let part={};try{part=(await kvGet('bookpart'))||{};}catch(e){}
+    const pages=part.pages||{};dl.done=Object.keys(pages).length;drawDl();
+    for(const v of [1,2]){
+      for(let from=0;;from+=80){
+        const have=Object.values(pages).filter(p=>p.vol===v&&p.idx>=from&&p.idx<from+80).length;
+        if(have===80){continue;}
+        let r=null;for(let tries=0;tries<4&&!r;tries++){try{r=await withTimeout(c.from('codebook_pages').select('vol,idx,label,head,body,boxes').eq('vol',v).gte('idx',from).lt('idx',from+80).order('idx'),30000);if(r.error)throw r.error;}catch(e){r=null;await new Promise(z=>setTimeout(z,1500*(tries+1)));}}
+        if(!r){dl.busy=false;dl.err='net';drawDl();localP=null;throw new Error('net');}
+        r.data.forEach(p=>{pages[p.vol+'/'+p.idx]=p;});dl.done=Object.keys(pages).length;drawDl();
+        try{await kvPut('bookpart',{pages});}catch(e){}
+        if(r.data.length<80)break;
+      }
+    }
+    const t=await withTimeout(c.from('codebook_toc').select('vol,ord,title,idx').order('vol').order('ord').limit(5000),30000);
+    if(t.error){dl.busy=false;dl.err='net';drawDl();localP=null;throw t.error;}
+    const L={v:BOOKV,pages,toc:t.data};
+    try{await kvPut('book',L);await kvPut('bookpart',null);}catch(e){}
+    useLocal(L);dl.busy=false;drawDl();return LOCAL;
+  })();
+  return localP;
+}
+// use the saved copy if it's already on the phone (doesn't wait for a download)
+let qlP=null;function quickLocal(){if(LOCAL)return Promise.resolve(LOCAL);if(!qlP)qlP=kvGet('book').then(L=>{if(L&&L.v===BOOKV&&L.pages&&Object.keys(L.pages).length>=1280&&!LOCAL)useLocal(L);return LOCAL;}).catch(()=>null);return qlP;}
+function withTimeout(p,ms){return Promise.race([p,new Promise((_,no)=>setTimeout(()=>no(new Error('timeout')),ms))]);}
 async function loadMeta(vol){
   if(meta[vol])return meta[vol];
+  await quickLocal();if(meta[vol])return meta[vol];
   const c=client();if(!c)throw new Error('nosb');
   const rows=[];
   for(let from=0;;from+=1000){
-    const {data,error}=await c.from('codebook_pages').select('idx,label,head').eq('vol',vol).order('idx').range(from,from+999);
+    const {data,error}=await withTimeout(c.from('codebook_pages').select('idx,label,head').eq('vol',vol).order('idx').range(from,from+999),20000);
     if(error)throw error;rows.push(...data);if(data.length<1000)break;
   }
   meta[vol]=rows;return rows;
 }
 async function loadToc(){
   if(toc)return toc;
-  const {data,error}=await client().from('codebook_toc').select('vol,ord,title,idx').order('vol').order('ord').limit(5000);
-  if(error)throw error;toc={1:[],2:[]};data.forEach(r=>{r.title=String(r.title||'').replace(/[\x00-\x1f]/g,' ').replace(/\s*([—–])\s*/g,'$1').replace(/\s+/g,' ').trim();(toc[r.vol]||(toc[r.vol]=[])).push(r);});return toc;
+  await quickLocal();if(toc)return toc;
+  const {data,error}=await withTimeout(client().from('codebook_toc').select('vol,ord,title,idx').order('vol').order('ord').limit(5000),20000);
+  if(error)throw error;toc={1:[],2:[]};data.forEach(r=>{r.title=cleanTitle(r.title);(toc[r.vol]||(toc[r.vol]=[])).push(r);});return toc;
 }
 // group the flat bookmarks into articles: "Introduction to Article 210—Branch Circuits" starts a group
 function groups(list){
@@ -117,7 +180,8 @@ function groups(list){
 const boxCache=new Map();
 async function pageData(vol,idx){
   const k=vol+'/'+idx;if(boxCache.has(k))return boxCache.get(k);
-  const {data}=await client().from('codebook_pages').select('boxes,body').eq('vol',vol).eq('idx',idx).maybeSingle();
+  let data=LOCAL&&LOCAL.pages[k];
+  if(!data){const r=await withTimeout(client().from('codebook_pages').select('boxes,body').eq('vol',vol).eq('idx',idx).maybeSingle(),20000);data=r.data;}
   const B=(data&&data.boxes||'').split('\n').filter(Boolean).map(l=>{const p=l.split(' ');return [+p[0],+p[1],+p[2],+p[3],p.slice(4).join(' ')]});
   const r={boxes:B,body:(data&&data.body)||''};
   boxCache.set(k,r);if(boxCache.size>60)boxCache.delete(boxCache.keys().next().value);return r;
@@ -131,10 +195,10 @@ async function img(vol,idx){
   let blob=null;
   try{const ca=await caches.open('ex-codebook');const hit=await ca.match(key);if(hit)blob=await hit.blob();}catch(e){}
   if(!blob){
-    const {data,error}=await client().storage.from('codebook').download('v'+vol+'/'+idx+'.webp');
+    const {data,error}=await withTimeout(client().storage.from('codebook').download('v'+vol+'/'+idx+'.webp'),25000);
     if(error||!data)throw error||new Error('no image');
     blob=data;
-    try{const ca=await caches.open('ex-codebook');await ca.put(key,new Response(blob,{headers:{'content-type':'image/webp'}}));trimCache(ca);}catch(e){}
+    try{const ca=await caches.open('ex-codebook');await ca.put(key,new Response(blob,{headers:{'content-type':'image/webp'}}));if(!LS.get('saveall',false))trimCache(ca);}catch(e){}
   }
   const u=URL.createObjectURL(blob);urlCache.set(k,u);
   if(urlCache.size>24){const [ok,ou]=urlCache.entries().next().value;urlCache.delete(ok);try{URL.revokeObjectURL(ou)}catch(e){}}
@@ -161,10 +225,86 @@ function wordHit(w,TS){
   });
 }
 let lastQ='',results=[],resIdx=-1;
+// ---- search on the phone (same rules as the server search) ----
+let IDX=null,TITLE=null;
+function stem(w){if(/\d/.test(w))return w;let s=w;for(const x of ['ations','ation','ings','ing','ers','ies','ed','es','s']){if(s.length>x.length+2&&s.endsWith(x)){s=s.slice(0,-x.length);break;}}return s;}
+function buildIndex(){
+  IDX=[];TITLE={};
+  Object.values(toc||{}).forEach(a=>a.forEach(r=>{const h=(r.title.match(/^(\d{2,3}\.\d+[A-Z]?)\s/)||[])[1];if(h&&!TITLE[r.vol+'|'+h])TITLE[r.vol+'|'+h]=r.title;}));
+  Object.values(LOCAL.pages).forEach(p=>{const low=(p.head+' '+p.body).toLowerCase();const toks=new Set(low.split(/[^a-z0-9.]+/).map(t=>t.replace(/^\.+|\.+$/g,'')).filter(Boolean));
+    IDX.push({p,low,toks:[...toks],other:p.label&&(/^[ivxlc]+$/.test(p.label)||/(review questions|final exam|\| *index)/i.test(p.body.slice(0,60)))});});
+}
+const SYNQ={pool:['swim'],pools:['swim'],swim:['pool'],bond:['equipotenti'],bonding:['equipotenti'],spa:['tub'],tub:['spa'],jacuzzi:['tub','spa'],gfi:['gfci'],gfis:['gfci'],
+ romex:['nm'],panel:['panelboard','switchboard'],ev:['vehicl'],solar:['pv','photovolta'],grounding:['ground']};
+function localSearch(q){
+  const qq=String(q||'').toLowerCase();
+  const secs=(qq.match(/\d{2,3}\.\d+/g)||[]);
+  const words=qq.replace(/(\d{2,3}\.\d+)(\([a-z0-9]+\))*/g,' ').replace(/['’]s\b/g,'').split(/[^a-z0-9]+/).filter(w=>w&&!STOP.has(w));
+  const groupsQ=words.map(w=>[stem(w),...(SYNQ[w]||[])]);   // each word: its stem + trade words that mean the same
+  if(!groupsQ.length&&!secs.length)return [];
+  const out=[];
+  IDX.forEach(e=>{
+    const p=e.p;let n=0,tf=0;
+    groupsQ.forEach(g=>{let hit=false;for(const t of e.toks){if(g.some(s=>t.startsWith(s))){hit=true;tf++;}}if(hit)n++;});
+    const isSec=secs.includes(p.head);
+    if(!n&&!isSec)return;
+    const ttl=p.head?TITLE[p.vol+'|'+p.head]||null:null;let inT=0;
+    if(ttl){const tl=ttl.toLowerCase();groupsQ.forEach(g=>{if(g.some(s=>new RegExp('\\b'+s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).test(tl)))inT++;});}
+    let sc=n+inT*0.6+Math.min(1,tf/40)+(isSec?5:0)+(secs.some(x=>e.low.includes(x))?0.5:0);
+    sc*=e.other?0.08:(p.head?1:0.45);
+    out.push({vol:p.vol,idx:p.idx,label:p.label,head:p.head,title:ttl,score:sc,_e:e,_g:groupsQ});
+  });
+  out.sort((a,b)=>b.score-a.score||a.vol-b.vol||a.idx-b.idx);
+  return out.slice(0,150).map(r=>{r.snip=localSnip(r._e.p.body,r._g,secs);delete r._e;delete r._g;return r;});
+}
+function localSnip(body,G,secs){
+  const b=body.replace(/\s+/g,' ');const low=b.toLowerCase();let at=-1;
+  const stems=G.flat();for(const s of stems.concat(secs)){const re=new RegExp('\\b'+s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));const m=low.match(re);if(m&&(at<0||m.index<at))at=m.index;}
+  if(at<0)at=0;let a=Math.max(0,at-60);const sp=b.lastIndexOf(' ',a);if(sp>0&&at-sp<90)a=sp+1;
+  let t=b.slice(a,at+150);
+  stems.concat(secs).forEach(s=>{if(!s)return;t=t.replace(new RegExp('\\b('+s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'[a-z0-9]*)','gi'),'<<$1>>');});
+  return (a>0?'… ':'')+t+' …';
+}
+// ---- save every page picture on the phone (for jobs with no service) ----
+const saveAll={busy:false,done:0,total:1280};
+async function countSaved(){try{const ca=await caches.open('ex-codebook');return (await ca.keys()).length;}catch(e){return 0;}}
+CB.saveAll=async()=>{
+  if(saveAll.busy){saveAll.busy=false;drawDl();return;}   // tap again = pause
+  LS.set('saveall',true);saveAll.busy=true;drawDl();
+  try{await ensureLocal();}catch(e){}
+  const ca=await caches.open('ex-codebook');const have=new Set((await ca.keys()).map(r=>r.url));
+  const todo=[];[1,2].forEach(v=>(meta[v]||[]).forEach(m=>{const key='https://codebook.local/v'+v+'/'+m.idx+'.webp';if(!have.has(key))todo.push([v,m.idx,key]);}));
+  saveAll.total=(meta[1]||[]).length+(meta[2]||[]).length||1280;saveAll.done=saveAll.total-todo.length;drawDl();
+  let fails=0;
+  const worker=async()=>{while(saveAll.busy&&todo.length){const [v,i,key]=todo.shift();
+    try{const {data,error}=await withTimeout(client().storage.from('codebook').download('v'+v+'/'+i+'.webp'),30000);if(error||!data)throw error;await ca.put(key,new Response(data,{headers:{'content-type':'image/webp'}}));saveAll.done++;fails=0;}
+    catch(e){todo.push([v,i,key]);if(++fails>12){saveAll.busy=false;}await new Promise(z=>setTimeout(z,1500));}
+    if(saveAll.done%10===0)drawDl();}};
+  await Promise.all([worker(),worker(),worker()]);
+  saveAll.busy=false;drawDl();
+};
+function drawDl(){
+  const el=$('cbDl');if(!el)return;
+  const L=!!LOCAL;
+  let h='';
+  if(!L&&dl.busy)h='⏳ '+T('Getting the book ready to work with no service…')+' '+Math.round(dl.done/12.8)+'%';
+  else if(!L&&dl.err)h='⚠️ '+T('No service — the book will finish saving when you have signal.')+' <a onclick="CB.retryDl()" style="text-decoration:underline;cursor:pointer">'+T('Try again')+'</a>';
+  else if(L){
+    const full=saveAll.done>=saveAll.total;
+    h='✓ '+T('Search works with no service.')+' '+
+      (full?T('All pages saved on this phone.'):
+       '<a onclick="CB.saveAll()" style="text-decoration:underline;cursor:pointer;font-weight:600">'+(saveAll.busy?T('Saving pages…')+' '+saveAll.done+'/'+saveAll.total+' — '+T('Pause'):T('Save all pages on this phone')+' (160 MB, '+T('use Wi-Fi')+')'+(saveAll.done?' — '+saveAll.done+'/'+saveAll.total:''))+'</a>');
+  }
+  el.innerHTML=h;
+}
+CB.retryDl=()=>{dl.err='';ensureLocal().then(()=>{drawToc('cbToc');}).catch(()=>{});drawDl();};
 async function search(q){
+  if(LOCAL)return localSearch(q);
   const c=client();if(!c)throw new Error('nosb');
-  const {data,error}=await c.rpc('codebook_search',{q,lim:150});
-  if(error)throw error;return data||[];
+  try{const {data,error}=await withTimeout(c.rpc('codebook_search',{q,lim:150}),15000);if(error)throw error;return data||[];}
+  catch(e){ // weak signal: wait for the saved copy if it's coming
+    if(localP){try{await localP;return localSearch(q);}catch(x){}}
+    throw new Error('net');}
 }
 function snipHtml(s){return E(String(s||'').replace(/[\uE000-\uF8FF}]/g,'').replace(/\s*\|\s*/g,' · ')).replace(/&lt;&lt;/g,'<b>').replace(/&gt;&gt;/g,'</b>').replace(/\s+/g,' ');}
 
@@ -176,6 +316,7 @@ function homeHtml(){
   '<form class="cbsr" onsubmit="event.preventDefault();CB.go()"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="color:var(--g4);flex:none"><circle cx="11" cy="11" r="7.5"/><path d="m21 21-4.3-4.3"/></svg>'+
   '<input id="cbQ" data-nomic="1" type="search" enterkeyhint="search" autocomplete="off" placeholder="'+E(T('e.g. code for kitchens, bonding by pool, 210.8'))+'" value="'+E(lastQ)+'"><button class="cbgo" type="submit">'+E(T('Search'))+'</button></form>'+
   '<div style="font-size:12px;color:var(--g4);margin:6px 4px 0">Mike Holt — Understanding the 2023 NEC'+(ES_ON()?' · '+E(T('The book is in English.')):'')+'</div>'+
+  '<div id="cbDl" style="font-size:12.5px;color:var(--g4);margin:6px 4px 0;line-height:1.4"></div>'+
   '<div class="cbread">'+[1,2].map(v=>'<button class="cbcard" onclick="CB.read('+v+')"><b>📖 '+E(T('Read the whole book'))+'</b><div class="cbmeta" style="margin:3px 0 0">'+E(T('Volume'))+' '+v+' · '+E(T(VOLN[v]))+'</div></button>').join('')+'</div>'+
   '<div id="cbRes"></div>'+
   '<div id="cbIdle">'+
@@ -195,7 +336,7 @@ async function drawToc(target,inSheet){
     G.map((g,gi)=>'<div class="cbart'+(openArt===tvol+':'+gi?' open':'')+'"><div onclick="CB.art(this,\''+tvol+':'+gi+'\')"><b>'+E(g.title)+'</b><span>'+(g.items.length?g.items.length+' ›':E(T('page'))+' '+E(lab(g.idx)))+'</span></div>'+
       '<div class="cbsecs"><a onclick="CB.open('+tvol+','+g.idx+')"><span>'+E(g.title)+'</span><span>'+E(lab(g.idx))+'</span></a>'+
       g.items.map(r=>'<a onclick="CB.open('+tvol+','+r.idx+')"><span>'+E(r.title)+'</span><span>'+E(lab(r.idx))+'</span></a>').join('')+'</div></div>').join('');
-  }catch(e){el.innerHTML='<div style="color:var(--g4);padding:10px">'+E(T(String(e&&e.message)==='nosb'?'Only the team can open the code book. Sign in first.':'Could not load this page. Check your connection.'))+'</div>';}
+  }catch(e){el.innerHTML='<div style="color:var(--g4);padding:10px">'+E(T(String(e&&e.message)==='nosb'?'Only the team can open the code book. Sign in first.':'No service right now. Pages you already opened, and saved pages, still work.'))+'</div>';}
 }
 CB.tv=v=>{tvol=v;LS.set('tvol',v);document.querySelectorAll('.cbseg span').forEach((s,i)=>s.classList.toggle('on',i===v-1));drawToc(document.getElementById('cbTocS')&&!$('cbTocS').classList.contains('hid')?'cbTocIn':'cbToc');};
 CB.art=(el,k)=>{const a=el.parentNode;const on=!a.classList.contains('open');document.querySelectorAll('.cbart.open').forEach(x=>x.classList.remove('open'));if(on){a.classList.add('open');openArt=k;}else openArt=null;};
@@ -231,7 +372,7 @@ CB.go=async q=>{
           '<div class="cbmeta" style="margin:4px 0 6px"><span>'+E(T('Vol'))+' '+g.vol+'</span><span>·</span><span>'+E(pr(g))+'</span></div><div class="cbsnip">'+snipHtml(g.best.snip)+'</div></button>';
       }).join('')
       :'<div class="cbcard" style="cursor:default;color:var(--g4)">'+E(T('Nothing found. Try fewer or different words.'))+'</div>');
-  }catch(e){R.innerHTML='<div class="cbcard" style="cursor:default;color:var(--g4)">'+E(T(String(e&&e.message)==='nosb'?'Only the team can open the code book. Sign in first.':'Could not load this page. Check your connection.'))+'</div>';}
+  }catch(e){R.innerHTML='<div class="cbcard" style="cursor:default;color:var(--g4)">'+E(T(String(e&&e.message)==='nosb'?'Only the team can open the code book. Sign in first.':'No service right now. Pages you already opened, and saved pages, still work.'))+'</div>';}
 };
 CB.hit=i=>{resIdx=i;const r=results[i];if(r)CB.open(r.vol,r.idx,true);};
 
@@ -243,7 +384,7 @@ function readerEl(){
   R.innerHTML='<div class="cbtop"><button class="ib" onclick="CB.close()" aria-label="Back">‹</button><div class="tt" id="cbTT"></div>'+
     '<button class="ib" onclick="CB.say()" id="cbSay" aria-label="Read aloud">🔊</button><button class="ib" onclick="CB.zoom()" id="cbZ" aria-label="Zoom"></button><button class="ib" onclick="CB.toc()" aria-label="Contents">☰</button></div>'+
     '<div class="cbmatch hid" id="cbM"></div>'+
-    '<div class="cbsay" id="cbSayBar"><div id="cbSayTx"></div><div class="cbsayc"><button id="cbSayP" onclick="CB.sayPause()"></button><button id="cbSaySp" onclick="CB.saySpeed()"></button><button onclick="CB.sayStop()">■ '+E(T('Stop'))+'</button></div></div>'+
+    '<div class="cbsay" id="cbSayBar"><div id="cbSayTx"></div><div class="cbsayc"><button id="cbSayP" onclick="CB.sayPause()"></button><span class="cbspd" id="cbSpd"></span><button id="cbSayV" onclick="CB.voices()"></button><button onclick="CB.sayStop()">■ '+E(T('Stop'))+'</button></div></div>'+
     '<div class="cbscr" id="cbS"></div>'+
     '<div class="cbbot"><button class="nv" id="cbP" onclick="CB.step(-1)"></button><form class="pn" onsubmit="event.preventDefault();CB.jump()"><input id="cbN" data-nomic="1" inputmode="text" enterkeyhint="go"><span id="cbOf"></span></form><button class="nv" id="cbNx" onclick="CB.step(1)"></button></div>'+
     '<div id="cbTocS" class="hid" onclick="if(event.target===this)CB.tocClose()"><div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="font-size:17px">'+'<span id="cbTocH"></span></b><button class="ib" onclick="CB.tocClose()">✕</button></div><div class="cbseg" id="cbTocSeg"></div><div id="cbTocIn"></div></div></div>';
@@ -299,7 +440,8 @@ CB.unhl=()=>{hl=false;resIdx=-1;draw();};
 CB.read=async v=>{const last=LS.get('last',null);if(last&&+last.v===v&&last.i>0)return CB.open(v,last.i);let i=0;try{const tc=await loadToc();if(tc[v]&&tc[v][0])i=tc[v][0].idx;}catch(e){}CB.open(v,i);};
 
 /* ---------- read aloud (the phone's own voice, no AI, works for any page) ---------- */
-const say={on:false,paused:false,rate:LS.get('rate',0.9),chunks:[],at:0,seq:0};
+const say={on:false,paused:false,spd:[1,2,3].includes(LS.get('spd',1))?LS.get('spd',1):1,chunks:[],at:0,seq:0};
+const RATE={1:1.05,2:2,3:3}; // 1× is a normal talking speed; 2× and 3× for fast listening
 const SYNTH=()=>window.speechSynthesis;
 function cleanForSpeech(body){
   let t=String(body||'');
@@ -336,9 +478,28 @@ function markWords(raw,B,from){
 function sayUI(){
   const bar=$('cbSayBar');if(!bar)return;bar.classList.toggle('on',say.on);$('cbSay').classList.toggle('on',say.on);
   $('cbSayP').textContent=say.paused?'▶ '+T('Continue'):'❚❚ '+T('Pause');
-  $('cbSaySp').textContent=say.rate<0.85?T('Slow'):T('Normal speed');
+  $('cbSpd').innerHTML=[1,2,3].map(k=>'<button class="'+(say.spd===k?'on':'')+'" onclick="CB.saySpeed('+k+')">'+k+'×</button>').join('');
+  const v=pickVoice();$('cbSayV').textContent='🗣 '+(v?shortName(v):T('Voice'));
 }
-function pickVoice(){const V=SYNTH().getVoices()||[];return V.find(v=>/^en[-_]US/i.test(v.lang)&&/samantha|google us|aria|jenny|natural/i.test(v.name))||V.find(v=>/^en[-_]US/i.test(v.lang))||V.find(v=>/^en/i.test(v.lang))||null;}
+// the nicest voices first: the phone's "Premium" / "Enhanced" / natural voices, then well-known good ones
+const GOOD=/premium|enhanced|natural|neural|siri|online|wavenet/i, NICE=/\b(ava|zoe|evan|nathan|noelle|joelle|samantha|allison|susan|tom|aria|jenny|guy|michelle|google us english)\b/i, BAD=/compact|fred|albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|junior|ralph|kathy|grandma|grandpa|eddy|flo|reed|rocko|sandy|shelley/i;
+function voiceScore(v){let s=0;if(/^en[-_]US/i.test(v.lang))s+=30;else if(/^en/i.test(v.lang))s+=15;else return -1;if(GOOD.test(v.name))s+=40;if(NICE.test(v.name))s+=20;if(BAD.test(v.name))s-=60;if(v.localService===false)s+=5;return s;}
+function voicesList(){try{return (SYNTH().getVoices()||[]).filter(v=>voiceScore(v)>0).sort((a,b)=>voiceScore(b)-voiceScore(a)||a.name.localeCompare(b.name));}catch(e){return [];}}
+function shortName(v){return String(v.name).replace(/^(Microsoft|Google|Apple)\s+/i,'').replace(/\s*\(.*?\)\s*/g,' ').replace(/\s+-\s+English.*$/i,'').replace(/\s+Online/i,'').trim().split(' ').slice(0,2).join(' ')+(GOOD.test(v.name)?' ★':'');}
+function pickVoice(){const L=voicesList();const want=LS.get('voice','');return (want&&L.find(v=>v.name===want))||L[0]||null;}
+try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=()=>{if(say.on)sayUI();};}catch(e){}
+CB.voices=()=>{
+  let O=$('cbVoc');if(!O){O=document.createElement('div');O.id='cbVoc';O.className='hid';O.onclick=e=>{if(e.target===O)O.classList.add('hid');};document.body.appendChild(O);}
+  const L=voicesList(),cur=pickVoice();
+  O.innerHTML='<div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="font-size:17px">'+E(T('Choose a voice'))+'</b><button class="ib" onclick="document.getElementById(\'cbVoc\').classList.add(\'hid\')" style="border:0;background:var(--g2);border-radius:10px;width:40px;height:40px">✕</button></div>'+
+   '<div style="font-size:13px;color:var(--g4);margin-bottom:10px">'+E(T('Tap a voice to hear it. ★ = best quality.'))+'</div>'+
+   (L.length?L.map((v,k)=>'<button class="vrow'+(cur&&v.name===cur.name?' on':'')+'" onclick="CB.pickV('+k+')"><span><b>'+E(shortName(v))+'</b><br><small>'+E(v.name)+'</small></span><span>'+(cur&&v.name===cur.name?'✓':'▶')+'</span></button>').join(''):'<div class="vrow">'+E(T('No voices found on this phone.'))+'</div>')+
+   '<div style="font-size:13px;color:var(--g4);margin-top:10px;line-height:1.45">'+E(T('More natural voices: on iPhone go to Settings → Accessibility → Spoken Content → Voices → English, and download a Premium voice like Ava or Zoe. Then come back here and pick it.'))+'</div></div>';
+  O.classList.remove('hid');
+};
+CB.pickV=k=>{const v=voicesList()[k];if(!v)return;LS.set('voice',v.name);
+  try{SYNTH().cancel();const u=new SpeechSynthesisUtterance('Hi, this is '+shortName(v).replace(' ★','')+'. Section 210 point 8, GFCI protection.');try{u.voice=v;u.lang=v.lang;}catch(e){}u._vn=v.name;u.rate=RATE[say.spd];if(!say.on)SYNTH().speak(u);}catch(e){}
+  CB.voices();if(say.on){sayUI();sayPage(say.at);}};
 async function sayPage(startAt){
   const seq=++say.seq;try{SYNTH().cancel();}catch(e){}
   const {v,i}=cur;let d;try{d=await pageData(v,i);}catch(e){d={body:'',boxes:[]};}
@@ -351,7 +512,7 @@ async function sayPage(startAt){
     if(say.at>=say.chunks.length){ // end of the page: go on to the next page
       const M=meta[cur.v]||[];if(cur.i<M.length-1){cur.i++;draw().then(()=>{if(seq===say.seq&&say.on)sayPage();});}else CB.sayStop();return;}
     const raw=say.chunks[say.at];$('cbSayTx').textContent=raw;wpos=markWords(raw,d.boxes,wpos);
-    const u=new SpeechSynthesisUtterance(speakable(raw));u.lang='en-US';if(voice)u.voice=voice;u.rate=say.rate;
+    const u=new SpeechSynthesisUtterance(speakable(raw));u.lang='en-US';if(voice){try{u.voice=voice;u.lang=voice.lang;}catch(e){}u._vn=voice.name;}u.rate=RATE[say.spd];
     u.onend=()=>{if(seq!==say.seq)return;say.at++;next();};u.onerror=()=>{if(seq!==say.seq)return;say.at++;setTimeout(next,50);};
     SYNTH().speak(u);
   };
@@ -363,7 +524,7 @@ CB.say=()=>{
   say.on=true;say.paused=false;sayUI();sayPage();
 };
 CB.sayPause=()=>{if(!say.on)return;if(say.paused){SYNTH().resume();say.paused=false;}else{SYNTH().pause();say.paused=true;}sayUI();};
-CB.saySpeed=()=>{say.rate=say.rate<0.85?1:0.75;LS.set('rate',say.rate);sayUI();if(say.on&&!say.paused)sayPage(say.at);};
+CB.saySpeed=k=>{say.spd=k;LS.set('spd',k);sayUI();if(say.on&&!say.paused)sayPage(say.at);};
 CB.sayStop=()=>{say.seq++;say.on=false;say.paused=false;try{SYNTH().cancel();}catch(e){}const P=$('cbPg');if(P)P.querySelectorAll('i.rd').forEach(x=>x.remove());sayUI();};
 CB.zoom=()=>{zoom=zoom===1?1.6:zoom===1.6?2.4:1;LS.set('zoom',zoom);draw();};
 CB.jump=()=>{const v=$('cbN').value.trim().toLowerCase();const M=meta[cur.v]||[];
@@ -390,7 +551,8 @@ if(typeof renderCode==='function'){
     if(isB)C.querySelectorAll('.chip.on').forEach(c=>c.classList.remove('on'));
     C.insertAdjacentHTML('afterbegin','<div class="chip '+(isB?'on':'')+'" onclick="ccTab=\'book\';try{localStorage.setItem(\'electrix_cc\',ccTab)}catch(e){};renderCode()">📖 '+E(T('Code book'))+'</div>');
     const B=$('ccBody');if(!B)return;
-    if(isB){B.innerHTML=homeHtml();drawToc('cbToc');if(lastQ)CB.go(lastQ);}
+    if(isB){B.innerHTML=homeHtml();drawDl();drawToc('cbToc');if(lastQ)CB.go(lastQ);
+      ensureLocal().then(()=>{drawDl();countSaved().then(n=>{saveAll.done=n;saveAll.total=(meta[1]||[]).length+(meta[2]||[]).length;drawDl();if(LS.get('saveall',false)&&n<saveAll.total&&!saveAll.busy)CB.saveAll();});}).catch(()=>drawDl());}
     else if(ccTab==='load'&&!$('cbLoadLink')){B.insertAdjacentHTML('beforeend','<button id="cbLoadLink" class="cbcard" style="margin-top:12px" onclick="CB.sec(\'220.82\')"><div class="cbmeta"><span class="cbsec">220.82</span></div><b>📖 '+E(T('Read about this in the code book'))+'</b></button>');}
   };
 }
