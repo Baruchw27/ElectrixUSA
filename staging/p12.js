@@ -16,7 +16,7 @@ const S_ES={'Code book':'Libro del código','Search the code book':'Buscar en el
 'Match':'Resultado','of':'de','Front of the book':'Inicio del libro','Back':'Atrás','The book is in English.':'El libro está en inglés.',
 'Could not load this page. Check your connection.':'No se pudo cargar esta página. Revisa tu conexión.','Rules 1–4 (Chapters 1–4)':'Reglas 1–4 (Capítulos 1–4)',
 'Chapters 5–9':'Capítulos 5–9','Chapters 1–4':'Capítulos 1–4','Read about this in the code book':'Leer sobre esto en el libro del código','No such page in this volume.':'No existe esa página en este volumen.',
-'Only the team can open the code book. Sign in first.':'Solo el equipo puede abrir el libro. Inicia sesión primero.','Recent searches':'Búsquedas recientes','Getting the book ready to work with no service…':'Preparando el libro para usarlo sin señal…','No service — the book will finish saving when you have signal.':'Sin señal — el libro terminará de guardarse cuando tengas señal.','Try again':'Intentar de nuevo','Search works with no service.':'La búsqueda funciona sin señal.','All pages saved on this phone.':'Todas las páginas guardadas en este teléfono.','Saving pages…':'Guardando páginas…','Save all pages on this phone':'Guardar todas las páginas en este teléfono','use Wi-Fi':'usa Wi-Fi','No service right now. Pages you already opened, and saved pages, still work.':'Sin señal ahora. Las páginas que ya abriste y las guardadas siguen funcionando.','Voice':'Voz','Choose a voice':'Elige una voz','Tap a voice to hear it. ★ = best quality.':'Toca una voz para escucharla. ★ = mejor calidad.','No voices found on this phone.':'No se encontraron voces en este teléfono.','More natural voices: on iPhone go to Settings → Accessibility → Spoken Content → Voices → English, and download a Premium voice like Ava or Zoe. Then come back here and pick it.':'Voces más naturales: en el iPhone ve a Configuración → Accesibilidad → Contenido leído → Voces → Inglés, y descarga una voz Premium como Ava o Zoe. Luego vuelve aquí y elígela.','Read the whole book':'Leer el libro completo','Stop':'Parar','Pause':'Pausa','Continue':'Seguir','Slow':'Lento','Normal speed':'Velocidad normal','This page has no words to read.':'Esta página no tiene palabras para leer.','This phone cannot read aloud.':'Este teléfono no puede leer en voz alta.','section':'sección','sections':'secciones','pages':'páginas','Other pages (index, review questions)':'Otras páginas (índice, preguntas de repaso)','e.g. code for kitchens, bonding by pool, 210.8':'ej. código para cocinas, bonding de piscina, 210.8','Zoom':'Zoom'};
+'Only the team can open the code book. Sign in first.':'Solo el equipo puede abrir el libro. Inicia sesión primero.','Recent searches':'Búsquedas recientes','Find the wire':'Encontrar el cable','Check a wire':'Revisar un cable','Max voltage drop %':'Caída de voltaje máx. %','NEC recommends 3% for a branch circuit or feeder, 5% for both together. You can type any % you accept.':'El NEC recomienda 3% para un circuito derivado o alimentador, 5% para los dos juntos. Puedes poner el % que aceptes.','Type the amps, the length and the % you accept.':'Pon los amperios, la distancia y el % que aceptas.','Smallest wire that works':'El cable más chico que sirve','max':'máx.','set':'juego','sets':'juegos','No wire size works. Try more sets, a higher voltage, or allow more %.':'Ningún calibre sirve. Prueba más juegos, más voltaje o permite más %.','1 set (no parallel)':'1 juego (sin paralelo)','sets in parallel':'juegos en paralelo','lost':'se pierden','Each set carries':'Cada juego lleva','wire is good for':'el cable aguanta','every set: same size, same length, same type':'todos los juegos: mismo calibre, mismo largo, mismo tipo','Resistance from NEC Chapter 9 Table 8 (uncoated copper / aluminum, 75°C).':'Resistencia de NEC Capítulo 9 Tabla 8 (cobre / aluminio sin recubrir, 75°C).','Always check the code book and your inspector.':'Siempre revisa el libro del código y a tu inspector.','Getting the book ready to work with no service…':'Preparando el libro para usarlo sin señal…','No service — the book will finish saving when you have signal.':'Sin señal — el libro terminará de guardarse cuando tengas señal.','Try again':'Intentar de nuevo','Search works with no service.':'La búsqueda funciona sin señal.','All pages saved on this phone.':'Todas las páginas guardadas en este teléfono.','Saving pages…':'Guardando páginas…','Save all pages on this phone':'Guardar todas las páginas en este teléfono','use Wi-Fi':'usa Wi-Fi','No service right now. Pages you already opened, and saved pages, still work.':'Sin señal ahora. Las páginas que ya abriste y las guardadas siguen funcionando.','Voice':'Voz','Choose a voice':'Elige una voz','Tap a voice to hear it. ★ = best quality.':'Toca una voz para escucharla. ★ = mejor calidad.','No voices found on this phone.':'No se encontraron voces en este teléfono.','More natural voices: on iPhone go to Settings → Accessibility → Spoken Content → Voices → English, and download a Premium voice like Ava or Zoe. Then come back here and pick it.':'Voces más naturales: en el iPhone ve a Configuración → Accesibilidad → Contenido leído → Voces → Inglés, y descarga una voz Premium como Ava o Zoe. Luego vuelve aquí y elígela.','Read the whole book':'Leer el libro completo','Stop':'Parar','Pause':'Pausa','Continue':'Seguir','Slow':'Lento','Normal speed':'Velocidad normal','This page has no words to read.':'Esta página no tiene palabras para leer.','This phone cannot read aloud.':'Este teléfono no puede leer en voz alta.','section':'sección','sections':'secciones','pages':'páginas','Other pages (index, review questions)':'Otras páginas (índice, preguntas de repaso)','e.g. code for kitchens, bonding by pool, 210.8':'ej. código para cocinas, bonding de piscina, 210.8','Zoom':'Zoom'};
 const T=s=>ES_ON()&&S_ES[s]?S_ES[s]:s;
 const LS={get(k,d){try{const v=localStorage.getItem('cb_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('cb_'+k,JSON.stringify(v))}catch(e){}}};
 const VOLN={1:'Chapters 1–4',2:'Chapters 5–9'};
@@ -541,6 +541,61 @@ const _open=CB.open;CB.open=(v,i,f)=>{CB.tocClose();return _open(v,i,f);};
 /* ---------- open from a section number (used by the calculators) ---------- */
 CB.sec=async(sec,vol)=>{try{for(const v of (vol?[vol]:[1,2])){const M=await loadMeta(v);const k=M.findIndex(m=>m.head===sec);if(k>=0){lastQ=sec;results=[];resIdx=-1;return CB.open(v,k,true);}}}catch(e){}CB.open(vol||1,0);};
 
+/* ---------- Voltage drop: "Find the wire" (Yossi, 11/2) ----------
+   Type amps + one-way length (+ volts, phase, Cu/Al, the % drop you accept) -> the smallest wire that works,
+   for 1, 2, 3 and 4 parallel sets. Each answer must pass BOTH the drop limit and the ampacity (Table 310.16, 75°C
+   column per 110.14(C), split across the sets); parallel sets are 1/0 or larger (310.10(G)). The old "Check a wire"
+   screen stays as the second option. */
+let vdMode=LS.get('vdmode','find');
+const VDK='cb_vdf';
+function vdVals(){const d={A:100,L:200,V:'240',P:'1',M:'cu',X:3};try{return Object.assign(d,JSON.parse(localStorage.getItem(VDK)||'{}'));}catch(e){return d;}}
+function vdFind(B){
+  const top='<div class="cbseg" style="margin-bottom:12px">'+[['find',T('Find the wire')],['check',T('Check a wire')]].map(([k,l])=>'<span class="'+(vdMode===k?'on':'')+'" onclick="CB.vdMode(\''+k+'\')">'+E(l)+'</span>').join('')+'</div>';
+  if(vdMode==='check'){B.insertAdjacentHTML('afterbegin',top);return;}
+  const v=vdVals();const tt2=x=>{try{return t(x)}catch(e){return x}};
+  const inp=(id,val,lab,step)=>'<div style="flex:1;min-width:130px"><label style="margin-top:8px">'+E(lab)+'</label><input id="'+id+'" type="number" inputmode="decimal" '+(step?'step="'+step+'" ':'')+'value="'+E(val)+'" oninput="CB.vdCalc()"></div>';
+  const sl=(id,opts,val,lab)=>'<div style="flex:1;min-width:130px"><label style="margin-top:8px">'+E(lab)+'</label><select id="'+id+'" onchange="CB.vdCalc()">'+opts.map(([k,l])=>'<option value="'+k+'"'+(String(val)===k?' selected':'')+'>'+E(l)+'</option>').join('')+'</select></div>';
+  const rw=(...f)=>'<div style="display:flex;gap:10px;flex-wrap:wrap">'+f.join('')+'</div>';
+  B.innerHTML=top+'<div class="card" style="padding:14px 16px">'+
+    rw(inp('vf_A',v.A,tt2('Amps')),inp('vf_L',v.L,tt2('One-way length (ft)')))+
+    rw(sl('vf_V',[['120','120V'],['208','208V'],['240','240V'],['277','277V'],['480','480V']],v.V,tt2('Volts')),sl('vf_P',[['1',tt2('Single-phase')],['3',tt2('Three-phase')]],v.P,tt2('Phase')))+
+    rw(sl('vf_M',[['cu',tt2('Copper')],['al',tt2('Aluminum')]],v.M,tt2('Wire')),inp('vf_X',v.X,T('Max voltage drop %'),'0.5'))+
+    '<div style="font-size:12px;color:var(--g4);margin-top:8px">'+E(T('NEC recommends 3% for a branch circuit or feeder, 5% for both together. You can type any % you accept.'))+'</div>'+
+  '</div><div id="vf_R"></div>';
+  CB.vdCalc();
+}
+CB.vdMode=k=>{vdMode=k;LS.set('vdmode',k);try{renderCode();}catch(e){}};
+CB.vdCalc=()=>{
+  const R=$('vf_R');if(!R)return;
+  const g=id=>($(id)||{}).value;const A=parseFloat(g('vf_A'))||0,L=parseFloat(g('vf_L'))||0,V=+g('vf_V'),P=g('vf_P'),M=g('vf_M'),X=parseFloat(g('vf_X'))||0;
+  try{localStorage.setItem(VDK,JSON.stringify({A,L,V:String(V),P,M,X}));}catch(e){}
+  if(!(A>0&&L>0&&X>0)){R.innerHTML='<div class="card" style="padding:14px 16px;color:var(--g4)">'+E(T('Type the amps, the length and the % you accept.'))+'</div>';return;}
+  const f=P==='3'?Math.sqrt(3):2;
+  let SZ=[],AM={},RS={};try{SZ=AWG;AM=AMP;RS=R8;}catch(e){}
+  const cap=(s)=>{const a=(AM[M]||{})[s];if(!a)return 0;let c=a[1];const small=M==='cu'?{'14':15,'12':20,'10':30}:{'12':15,'10':25};if(small[s])c=Math.min(c,small[s]);return c;};
+  const wn=s=>(/^\d{3}$/.test(s)?s+' kcmil':'#'+s)+' '+(M==='al'?'Al':'Cu');
+  const rows=[1,2,3,4].map(n=>{
+    const per=A/n;let why='';
+    for(const s of SZ){
+      if(n>1&&SZ.indexOf(s)<SZ.indexOf('1/0'))continue;
+      const r=(RS[M]||{})[s];if(!r)continue;
+      const vd=f*L*r*per/1000,pct=vd/V*100;
+      if(cap(s)<per){why='amps';continue;}
+      if(pct>X+1e-9){why='drop';continue;}
+      return {n,s,pct,vd,load:V-vd,cap:cap(s),per};
+    }
+    return {n,none:true};
+  });
+  const best=rows.find(r=>!r.none);
+  R.innerHTML='<div class="cbh" style="margin-top:16px">'+E(T('Smallest wire that works'))+' · '+E(T('max'))+' '+X+'%</div>'+
+    rows.map(r=>r.none?'<div class="card" style="padding:12px 14px;color:var(--g4)"><b>'+r.n+' '+E(T(r.n===1?'set':'sets'))+'</b> — '+E(T('No wire size works. Try more sets, a higher voltage, or allow more %.'))+'</div>':
+      '<div class="card" style="padding:12px 14px'+(r===best?';border:2px solid var(--green)':'')+'"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">'+
+      '<div><div style="font-size:13px;color:var(--g4)">'+(r.n===1?E(T('1 set (no parallel)')):r.n+' '+E(T('sets in parallel')))+'</div><div style="font-size:24px;font-weight:700;letter-spacing:-.4px">'+(r.n>1?r.n+' × ':'')+E(wn(r.s))+'</div></div>'+
+      '<div style="text-align:right"><div style="font-size:22px;font-weight:700;color:var(--green)">'+r.pct.toFixed(2)+'%</div><div style="font-size:12.5px;color:var(--g4)">'+r.vd.toFixed(1)+' V '+E(T('lost'))+' → '+r.load.toFixed(0)+' V</div></div></div>'+
+      '<div style="font-size:12.5px;color:var(--g4);margin-top:6px">'+(r.n>1?E(T('Each set carries'))+' '+r.per.toFixed(1)+' A · ':'')+E(T('wire is good for'))+' '+r.cap+' A (310.16, 75°C)'+(r.n>1?' · '+E(T('every set: same size, same length, same type'))+' (310.10(G))':'')+'</div></div>').join('')+
+    '<div style="font-size:12px;color:var(--g4);margin:6px 2px 0;line-height:1.5">'+E(T('Resistance from NEC Chapter 9 Table 8 (uncoated copper / aluminum, 75°C).'))+' '+(P==='3'?'√3':'2')+' × '+L+' ft × R × A ÷ 1000. '+E(T('Always check the code book and your inspector.'))+'</div>';
+};
+
 /* ---------- hook into Code & calculators ---------- */
 if(typeof renderCode==='function'){
   const _rc=renderCode;
@@ -551,6 +606,7 @@ if(typeof renderCode==='function'){
     if(isB)C.querySelectorAll('.chip.on').forEach(c=>c.classList.remove('on'));
     C.insertAdjacentHTML('afterbegin','<div class="chip '+(isB?'on':'')+'" onclick="ccTab=\'book\';try{localStorage.setItem(\'electrix_cc\',ccTab)}catch(e){};renderCode()">📖 '+E(T('Code book'))+'</div>');
     const B=$('ccBody');if(!B)return;
+    if(ccTab==='vd')vdFind(B);
     if(isB){B.innerHTML=homeHtml();drawDl();drawToc('cbToc');if(lastQ)CB.go(lastQ);
       ensureLocal().then(()=>{drawDl();countSaved().then(n=>{saveAll.done=n;saveAll.total=(meta[1]||[]).length+(meta[2]||[]).length;drawDl();if(LS.get('saveall',false)&&n<saveAll.total&&!saveAll.busy)CB.saveAll();});}).catch(()=>drawDl());}
     else if(ccTab==='load'&&!$('cbLoadLink')){B.insertAdjacentHTML('beforeend','<button id="cbLoadLink" class="cbcard" style="margin-top:12px" onclick="CB.sec(\'220.82\')"><div class="cbmeta"><span class="cbsec">220.82</span></div><b>📖 '+E(T('Read about this in the code book'))+'</b></button>');}
