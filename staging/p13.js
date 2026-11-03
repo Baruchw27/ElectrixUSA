@@ -194,7 +194,7 @@ function stageInfo(s){let L=['Roughing','b-prog'];try{L=STAGE[s.stage||'active']
 function draw(){
   const s=site();const m=M();if(!s||!m)return;const B=body('m-job2');const keep=B.scrollTop;
   const ph=photos(s),tk=tasks(s),nt=notes(s),fl=files(s),or=orrs(s),ins=insp(s),hn=hereNow(s),st=stageInfo(s);
-  const canStage=can(canMoveStage),canRough=can(canRoughDone),canAdd=can(isBoss)||isOffice(m),canMgr=can(canAssignMgr);
+  const canStage=can(m=>(typeof canMoveStage==='function'?canMoveStage:canEditFolder)(m)),canRough=can(canRoughDone),canAdd=can(isBoss)||isOffice(m),canMgr=can(canAssignMgr);
   let mgr=[];try{mgr=mgrIds(s);}catch(e){}
   const g=ph.slice(0,3);P13._gal=ph.map(x=>x.src);
   const gal=g.length?'<div class="j2gal n'+Math.min(g.length,3)+'">'+g.map((x,i)=>'<div style="background-image:url(\''+String(x.src).replace(/'/g,'%27')+'\')" onclick="P13.photo('+i+')"></div>').join('')+'</div>'
