@@ -167,15 +167,25 @@ P2.unsnooze=id=>{const m=M();const j=D.jobs.find(x=>x.id===id);if(!j)return;dele
 // your board leaves out what you snoozed until it is due again
 if(typeof window.visibleJobs==='function'){const _vj=window.visibleJobs;window.visibleJobs=function(){const L=_vj.apply(this,arguments);const m=M();return P2.showSnz?L:L.filter(j=>!snoozed(j,m));};}
 let sw=null;
-document.addEventListener('touchstart',e=>{if(P2.selMode)return;const c=e.target.closest&&e.target.closest('.kbcard[data-j],.gprow[data-j]');if(!c)return;const tch=e.touches[0];sw={el:c,id:c.dataset.j,x:tch.clientX,y:tch.clientY,dx:0,on:false};},{passive:true});
+document.addEventListener('touchstart',e=>{if(P2.selMode)return;const c=e.target.closest&&e.target.closest('.kbcard[data-j],.gprow[data-j]');if(!c)return;const tch=e.touches[0];
+  // Baruch 11/2: a swipe that starts at the edge of the screen is the phone's own back / home gesture — never a Done swipe
+  if(tch.clientX<34||tch.clientX>window.innerWidth-34){sw=null;return;}
+  sw={el:c,id:c.dataset.j,x:tch.clientX,y:tch.clientY,dx:0,on:false};},{passive:true});
 document.addEventListener('touchmove',e=>{if(!sw)return;const tch=e.touches[0];const dx=tch.clientX-sw.x,dy=tch.clientY-sw.y;
   if(!sw.on){if(Math.abs(dx)>14&&Math.abs(dx)>Math.abs(dy)*1.4){sw.on=true;sw.el.classList.add('p2swipe');let bg=sw.el.querySelector('.p2swbg');if(!bg){bg=document.createElement('div');bg.className='p2swbg';sw.el.prepend(bg);}sw.bg=bg;}else if(Math.abs(dy)>12){sw=null;return;}else return;}
   e.preventDefault();sw.dx=dx;sw.el.style.transform='translateX('+dx+'px)';const right=dx>0;
   sw.bg.style.background=right?'#27ae60':'#d9822b';sw.bg.style.justifyContent=right?'flex-start':'flex-end';sw.bg.style.transform='translateX('+(-dx)+'px)';sw.bg.textContent=right?'✓ '+tt('Done'):'⏰ '+tt('Tomorrow');sw.bg.style.opacity=Math.min(1,Math.abs(dx)/90);},{passive:false});
 document.addEventListener('touchend',()=>{if(!sw)return;const s=sw;sw=null;if(!s.on)return;s.el.style.transition='transform .18s';
   const block=ev=>{ev.stopPropagation();ev.preventDefault();};s.el.addEventListener('click',block,{capture:true,once:true});setTimeout(()=>s.el.removeEventListener('click',block,{capture:true}),400);
-  if(s.dx>90){s.el.style.transform='translateX(110%)';setTimeout(()=>{try{markDone(s.id);}catch(e){}},160);}
-  else if(s.dx<-90){s.el.style.transform='translateX(-110%)';setTimeout(()=>P2.snooze(s.id),160);}
+  const need=Math.max(130,s.el.offsetWidth*0.45);   // a long, deliberate swipe (almost half the card)
+  if(s.dx>need){s.el.style.transform='translateX(110%)';setTimeout(()=>{const j=D.jobs.find(x=>x.id===s.id);const was=j?{status:j.status,doneAt:j.doneAt,doneBy:j.doneBy}:null;
+      try{markDone(s.id);}catch(e){}
+      setTimeout(()=>{const j2=D.jobs.find(x=>x.id===s.id);if(!j2||!was||was.status==='done'||j2.status!=='done')return;
+        try{[...document.querySelectorAll('#toastBox .toast')].filter(d=>d.textContent==='✓ '+tt('Done')).forEach(d=>d.remove());}catch(e){}
+        if(typeof kUndo==='function')kUndo('✓ '+tt('Done'),()=>{j2.status=was.status;j2.doneAt=was.doneAt;j2.doneBy=was.doneBy;if(was.doneAt===undefined)delete j2.doneAt;if(was.doneBy===undefined)delete j2.doneBy;save();try{renderJobs();}catch(e){}try{if($('pg-home').classList.contains('on'))renderHome();}catch(e){}});},250);},160);}
+  else if(s.dx<-need){s.el.style.transform='translateX(-110%)';setTimeout(()=>{P2.snooze(s.id);
+      setTimeout(()=>{try{[...document.querySelectorAll('#toastBox .toast')].filter(d=>/^⏰/.test(d.textContent)).forEach(d=>d.remove());}catch(e){}
+        if(typeof kUndo==='function')kUndo('⏰ '+tt('Snoozed until tomorrow'),()=>P2.unsnooze(s.id));},60);},160);}
   else{s.el.style.transform='';setTimeout(()=>{s.el.style.transition='';if(s.bg)s.bg.style.opacity=0;},200);}},{passive:true});
 
 // ───────── 5. stage colors everywhere ─────────
