@@ -16,7 +16,7 @@ const S_ES={'Code book':'Libro del código','Search the code book':'Buscar en el
 'Match':'Resultado','of':'de','Front of the book':'Inicio del libro','Back':'Atrás','The book is in English.':'El libro está en inglés.',
 'Could not load this page. Check your connection.':'No se pudo cargar esta página. Revisa tu conexión.','Rules 1–4 (Chapters 1–4)':'Reglas 1–4 (Capítulos 1–4)',
 'Chapters 5–9':'Capítulos 5–9','Chapters 1–4':'Capítulos 1–4','Read about this in the code book':'Leer sobre esto en el libro del código','No such page in this volume.':'No existe esa página en este volumen.',
-'Only the team can open the code book. Sign in first.':'Solo el equipo puede abrir el libro. Inicia sesión primero.','Recent searches':'Búsquedas recientes','Zoom':'Zoom'};
+'Only the team can open the code book. Sign in first.':'Solo el equipo puede abrir el libro. Inicia sesión primero.','Recent searches':'Búsquedas recientes','section':'sección','sections':'secciones','pages':'páginas','Other pages (index, review questions)':'Otras páginas (índice, preguntas de repaso)','e.g. code for kitchens, bonding by pool, 210.8':'ej. código para cocinas, bonding de piscina, 210.8','Zoom':'Zoom'};
 const T=s=>ES_ON()&&S_ES[s]?S_ES[s]:s;
 const LS={get(k,d){try{const v=localStorage.getItem('cb_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('cb_'+k,JSON.stringify(v))}catch(e){}}};
 const VOLN={1:'Chapters 1–4',2:'Chapters 5–9'};
@@ -133,22 +133,27 @@ async function img(vol,idx){
 let trimT=0;function trimCache(ca){if(Date.now()-trimT<60000)return;trimT=Date.now();ca.keys().then(ks=>{if(ks.length>500)ks.slice(0,ks.length-500).forEach(r=>ca.delete(r));}).catch(()=>{});}
 
 /* ---------- search ---------- */
-const STOP=new Set('a an and are as at be by for from how i in is it of on or the to what when where which with do does need my can should'.split(' '));
+const STOP=new Set(('a an and are as at be by for from how i in is it of on or the to what whats which where when with do does need my can should must '+
+ 'code codes nec around near about me tell show find give get we our requirement requirements required rule rules section sections article articles '+
+ 'this that there all any everything info information book say says page pages').split(' '));
+const SYN={pool:['swim'],pools:['swim'],swim:['pool'],bond:['equipotenti'],bonding:['equipotenti'],spa:['tub'],tub:['spa'],jacuzzi:['tub','spa'],gfi:['gfci'],
+ romex:['nm'],panel:['panelboard','switchboard'],ev:['vehicl'],solar:['pv','photovolta'],grounding:['ground']};
 function terms(q){
-  return String(q||'').toLowerCase().split(/[^a-z0-9.()]+/).map(w=>w.replace(/^[.()]+|[.()]+$/g,'')).filter(w=>w&&!STOP.has(w)&&(w.length>1||/\d/.test(w)));
+  const T0=String(q||'').toLowerCase().replace(/['’]s\b/g,'').split(/[^a-z0-9.()]+/).map(w=>w.replace(/^[.()]+|[.()]+$/g,'')).filter(w=>w&&!STOP.has(w)&&(w.length>1||/\d/.test(w)));
+  const out=[];T0.forEach(w=>{out.push(w);(SYN[w]||[]).forEach(x=>out.push(x));});return out;
 }
 function wordHit(w,TS){
   w=w.toLowerCase().replace(/^[^a-z0-9]+|[^a-z0-9]+$/g,'');if(!w)return false;
   return TS.some(t=>{
     if(/\d\.\d/.test(t))return w.indexOf(t)===0;
     if(t.length<=3)return w===t||w===t+'s';
-    const st=t.length>5?t.slice(0,t.length-2):t;return w.indexOf(st)===0;
+    const st=t.length>5?t.slice(0,t.length-2):t.replace(/s$/,'');return w.indexOf(st)===0;
   });
 }
 let lastQ='',results=[],resIdx=-1;
 async function search(q){
   const c=client();if(!c)throw new Error('nosb');
-  const {data,error}=await c.rpc('codebook_search',{q,lim:60});
+  const {data,error}=await c.rpc('codebook_search',{q,lim:150});
   if(error)throw error;return data||[];
 }
 function snipHtml(s){return E(String(s||'').replace(/[\uE000-\uF8FF}]/g,'').replace(/\s*\|\s*/g,' · ')).replace(/&lt;&lt;/g,'<b>').replace(/&gt;&gt;/g,'</b>').replace(/\s+/g,' ');}
@@ -159,7 +164,7 @@ function homeHtml(){
   const last=LS.get('last',null),rec=LS.get('rec',[]);
   return '<div id="cbHome">'+
   '<form class="cbsr" onsubmit="event.preventDefault();CB.go()"><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="color:var(--g4);flex:none"><circle cx="11" cy="11" r="7.5"/><path d="m21 21-4.3-4.3"/></svg>'+
-  '<input id="cbQ" data-nomic="1" type="search" enterkeyhint="search" autocomplete="off" placeholder="'+E(T('e.g. GFCI garage, 210.8, service size'))+'" value="'+E(lastQ)+'"><button class="cbgo" type="submit">'+E(T('Search'))+'</button></form>'+
+  '<input id="cbQ" data-nomic="1" type="search" enterkeyhint="search" autocomplete="off" placeholder="'+E(T('e.g. code for kitchens, bonding by pool, 210.8'))+'" value="'+E(lastQ)+'"><button class="cbgo" type="submit">'+E(T('Search'))+'</button></form>'+
   '<div style="font-size:12px;color:var(--g4);margin:6px 4px 0">Mike Holt — Understanding the 2023 NEC'+(ES_ON()?' · '+E(T('The book is in English.')):'')+'</div>'+
   '<div id="cbRes"></div>'+
   '<div id="cbIdle">'+
@@ -183,6 +188,15 @@ async function drawToc(target,inSheet){
 }
 CB.tv=v=>{tvol=v;LS.set('tvol',v);document.querySelectorAll('.cbseg span').forEach((s,i)=>s.classList.toggle('on',i===v-1));drawToc(document.getElementById('cbTocS')&&!$('cbTocS').classList.contains('hid')?'cbTocIn':'cbToc');};
 CB.art=(el,k)=>{const a=el.parentNode;const on=!a.classList.contains('open');document.querySelectorAll('.cbart.open').forEach(x=>x.classList.remove('open'));if(on){a.classList.add('open');openArt=k;}else openArt=null;};
+// results grouped by section: "680.26 Equipotential Bonding — 5 pages"; pages with no section (index, review questions) at the end
+let groupsR=[];
+function groupResults(rows){
+  const G=new Map();
+  rows.forEach(r=>{const k=r.head?r.vol+'|'+r.head:'other';if(!G.has(k))G.set(k,{k,vol:r.vol,head:r.head,title:r.title||'',best:r,score:r.score,pages:[]});const g=G.get(k);g.pages.push(r);if(r.score>g.score){g.score=r.score;g.best=r;}});
+  const L=[...G.values()].sort((a,b)=>(a.k==='other')-(b.k==='other')||b.score-a.score);
+  L.forEach(g=>g.pages.sort((a,b)=>a.vol-b.vol||a.idx-b.idx));
+  return L;
+}
 CB.go=async q=>{
   const inp=$('cbQ');if(q!=null&&inp)inp.value=q;q=(q!=null?q:inp?inp.value:'').trim();
   const R=$('cbRes'),I=$('cbIdle');if(!R)return;
@@ -190,10 +204,21 @@ CB.go=async q=>{
   lastQ=q;if(inp)inp.blur();if(I)I.style.display='none';
   R.innerHTML='<div style="color:var(--g4);padding:14px 4px">'+E(T('Searching…'))+'</div>';
   try{
-    results=await search(q);
+    const rows=await search(q);
     const rec=LS.get('rec',[]).filter(x=>x.toLowerCase()!==q.toLowerCase());rec.unshift(q);LS.set('rec',rec.slice(0,8));
-    R.innerHTML='<div class="cbh">'+results.length+' '+E(T(results.length===1?'page found':'pages found'))+'</div>'+
-      (results.length?results.map((r,i)=>'<button class="cbcard" onclick="CB.hit('+i+')"><div class="cbmeta">'+(r.head?'<span class="cbsec">'+E(r.head)+'</span><span>·</span>':'')+'<span>'+E(T('Vol'))+' '+r.vol+'</span><span>·</span><span>'+E(T('page'))+' '+E(r.label)+'</span></div><div class="cbsnip">'+snipHtml(r.snip)+'</div></button>').join('')
+    groupsR=groupResults(rows);
+    results=[];groupsR.forEach(g=>g.pages.forEach(p=>results.push(p)));   // reading order for "Match 2 of 16"
+    const nSec=groupsR.filter(g=>g.k!=='other').length;
+    const pr=(g)=>{const a=g.pages[0].label,b=g.pages[g.pages.length-1].label;return g.pages.length===1?T('page')+' '+a:T('pages')+' '+a+'–'+b;};
+    R.innerHTML='<div class="cbh">'+(nSec?nSec+' '+E(T(nSec===1?'section':'sections'))+' · ':'')+results.length+' '+E(T(results.length===1?'page found':'pages found'))+'</div>'+
+      (groupsR.length?groupsR.map((g,gi)=>{
+        const first=results.indexOf(g.best);
+        if(g.k==='other')return '<details class="cbcard" style="cursor:default"><summary style="cursor:pointer;color:var(--g4)">'+E(T('Other pages (index, review questions)'))+' · '+g.pages.length+'</summary>'+
+          g.pages.map(p=>'<button class="cbcard" style="margin-top:8px" onclick="CB.hit('+results.indexOf(p)+')"><div class="cbmeta"><span>'+E(T('Vol'))+' '+p.vol+'</span><span>·</span><span>'+E(T('page'))+' '+E(p.label)+'</span></div><div class="cbsnip">'+snipHtml(p.snip)+'</div></button>').join('')+'</details>';
+        const ttl=g.title?g.title.replace(new RegExp('^'+g.head.replace(/\./g,'\\.')+'\\s*'),''):'';
+        return '<button class="cbcard" onclick="CB.hit('+first+')"><div style="display:flex;gap:8px;align-items:baseline"><span class="cbsec" style="font-size:16px">'+E(g.head)+'</span><b style="font-size:16px;line-height:1.25">'+E(ttl)+'</b></div>'+
+          '<div class="cbmeta" style="margin:4px 0 6px"><span>'+E(T('Vol'))+' '+g.vol+'</span><span>·</span><span>'+E(pr(g))+'</span></div><div class="cbsnip">'+snipHtml(g.best.snip)+'</div></button>';
+      }).join('')
       :'<div class="cbcard" style="cursor:default;color:var(--g4)">'+E(T('Nothing found. Try fewer or different words.'))+'</div>');
   }catch(e){R.innerHTML='<div class="cbcard" style="cursor:default;color:var(--g4)">'+E(T(String(e&&e.message)==='nosb'?'Only the team can open the code book. Sign in first.':'Could not load this page. Check your connection.'))+'</div>';}
 };
