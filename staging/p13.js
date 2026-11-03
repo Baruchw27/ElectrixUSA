@@ -76,6 +76,7 @@ html[data-theme=dark] #m-job2,html[data-theme=dark] #m-j2s,html[data-theme=dark]
 .j2btns{display:flex;gap:8px;margin-top:12px}
 .j2btn{flex:1;min-width:0;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:5px;height:40px;padding:0 8px;border-radius:12px;font-size:14px;font-weight:600;color:var(--j2ink);background:var(--j2card);box-shadow:0 0 0 1px var(--j2line);border:0;cursor:pointer;text-decoration:none;white-space:nowrap}
 .j2btn.d{background:var(--j2ink);color:var(--j2card);box-shadow:none;flex:1.15}
+.j2body>.j2btn{flex:none}
 :lang(es) .j2btn,.j2es .j2btn{font-size:13px}
 .j2body{padding:10px 14px 30px;display:flex;flex-direction:column;gap:9px}
 .j2card{background:var(--j2card);border-radius:16px;padding:12px 16px;box-shadow:0 0 0 1px rgba(15,17,21,.05)}
