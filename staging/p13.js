@@ -19,7 +19,7 @@ const ES_ON=()=>{try{return lang()==='es'}catch(e){return false}};
 const S_ES={'Mark rough done':'Marcar rough terminado','Ready for finishing':'Listo para terminación','Site manager':'Encargado','Site managers':'Encargados',
 'No site manager yet':'Sin encargado todavía','here':'aquí','on site':'en el sitio','people here':'personas aquí','Directions':'Cómo llegar','Job info':'Info del trabajo','Reports':'Reportes',
 'Tasks':'Tareas','All':'Todas','Notes':'Notas','Note':'Nota','Files':'Archivos','No open tasks':'No hay tareas abiertas','No notes yet — add the first one so everyone on the job sees it.':'Todavía no hay notas — agrega la primera para que todos en el trabajo la vean.',
-'No files yet':'Todavía no hay archivos','Add file':'Agregar archivo','Add link':'Agregar enlace','Inspection scheduled':'Inspección agendada','Inspection requested — waiting to be booked':'Inspección pedida — esperando agendar',
+'No files yet':'Todavía no hay archivos','Add file':'Agregar archivo','Add link':'Agregar enlace','Inspection scheduled':'Inspección agendada','Inspection booked':'Inspección agendada','Inspection requested':'Inspección pedida','Inspections':'Inspecciones','Booked':'Agendada','Passed':'Pasó','Failed':'Falló','Waiting to be booked':'Esperando agendar','booked by':'agendada por','No inspections yet':'Todavía no hay inspecciones','Rough inspection':'Inspección de rough','Final inspection':'Inspección final','Inspection':'Inspección','Inspection requested — waiting to be booked':'Inspección pedida — esperando agendar',
 'Ready for inspection':'Listo para inspección','All details':'Todos los detalles','photos':'fotos','No photos yet':'Todavía no hay fotos','Add the first photo':'Agrega la primera foto',
 'Owner':'Dueño','Name':'Nombre','Phone':'Teléfono','Permit':'Permiso','Permit #':'Permiso #','Job':'Trabajo','Address':'Dirección','GPS fence':'Cerca GPS','Edit':'Editar','Save':'Guardar','Cancel':'Cancelar',
 'Add a field':'Agregar un campo','Field name':'Nombre del campo','Value':'Valor','Not set':'Sin poner','This week':'Esta semana','Last week':'Semana pasada','This month':'Este mes',
@@ -169,6 +169,23 @@ function orrs(s){try{return (D.orr||[]).filter(x=>x&&!x.deleted&&x.site===s.id&&
 function orrStep(x){try{const c=ORR.cur(x);return c&&c[1]?c[1]:'';}catch(e){return '';}}
 function orrType(x){try{const t0=(ORR.TYPES||[]).find(y=>y[0]===x.type);return t0?t0[1]:'O&R';}catch(e){return 'O&R';}}
 function insp(s){try{const L=(D.insp||[]).filter(i=>i.site===s.id).sort((a,b)=>b.ts-a.ts);return L.find(i=>i.status==='booked')||L.find(i=>i.status==='requested')||null;}catch(e){return null;}}
+function inspAll(s){try{return (D.insp||[]).filter(i=>i.site===s.id).sort((a,b)=>(b.at||b.ts||0)-(a.at||a.ts||0));}catch(e){return [];}}
+const kindL=k=>{try{return inspKindLabel(k)}catch(e){return T(k==='rough'?'Rough inspection':k==='final'?'Final inspection':'Inspection')}};
+const inspSt=i=>i.status==='booked'?T('Booked'):i.status==='pass'?T('Passed'):i.status==='fail'?T('Failed'):T('Waiting to be booked');
+// Baruch 11/3: tiny line — "Inspection booked · Thu 11/5" once Shia/Matty book it; tap → every inspection this job ever had
+function inspLine(s){const L=inspAll(s);const cur=L.find(i=>i.status==='booked')||L.find(i=>i.status==='requested');const last=L.find(i=>i.status==='pass'||i.status==='fail');
+  let h='';const d=ms=>ms?' · '+E(dt(ms,{weekday:'short',month:'numeric',day:'numeric'})):'';
+  if(cur)h+='<button onclick="P13.insps()">'+I('cal','s')+(cur.status==='booked'?E(T('Inspection booked'))+d(cur.at):E(T('Inspection requested')))+'</button>';
+  else if(last)h+='<button onclick="P13.insps()">'+I('insp','s')+E(kindL(last.kind))+' '+(last.status==='pass'?'✓ '+E(T('Passed')):'✕ '+E(T('Failed')))+d(last.at||(last.result&&last.result.ts))+'</button>';
+  if(!cur&&can(canReqInsp))h+='<button onclick="P13.readyInsp()">'+I('insp','s')+E(T('Ready for inspection'))+'</button>';
+  if(cur&&L.length>1)h+='<button onclick="P13.insps()">'+E(T('Inspections'))+' · '+L.length+'</button>';
+  return h;}
+P13.insps=()=>{const s=site();if(!s)return;const L=inspAll(s);
+  const col={booked:'#2459d6',pass:'var(--j2ok)',fail:'#c0392b',requested:'var(--j2mut)'};
+  sheet('m-j2s',T('Inspections'),String(s.name||'').split(',')[0],'<div class="j2body">'+(L.length?'<div class="j2card" style="padding:0">'+L.map(i=>{const when=i.at||(i.result&&i.result.ts)||i.ts;
+     return '<div class="j2hr" style="cursor:pointer" onclick="P13.inspOpen(\''+J(i.id)+'\')"><span>'+E(kindL(i.kind))+'<small>'+(when?E(dt(when,{weekday:'short',month:'short',day:'numeric',year:'numeric'})):'')+(i.status==='booked'&&i.bookedBy?' · '+E(T('booked by'))+' '+E(nm(i.bookedBy)):'')+'</small></span><span class="v" style="color:'+(col[i.status]||'var(--j2mut)')+';font-size:13.5px">'+E(inspSt(i))+'</span></div>'
+       +(i.result&&i.result.note?'<div style="padding:0 16px 11px;font-size:13px;color:var(--j2ink2);margin-top:-4px">'+E(i.result.note)+'</div>':'');}).join('')+'</div>':'<div class="j2muted">'+E(T('No inspections yet'))+'</div>')+'</div>');};
+P13.inspOpen=id=>{const i=(D.insp||[]).find(x=>x.id===id);if(!i)return;const m=M();try{if(i.status==='requested'&&can(canBookInsp,m))return openInspBook(id);if(i.status==='booked'&&(can(canReqInsp,m)||can(canBookInsp,m)))return openInspResult(id);}catch(e){}};
 function stageInfo(s){let L=['Roughing','b-prog'];try{L=STAGE[s.stage||'active']||STAGE.active;}catch(e){}
   const k=s.stage||'active';const col={upcoming:'#9aa0aa',ready:'#3b6fd8',priced:'#9aa0aa',active:'#f0a24a',roughdone:'#1e8e4e',inspection:'#7a4fd0',done:'#1e8e4e'}[k]||'#f0a24a';
   return {label:T(L[0]),col,k};}
@@ -207,8 +224,7 @@ function draw(){
        +(fl.length?'<div class="j2files">'+fl.slice(0,3).map(fileTile).join('')+'</div>':'<div class="j2muted">'+E(T('No files yet'))+(can(canEditFolder)?' · <a style="color:var(--j2ink2);font-weight:600;cursor:pointer" onclick="P13.upload()">'+E(T('Add file'))+'</a>':'')+'</div>')+'</div>'
      +(or.length?'<div class="j2card" style="padding:0">'+or.map(x=>'<div class="j2line" onclick="P13.orr(\''+J(x.id)+'\')">'+I('bolt','s')+'<span>O&amp;R · '+E(T(orrType(x)))+'</span><em>'+E(T(orrStep(x)))+I('chev','s')+'</em></div>').join('')+'</div>':'')
      +'<div class="j2small">'
-       +(ins?'<span onclick="P13.old()">'+I('cal','s')+(ins.status==='booked'?E(T('Inspection scheduled'))+(ins.at?' · '+E(dt(ins.at,{weekday:'short',month:'numeric',day:'numeric'})):''):E(T('Inspection requested — waiting to be booked')))+'</span>'
-          :(can(canReqInsp)?'<button onclick="P13.readyInsp()">'+I('insp','s')+E(T('Ready for inspection'))+'</button>':''))
+       +inspLine(s)
        +'<button onclick="P13.old()">'+I('more','s')+E(T('All details'))+'</button></div>'
    +'</div>';
   B.scrollTop=keep;}
