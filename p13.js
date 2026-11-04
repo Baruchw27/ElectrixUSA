@@ -376,3 +376,27 @@ if(typeof window.openFolder==='function'){
 // keep the screen fresh when data changes (sync, saves)
 if(typeof window.renderAll==='function'){const _ra=window.renderAll;window.renderAll=function(){const r=_ra.apply(this,arguments);try{refresh();}catch(e){}return r;};}
 })();
+
+/* Home fix (Baruch 11/3 "Is it not necessary to show updated meetings on the home screen?"):
+   option 13 kept quiet sections closed with no way to open them. Now:
+   - Meetings & inspections is open on Home (tap its title to close/open, remembered)
+   - any other closed section opens when you tap its title (remembered)
+   Staging's newer home code already opens sections on tap (p9open) — then only start Meetings open. */
+(function(){
+const newer=!!(window.P7&&typeof P7.fold==='function'&&String(P7.fold).indexOf('p9open')>=0);
+try{if(!localStorage.getItem('p13meetsReset')){localStorage.removeItem('p7f_meets');if(newer)localStorage.setItem('p9o_meets','1');localStorage.setItem('p13meetsReset','1');}}catch(e){}
+if(newer)return;
+const css=document.createElement('style');
+css.textContent='html.o13 body #homeBody .p7c[data-k=meets]:not(.fold) .bd,html.o13 body #homeBody .p7c.p13open .bd{display:block!important}';
+document.head.appendChild(css);
+const QUIET=k=>!['att','tasks','myjob','myjobT','meets'].includes(k);
+const isOpen=k=>{try{return localStorage.getItem('p13o_'+k)==='1';}catch(e){return false;}};
+function apply(){try{document.querySelectorAll('#homeBody .p7c[data-k]').forEach(c=>{const k=c.getAttribute('data-k');if(QUIET(k))c.classList.toggle('p13open',isOpen(k));});}catch(e){}}
+function hook(){if(!window.P7||typeof P7.fold!=='function'||P7._p13)return false;const _f=P7.fold;
+  P7.fold=function(k){const c=document.querySelector('.p7c[data-k="'+k+'"]');
+    if(c&&document.documentElement.classList.contains('o13')&&QUIET(k)&&!c.classList.contains('p9bad')){const o=!c.classList.contains('p13open');c.classList.toggle('p13open',o);try{localStorage.setItem('p13o_'+k,o?'1':'0');}catch(e){}return;}
+    return _f.apply(this,arguments);};
+  P7._p13=1;return true;}
+if(!hook())setTimeout(hook,1500);
+const start=()=>{const hb=document.getElementById('homeBody');if(!hb)return setTimeout(start,500);apply();new MutationObserver(apply).observe(hb,{childList:true});};start();
+})();
