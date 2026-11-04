@@ -556,23 +556,33 @@ if(typeof window.EX_view==='function'){const _v=window.EX_view;
    are there; without signal it says so instead of saving an empty file. Where the newer upload (fdStoreFile) is already
    in the app, this stays out of the way. A file saved empty before shows a clear message instead of doing nothing. */
 (function(){
-if(typeof window.fdAdd!=='function'||typeof window.fdStoreFile==='function')return;
+if(typeof window.fdAdd!=='function')return;
+// Baruch 11/4 (option 1): documents go onto the job's Trello card (free, no total limit, 10 MB per file); the app keeps a link
+// and opens them through the server. Over 10 MB, a job with no Trello card, or Trello refusing → the app's own storage (max 50 MB).
 const tt=s=>{try{return t(s)||s;}catch(e){return s;}};
 const ES={'Uploading…':'Subiendo…','too big':'muy grande','File not saved — needs a signal. Try again when you have service.':'Archivo no guardado — necesita señal. Intenta de nuevo cuando tengas servicio.'};
 const T=s=>{let es=false;try{es=lang()==='es';}catch(e){}return es&&ES[s]?ES[s]:tt(s);};
 const MAX=(typeof MEDIA_MAX_MB==='number'?MEDIA_MAX_MB:50)*1048576;
+async function toTrello(f,siteId){const C=window.EX_CFG||{};if(!C.url)return null;
+  try{let sess=null;try{sess=window.EX_sb?(await EX_sb.auth.getSession()).data.session:null;}catch(e){}
+    const h={apikey:C.anonKey||'','Content-Type':f.type||'application/octet-stream','x-file-name':encodeURIComponent(f.name||'file')};if(sess)h.Authorization='Bearer '+sess.access_token;
+    const r=await fetch(C.url.replace(/\/$/,'')+'/functions/v1/trello-files?upload=1&site='+encodeURIComponent(siteId),{method:'POST',headers:h,body:f});
+    if(!r.ok)return null;const j=await r.json();return j&&j.tid&&/^https:\/\/(?:api\.)?trello\.com\/1\/cards\//.test(String(j.url||''))?j:null;}catch(e){return null;}}
 const kindOf=f=>/pdf/.test(f.type)||/\.pdf$/i.test(f.name)?'pdf':/word|docx?/.test(f.type+f.name)?'doc':/sheet|xlsx?|csv/.test(f.type+f.name)?'sheet':'file';
 const _add=window.fdAdd;
 window.fdAdd=function(inp){const all=[...((inp&&inp.files)||[])];const imgs=all.filter(f=>/^image\//.test(f.type||''));const docs=all.filter(f=>!/^image\//.test(f.type||'')).slice(0,8);
   if(imgs.length)_add({files:imgs,value:''});
   docs.forEach(async f=>{let s=null;try{s=D.sites.find(x=>x.id===fdSite);}catch(e){}if(!s)return;
     if(f.size>MAX){toast('⚠ '+f.name+' — '+T('too big')+' (max '+Math.round(MAX/1048576)+' MB)');return;}
-    let d='';
+    let d='',tr=null;
     if(window.EX_REAL){toast('⏳ '+T('Uploading…')+' '+f.name);
-      try{if(window.EX_uploadBlob&&navigator.onLine!==false)d=await window.EX_uploadBlob(f,'media')||'';}catch(e){d='';}
-      if(!d){toast('⚠ '+f.name+': '+T('File not saved — needs a signal. Try again when you have service.'));return;}}
+      if(navigator.onLine!==false&&f.size<=10*1048576&&/trello\.com\/c\//.test(String(s.trello||'')))tr=await toTrello(f,s.id);
+      if(!tr){try{if(window.EX_uploadBlob&&navigator.onLine!==false)d=await window.EX_uploadBlob(f,'media')||'';}catch(e){d='';}
+        if(!d){toast('⚠ '+f.name+': '+T('File not saved — needs a signal. Try again when you have service.'));return;}}}
     else{if(f.size>=1500000){toast('⚠ '+f.name+' — '+T('too big'));return;}d=await new Promise(ok=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=()=>ok('');r.readAsDataURL(f);});if(!d)return;}
-    s.files=s.files||[];s.files.push({id:nid('f'),name:f.name,kind:kindOf(f),d,by:me().id,ts:Date.now()});save();
+    s.files=s.files||[];
+    if(tr)s.files.push({id:'ft'+tr.tid,tid:tr.tid,name:tr.name||f.name,kind:kindOf(f),url:tr.url,mime:tr.mime||f.type||'',bytes:tr.bytes||f.size,by:me().id,ts:Date.now()});
+    else s.files.push({id:nid('f'),name:f.name,kind:kindOf(f),d,by:me().id,ts:Date.now()});save();
     try{P13._after&&P13._after();}catch(e){}try{renderSites();}catch(e){}document.querySelectorAll('.toast').forEach(x=>x.remove());toast('📎 '+f.name,'green');
     try{if(s.crew)pushTo([s.crew],()=>('📁 '+t('New file in')+' '+s.name+': '+f.name),'info',{site:s.id});}catch(e){}});
   try{if(inp&&'value' in inp)inp.value='';}catch(e){}};
