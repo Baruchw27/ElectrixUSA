@@ -436,7 +436,8 @@ const ES={'Google map for GPS fences':'Mapa de Google para las cercas GPS','Conn
  'That doesn\'t look like a Google Maps key':'Eso no parece una clave de Google Maps','Saved — open a GPS fence to see the Google map':'Guardado — abre una cerca GPS para ver el mapa de Google',
  'Google map key not working — using the regular map':'La clave de Google no funciona — usando el mapa normal','Satellite':'Satélite','Map':'Mapa'};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const isOwner=()=>{try{return me().role==='owner';}catch(e){return false;}};
+// Baruch 11/4: Shia does the fences — the key card is for the owner and all-access office (Shia)
+const isOwner=()=>{try{const m=me();return m.role==='owner'||(!!m.all&&m.role==='office');}catch(e){return false;}};
 const key=()=>{try{const k=String(D.gmapsKey||'').trim();return /^AIza[\w-]{30,}$/.test(k)?k:'';}catch(e){return '';}};
 const G={st:'',map:null,circle:null,box:null,sync:false,failed:false};
 window.P13G=G;
