@@ -19,7 +19,7 @@ const ES_ON=()=>{try{return lang()==='es'}catch(e){return false}};
 const S_ES={'Mark rough done':'Marcar rough terminado','Ready for finishing':'Listo para terminación','Site manager':'Encargado','Site managers':'Encargados',
 'No site manager yet':'Sin encargado todavía','here':'aquí','on site':'en el sitio','people here':'personas aquí','Directions':'Cómo llegar','Job info':'Info del trabajo','Reports':'Reportes',
 'Tasks':'Tareas','All':'Todas','Notes':'Notas','Note':'Nota','Files':'Archivos','No open tasks':'No hay tareas abiertas','No notes yet — add the first one so everyone on the job sees it.':'Todavía no hay notas — agrega la primera para que todos en el trabajo la vean.',
-'No files yet':'Todavía no hay archivos','Add file':'Agregar archivo','Add link':'Agregar enlace','Inspection scheduled':'Inspección agendada','Inspection booked':'Inspección agendada','O&R request':'Pedido O&R','GPS fence not set — nobody can punch in':'Cerca GPS sin poner — nadie puede marcar','GPS fence from the address — not checked yet':'Cerca GPS por la dirección — sin revisar','can\'t punch in — fix the fence':'no puede marcar — arregla la cerca','not checked':'sin revisar','Add photos':'Agregar fotos','Take a photo':'Tomar una foto','Choose from photos':'Elegir de las fotos','pick as many as you want':'elige las que quieras','photos':'fotos','photo added':'foto agregada','photos added':'fotos agregadas','not added (40 at a time)':'no agregadas (40 a la vez)','Photo':'Foto','Remove job':'Quitar trabajo','Remove this job?':'¿Quitar este trabajo?','Remove this file?':'¿Quitar este archivo?','Remove this link?':'¿Quitar este enlace?','Rename file':'Cambiar nombre','Rename':'Cambiar nombre','Replace':'Reemplazar','Delete':'Borrar','Share':'Compartir','Open':'Abrir','Link':'Enlace','File':'Archivo','More':'Más','Inspection requested':'Inspección pedida','Inspections':'Inspecciones','Booked':'Agendada','Passed':'Pasó','Failed':'Falló','Waiting to be booked':'Esperando agendar','booked by':'agendada por','No inspections yet':'Todavía no hay inspecciones','Rough inspection':'Inspección de rough','Final inspection':'Inspección final','Inspection':'Inspección','Inspection requested — waiting to be booked':'Inspección pedida — esperando agendar',
+'No files yet':'Todavía no hay archivos','Add file':'Agregar archivo','Add link':'Agregar enlace','Inspection scheduled':'Inspección agendada','Inspection booked':'Inspección agendada','O&R request':'Pedido O&R','Opening':'Abriendo','Could not open the file':'No se pudo abrir el archivo','You can\'t open this file':'No puedes abrir este archivo','GPS fence not set — nobody can punch in':'Cerca GPS sin poner — nadie puede marcar','GPS fence from the address — not checked yet':'Cerca GPS por la dirección — sin revisar','can\'t punch in — fix the fence':'no puede marcar — arregla la cerca','not checked':'sin revisar','Add photos':'Agregar fotos','Take a photo':'Tomar una foto','Choose from photos':'Elegir de las fotos','pick as many as you want':'elige las que quieras','photos':'fotos','photo added':'foto agregada','photos added':'fotos agregadas','not added (40 at a time)':'no agregadas (40 a la vez)','Photo':'Foto','Remove job':'Quitar trabajo','Remove this job?':'¿Quitar este trabajo?','Remove this file?':'¿Quitar este archivo?','Remove this link?':'¿Quitar este enlace?','Rename file':'Cambiar nombre','Rename':'Cambiar nombre','Replace':'Reemplazar','Delete':'Borrar','Share':'Compartir','Open':'Abrir','Link':'Enlace','File':'Archivo','More':'Más','Inspection requested':'Inspección pedida','Inspections':'Inspecciones','Booked':'Agendada','Passed':'Pasó','Failed':'Falló','Waiting to be booked':'Esperando agendar','booked by':'agendada por','No inspections yet':'Todavía no hay inspecciones','Rough inspection':'Inspección de rough','Final inspection':'Inspección final','Inspection':'Inspección','Inspection requested — waiting to be booked':'Inspección pedida — esperando agendar',
 'Ready for inspection':'Listo para inspección','All details':'Todos los detalles','photos':'fotos','No photos yet':'Todavía no hay fotos','Add the first photo':'Agrega la primera foto',
 'Owner':'Dueño','Name':'Nombre','Phone':'Teléfono','Permit':'Permiso','Permit #':'Permiso #','Job':'Trabajo','Address':'Dirección','GPS fence':'Cerca GPS','Edit':'Editar','Save':'Guardar','Cancel':'Cancelar',
 'Add a field':'Agregar un campo','Field name':'Nombre del campo','Value':'Valor','Not set':'Sin poner','This week':'Esta semana','Last week':'Semana pasada','This month':'Este mes',
@@ -263,6 +263,7 @@ P13.task=id=>{try{openJobDetail(id);}catch(e){}};
 P13.done=id=>{const j=(D.jobs||[]).find(x=>x.id===id);if(!j)return;if(j.status==='done'){try{openJobDetail(id);}catch(e){}return;}try{markDone(id);}catch(e){}setTimeout(refresh,250);};
 P13.addTask=()=>{const s=site();if(!s)return;try{openJob();setTimeout(()=>{const x=$('jSite');if(x)x.value=s.id;},60);}catch(e){}};
 P13.openFile=id=>{try{const s=site();const f=s&&(s.files||[]).find(x=>x.id===id);   // PDFs: the in-app reader (Baruch 11/4)
+  if(f&&isTrelloFile(f)){openTrello(f,s.id);return;}
   if(f&&f.d&&typeof EX_view==='function'&&(/pdf/i.test(f.kind||'')||/\.pdf$/i.test(f.name||'')||/^data:application\/pdf/.test(String(f.d)))){EX_view(f.d,f.name,'pdf');return;}
   fdOpen(id);}catch(e){}};
 P13.orr=id=>{try{ORR.open(id);}catch(e){}};
@@ -309,6 +310,19 @@ P13.info=()=>{const s=site();if(!s)return;const m=M();const ed=can(canEditFolder
    +(ed?'<button class="j2btn" style="margin-top:14px;width:100%;height:44px" onclick="P13.addField()">'+I('plus','s')+E(T('Add a field'))+'</button>':'')
    +(m&&m.role==='owner'?'<button class="j2btn" style="margin-top:26px;width:100%;height:44px;color:#c0392b" onclick="P13.removeJob()">'+E(T('Remove job'))+'</button>':'')+'</div>',
    ed?'<button class="rt" onclick="P13.editInfo()">'+E(T('Edit'))+'</button>':'');};
+/* Trello files open inside the app through the server (Baruch 11/4) — nobody needs a Trello login */
+const TRELLO_RX=/^https:\/\/(?:api\.)?trello\.com\/1\/cards\/[0-9a-f]{24}\/attachments\/([0-9a-f]{24})/;
+function isTrelloFile(f){return !!f&&!f.d&&TRELLO_RX.test(String(f.url||''));}
+async function srvHeaders(){const C=window.EX_CFG||{};let s=null;try{s=window.EX_sb?(await EX_sb.auth.getSession()).data.session:null;}catch(e){}return Object.assign({apikey:C.anonKey||''},s?{Authorization:'Bearer '+s.access_token}:{});}
+async function openTrello(f,siteId){const C=window.EX_CFG||{};if(!C.url){try{window.open(f.url,'_blank','noopener');}catch(e){}return;}
+  try{toast('⏳ '+T('Opening')+' '+f.name);}catch(e){}
+  try{const r=await fetch(C.url.replace(/\/$/,'')+'/functions/v1/trello-files?file='+encodeURIComponent(f.url)+'&site='+encodeURIComponent(siteId||''),{headers:await srvHeaders()});
+    if(!r.ok)throw new Error(r.status===403?T('You can\'t open this file'):'HTTP '+r.status);
+    const blob=await r.blob();const u=URL.createObjectURL(blob);document.querySelectorAll('.toast').forEach(x=>x.remove());
+    EX_view(u,f.name,/pdf/i.test(f.kind||'')||/\.pdf$/i.test(f.name||'')?'pdf':(blob.type||f.kind));}
+  catch(e){try{toast('⚠ '+T('Could not open the file')+' — '+(e.message||''));}catch(_){}}}
+P13.openTrello=openTrello;
+try{window.EX_openTrello=f=>{let sid='';try{sid=fdSite;}catch(e){}openTrello(f,sid);};}catch(e){}
 /* file & photo menu: Open · Share · Rename · Replace · Delete (Baruch 11/3: no more old page) */
 function fileMenuOk(){return can(canEditFolder)||can(isAdmin)||can(isBoss);}
 function after(){try{refresh();}catch(e){}try{const o=$('m-j2s');if(o&&!o.classList.contains('hid')){const k=o.querySelector('.md').scrollTop;if(P13._cur==='files')P13.files();else if(P13._cur==='photos')P13.photos();o.querySelector('.md').scrollTop=k;}}catch(e){}}
@@ -325,7 +339,9 @@ P13.fren=id=>{const s=site();const f=s&&(s.files||[]).find(x=>x.id===id);if(!f)r
   askPrompt(T('Rename file'),[{label:T('Name'),value:f.name}],([n])=>{n=String(n||'').trim();if(!n)return;f.name=n;f.editedBy=(M()||{}).id;f.editedAt=Date.now();save();after();});lift();};
 P13.frep=id=>{close('m-j2t');try{fdReplace(id);}catch(e){}};
 P13.fdel=(id,isLink)=>{const s=site();if(!s||!can(isAdmin))return;close('m-j2t');
-  askConfirm(T(isLink?'Remove this link?':'Remove this file?'),()=>{if(isLink)s.links=(s.links||[]).filter(x=>x.id!==id);else s.files=(s.files||[]).filter(x=>x.id!==id);save();after();try{renderSites();}catch(e){}},T('Remove'));lift();};
+  askConfirm(T(isLink?'Remove this link?':'Remove this file?'),()=>{if(isLink)s.links=(s.links||[]).filter(x=>x.id!==id);else{const f=(s.files||[]).find(x=>x.id===id);const tid=f&&(f.tid||(TRELLO_RX.exec(String(f.url||''))||[])[1]);
+    if(tid){s.trelloAttGone=Array.isArray(s.trelloAttGone)?s.trelloAttGone:[];if(!s.trelloAttGone.includes(tid))s.trelloAttGone.push(tid);}
+    s.files=(s.files||[]).filter(x=>x.id!==id);}save();after();try{renderSites();}catch(e){}},T('Remove'));lift();};
 P13.removeJob=()=>{const s=site();const m=M();if(!s||!m||m.role!=='owner')return;
   askConfirm(T('Remove this job?'),()=>{try{if(typeof fdRemoveSite==='function')fdRemoveSite(s.id);else{D.sites=D.sites.filter(x=>x.id!==s.id);save();renderAll();}}catch(e){}['m-j2t','m-j2s','m-job2'].forEach(close);},T('Remove'));lift();};
 P13.orrNew=()=>{const s=site();if(s)try{ORR.add(s.id);lift();}catch(e){}};
