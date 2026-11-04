@@ -423,3 +423,64 @@ function hook(){if(!window.P7||typeof P7.fold!=='function'||P7._p13)return false
 if(!hook())setTimeout(hook,1500);
 const start=()=>{const hb=document.getElementById('homeBody');if(!hb)return setTimeout(start,500);apply();new MutationObserver(apply).observe(hb,{childList:true});};start();
 })();
+
+/* Google map for the GPS fence (Baruch 11/4 "Can we change to Google maps view").
+   The owner pastes the Google Maps key himself in Settings (D.gmapsKey, owner-only setting, locked to the app's
+   web address in Google Cloud). With a key the fence map is Google's map / satellite; everything else on the fence
+   page stays the same. No key, Google not reachable, or the key refused → the map used before. */
+(function(){
+const $=id=>document.getElementById(id);
+const T=s=>{let es=false;try{es=lang()==='es';}catch(e){}if(window.__LANG==='es')es=true;return es&&ES[s]?ES[s]:(()=>{try{return t(s)||s;}catch(e){return s;}})();};
+const ES={'Google map for GPS fences':'Mapa de Google para las cercas GPS','Connected':'Conectado','Not connected — the fence map uses the regular map':'Sin conectar — la cerca usa el mapa normal',
+ 'Paste key':'Pegar la clave','Change key':'Cambiar la clave','Remove':'Quitar','Google Maps key':'Clave de Google Maps','Starts with AIza…':'Empieza con AIza…',
+ 'That doesn\'t look like a Google Maps key':'Eso no parece una clave de Google Maps','Saved — open a GPS fence to see the Google map':'Guardado — abre una cerca GPS para ver el mapa de Google',
+ 'Google map key not working — using the regular map':'La clave de Google no funciona — usando el mapa normal','Satellite':'Satélite','Map':'Mapa'};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const isOwner=()=>{try{return me().role==='owner';}catch(e){return false;}};
+const key=()=>{try{const k=String(D.gmapsKey||'').trim();return /^AIza[\w-]{30,}$/.test(k)?k:'';}catch(e){return '';}};
+const G={st:'',map:null,circle:null,box:null,sync:false,failed:false};
+window.P13G=G;
+window.gm_authFailure=function(){G.failed=true;G.st='fail';try{if(G.box)G.box.remove();}catch(e){}G.box=null;G.map=null;G.circle=null;try{if(isOwner())toast(T('Google map key not working — using the regular map'));}catch(e){}try{const tl=$('fnTiles');if(tl)tl.style.display='';const at=$('fnAttr');if(at)at.style.display='';window.fnDraw();}catch(e){}};
+function load(){if(G.st||G.failed)return;const k=key();if(!k)return;G.st='loading';
+  window.__p13gReady=()=>{G.st='ready';try{if(!$('m-fence').classList.contains('hid'))fnDraw();}catch(e){}};
+  const sc=document.createElement('script');sc.async=true;sc.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(k)+'&callback=__p13gReady&loading=async';
+  sc.onerror=()=>{G.st='fail';};document.head.appendChild(sc);
+  setTimeout(()=>{if(G.st==='loading')G.st='fail';},12000);}
+const on=()=>G.st==='ready'&&!G.failed&&window.google&&google.maps&&google.maps.Map;
+let _draw=null;
+function hook(){if(typeof window.fnDraw!=='function'||window.fnDraw._p13)return;_draw=window.fnDraw;
+  window.fnDraw=function(){if(!on()){if(G.box)G.box.style.display='none';const tl=$('fnTiles');if(tl)tl.style.display='';const at=$('fnAttr');if(at)at.style.display='';return _draw.apply(this,arguments);}
+    try{const mp=$('fnMap');if(!mp)return;
+      if(!G.box||!mp.contains(G.box)){G.box=document.createElement('div');G.box.id='fnGmap';G.box.style.cssText='position:absolute;inset:0';
+        const tl=$('fnTiles');tl.parentNode.insertBefore(G.box,tl.nextSibling);
+        ['mousedown','touchstart','touchmove','wheel','pointerdown'].forEach(ev=>G.box.addEventListener(ev,e=>e.stopPropagation(),{passive:true}));
+        G.map=new google.maps.Map(G.box,{center:{lat:fn.lat,lng:fn.lng},zoom:fn.z,mapTypeId:fn.layer==='sat'?'hybrid':'roadmap',disableDefaultUI:true,gestureHandling:'greedy',tilt:0,clickableIcons:false,keyboardShortcuts:false});
+        G.map.addListener('center_changed',()=>{if(G.sync)return;const c=G.map.getCenter();fn.lat=c.lat();fn.lng=c.lng();});
+        G.map.addListener('zoom_changed',()=>{if(G.sync)return;fn.z=G.map.getZoom();});
+        G.circle=new google.maps.Circle({map:G.map,strokeColor:'#d93a2b',strokeWeight:2,fillColor:'#d93a2b',fillOpacity:.12,clickable:false});}
+      G.box.style.display='';const tl=$('fnTiles');if(tl)tl.style.display='none';const oc=$('fnCircle');if(oc)oc.style.display='none';
+      G.sync=true;const c=G.map.getCenter();if(!c||Math.abs(c.lat()-fn.lat)>1e-7||Math.abs(c.lng()-fn.lng)>1e-7)G.map.setCenter({lat:fn.lat,lng:fn.lng});
+      if(G.map.getZoom()!==fn.z)G.map.setZoom(fn.z);G.map.setMapTypeId(fn.layer==='sat'?'hybrid':'roadmap');G.sync=false;
+      const s=D.sites.find(x=>x.id===fn.id);if(s&&s.lat){G.circle.setCenter({lat:+s.lat,lng:+s.lng});G.circle.setRadius((s.rad||300)*0.3048);G.circle.setVisible(true);}else G.circle.setVisible(false);
+      const at=$('fnAttr');if(at)at.style.display='none';const ly=$('fnLayer');if(ly)ly.textContent=fn.layer==='sat'?T('Map'):T('Satellite');
+    }catch(e){G.sync=false;G.failed=true;try{console.warn('p13 gmap',e);}catch(_){}if(G.box)G.box.style.display='none';const tl=$('fnTiles');if(tl)tl.style.display='';const at=$('fnAttr');if(at)at.style.display='';return _draw.apply(this,arguments);}};
+  window.fnDraw._p13=1;try{fnDraw=window.fnDraw;}catch(e){}
+  if(typeof window.openFence==='function'&&!window.openFence._p13g){const _o=window.openFence;window.openFence=function(){load();return _o.apply(this,arguments);};window.openFence._p13g=1;try{openFence=window.openFence;}catch(e){}}
+  // the job screen calls openFence through P13.fence — it uses the global, so it picks this up
+}
+hook();setTimeout(hook,1200);
+// fence zoom: Google goes further in than the old map
+try{if(typeof window.fnZoom==='function'){const _z=window.fnZoom;window.fnZoom=function(d){if(on()){fn.z=Math.max(10,Math.min(21,fn.z+d));fnDraw();return;}return _z.apply(this,arguments);};try{fnZoom=window.fnZoom;}catch(e){}}}catch(e){}
+
+/* Settings: owner-only card */
+P13.gkey=()=>{if(!isOwner())return;askPrompt(T('Google Maps key'),[{label:T('Starts with AIza…'),value:''}],([v])=>{v=String(v||'').trim();if(!v)return;
+  if(!/^AIza[\w-]{30,}$/.test(v)){toast(T('That doesn\'t look like a Google Maps key'));return;}D.gmapsKey=v;save();G.failed=false;G.st='';toast('✓ '+T('Saved — open a GPS fence to see the Google map'),'green');card();});};
+P13.gkeyDel=()=>{if(!isOwner())return;askConfirm(T('Remove')+'?',()=>{delete D.gmapsKey;save();card();},T('Remove'));};
+function card(){const pg=$('pg-more');if(!pg)return;let c=$('p13gcard');if(!isOwner()){if(c)c.remove();return;}
+  if(!c){c=document.createElement('div');c.id='p13gcard';c.className='card';c.style.cssText='margin:12px 0;padding:12px 14px';pg.appendChild(c);}
+  const k=key();c.innerHTML='<div style="font-weight:650;font-size:14px">'+esc(T('Google map for GPS fences'))+'</div>'
+   +'<div style="font-size:12.5px;color:var(--g4);margin:3px 0 10px">'+(k?'<span style="color:var(--green)">✓ '+esc(T('Connected'))+'</span> · '+esc(k.slice(0,6))+'…'+esc(k.slice(-4)):esc(T('Not connected — the fence map uses the regular map')))+'</div>'
+   +'<div style="display:flex;gap:8px"><button class="bs" onclick="P13.gkey()">'+esc(T(k?'Change key':'Paste key'))+'</button>'+(k?'<button class="bs r" onclick="P13.gkeyDel()">'+esc(T('Remove'))+'</button>':'')+'</div>';}
+P13.gcard=card;
+if(typeof window.renderMore==='function'){const _rm=window.renderMore;window.renderMore=function(){const r=_rm.apply(this,arguments);try{card();}catch(e){}return r;};try{renderMore=window.renderMore;}catch(e){}}
+})();
