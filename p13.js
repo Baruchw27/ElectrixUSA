@@ -19,7 +19,7 @@ const ES_ON=()=>{try{return lang()==='es'}catch(e){return false}};
 const S_ES={'Mark rough done':'Marcar rough terminado','Ready for finishing':'Listo para terminación','Site manager':'Encargado','Site managers':'Encargados',
 'No site manager yet':'Sin encargado todavía','here':'aquí','on site':'en el sitio','people here':'personas aquí','Directions':'Cómo llegar','Job info':'Info del trabajo','Reports':'Reportes',
 'Tasks':'Tareas','All':'Todas','Notes':'Notas','Note':'Nota','Files':'Archivos','No open tasks':'No hay tareas abiertas','No notes yet — add the first one so everyone on the job sees it.':'Todavía no hay notas — agrega la primera para que todos en el trabajo la vean.',
-'No files yet':'Todavía no hay archivos','Add file':'Agregar archivo','Add link':'Agregar enlace','Inspection scheduled':'Inspección agendada','Inspection booked':'Inspección agendada','O&R request':'Pedido O&R','Add photos':'Agregar fotos','Take a photo':'Tomar una foto','Choose from photos':'Elegir de las fotos','pick as many as you want':'elige las que quieras','photos':'fotos','photo added':'foto agregada','photos added':'fotos agregadas','not added (40 at a time)':'no agregadas (40 a la vez)','Photo':'Foto','Remove job':'Quitar trabajo','Remove this job?':'¿Quitar este trabajo?','Remove this file?':'¿Quitar este archivo?','Remove this link?':'¿Quitar este enlace?','Rename file':'Cambiar nombre','Rename':'Cambiar nombre','Replace':'Reemplazar','Delete':'Borrar','Share':'Compartir','Open':'Abrir','Link':'Enlace','File':'Archivo','More':'Más','Inspection requested':'Inspección pedida','Inspections':'Inspecciones','Booked':'Agendada','Passed':'Pasó','Failed':'Falló','Waiting to be booked':'Esperando agendar','booked by':'agendada por','No inspections yet':'Todavía no hay inspecciones','Rough inspection':'Inspección de rough','Final inspection':'Inspección final','Inspection':'Inspección','Inspection requested — waiting to be booked':'Inspección pedida — esperando agendar',
+'No files yet':'Todavía no hay archivos','Add file':'Agregar archivo','Add link':'Agregar enlace','Inspection scheduled':'Inspección agendada','Inspection booked':'Inspección agendada','O&R request':'Pedido O&R','GPS fence not set — nobody can punch in':'Cerca GPS sin poner — nadie puede marcar','GPS fence from the address — not checked yet':'Cerca GPS por la dirección — sin revisar','can\'t punch in — fix the fence':'no puede marcar — arregla la cerca','not checked':'sin revisar','Add photos':'Agregar fotos','Take a photo':'Tomar una foto','Choose from photos':'Elegir de las fotos','pick as many as you want':'elige las que quieras','photos':'fotos','photo added':'foto agregada','photos added':'fotos agregadas','not added (40 at a time)':'no agregadas (40 a la vez)','Photo':'Foto','Remove job':'Quitar trabajo','Remove this job?':'¿Quitar este trabajo?','Remove this file?':'¿Quitar este archivo?','Remove this link?':'¿Quitar este enlace?','Rename file':'Cambiar nombre','Rename':'Cambiar nombre','Replace':'Reemplazar','Delete':'Borrar','Share':'Compartir','Open':'Abrir','Link':'Enlace','File':'Archivo','More':'Más','Inspection requested':'Inspección pedida','Inspections':'Inspecciones','Booked':'Agendada','Passed':'Pasó','Failed':'Falló','Waiting to be booked':'Esperando agendar','booked by':'agendada por','No inspections yet':'Todavía no hay inspecciones','Rough inspection':'Inspección de rough','Final inspection':'Inspección final','Inspection':'Inspección','Inspection requested — waiting to be booked':'Inspección pedida — esperando agendar',
 'Ready for inspection':'Listo para inspección','All details':'Todos los detalles','photos':'fotos','No photos yet':'Todavía no hay fotos','Add the first photo':'Agrega la primera foto',
 'Owner':'Dueño','Name':'Nombre','Phone':'Teléfono','Permit':'Permiso','Permit #':'Permiso #','Job':'Trabajo','Address':'Dirección','GPS fence':'Cerca GPS','Edit':'Editar','Save':'Guardar','Cancel':'Cancelar',
 'Add a field':'Agregar un campo','Field name':'Nombre del campo','Value':'Valor','Not set':'Sin poner','This week':'Esta semana','Last week':'Semana pasada','This month':'Este mes',
@@ -40,7 +40,7 @@ const ic={back:'<path d="m15 6-6 6 6 6"/>',more:'<circle cx="5" cy="12" r="1.3"/
  insp:'<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',phone:'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',
  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
  box:'<path d="M21 8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/>',
- dollar:'<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',x:'<path d="M18 6 6 18M6 6l12 12"/>',edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m14 6 4 4"/>',upload:'<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>',share:'<path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>',msg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'};
+ dollar:'<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',x:'<path d="M18 6 6 18M6 6l12 12"/>',pin:'<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m14 6 4 4"/>',upload:'<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>',share:'<path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>',msg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'};
 const I=(n,cls)=>'<svg class="j2i'+(cls?' '+cls:'')+'" viewBox="0 0 24 24">'+(ic[n]||'')+'</svg>';
 
 /* ---------- styles ---------- */
@@ -226,7 +226,7 @@ function draw(){
        +(fl.length?'<div class="j2files">'+fl.slice(0,3).map(fileTile).join('')+'</div>':'<div class="j2muted">'+E(T('No files yet'))+(can(canEditFolder)?' · <a style="color:var(--j2ink2);font-weight:600;cursor:pointer" onclick="P13.upload()">'+E(T('Add file'))+'</a>':'')+'</div>')+'</div>'
      +(or.length?'<div class="j2card" style="padding:0">'+or.map(x=>'<div class="j2line" onclick="P13.orr(\''+J(x.id)+'\')">'+I('bolt','s')+'<span>O&amp;R · '+E(T(orrType(x)))+'</span><em>'+E(T(orrStep(x)))+I('chev','s')+'</em></div>').join('')+'</div>':'')
      +'<div class="j2small">'
-       +inspLine(s)
+       +fenceLine(s)+inspLine(s)
        +(!or.length&&orrStaff(m)?'<button onclick="P13.orrNew()">'+I('bolt','s')+'+ '+E(T('O&R request'))+'</button>':'')+'</div>'
    +'</div>';
   B.scrollTop=keep;}
@@ -302,7 +302,7 @@ P13.info=()=>{const s=site();if(!s)return;const m=M();const ed=can(canEditFolder
    +'<div class="j2lb">'+E(T('Permit'))+'</div><div class="j2card" style="padding:0"><div class="j2kv"><span>'+E(T('Permit #'))+'</span><b>'+(s.permit?E(s.permit):'<span style="color:var(--j2mut)">'+E(T('Not set'))+'</span>')+'</b></div></div>'
    +'<div class="j2lb">'+E(T('Job'))+'</div><div class="j2card" style="padding:0"><div class="j2kv"><span>'+E(T('Address'))+'</span><b>'+E(s.name)+'</b></div>'
      +'<div class="j2kv"><span>'+E(T(mgr.length>1?'Site managers':'Site manager'))+'</span><b>'+(mgr.length?mgr.map(id=>E(nm(id))+(can(canAssignMgr)?' <button class="j2plus" style="width:20px;height:20px;vertical-align:-4px" onclick="P13.rmMgr(\''+J(id)+'\')" aria-label="'+E(T('Remove'))+'">'+I('x','s')+'</button>':'')).join('<br>'):E(T('Not set'))+'')+'</b></div>'
-     +'<div class="j2kv" style="cursor:pointer" onclick="P13.fence()"><span>'+E(T('GPS fence'))+'</span><b>'+(s.lat?E((s.rad||300)+' ft'):E(T('Not set')))+'</b></div>'
+     +'<div class="j2kv" style="cursor:pointer" onclick="P13.fence()"><span>'+E(T('GPS fence'))+'</span><b'+(!s.lat?' style="color:#c0392b"':!s.fenceOk?' style="color:#c77700"':'')+'>'+(s.lat?E((s.rad||300)+' ft')+(s.fenceOk?' ✓':' · '+E(T('not checked'))):E(T('Not set')))+'</b></div>'
      +extra.map(x=>'<div class="j2kv"><span>'+E(x.k)+'</span><b>'+E(x.v)+'</b></div>').join('')+'</div>'
    +(ed?'<button class="j2btn" style="margin-top:14px;width:100%;height:44px" onclick="P13.addField()">'+I('plus','s')+E(T('Add a field'))+'</button>':'')
    +(m&&m.role==='owner'?'<button class="j2btn" style="margin-top:26px;width:100%;height:44px;color:#c0392b" onclick="P13.removeJob()">'+E(T('Remove job'))+'</button>':'')+'</div>',
@@ -331,7 +331,15 @@ function orrStaff(m){return !!m&&(m.role==='owner'||m.role==='manager'||!!m.all|
 // pop-ups from the main app (confirm, rename, O&R form, share) must sit above the job screen
 function lift(){setTimeout(()=>{const top=Math.max(0,...['m-job2','m-j2s','m-j2t'].map(i=>{const o=$(i);return o&&!o.classList.contains('hid')?(parseInt(getComputedStyle(o).zIndex,10)||0):0}));
   document.querySelectorAll('.ov:not(.hid)').forEach(o=>{if(!/^m-j2|^m-job2$/.test(o.id)&&(parseInt(getComputedStyle(o).zIndex,10)||0)<=top)o.style.zIndex=String(top+5);});},0);}
-P13.fence=()=>{const s=site();if(s)try{openFence(s.id);}catch(e){}};
+P13.fence=()=>{const s=site();if(s)try{openFence(s.id);lift();}catch(e){}};
+// Baruch 11/4: the GPS fence was left out of the new job screen — small line at the bottom for the people who set fences (like the old page)
+function fenceEd(){try{return canFenceEdit();}catch(e){return false;}}
+function fenceState(s){if(!s.lat)return{c:'#c0392b',t:T('GPS fence not set — nobody can punch in')};
+  if(!s.fenceOk)return{c:'#c77700',t:T('GPS fence from the address — not checked yet')};
+  return{c:'',t:T('GPS fence')+' ✓ '+(s.rad||300)+' ft'};}
+function fenceLine(s){if(!fenceEd())return '';let h='';
+  if(s.fenceReq&&s.fenceReq.who)h+='<button style="color:#c0392b;font-weight:600" onclick="P13.fence()">'+I('pin','s')+E(nm(s.fenceReq.who))+' '+E(T("can't punch in — fix the fence"))+'</button>';
+  const f=fenceState(s);h+='<button'+(f.c?' style="color:'+f.c+'"':'')+' onclick="P13.fence()">'+I('pin','s')+E(f.t)+'</button>';return h;}
 P13.editInfo=()=>{const s=site();if(!s)return;const extra=(s.info||[]).filter(x=>x&&x.k);
   const f=(id,l,v,type)=>'<div class="j2lb" style="margin:12px 4px 6px">'+E(l)+'</div><input id="'+id+'" class="j2in" value="'+E(v||'')+'"'+(type?' inputmode="'+type+'"':'')+'>';
   sheet('m-j2t',T('Edit'),T('Job info'),'<div class="j2body" style="gap:0">'+f('j2c',T('Owner')+' · '+T('Name'),s.client)+f('j2p',T('Owner')+' · '+T('Phone'),s.phone,'tel')+f('j2pm',T('Permit #'),s.permit)
@@ -414,4 +422,66 @@ function hook(){if(!window.P7||typeof P7.fold!=='function'||P7._p13)return false
   P7._p13=1;return true;}
 if(!hook())setTimeout(hook,1500);
 const start=()=>{const hb=document.getElementById('homeBody');if(!hb)return setTimeout(start,500);apply();new MutationObserver(apply).observe(hb,{childList:true});};start();
+})();
+
+/* Google map for the GPS fence (Baruch 11/4 "Can we change to Google maps view").
+   The owner pastes the Google Maps key himself in Settings (D.gmapsKey, owner-only setting, locked to the app's
+   web address in Google Cloud). With a key the fence map is Google's map / satellite; everything else on the fence
+   page stays the same. No key, Google not reachable, or the key refused → the map used before. */
+(function(){
+const $=id=>document.getElementById(id);
+const T=s=>{let es=false;try{es=lang()==='es';}catch(e){}if(window.__LANG==='es')es=true;return es&&ES[s]?ES[s]:(()=>{try{return t(s)||s;}catch(e){return s;}})();};
+const ES={'Google map for GPS fences':'Mapa de Google para las cercas GPS','Connected':'Conectado','Not connected — the fence map uses the regular map':'Sin conectar — la cerca usa el mapa normal',
+ 'Paste key':'Pegar la clave','Change key':'Cambiar la clave','Remove':'Quitar','Google Maps key':'Clave de Google Maps','Starts with AIza…':'Empieza con AIza…',
+ 'That doesn\'t look like a Google Maps key':'Eso no parece una clave de Google Maps','Saved — open a GPS fence to see the Google map':'Guardado — abre una cerca GPS para ver el mapa de Google',
+ 'Google map key not working — using the regular map':'La clave de Google no funciona — usando el mapa normal','Satellite':'Satélite','Map':'Mapa'};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Baruch 11/4: Shia does the fences — the key card is for the owner and all-access office (Shia)
+const isOwner=()=>{try{const m=me();return m.role==='owner'||(!!m.all&&m.role==='office');}catch(e){return false;}};
+const key=()=>{try{const k=String(D.gmapsKey||'').trim();return /^AIza[\w-]{30,}$/.test(k)?k:'';}catch(e){return '';}};
+const G={st:'',map:null,circle:null,box:null,sync:false,failed:false};
+window.P13G=G;
+window.gm_authFailure=function(){G.failed=true;G.st='fail';try{if(G.box)G.box.remove();}catch(e){}G.box=null;G.map=null;G.circle=null;try{if(isOwner())toast(T('Google map key not working — using the regular map'));}catch(e){}try{const tl=$('fnTiles');if(tl)tl.style.display='';const at=$('fnAttr');if(at)at.style.display='';window.fnDraw();}catch(e){}};
+function load(){if(G.st||G.failed)return;const k=key();if(!k)return;G.st='loading';
+  window.__p13gReady=()=>{G.st='ready';try{if(!$('m-fence').classList.contains('hid'))fnDraw();}catch(e){}};
+  const sc=document.createElement('script');sc.async=true;sc.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(k)+'&callback=__p13gReady&loading=async';
+  sc.onerror=()=>{G.st='fail';};document.head.appendChild(sc);
+  setTimeout(()=>{if(G.st==='loading')G.st='fail';},12000);}
+const on=()=>G.st==='ready'&&!G.failed&&window.google&&google.maps&&google.maps.Map;
+let _draw=null;
+function hook(){if(typeof window.fnDraw!=='function'||window.fnDraw._p13)return;_draw=window.fnDraw;
+  window.fnDraw=function(){if(!on()){if(G.box)G.box.style.display='none';const tl=$('fnTiles');if(tl)tl.style.display='';const at=$('fnAttr');if(at)at.style.display='';return _draw.apply(this,arguments);}
+    try{const mp=$('fnMap');if(!mp)return;
+      if(!G.box||!mp.contains(G.box)){G.box=document.createElement('div');G.box.id='fnGmap';G.box.style.cssText='position:absolute;inset:0';
+        const tl=$('fnTiles');tl.parentNode.insertBefore(G.box,tl.nextSibling);
+        ['mousedown','touchstart','touchmove','wheel','pointerdown'].forEach(ev=>G.box.addEventListener(ev,e=>e.stopPropagation(),{passive:true}));
+        G.map=new google.maps.Map(G.box,{center:{lat:fn.lat,lng:fn.lng},zoom:fn.z,mapTypeId:fn.layer==='sat'?'hybrid':'roadmap',disableDefaultUI:true,gestureHandling:'greedy',tilt:0,clickableIcons:false,keyboardShortcuts:false});
+        G.map.addListener('center_changed',()=>{if(G.sync)return;const c=G.map.getCenter();fn.lat=c.lat();fn.lng=c.lng();});
+        G.map.addListener('zoom_changed',()=>{if(G.sync)return;fn.z=G.map.getZoom();});
+        G.circle=new google.maps.Circle({map:G.map,strokeColor:'#d93a2b',strokeWeight:2,fillColor:'#d93a2b',fillOpacity:.12,clickable:false});}
+      G.box.style.display='';const tl=$('fnTiles');if(tl)tl.style.display='none';const oc=$('fnCircle');if(oc)oc.style.display='none';
+      G.sync=true;const c=G.map.getCenter();if(!c||Math.abs(c.lat()-fn.lat)>1e-7||Math.abs(c.lng()-fn.lng)>1e-7)G.map.setCenter({lat:fn.lat,lng:fn.lng});
+      if(G.map.getZoom()!==fn.z)G.map.setZoom(fn.z);G.map.setMapTypeId(fn.layer==='sat'?'hybrid':'roadmap');G.sync=false;
+      const s=D.sites.find(x=>x.id===fn.id);if(s&&s.lat){G.circle.setCenter({lat:+s.lat,lng:+s.lng});G.circle.setRadius((s.rad||300)*0.3048);G.circle.setVisible(true);}else G.circle.setVisible(false);
+      const at=$('fnAttr');if(at)at.style.display='none';const ly=$('fnLayer');if(ly)ly.textContent=fn.layer==='sat'?T('Map'):T('Satellite');
+    }catch(e){G.sync=false;G.failed=true;try{console.warn('p13 gmap',e);}catch(_){}if(G.box)G.box.style.display='none';const tl=$('fnTiles');if(tl)tl.style.display='';const at=$('fnAttr');if(at)at.style.display='';return _draw.apply(this,arguments);}};
+  window.fnDraw._p13=1;try{fnDraw=window.fnDraw;}catch(e){}
+  if(typeof window.openFence==='function'&&!window.openFence._p13g){const _o=window.openFence;window.openFence=function(){load();return _o.apply(this,arguments);};window.openFence._p13g=1;try{openFence=window.openFence;}catch(e){}}
+  // the job screen calls openFence through P13.fence — it uses the global, so it picks this up
+}
+hook();setTimeout(hook,1200);
+// fence zoom: Google goes further in than the old map
+try{if(typeof window.fnZoom==='function'){const _z=window.fnZoom;window.fnZoom=function(d){if(on()){fn.z=Math.max(10,Math.min(21,fn.z+d));fnDraw();return;}return _z.apply(this,arguments);};try{fnZoom=window.fnZoom;}catch(e){}}}catch(e){}
+
+/* Settings: owner-only card */
+P13.gkey=()=>{if(!isOwner())return;askPrompt(T('Google Maps key'),[{label:T('Starts with AIza…'),value:''}],([v])=>{v=String(v||'').trim();if(!v)return;
+  if(!/^AIza[\w-]{30,}$/.test(v)){toast(T('That doesn\'t look like a Google Maps key'));return;}D.gmapsKey=v;save();G.failed=false;G.st='';toast('✓ '+T('Saved — open a GPS fence to see the Google map'),'green');card();});};
+P13.gkeyDel=()=>{if(!isOwner())return;askConfirm(T('Remove')+'?',()=>{delete D.gmapsKey;save();card();},T('Remove'));};
+function card(){const pg=$('pg-more');if(!pg)return;let c=$('p13gcard');if(!isOwner()){if(c)c.remove();return;}
+  if(!c){c=document.createElement('div');c.id='p13gcard';c.className='card';c.style.cssText='margin:12px 0;padding:12px 14px';pg.appendChild(c);}
+  const k=key();c.innerHTML='<div style="font-weight:650;font-size:14px">'+esc(T('Google map for GPS fences'))+'</div>'
+   +'<div style="font-size:12.5px;color:var(--g4);margin:3px 0 10px">'+(k?'<span style="color:var(--green)">✓ '+esc(T('Connected'))+'</span> · '+esc(k.slice(0,6))+'…'+esc(k.slice(-4)):esc(T('Not connected — the fence map uses the regular map')))+'</div>'
+   +'<div style="display:flex;gap:8px"><button class="bs" onclick="P13.gkey()">'+esc(T(k?'Change key':'Paste key'))+'</button>'+(k?'<button class="bs r" onclick="P13.gkeyDel()">'+esc(T('Remove'))+'</button>':'')+'</div>';}
+P13.gcard=card;
+if(typeof window.renderMore==='function'){const _rm=window.renderMore;window.renderMore=function(){const r=_rm.apply(this,arguments);try{card();}catch(e){}return r;};try{renderMore=window.renderMore;}catch(e){}}
 })();
