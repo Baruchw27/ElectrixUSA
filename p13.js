@@ -262,7 +262,9 @@ P13.stage=k=>{const s=site();if(s)try{quickStage(s.id,k);}catch(e){}};
 P13.task=id=>{try{openJobDetail(id);}catch(e){}};
 P13.done=id=>{const j=(D.jobs||[]).find(x=>x.id===id);if(!j)return;if(j.status==='done'){try{openJobDetail(id);}catch(e){}return;}try{markDone(id);}catch(e){}setTimeout(refresh,250);};
 P13.addTask=()=>{const s=site();if(!s)return;try{openJob();setTimeout(()=>{const x=$('jSite');if(x)x.value=s.id;},60);}catch(e){}};
-P13.openFile=id=>{try{fdOpen(id);}catch(e){}};
+P13.openFile=id=>{try{const s=site();const f=s&&(s.files||[]).find(x=>x.id===id);   // PDFs: the in-app reader (Baruch 11/4)
+  if(f&&f.d&&typeof EX_view==='function'&&(/pdf/i.test(f.kind||'')||/\.pdf$/i.test(f.name||'')||/^data:application\/pdf/.test(String(f.d)))){EX_view(f.d,f.name,'pdf');return;}
+  fdOpen(id);}catch(e){}};
 P13.orr=id=>{try{ORR.open(id);}catch(e){}};
 P13.readyInsp=()=>{const s=site();if(s)try{reqInsp(s.id);}catch(e){}setTimeout(refresh,300);};
 P13.delNote=id=>{const s=site();if(!s)return;const go=()=>{s.notes=(s.notes||[]).filter(n=>n.id!==id);try{save();}catch(e){}refresh();};try{askConfirm(T('Remove this note?'),go,T('Remove'));}catch(e){go();}};
@@ -484,4 +486,50 @@ function card(){const pg=$('pg-more');if(!pg)return;let c=$('p13gcard');if(!isOw
    +'<div style="display:flex;gap:8px"><button class="bs" onclick="P13.gkey()">'+esc(T(k?'Change key':'Paste key'))+'</button>'+(k?'<button class="bs r" onclick="P13.gkeyDel()">'+esc(T('Remove'))+'</button>':'')+'</div>';}
 P13.gcard=card;
 if(typeof window.renderMore==='function'){const _rm=window.renderMore;window.renderMore=function(){const r=_rm.apply(this,arguments);try{card();}catch(e){}return r;};try{renderMore=window.renderMore;}catch(e){}}
+})();
+
+/* PDFs open inside the app (Baruch 11/4: "I'm not able to open up the PDFs … it's getting downloaded to my phone").
+   Android phones don't show PDFs inside the app at all (they download them) and iPhones showed only page 1.
+   Now every page is drawn in the app with pdf.js — zoom + / −, and ⬇ still saves the file. */
+(function(){
+const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',WORKER='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const e=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const tt=s=>{try{return t(s)||s;}catch(_){return s;}};
+const ES={'Page':'Página','of':'de','Could not open this PDF':'No se pudo abrir este PDF','Loading…':'Cargando…'};
+const T=s=>{let es=false;try{es=lang()==='es';}catch(_){}return es&&ES[s]?ES[s]:tt(s);};
+let lib=null;function load(){if(window.pdfjsLib){lib=window.pdfjsLib;try{lib.GlobalWorkerOptions.workerSrc=WORKER;}catch(_){}return Promise.resolve(lib);}
+  return new Promise((ok,bad)=>{const sc=document.createElement('script');sc.src=PDFJS;sc.crossOrigin='anonymous';sc.onload=()=>{lib=window.pdfjsLib;try{lib.GlobalWorkerOptions.workerSrc=WORKER;}catch(_){}ok(lib);};sc.onerror=bad;document.head.appendChild(sc);});}
+const V={doc:null,zoom:1,tok:0};
+function isPdf(src,name,kind){return /pdf/i.test(kind||'')||/\.pdf(\?|$)/i.test(name||'')||/^data:application\/pdf/.test(src||'');}
+async function render(){const box=document.getElementById('p13pdf');if(!box||!V.doc)return;const tok=++V.tok;
+  const W=Math.max(280,box.clientWidth-16);const dpr=Math.min(2.5,window.devicePixelRatio||1);box.innerHTML='';
+  const pages=[];for(let i=1;i<=V.doc.numPages;i++){const d=document.createElement('div');d.className='p13pg';d.dataset.n=i;d.style.cssText='margin:8px auto;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.4);position:relative;width:'+Math.round(W*V.zoom)+'px;min-height:'+Math.round(W*V.zoom*1.29)+'px';box.appendChild(d);pages.push(d);}
+  const draw=async d=>{if(d._done||tok!==V.tok)return;d._done=1;try{const pg=await V.doc.getPage(+d.dataset.n);const vp0=pg.getViewport({scale:1});const sc=W*V.zoom/vp0.width;const vp=pg.getViewport({scale:sc*dpr});
+      const c=document.createElement('canvas');c.width=Math.floor(vp.width);c.height=Math.floor(vp.height);c.style.cssText='display:block;width:'+Math.round(vp.width/dpr)+'px;height:'+Math.round(vp.height/dpr)+'px';
+      await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;if(tok!==V.tok)return;d.style.minHeight='';d.style.width=c.style.width;d.innerHTML='';d.appendChild(c);}catch(_){d._done=0;}};
+  if('IntersectionObserver' in window){const io=new IntersectionObserver(es=>es.forEach(x=>{if(x.isIntersecting){draw(x.target);}}),{root:box,rootMargin:'600px 0px'});pages.forEach(p=>io.observe(p));V.io&&V.io.disconnect();V.io=io;}
+  else pages.forEach(draw);
+  const pn=document.getElementById('p13pn');if(pn)pn.textContent=V.doc.numPages+' '+(V.doc.numPages===1?T('Page').toLowerCase():T('Page').toLowerCase()+'s');}
+function zoom(d){V.zoom=Math.max(.6,Math.min(3,+(V.zoom*(d>0?1.35:1/1.35)).toFixed(2)));const box=document.getElementById('p13pdf');const f=box?box.scrollTop/(box.scrollHeight||1):0;render().then(()=>{if(box)box.scrollTop=f*box.scrollHeight;});}
+window.P13PDF={zoom};
+if(typeof window.EX_view==='function'){const _v=window.EX_view;
+  window.EX_view=function(src,name,kind){src=String(src||'');
+    if(!isPdf(src,name,kind)||!/^(blob:|https:|data:application\/pdf)/.test(src)||/["'<>\s]/.test(src))return _v.apply(this,arguments);
+    let o=document.getElementById('exViewer');if(!o){o=document.createElement('div');o.id='exViewer';document.body.appendChild(o);}
+    o.style.cssText='position:fixed;inset:0;z-index:700;background:#2b2b2e;display:flex;flex-direction:column';
+    const fname=String(name||'file.pdf').replace(/[\\/:*?"<>|]/g,'_');
+    o.innerHTML='<div style="display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 10px 10px;color:#fff;background:#111">'
+      +'<button onclick="EX_closeView()" style="border:0;background:#333;color:#fff;border-radius:10px;padding:9px 13px;font-size:15px">‹ '+e(tt('Back'))+'</button>'
+      +'<div style="flex:1;min-width:0"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px">'+e(name||'')+'</div><div id="p13pn" style="font-size:11.5px;color:#aaa">'+e(T('Loading…'))+'</div></div>'
+      +'<button onclick="P13PDF.zoom(-1)" aria-label="−" style="border:0;background:#333;color:#fff;border-radius:10px;width:38px;height:38px;font-size:20px">−</button>'
+      +'<button onclick="P13PDF.zoom(1)" aria-label="+" style="border:0;background:#333;color:#fff;border-radius:10px;width:38px;height:38px;font-size:20px">+</button>'
+      +'<a href="'+e(src)+'" download="'+e(fname)+'" aria-label="Download" style="color:#fff;text-decoration:none;background:#333;border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:17px">⬇</a></div>'
+      +'<div id="p13pdf" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:0 8px 30px;touch-action:pan-x pan-y"></div>';
+    try{history.pushState({exv:1},'');}catch(_){}
+    V.zoom=1;V.doc=null;const my=++V.tok;
+    load().then(L=>L.getDocument({url:src,isEvalSupported:false}).promise).then(doc=>{if(my!==V.tok)return;V.doc=doc;render();})
+      .catch(()=>{const b=document.getElementById('p13pdf');if(b&&my===V.tok)b.innerHTML='<div style="color:#ddd;padding:24px 14px;font-size:15px">'+e(T('Could not open this PDF'))+' — '+e(tt('Tap ⬇ to download and open this file.'))+'</div>';const pn=document.getElementById('p13pn');if(pn)pn.textContent='';});};
+  try{EX_view=window.EX_view;}catch(_){}
+  if(typeof window.EX_closeView==='function'){const _c=window.EX_closeView;window.EX_closeView=function(){V.tok++;try{if(V.io)V.io.disconnect();if(V.doc)V.doc.destroy();}catch(_){}V.doc=null;return _c.apply(this,arguments);};}
+}
 })();
