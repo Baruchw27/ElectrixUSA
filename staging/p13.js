@@ -141,7 +141,7 @@ const can=(fn,m)=>{try{return !!fn(m||M())}catch(e){return false}};
 /* Baruch 11/5 02:27 + 02:40: the field guys see all the job's photos, the notes, the files shared with them, the door lock — not the owner, the permit, inspections or O&R, and they can't delete anything */
 const isW=m=>{try{m=m||M();return !!m&&m.role==='worker';}catch(e){return false}};
 const fVis=(f,m)=>{if(isW(m))return true;try{return fileVisible(f,m)}catch(e){return true}};
-if(typeof window.fileVisible==='function'){const _fv=window.fileVisible;window.fileVisible=function(f,m){if(_fv.apply(this,arguments))return true;try{m=m||me();if(m&&m.role==='office'&&!['Accountant','Bookkeeper'].includes(m.title||''))return true;return !!(f&&f.crews&&m&&m.role==='worker');}catch(e){return false}};try{fileVisible=window.fileVisible;}catch(x){}}
+if(typeof window.fileVisible==='function'){const _fv=window.fileVisible;window.fileVisible=function(f,m){if(_fv.apply(this,arguments))return true;try{m=m||me();if(m&&m.role==='office'&&!['Accountant','Bookkeeper'].includes(m.title||''))return true;return false;}catch(e){return false}};try{fileVisible=window.fileVisible;}catch(x){}}
 const nm=id=>{try{return nameOf(id)}catch(e){return id||''}};
 const dt=(ms,o)=>{try{return new Date(ms).toLocaleDateString(LOC(),o||{month:'short',day:'numeric'})}catch(e){return ''}};
 const tm=ms=>{try{return new Date(ms).toLocaleTimeString(LOC(),{hour:'numeric',minute:'2-digit'})}catch(e){return ''}};
@@ -161,8 +161,8 @@ function who(j){const to=j.to||[];if(!to.length)return '';try{const c=(D.crews||
 function notes(s){const L=(s.notes||[]).map(n=>({id:n.id,txt:n.text||'',photo:n.photo||'',by:n.by,ts:n.ts||0,shared:1}));
   try{if(typeof kMine==='function')kMine().filter(n=>n.site===s.id&&!n.trashed).forEach(n=>L.push({id:n.id,txt:[n.title,n.text].filter(Boolean).join('\n')||(n.items||[]).map(i=>(i.done?'✓ ':'• ')+i.t).join('\n'),photo:n.img||'',by:n.owner,ts:n.edited||n.created||0,mine:1}));}catch(e){}
   return L.filter(n=>n.txt||n.photo).sort((a,b)=>b.ts-a.ts);}
-function files(s){const m=M();const F=(s.files||[]).filter(f=>{try{return fileVisible(f,m)}catch(e){return true}}).filter(f=>f.kind!=='img').map(f=>({id:f.id,name:String(f.name||'File').replace(/\.(pdf|docx?|xlsx?|csv|dwg|jpe?g|png|heic)$/i,''),ts:f.ts,crews:crewOn(f),kind:/\.pdf$/i.test(f.name||'')||f.kind==='pdf'||/pdf/.test(f.type||'')?'PDF':(/\.(xlsx?|csv)$/i.test(f.name||'')?'XLS':/\.(docx?)$/i.test(f.name||'')?'DOC':/\.dwg$/i.test(f.name||'')?'DWG':'FILE'),file:1}));
-  const Lk=(s.links||[]).filter(f=>{try{return fileVisible(f,m)}catch(e){return true}}).map(l=>({id:l.id,name:l.title||l.url,url:l.url,ts:l.ts||0,kind:'LINK',crews:crewOn(l)}));
+function files(s){const m=M();const F=(s.files||[]).filter(f=>{try{return fileVisible(f,m)}catch(e){return true}}).filter(f=>f.kind!=='img').map(f=>({id:f.id,name:String(f.name||'File').replace(/\.(pdf|docx?|xlsx?|csv|dwg|jpe?g|png|heic)$/i,''),ts:f.ts,kind:/\.pdf$/i.test(f.name||'')||f.kind==='pdf'||/pdf/.test(f.type||'')?'PDF':(/\.(xlsx?|csv)$/i.test(f.name||'')?'XLS':/\.(docx?)$/i.test(f.name||'')?'DOC':/\.dwg$/i.test(f.name||'')?'DWG':'FILE'),file:1}));
+  const Lk=(s.links||[]).filter(f=>{try{return fileVisible(f,m)}catch(e){return true}}).map(l=>({id:l.id,name:l.title||l.url,url:l.url,ts:l.ts||0,kind:'LINK'}));
   return F.concat(Lk).sort((a,b)=>(b.ts||0)-(a.ts||0));}
 const FCOL={PDF:'#d63a2b',XLS:'#1e8e4e',DOC:'#2459d6',DWG:'#7a4fd0',FILE:'#5d6470',LINK:'#5d6470'};
 function hereNow(s){const ps=(D.punches||[]).filter(p=>p.site===s.id&&!p.out&&!p.away);if(!ps.length)return null;
@@ -238,7 +238,7 @@ function taskRow(j){const d=j.status==='done';return '<div class="j2t'+(d?' dn':
 function noteRow(n,s,m){const mine=!isW(m)&&(n.by===m.id||can(isBoss,m));return '<div class="j2n">'+E(n.txt)+(n.photo?'<img src="'+E(n.photo)+'" onclick="viewPhotos([this.src],0)" alt="">':'')+'<small><span>'+E(nm(n.by))+' · '+E(dt(n.ts))+'</span>'+(n.shared&&mine?'<button onclick="P13.delNote(\''+J(n.id)+'\')">'+E(T('Remove'))+'</button>':'')+'</small></div>';}
 function fileTile(f){const k=f.kind;const sub=k==='LINK'?(String(f.url||'').replace(/^https?:\/\/(www\.)?/,'').split('/')[0]):(f.ts?dt(f.ts):k);
   return (k==='LINK'?'<a class="j2f" href="'+E((()=>{try{return safeHref(f.url)}catch(e){return '#'}})())+'" target="_blank" rel="noopener">':'<div class="j2f" onclick="P13.openFile(\''+J(f.id)+'\')">')
-   +'<span class="fi" style="background:'+(FCOL[k]||'#5d6470')+'">'+k+'</span><b>'+E(f.name)+'</b><small>'+E(sub)+'</small>'+(f.crews&&!isW()?'<small class="j2crew">'+I('users','s')+E(T('Crew sees it'))+'</small>':'')+(k==='LINK'?'</a>':'</div>');}
+   +'<span class="fi" style="background:'+(FCOL[k]||'#5d6470')+'">'+k+'</span><b>'+E(f.name)+'</b><small>'+E(sub)+'</small>'+(k==='LINK'?'</a>':'</div>');}
 
 /* ---------- actions ---------- */
 P13.back=()=>{close('m-job2');};
@@ -294,7 +294,7 @@ P13.tasks=()=>{const s=site();if(!s)return;const tk=tasks(s);const canAdd=can(is
 P13.notes=()=>{const s=site();if(!s)return;const m=M();const nt=notes(s);
   sheet('m-j2s',T('Notes'),s.name,'<div class="j2body"><div class="j2card">'+nt.map(n=>noteRow(n,s,m)).join('')+'</div></div>','<button class="rt" onclick="P13.addNote()">+ '+E(T('Note'))+'</button>');};
 P13.files=()=>{const s=site();if(!s)return;P13._next='files';const fl=files(s);const ed=can(canEditFolder);
-  const row=f=>{const k=f.kind;const inner='<span class="fi" style="width:30px;height:36px;border-radius:7px;color:#fff;font-size:8px;font-weight:800;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;flex:none;background:'+(FCOL[k]||'#5d6470')+'">'+k+'</span><span style="flex:1;min-width:0"><span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+E(f.name)+'</span><small style="font-size:12.5px;color:var(--j2mut)">'+E(k==='LINK'?String(f.url||'').replace(/^https?:\/\//,'').slice(0,40):(f.ts?dt(f.ts):''))+(f.crews&&!isW()?' · <span class="j2crew">'+I('users','s')+E(T('Crew sees it'))+'</span>':'')+'</small></span>'+(fileMenuOk()?'<button class="j2more2" aria-label="'+E(T('More'))+'" onclick="event.preventDefault();event.stopPropagation();P13.fmenu(\''+J(f.id)+'\','+(k==='LINK'?1:0)+')">'+I('more','s')+'</button>':I('chev','s'));
+  const row=f=>{const k=f.kind;const inner='<span class="fi" style="width:30px;height:36px;border-radius:7px;color:#fff;font-size:8px;font-weight:800;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;flex:none;background:'+(FCOL[k]||'#5d6470')+'">'+k+'</span><span style="flex:1;min-width:0"><span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+E(f.name)+'</span><small style="font-size:12.5px;color:var(--j2mut)">'+E(k==='LINK'?String(f.url||'').replace(/^https?:\/\//,'').slice(0,40):(f.ts?dt(f.ts):''))+'</small></span>'+(fileMenuOk()?'<button class="j2more2" aria-label="'+E(T('More'))+'" onclick="event.preventDefault();event.stopPropagation();P13.fmenu(\''+J(f.id)+'\','+(k==='LINK'?1:0)+')">'+I('more','s')+'</button>':I('chev','s'));
     return k==='LINK'?'<a class="j2line" style="text-decoration:none;color:inherit" href="'+E((()=>{try{return safeHref(f.url)}catch(e){return '#'}})())+'" target="_blank" rel="noopener">'+inner+'</a>':'<div class="j2line" onclick="P13.openFile(\''+J(f.id)+'\')">'+inner+'</div>';};
   sheet('m-j2s',T('Files'),s.name+' · '+fl.length,'<div class="j2body">'+(fl.length?'<div class="j2card" style="padding:0">'+fl.map(row).join('')+'</div>':'<div class="j2muted" style="padding:10px 6px">'+E(T('No files yet'))+'</div>')
    +(ed?'<div class="j2btns" style="margin-top:6px"><button class="j2btn" onclick="P13.upload()">'+I('plus','s')+E(T('Add file'))+'</button><button class="j2btn" onclick="P13.addLink()">'+I('plus','s')+E(T('Add link'))+'</button></div>':'')+'</div>');};
@@ -332,22 +332,24 @@ P13.openTrello=openTrello;
 try{window.EX_openTrello=f=>{let sid='';try{sid=fdSite;}catch(e){}openTrello(f,sid);};}catch(e){}
 /* file & photo menu: Open · Share · Rename · Replace · Delete (Baruch 11/3: no more old page) */
 function fileMenuOk(){return can(canEditFolder)||can(isAdmin)||can(isBoss)||canShare();}
-/* Baruch 11/5 02:47: sharing with the guys is one switch — "make it available for the guys … whenever they get to their job, they're gonna see that file". Menachem and Matty can do it too. */
-const crewOn=f=>!!f&&(!!f.crews||(Array.isArray(f.share)&&f.share.some(id=>(D.crews||[]).some(c=>c.id===id))));
+/* Baruch 11/5 02:47 + 02:52: Share stays as it was (pick the crew / people — only they get a notification); Menachem and Matty can share too */
 function canShare(){const m=M();if(!m)return false;return can(isBoss,m)||(m.role==='office'&&!['Accountant','Bookkeeper'].includes(m.title||''));}
-P13.fcrew=(id,isLink)=>{const s=site();if(!s)return;const f=isLink?(s.links||[]).find(x=>x.id===id):(s.files||[]).find(x=>x.id===id);if(!f||!canShare())return;
-  const on=!crewOn(f);if(on)f.crews=true;else{delete f.crews;if(Array.isArray(f.share))f.share=f.share.filter(id=>!(D.crews||[]).some(c=>c.id===id));}try{save();}catch(e){}close('m-j2t');after();toast(on?'✓ '+T('The crew on this job can see it now'):T('Hidden from the crew'),'green');};
 function after(){try{refresh();}catch(e){}try{const o=$('m-j2s');if(o&&!o.classList.contains('hid')){const k=o.querySelector('.md').scrollTop;if(P13._cur==='files')P13.files();else if(P13._cur==='photos')P13.photos();o.querySelector('.md').scrollTop=k;}}catch(e){}}
 P13._after=after;
 P13.fmenu=(id,isLink)=>{const s=site();if(!s)return;const f=isLink?(s.links||[]).find(x=>x.id===id):(s.files||[]).find(x=>x.id===id);if(!f)return;
   const ed=can(canEditFolder),adm=can(isAdmin),boss=can(isBoss);const b=(fn,ic,t,red)=>'<button class="j2pick" style="display:flex;align-items:center;gap:12px'+(red?';color:#c0392b':'')+'" onclick="'+fn+'">'+I(ic,'s')+E(T(t))+'</button>';
   const q="'"+J(id)+"'";
-  const sh=canShare()?[b('P13.fcrew('+q+','+(isLink?1:0)+')','users',crewOn(f)?'Hide from the crew':'Crew can see it')]:[];
-  const L=isLink?[b("P13.lopen("+q+")",'chev','Open')].concat(sh,adm?[b('P13.fdel('+q+',1)','x','Delete',1)]:[])
-   :[b("P13.close('m-j2t');P13.openFile("+q+")",'chev','Open')].concat(f.kind!=='img'?sh:[],ed&&f.kind!=='img'?[b('P13.fren('+q+')','edit','Rename'),b('P13.frep('+q+')','upload','Replace')]:[],adm?[b('P13.fdel('+q+')','x','Delete',1)]:[]);
+  const L=isLink?[b("P13.lopen("+q+")",'chev','Open')].concat(adm?[b('P13.fdel('+q+',1)','x','Delete',1)]:[])
+   :[b("P13.close('m-j2t');P13.openFile("+q+")",'chev','Open')].concat(canShare()&&f.kind!=='img'?[b('P13.fshare('+q+')','share','Share')]:[],ed&&f.kind!=='img'?[b('P13.fren('+q+')','edit','Rename'),b('P13.frep('+q+')','upload','Replace')]:[],adm?[b('P13.fdel('+q+')','x','Delete',1)]:[]);
   sheet('m-j2t',isLink?(f.title||f.url):f.name,isLink?T('Link'):T(f.kind==='img'?'Photo':'File'),'<div class="j2body"><div class="j2card" style="padding:0">'+L.join('')+'</div></div>');};
 P13.lopen=id=>{const s=site();const f=s&&(s.links||[]).find(x=>x.id===id);close('m-j2t');if(!f)return;let u='#';try{u=safeHref(f.url);}catch(e){}if(u!=='#')window.open(u,'_blank','noopener');};
-P13.fshare=id=>{close('m-j2t');try{fileShare(id);lift();}catch(e){}};
+P13.fshare=id=>{close('m-j2t');if(!canShare())return;
+  if(can(isBoss)){try{fileShare(id);lift();}catch(e){}return;}
+  /* Menachem / Matty: the same share list as everyone (pick the crew or people — only they get a notification) */
+  try{const s=(D.sites||[]).find(x=>x.id===fdSite);const f=s&&(s.files||[]).find(x=>x.id===id);if(!f)return;fsFile=id;$('fsName').textContent=f.name;const cur=new Set(f.share||[]);
+    const row=(v,label,sub)=>'<label class="tog" style="margin:0;font-size:15px;color:var(--g5);font-weight:500;cursor:pointer"><span>'+esc(label)+(sub?'<div style="font-size:12px;color:var(--g4);font-weight:400">'+esc(sub)+'</div>':'')+'</span><input type="checkbox" value="'+esc(v)+'" '+(cur.has(v)?'checked':'')+' style="width:22px;height:22px;box-shadow:none"></label>';
+    $('fsList').innerHTML='<div class="card" style="padding:4px 14px">'+(D.crews||[]).map(c=>row(c.id,c.name,t('everyone in the crew')+(s.crew===c.id?' · '+t('on this job'):''))).join('')+'</div><div class="sec">'+t('People')+'</div><div class="card" style="padding:4px 14px">'+(D.emps||[]).filter(e=>!isBoss(e)&&e.active!==false).map(e=>row(e.id,e.name,e.lead?t('crew leader'):e.role==='office'?e.title:'')).join('')+'</div>';
+    show('m-fshare');lift();}catch(e){console.error('p13 share',e);}};
 P13.fren=id=>{const s=site();const f=s&&(s.files||[]).find(x=>x.id===id);if(!f)return;close('m-j2t');
   askPrompt(T('Rename file'),[{label:T('Name'),value:f.name}],([n])=>{n=String(n||'').trim();if(!n)return;f.name=n;f.editedBy=(M()||{}).id;f.editedAt=Date.now();save();after();});lift();};
 P13.frep=id=>{close('m-j2t');try{fdReplace(id);}catch(e){}};
