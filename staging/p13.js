@@ -138,13 +138,16 @@ P13.close=close;
 /* ---------- data helpers ---------- */
 const site=()=>{try{return D.sites.find(x=>x.id===fdSite)}catch(e){return null}};
 const can=(fn,m)=>{try{return !!fn(m||M())}catch(e){return false}};
+/* Baruch 11/5 02:27: the field guys see everything on the job (photos, info, notes, files) — but not the owner, not inspections, and they can't delete anything */
+const isW=m=>{try{m=m||M();return !!m&&m.role==='worker';}catch(e){return false}};
+const fVis=(f,m)=>{if(isW(m))return true;try{return fileVisible(f,m)}catch(e){return true}};
 const nm=id=>{try{return nameOf(id)}catch(e){return id||''}};
 const dt=(ms,o)=>{try{return new Date(ms).toLocaleDateString(LOC(),o||{month:'short',day:'numeric'})}catch(e){return ''}};
 const tm=ms=>{try{return new Date(ms).toLocaleTimeString(LOC(),{hour:'numeric',minute:'2-digit'})}catch(e){return ''}};
 const isOffice=m=>!!m&&(m.role==='office');
 const seesReports=m=>!!m&&(can(isBoss,m)||m.role==='office'||m.role==='manager'||m.role==='owner'||!!m.all);
 function photos(s){const m=M();const L=[];
-  (s.files||[]).forEach(f=>{let ok=true;try{ok=fileVisible(f,m);}catch(e){}if(ok&&f.kind==='img'&&(f.d||f.url))L.push({src:f.d||f.url,ts:f.ts||0,fid:f.id});});
+  (s.files||[]).forEach(f=>{const ok=fVis(f,m);if(ok&&f.kind==='img'&&(f.d||f.url))L.push({src:f.d||f.url,ts:f.ts||0,fid:f.id});});
   (s.notes||[]).forEach(n=>{if(n&&n.photo)L.push({src:n.photo,ts:n.ts||0});});
   (D.jobs||[]).forEach(j=>{if(j.site!==s.id)return;(j.photos||[]).forEach(p=>{const src=typeof p==='string'?p:(p&&(p.d||p.url));if(src)L.push({src,ts:(p&&p.ts)||j.doneAt||j.ts||0});});if(typeof j.photo==='string'&&j.photo.length>20)L.push({src:j.photo,ts:j.doneAt||j.ts||0});});
   L.sort((a,b)=>(b.ts||0)-(a.ts||0));return L;}
@@ -157,8 +160,8 @@ function who(j){const to=j.to||[];if(!to.length)return '';try{const c=(D.crews||
 function notes(s){const L=(s.notes||[]).map(n=>({id:n.id,txt:n.text||'',photo:n.photo||'',by:n.by,ts:n.ts||0,shared:1}));
   try{if(typeof kMine==='function')kMine().filter(n=>n.site===s.id&&!n.trashed).forEach(n=>L.push({id:n.id,txt:[n.title,n.text].filter(Boolean).join('\n')||(n.items||[]).map(i=>(i.done?'✓ ':'• ')+i.t).join('\n'),photo:n.img||'',by:n.owner,ts:n.edited||n.created||0,mine:1}));}catch(e){}
   return L.filter(n=>n.txt||n.photo).sort((a,b)=>b.ts-a.ts);}
-function files(s){const m=M();const F=(s.files||[]).filter(f=>{try{return fileVisible(f,m)}catch(e){return true}}).filter(f=>f.kind!=='img').map(f=>({id:f.id,name:String(f.name||'File').replace(/\.(pdf|docx?|xlsx?|csv|dwg|jpe?g|png|heic)$/i,''),ts:f.ts,kind:/\.pdf$/i.test(f.name||'')||f.kind==='pdf'||/pdf/.test(f.type||'')?'PDF':(/\.(xlsx?|csv)$/i.test(f.name||'')?'XLS':/\.(docx?)$/i.test(f.name||'')?'DOC':/\.dwg$/i.test(f.name||'')?'DWG':'FILE'),file:1}));
-  const Lk=(s.links||[]).filter(f=>{try{return fileVisible(f,m)}catch(e){return true}}).map(l=>({id:l.id,name:l.title||l.url,url:l.url,ts:l.ts||0,kind:'LINK'}));
+function files(s){const m=M();const F=(s.files||[]).filter(f=>fVis(f,m)).filter(f=>f.kind!=='img').map(f=>({id:f.id,name:String(f.name||'File').replace(/\.(pdf|docx?|xlsx?|csv|dwg|jpe?g|png|heic)$/i,''),ts:f.ts,kind:/\.pdf$/i.test(f.name||'')||f.kind==='pdf'||/pdf/.test(f.type||'')?'PDF':(/\.(xlsx?|csv)$/i.test(f.name||'')?'XLS':/\.(docx?)$/i.test(f.name||'')?'DOC':/\.dwg$/i.test(f.name||'')?'DWG':'FILE'),file:1}));
+  const Lk=(s.links||[]).filter(f=>fVis(f,m)).map(l=>({id:l.id,name:l.title||l.url,url:l.url,ts:l.ts||0,kind:'LINK'}));
   return F.concat(Lk).sort((a,b)=>(b.ts||0)-(a.ts||0));}
 const FCOL={PDF:'#d63a2b',XLS:'#1e8e4e',DOC:'#2459d6',DWG:'#7a4fd0',FILE:'#5d6470',LINK:'#5d6470'};
 function hereNow(s){const ps=(D.punches||[]).filter(p=>p.site===s.id&&!p.out&&!p.away);if(!ps.length)return null;
@@ -226,12 +229,12 @@ function draw(){
        +(fl.length?'<div class="j2files">'+fl.slice(0,3).map(fileTile).join('')+'</div>':'<div class="j2muted">'+E(T('No files yet'))+(can(canEditFolder)?' · <a style="color:var(--j2ink2);font-weight:600;cursor:pointer" onclick="P13.upload()">'+E(T('Add file'))+'</a>':'')+'</div>')+'</div>'
      +(or.length?'<div class="j2card" style="padding:0">'+or.map(x=>'<div class="j2line" onclick="P13.orr(\''+J(x.id)+'\')">'+I('bolt','s')+'<span>O&amp;R · '+E(T(orrType(x)))+'</span><em>'+E(T(orrStep(x)))+I('chev','s')+'</em></div>').join('')+'</div>':'')
      +'<div class="j2small">'
-       +fenceLine(s)+inspLine(s)
+       +fenceLine(s)+(isW(m)?'':inspLine(s))
        +(!or.length&&orrStaff(m)?'<button onclick="P13.orrNew()">'+I('bolt','s')+'+ '+E(T('O&R request'))+'</button>':'')+'</div>'
    +'</div>';
   B.scrollTop=keep;}
 function taskRow(j){const d=j.status==='done';return '<div class="j2t'+(d?' dn':'')+'" onclick="P13.task(\''+J(j.id)+'\')"><button class="ck" aria-label="'+E(T('Done'))+'" onclick="event.stopPropagation();P13.done(\''+J(j.id)+'\')">'+(d?'<svg class="j2i s" viewBox="0 0 24 24" style="color:#fff"><path d="m5 12 5 5 9-10"/></svg>':'')+'</button><span class="nm">'+E(j.desc||j.title||'')+'</span><em>'+E(who(j))+'</em></div>';}
-function noteRow(n,s,m){const mine=n.by===m.id||can(isBoss,m);return '<div class="j2n">'+E(n.txt)+(n.photo?'<img src="'+E(n.photo)+'" onclick="viewPhotos([this.src],0)" alt="">':'')+'<small><span>'+E(nm(n.by))+' · '+E(dt(n.ts))+'</span>'+(n.shared&&mine?'<button onclick="P13.delNote(\''+J(n.id)+'\')">'+E(T('Remove'))+'</button>':'')+'</small></div>';}
+function noteRow(n,s,m){const mine=!isW(m)&&(n.by===m.id||can(isBoss,m));return '<div class="j2n">'+E(n.txt)+(n.photo?'<img src="'+E(n.photo)+'" onclick="viewPhotos([this.src],0)" alt="">':'')+'<small><span>'+E(nm(n.by))+' · '+E(dt(n.ts))+'</span>'+(n.shared&&mine?'<button onclick="P13.delNote(\''+J(n.id)+'\')">'+E(T('Remove'))+'</button>':'')+'</small></div>';}
 function fileTile(f){const k=f.kind;const sub=k==='LINK'?(String(f.url||'').replace(/^https?:\/\/(www\.)?/,'').split('/')[0]):(f.ts?dt(f.ts):k);
   return (k==='LINK'?'<a class="j2f" href="'+E((()=>{try{return safeHref(f.url)}catch(e){return '#'}})())+'" target="_blank" rel="noopener">':'<div class="j2f" onclick="P13.openFile(\''+J(f.id)+'\')">')
    +'<span class="fi" style="background:'+(FCOL[k]||'#5d6470')+'">'+k+'</span><b>'+E(f.name)+'</b><small>'+E(sub)+'</small>'+(k==='LINK'?'</a>':'</div>');}
@@ -302,7 +305,7 @@ P13.info=()=>{const s=site();if(!s)return;const m=M();const ed=can(canEditFolder
   const ph=s.phone?'<b style="display:flex;align-items:center;gap:10px">'+E(s.phone)+'<a class="j2call" href="tel:'+E(String(s.phone).replace(/[^\d+]/g,''))+'" aria-label="'+E(T('Call'))+'">'+I('phone','s')+'</a></b>':'<b style="color:var(--j2mut)">'+E(T('Not set'))+'</b>';
   const extra=(s.info||[]).filter(x=>x&&x.k);
   sheet('m-j2s',T('Job info'),String(s.name||'').split(',')[0],
-   '<div class="j2body" style="gap:0"><div class="j2lb" style="margin-top:2px">'+E(T('Owner'))+'</div><div class="j2card" style="padding:0"><div class="j2kv"><span>'+E(T('Name'))+'</span><b>'+(s.client?E(s.client):'<span style="color:var(--j2mut)">'+E(T('Not set'))+'</span>')+'</b></div><div class="j2kv"><span>'+E(T('Phone'))+'</span>'+ph+'</div></div>'
+   '<div class="j2body" style="gap:0">'+(isW(m)?'':'<div class="j2lb" style="margin-top:2px">'+E(T('Owner'))+'</div><div class="j2card" style="padding:0"><div class="j2kv"><span>'+E(T('Name'))+'</span><b>'+(s.client?E(s.client):'<span style="color:var(--j2mut)">'+E(T('Not set'))+'</span>')+'</b></div><div class="j2kv"><span>'+E(T('Phone'))+'</span>'+ph+'</div></div>')
    +'<div class="j2lb">'+E(T('Permit'))+'</div><div class="j2card" style="padding:0"><div class="j2kv"><span>'+E(T('Permit #'))+'</span><b>'+(s.permit?E(s.permit):'<span style="color:var(--j2mut)">'+E(T('Not set'))+'</span>')+'</b></div></div>'
    +'<div class="j2lb">'+E(T('Job'))+'</div><div class="j2card" style="padding:0"><div class="j2kv"><span>'+E(T('Address'))+'</span><b>'+E(s.name)+'</b></div>'
      +'<div class="j2kv"><span>'+E(T(mgr.length>1?'Site managers':'Site manager'))+'</span><b>'+(mgr.length?mgr.map(id=>E(nm(id))+(can(canAssignMgr)?' <button class="j2plus" style="width:20px;height:20px;vertical-align:-4px" onclick="P13.rmMgr(\''+J(id)+'\')" aria-label="'+E(T('Remove'))+'">'+I('x','s')+'</button>':'')).join('<br>'):E(T('Not set'))+'')+'</b></div>'
@@ -588,3 +591,5 @@ window.fdAdd=function(inp){const all=[...((inp&&inp.files)||[])];const imgs=all.
   try{if(inp&&'value' in inp)inp.value='';}catch(e){}};
 try{fdAdd=window.fdAdd;}catch(e){}
 })();
+/* Baruch 11/5 02:27 — the field guys' Home: full width like everyone (the round buttons float over it), and no meetings & inspections */
+(function(){const st=document.createElement('style');st.id='p13field';st.textContent='html.p9w body #homeBody .p7c{margin-right:0!important}html.p9w body #homeBody .p7c[data-k=meets]{display:none!important}';document.head.appendChild(st);})();
