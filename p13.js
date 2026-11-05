@@ -21,7 +21,7 @@ const S_ES={'Mark rough done':'Marcar rough terminado','Ready for finishing':'Li
 'Tasks':'Tareas','All':'Todas','Notes':'Notas','Note':'Nota','Files':'Archivos','No open tasks':'No hay tareas abiertas','No notes yet — add the first one so everyone on the job sees it.':'Todavía no hay notas — agrega la primera para que todos en el trabajo la vean.',
 'No files yet':'Todavía no hay archivos','Add file':'Agregar archivo','Add link':'Agregar enlace','Inspection scheduled':'Inspección agendada','Inspection booked':'Inspección agendada','O&R request':'Pedido O&R','This file did not finish uploading — please add it again':'Este archivo no terminó de subirse — por favor agrégalo otra vez','Opening':'Abriendo','Could not open the file':'No se pudo abrir el archivo','You can\'t open this file':'No puedes abrir este archivo','GPS fence not set — nobody can punch in':'Cerca GPS sin poner — nadie puede marcar','GPS fence from the address — not checked yet':'Cerca GPS por la dirección — sin revisar','can\'t punch in — fix the fence':'no puede marcar — arregla la cerca','not checked':'sin revisar','Add photos':'Agregar fotos','Take a photo':'Tomar una foto','Choose from photos':'Elegir de las fotos','pick as many as you want':'elige las que quieras','photos':'fotos','photo added':'foto agregada','photos added':'fotos agregadas','not added (40 at a time)':'no agregadas (40 a la vez)','Photo':'Foto','Remove job':'Quitar trabajo','Remove this job?':'¿Quitar este trabajo?','Remove this file?':'¿Quitar este archivo?','Remove this link?':'¿Quitar este enlace?','Rename file':'Cambiar nombre','Rename':'Cambiar nombre','Replace':'Reemplazar','Delete':'Borrar','Share':'Compartir','Open':'Abrir','Link':'Enlace','File':'Archivo','More':'Más','Inspection requested':'Inspección pedida','Inspections':'Inspecciones','Booked':'Agendada','Passed':'Pasó','Failed':'Falló','Waiting to be booked':'Esperando agendar','booked by':'agendada por','No inspections yet':'Todavía no hay inspecciones','Rough inspection':'Inspección de rough','Final inspection':'Inspección final','Inspection':'Inspección','Inspection requested — waiting to be booked':'Inspección pedida — esperando agendar',
 'Ready for inspection':'Listo para inspección','All details':'Todos los detalles','photos':'fotos','No photos yet':'Todavía no hay fotos','Add the first photo':'Agrega la primera foto',
-'Owner':'Dueño','Name':'Nombre','Phone':'Teléfono','Permit':'Permiso','Permit #':'Permiso #','Job':'Trabajo','Address':'Dirección','GPS fence':'Cerca GPS','Edit':'Editar','Save':'Guardar','Cancel':'Cancelar',
+'Owner':'Dueño','Crew sees it':'La cuadrilla lo ve','Crew can see it':'Que la cuadrilla lo vea','Hide from the crew':'Ocultar a la cuadrilla','The crew on this job can see it now':'La cuadrilla de este trabajo ya lo puede ver','Hidden from the crew':'Oculto a la cuadrilla','Door lock':'Cerradura (código)','O&R project #':'O&R proyecto #','Name':'Nombre','Phone':'Teléfono','Permit':'Permiso','Permit #':'Permiso #','Job':'Trabajo','Address':'Dirección','GPS fence':'Cerca GPS','Edit':'Editar','Save':'Guardar','Cancel':'Cancelar',
 'Add a field':'Agregar un campo','Field name':'Nombre del campo','Value':'Valor','Not set':'Sin poner','This week':'Esta semana','Last week':'Semana pasada','This month':'Este mes',
 'Hours':'Horas','People':'Personas','Spent':'Gastado','Who was here':'Quién estuvo','Schedule':'Horario','Material':'Material','Money spent':'Dinero gastado',
 'Per person, per day':'Por persona, por día','Came and left, each day':'Llegó y salió, cada día','Ordered and from the garage':'Pedido y del garaje','Material · gas · receipts':'Material · gasolina · recibos',
@@ -138,13 +138,17 @@ P13.close=close;
 /* ---------- data helpers ---------- */
 const site=()=>{try{return D.sites.find(x=>x.id===fdSite)}catch(e){return null}};
 const can=(fn,m)=>{try{return !!fn(m||M())}catch(e){return false}};
+/* Baruch 11/5 02:27 + 02:40: the field guys see all the job's photos, the notes, the files shared with them, the door lock — not the owner, the permit, inspections or O&R, and they can't delete anything */
+const isW=m=>{try{m=m||M();return !!m&&m.role==='worker';}catch(e){return false}};
+const fVis=(f,m)=>{if(isW(m))return true;try{return fileVisible(f,m)}catch(e){return true}};
+if(typeof window.fileVisible==='function'){const _fv=window.fileVisible;window.fileVisible=function(f,m){if(_fv.apply(this,arguments))return true;try{m=m||me();if(m&&m.role==='office'&&!['Accountant','Bookkeeper'].includes(m.title||''))return true;return false;}catch(e){return false}};try{fileVisible=window.fileVisible;}catch(x){}}
 const nm=id=>{try{return nameOf(id)}catch(e){return id||''}};
 const dt=(ms,o)=>{try{return new Date(ms).toLocaleDateString(LOC(),o||{month:'short',day:'numeric'})}catch(e){return ''}};
 const tm=ms=>{try{return new Date(ms).toLocaleTimeString(LOC(),{hour:'numeric',minute:'2-digit'})}catch(e){return ''}};
 const isOffice=m=>!!m&&(m.role==='office');
 const seesReports=m=>!!m&&(can(isBoss,m)||m.role==='office'||m.role==='manager'||m.role==='owner'||!!m.all);
 function photos(s){const m=M();const L=[];
-  (s.files||[]).forEach(f=>{let ok=true;try{ok=fileVisible(f,m);}catch(e){}if(ok&&f.kind==='img'&&(f.d||f.url))L.push({src:f.d||f.url,ts:f.ts||0,fid:f.id});});
+  (s.files||[]).forEach(f=>{const ok=fVis(f,m);if(ok&&f.kind==='img'&&(f.d||f.url))L.push({src:f.d||f.url,ts:f.ts||0,fid:f.id});});
   (s.notes||[]).forEach(n=>{if(n&&n.photo)L.push({src:n.photo,ts:n.ts||0});});
   (D.jobs||[]).forEach(j=>{if(j.site!==s.id)return;(j.photos||[]).forEach(p=>{const src=typeof p==='string'?p:(p&&(p.d||p.url));if(src)L.push({src,ts:(p&&p.ts)||j.doneAt||j.ts||0});});if(typeof j.photo==='string'&&j.photo.length>20)L.push({src:j.photo,ts:j.doneAt||j.ts||0});});
   L.sort((a,b)=>(b.ts||0)-(a.ts||0));return L;}
@@ -224,14 +228,14 @@ function draw(){
        +(nt.length?nt.slice(0,3).map(n=>noteRow(n,s,m)).join('')+(nt.length>3?'<div class="j2muted" style="cursor:pointer" onclick="P13.notes()">+ '+(nt.length-3)+' '+E(T('Notes')).toLowerCase()+'</div>':''):'<div class="j2muted">'+E(T('No notes yet — add the first one so everyone on the job sees it.'))+'</div>')+'</div>'
      +'<div class="j2card"><div class="j2h">'+E(T('Files'))+' · '+fl.length+'<button class="go" onclick="P13.files()">'+E(T('All'))+I('chev','s')+'</button></div>'
        +(fl.length?'<div class="j2files">'+fl.slice(0,3).map(fileTile).join('')+'</div>':'<div class="j2muted">'+E(T('No files yet'))+(can(canEditFolder)?' · <a style="color:var(--j2ink2);font-weight:600;cursor:pointer" onclick="P13.upload()">'+E(T('Add file'))+'</a>':'')+'</div>')+'</div>'
-     +(or.length?'<div class="j2card" style="padding:0">'+or.map(x=>'<div class="j2line" onclick="P13.orr(\''+J(x.id)+'\')">'+I('bolt','s')+'<span>O&amp;R · '+E(T(orrType(x)))+'</span><em>'+E(T(orrStep(x)))+I('chev','s')+'</em></div>').join('')+'</div>':'')
+     +(or.length&&!isW(m)?'<div class="j2card" style="padding:0">'+or.map(x=>'<div class="j2line" onclick="P13.orr(\''+J(x.id)+'\')">'+I('bolt','s')+'<span>O&amp;R · '+E(T(orrType(x)))+'</span><em>'+E(T(orrStep(x)))+I('chev','s')+'</em></div>').join('')+'</div>':'')
      +'<div class="j2small">'
-       +fenceLine(s)+inspLine(s)
+       +fenceLine(s)+(isW(m)?'':inspLine(s))
        +(!or.length&&orrStaff(m)?'<button onclick="P13.orrNew()">'+I('bolt','s')+'+ '+E(T('O&R request'))+'</button>':'')+'</div>'
    +'</div>';
   B.scrollTop=keep;}
 function taskRow(j){const d=j.status==='done';return '<div class="j2t'+(d?' dn':'')+'" onclick="P13.task(\''+J(j.id)+'\')"><button class="ck" aria-label="'+E(T('Done'))+'" onclick="event.stopPropagation();P13.done(\''+J(j.id)+'\')">'+(d?'<svg class="j2i s" viewBox="0 0 24 24" style="color:#fff"><path d="m5 12 5 5 9-10"/></svg>':'')+'</button><span class="nm">'+E(j.desc||j.title||'')+'</span><em>'+E(who(j))+'</em></div>';}
-function noteRow(n,s,m){const mine=n.by===m.id||can(isBoss,m);return '<div class="j2n">'+E(n.txt)+(n.photo?'<img src="'+E(n.photo)+'" onclick="viewPhotos([this.src],0)" alt="">':'')+'<small><span>'+E(nm(n.by))+' · '+E(dt(n.ts))+'</span>'+(n.shared&&mine?'<button onclick="P13.delNote(\''+J(n.id)+'\')">'+E(T('Remove'))+'</button>':'')+'</small></div>';}
+function noteRow(n,s,m){const mine=!isW(m)&&(n.by===m.id||can(isBoss,m));return '<div class="j2n">'+E(n.txt)+(n.photo?'<img src="'+E(n.photo)+'" onclick="viewPhotos([this.src],0)" alt="">':'')+'<small><span>'+E(nm(n.by))+' · '+E(dt(n.ts))+'</span>'+(n.shared&&mine?'<button onclick="P13.delNote(\''+J(n.id)+'\')">'+E(T('Remove'))+'</button>':'')+'</small></div>';}
 function fileTile(f){const k=f.kind;const sub=k==='LINK'?(String(f.url||'').replace(/^https?:\/\/(www\.)?/,'').split('/')[0]):(f.ts?dt(f.ts):k);
   return (k==='LINK'?'<a class="j2f" href="'+E((()=>{try{return safeHref(f.url)}catch(e){return '#'}})())+'" target="_blank" rel="noopener">':'<div class="j2f" onclick="P13.openFile(\''+J(f.id)+'\')">')
    +'<span class="fi" style="background:'+(FCOL[k]||'#5d6470')+'">'+k+'</span><b>'+E(f.name)+'</b><small>'+E(sub)+'</small>'+(k==='LINK'?'</a>':'</div>');}
@@ -302,9 +306,11 @@ P13.info=()=>{const s=site();if(!s)return;const m=M();const ed=can(canEditFolder
   const ph=s.phone?'<b style="display:flex;align-items:center;gap:10px">'+E(s.phone)+'<a class="j2call" href="tel:'+E(String(s.phone).replace(/[^\d+]/g,''))+'" aria-label="'+E(T('Call'))+'">'+I('phone','s')+'</a></b>':'<b style="color:var(--j2mut)">'+E(T('Not set'))+'</b>';
   const extra=(s.info||[]).filter(x=>x&&x.k);
   sheet('m-j2s',T('Job info'),String(s.name||'').split(',')[0],
-   '<div class="j2body" style="gap:0"><div class="j2lb" style="margin-top:2px">'+E(T('Owner'))+'</div><div class="j2card" style="padding:0"><div class="j2kv"><span>'+E(T('Name'))+'</span><b>'+(s.client?E(s.client):'<span style="color:var(--j2mut)">'+E(T('Not set'))+'</span>')+'</b></div><div class="j2kv"><span>'+E(T('Phone'))+'</span>'+ph+'</div></div>'
-   +'<div class="j2lb">'+E(T('Permit'))+'</div><div class="j2card" style="padding:0"><div class="j2kv"><span>'+E(T('Permit #'))+'</span><b>'+(s.permit?E(s.permit):'<span style="color:var(--j2mut)">'+E(T('Not set'))+'</span>')+'</b></div></div>'
+   '<div class="j2body" style="gap:0">'+(isW(m)?'':'<div class="j2lb" style="margin-top:2px">'+E(T('Owner'))+'</div><div class="j2card" style="padding:0"><div class="j2kv"><span>'+E(T('Name'))+'</span><b>'+(s.client?E(s.client):'<span style="color:var(--j2mut)">'+E(T('Not set'))+'</span>')+'</b></div><div class="j2kv"><span>'+E(T('Phone'))+'</span>'+ph+'</div></div>')
+   +(isW(m)?'':'<div class="j2lb">'+E(T('Permit'))+'</div><div class="j2card" style="padding:0"><div class="j2kv"><span>'+E(T('Permit #'))+'</span><b>'+(s.permit?E(s.permit):'<span style="color:var(--j2mut)">'+E(T('Not set'))+'</span>')+'</b></div></div>')
    +'<div class="j2lb">'+E(T('Job'))+'</div><div class="j2card" style="padding:0"><div class="j2kv"><span>'+E(T('Address'))+'</span><b>'+E(s.name)+'</b></div>'
+     +'<div class="j2kv"><span>'+E(T('Door lock'))+'</span><b>'+(s.lock?E(s.lock):'<span style="color:var(--j2mut)">'+E(T('Not set'))+'</span>')+'</b></div>'
+     +(isW(m)?'':(()=>{const W=(D.orr||[]).filter(x=>x&&!x.deleted&&x.site===s.id&&x.wo);return '<div class="j2kv"><span>'+E(T('O&R project #'))+'</span><b>'+(W.length?W.map(x=>E(x.wo)+(W.length>1?' <span style="color:var(--j2mut);font-weight:500">· '+E(T(orrType(x)))+'</span>':'')).join('<br>'):'<span style="color:var(--j2mut)">'+E(T('Not set'))+'</span>')+'</b></div>';})())
      +'<div class="j2kv"><span>'+E(T(mgr.length>1?'Site managers':'Site manager'))+'</span><b>'+(mgr.length?mgr.map(id=>E(nm(id))+(can(canAssignMgr)?' <button class="j2plus" style="width:20px;height:20px;vertical-align:-4px" onclick="P13.rmMgr(\''+J(id)+'\')" aria-label="'+E(T('Remove'))+'">'+I('x','s')+'</button>':'')).join('<br>'):E(T('Not set'))+'')+'</b></div>'
      +'<div class="j2kv" style="cursor:pointer" onclick="P13.fence()"><span>'+E(T('GPS fence'))+'</span><b'+(!s.lat?' style="color:#c0392b"':!s.fenceOk?' style="color:#c77700"':'')+'>'+(s.lat?E((s.rad||300)+' ft')+(s.fenceOk?' ✓':' · '+E(T('not checked'))):E(T('Not set')))+'</b></div>'
      +extra.map(x=>'<div class="j2kv"><span>'+E(x.k)+'</span><b>'+E(x.v)+'</b></div>').join('')+'</div>'
@@ -325,17 +331,25 @@ async function openTrello(f,siteId){const C=window.EX_CFG||{};if(!C.url){try{win
 P13.openTrello=openTrello;
 try{window.EX_openTrello=f=>{let sid='';try{sid=fdSite;}catch(e){}openTrello(f,sid);};}catch(e){}
 /* file & photo menu: Open · Share · Rename · Replace · Delete (Baruch 11/3: no more old page) */
-function fileMenuOk(){return can(canEditFolder)||can(isAdmin)||can(isBoss);}
+function fileMenuOk(){return can(canEditFolder)||can(isAdmin)||can(isBoss)||canShare();}
+/* Baruch 11/5 02:47 + 02:52: Share stays as it was (pick the crew / people — only they get a notification); Menachem and Matty can share too */
+function canShare(){const m=M();if(!m)return false;return can(isBoss,m)||(m.role==='office'&&!['Accountant','Bookkeeper'].includes(m.title||''));}
 function after(){try{refresh();}catch(e){}try{const o=$('m-j2s');if(o&&!o.classList.contains('hid')){const k=o.querySelector('.md').scrollTop;if(P13._cur==='files')P13.files();else if(P13._cur==='photos')P13.photos();o.querySelector('.md').scrollTop=k;}}catch(e){}}
 P13._after=after;
 P13.fmenu=(id,isLink)=>{const s=site();if(!s)return;const f=isLink?(s.links||[]).find(x=>x.id===id):(s.files||[]).find(x=>x.id===id);if(!f)return;
   const ed=can(canEditFolder),adm=can(isAdmin),boss=can(isBoss);const b=(fn,ic,t,red)=>'<button class="j2pick" style="display:flex;align-items:center;gap:12px'+(red?';color:#c0392b':'')+'" onclick="'+fn+'">'+I(ic,'s')+E(T(t))+'</button>';
   const q="'"+J(id)+"'";
   const L=isLink?[b("P13.lopen("+q+")",'chev','Open')].concat(adm?[b('P13.fdel('+q+',1)','x','Delete',1)]:[])
-   :[b("P13.close('m-j2t');P13.openFile("+q+")",'chev','Open')].concat(boss&&f.kind!=='img'?[b('P13.fshare('+q+')','share','Share')]:[],ed&&f.kind!=='img'?[b('P13.fren('+q+')','edit','Rename'),b('P13.frep('+q+')','upload','Replace')]:[],adm?[b('P13.fdel('+q+')','x','Delete',1)]:[]);
+   :[b("P13.close('m-j2t');P13.openFile("+q+")",'chev','Open')].concat(canShare()&&f.kind!=='img'?[b('P13.fshare('+q+')','share','Share')]:[],ed&&f.kind!=='img'?[b('P13.fren('+q+')','edit','Rename'),b('P13.frep('+q+')','upload','Replace')]:[],adm?[b('P13.fdel('+q+')','x','Delete',1)]:[]);
   sheet('m-j2t',isLink?(f.title||f.url):f.name,isLink?T('Link'):T(f.kind==='img'?'Photo':'File'),'<div class="j2body"><div class="j2card" style="padding:0">'+L.join('')+'</div></div>');};
 P13.lopen=id=>{const s=site();const f=s&&(s.links||[]).find(x=>x.id===id);close('m-j2t');if(!f)return;let u='#';try{u=safeHref(f.url);}catch(e){}if(u!=='#')window.open(u,'_blank','noopener');};
-P13.fshare=id=>{close('m-j2t');try{fileShare(id);lift();}catch(e){}};
+P13.fshare=id=>{close('m-j2t');if(!canShare())return;
+  if(can(isBoss)){try{fileShare(id);lift();}catch(e){}return;}
+  /* Menachem / Matty: the same share list as everyone (pick the crew or people — only they get a notification) */
+  try{const s=(D.sites||[]).find(x=>x.id===fdSite);const f=s&&(s.files||[]).find(x=>x.id===id);if(!f)return;fsFile=id;$('fsName').textContent=f.name;const cur=new Set(f.share||[]);
+    const row=(v,label,sub)=>'<label class="tog" style="margin:0;font-size:15px;color:var(--g5);font-weight:500;cursor:pointer"><span>'+esc(label)+(sub?'<div style="font-size:12px;color:var(--g4);font-weight:400">'+esc(sub)+'</div>':'')+'</span><input type="checkbox" value="'+esc(v)+'" '+(cur.has(v)?'checked':'')+' style="width:22px;height:22px;box-shadow:none"></label>';
+    $('fsList').innerHTML='<div class="card" style="padding:4px 14px">'+(D.crews||[]).map(c=>row(c.id,c.name,t('everyone in the crew')+(s.crew===c.id?' · '+t('on this job'):''))).join('')+'</div><div class="sec">'+t('People')+'</div><div class="card" style="padding:4px 14px">'+(D.emps||[]).filter(e=>!isBoss(e)&&e.active!==false).map(e=>row(e.id,e.name,e.lead?t('crew leader'):e.role==='office'?e.title:'')).join('')+'</div>';
+    show('m-fshare');lift();}catch(e){console.error('p13 share',e);}};
 P13.fren=id=>{const s=site();const f=s&&(s.files||[]).find(x=>x.id===id);if(!f)return;close('m-j2t');
   askPrompt(T('Rename file'),[{label:T('Name'),value:f.name}],([n])=>{n=String(n||'').trim();if(!n)return;f.name=n;f.editedBy=(M()||{}).id;f.editedAt=Date.now();save();after();});lift();};
 P13.frep=id=>{close('m-j2t');try{fdReplace(id);}catch(e){}};
@@ -361,9 +375,9 @@ function fenceLine(s){if(!fenceEd())return '';let h='';
   const f=fenceState(s);h+='<button'+(f.c?' style="color:'+f.c+'"':'')+' onclick="P13.fence()">'+I('pin','s')+E(f.t)+'</button>';return h;}
 P13.editInfo=()=>{const s=site();if(!s)return;const extra=(s.info||[]).filter(x=>x&&x.k);
   const f=(id,l,v,type)=>'<div class="j2lb" style="margin:12px 4px 6px">'+E(l)+'</div><input id="'+id+'" class="j2in" value="'+E(v||'')+'"'+(type?' inputmode="'+type+'"':'')+'>';
-  sheet('m-j2t',T('Edit'),T('Job info'),'<div class="j2body" style="gap:0">'+f('j2c',T('Owner')+' · '+T('Name'),s.client)+f('j2p',T('Owner')+' · '+T('Phone'),s.phone,'tel')+f('j2pm',T('Permit #'),s.permit)
+  sheet('m-j2t',T('Edit'),T('Job info'),'<div class="j2body" style="gap:0">'+f('j2c',T('Owner')+' · '+T('Name'),s.client)+f('j2p',T('Owner')+' · '+T('Phone'),s.phone,'tel')+f('j2pm',T('Permit #'),s.permit)+f('j2lk',T('Door lock'),s.lock)
     +extra.map((x,i)=>f('j2x'+i,x.k,x.v)).join('')+'<button class="j2save" onclick="P13.saveInfo()">'+E(T('Save'))+'</button></div>');};
-P13.saveInfo=()=>{const s=site();if(!s)return;const v=id=>(($(id)||{}).value||'').trim();s.client=v('j2c');s.phone=v('j2p');s.permit=v('j2pm');
+P13.saveInfo=()=>{const s=site();if(!s)return;const v=id=>(($(id)||{}).value||'').trim();s.client=v('j2c');s.phone=v('j2p');s.permit=v('j2pm');{const lk=v('j2lk');if(lk)s.lock=lk;else delete s.lock;}
   (s.info||[]).forEach((x,i)=>{if($('j2x'+i))x.v=v('j2x'+i);});s.info=(s.info||[]).filter(x=>x&&x.k);try{save();}catch(e){}close('m-j2t');refresh();P13.info();};
 P13.addField=()=>{sheet('m-j2t',T('Add a field'),T('Job info'),'<div class="j2body" style="gap:0"><div class="j2lb" style="margin:6px 4px 6px">'+E(T('Field name'))+'</div><input id="j2fk" class="j2in"><div class="j2lb" style="margin:12px 4px 6px">'+E(T('Value'))+'</div><input id="j2fv" class="j2in"><button class="j2save" onclick="P13.saveField()">'+E(T('Save'))+'</button></div>');setTimeout(()=>{const x=$('j2fk');if(x)x.focus();},250);};
 P13.saveField=()=>{const s=site();const k=(($('j2fk')||{}).value||'').trim(),v=(($('j2fv')||{}).value||'').trim();if(!s||!k)return;(s.info=s.info||[]).push({k,v});try{save();}catch(e){}close('m-j2t');P13.info();};
@@ -588,3 +602,23 @@ window.fdAdd=function(inp){const all=[...((inp&&inp.files)||[])];const imgs=all.
   try{if(inp&&'value' in inp)inp.value='';}catch(e){}};
 try{fdAdd=window.fdAdd;}catch(e){}
 })();
+/* Baruch 11/5 02:27 — the field guys' Home: full width like everyone (the round buttons float over it), and no meetings & inspections */
+(function(){const st=document.createElement('style');st.id='p13field';st.textContent='html.p9w body #homeBody .p7c{margin-right:0!important}.j2crew{display:inline-flex;align-items:center;gap:3px;color:#2563eb!important;font-weight:600}.j2crew svg{width:12px;height:12px}html[data-theme=dark] .j2crew{color:#7aa7ff!important}';document.head.appendChild(st);})();
+/* Baruch 11/5 02:40: "Meetings can stay if there is meetings … But inspections, they have nothing to do with" — the field guys' Home card shows only their meetings */
+(function(){if(typeof window.renderHome!=='function')return;const _rh=window.renderHome;
+const M=()=>{try{return me();}catch(e){return null;}};const $=id=>document.getElementById(id);const E=x=>esc(x);
+const T=x=>{try{const r=t(x);if(r&&r!==x)return r;}catch(e){}return ({Meetings:'Reuniones',Meeting:'Reunión',today:'hoy',Tomorrow:'Mañana'})[x]&&lang()==='es'?({Meetings:'Reuniones',Meeting:'Reunión',today:'hoy',Tomorrow:'Mañana'})[x]:x;};
+const I=()=>'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
+window.renderHome=function(){const r=_rh.apply(this,arguments);try{const m=M();const hb=$('homeBody');if(!m||!hb||m.role!=='worker')return r;
+  const old=hb.querySelector('.p7c[data-k=meets]');const now=Date.now();const td=new Date().toDateString();const tm=new Date();tm.setDate(tm.getDate()+1);const tms=tm.toDateString();
+  const ft=at=>new Date(at).toLocaleTimeString(LOC(),{hour:'numeric',minute:'2-digit'});
+  const day=at=>{const d=new Date(at).toDateString();return d===td?ft(at):d===tms?T('Tomorrow')+' '+ft(at):new Date(at).toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'});};
+  let L=[];try{L=(D.meets||[]).filter(x=>x&&!x.deleted&&x.at>=now-3600000&&x.at<now+7*86400000&&inMeet(x,m.id)).sort((a,b)=>a.at-b.at);}catch(e){}
+  if(!L.length){if(old)old.remove();return r;}
+  let f=false;try{f=localStorage.getItem('p7f_meets')==='1';}catch(e){}
+  const todayN=L.filter(x=>new Date(x.at).toDateString()===td).length;
+  const rows=L.slice(0,5).map(x=>'<div class="p7r one" onclick="goTab(\'cal\')"><span class="tm">'+E(day(x.at))+'</span><div class="w">'+E(x.title||T('Meeting'))+'<small>'+[x.site?E(String(siteName(x.site)).split(',')[0]):'',(()=>{try{return E(meetWhoLine(x));}catch(e){return '';}})()].filter(Boolean).join(' · ')+'</small></div></div>').join('');
+  const ic=old?(old.querySelector('.p7h .ic')||{}).outerHTML||'':'<span class="ic" style="background:#e8912d1f;color:#e8912d">'+I()+'</span>';
+  const h='<div class="p7h" onclick="P7.fold(\'meets\')">'+ic+'<b>'+E(T('Meetings'))+'</b><span class="n">'+(todayN?todayN+' '+E(T('today')):L.length)+'</span><span class="ch">▾</span></div><div class="bd">'+rows+'</div>';
+  if(old){old.innerHTML=h;}else{const d=document.createElement('div');d.className='p7c'+(f?' fold':'');d.dataset.k='meets';d.innerHTML=h;hb.appendChild(d);}
+}catch(e){console.error('p13 meets',e);}return r;};try{renderHome=window.renderHome;}catch(x){}})();
