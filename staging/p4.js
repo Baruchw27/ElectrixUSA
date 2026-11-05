@@ -136,7 +136,7 @@ function eventsFor(k,m){ // one day's list: [{kind,at,tm,title,sub,open}]
   L.sort((a,b)=>a.at-b.at);return L;}
 function monthDots(m){ // kinds per day for the visible month (+ padding days)
   const out={};const first=new Date(P4.month+'-01T12:00');const start=new Date(first);start.setDate(1-first.getDay());
-  for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const k=dk(d);const kinds=new Set();eventsFor(k,m).forEach(e=>kinds.add(e.kind));out[k]=[...kinds];}
+  for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);const k=dk(d);const kinds=new Set();eventsFor(k,m).filter(e=>e.kind!=='crew').forEach(e=>kinds.add(e.kind));out[k]=[...kinds];}
   return out;}
 function renderCalP4(){
   const m=M();if(!m)return;const pg=$('pg-cal');if(!pg)return;
@@ -149,12 +149,13 @@ function renderCalP4(){
     grid+='<div class="p4d'+(other?' o':'')+(k===tk?' t':'')+(k===P4.day?' s':'')+(off?' off':'')+'" onclick="P4.pick(\''+k+'\')"><span>'+d.getDate()+'</span><span class="dots">'+ks.slice(0,4).map(x=>'<i style="background:'+COL[x]+'"></i>').join('')+'</span></div>';}
   const title=first.toLocaleDateString(LOC(),{month:'long',year:'numeric'});
   const day=new Date(P4.day+'T12:00');const dayTitle=(P4.day===tk?tt('Today')+' · ':'')+day.toLocaleDateString(LOC(),{weekday:'long',month:'short',day:'numeric'});
-  const ev=eventsFor(P4.day,m);
+  /* Baruch 11/5 01:24: "I don't want in the calendar … the crews of the job. It's not necessary there." (crews stay on the Schedule page) */
+  const ev=eventsFor(P4.day,m).filter(e=>e.kind!=='crew');
   let canM=false,canT=false;try{canM=canBook(m);}catch(e){}canT=m.role!=='worker'||!!m.lead;
   host.innerHTML='<div class="p4hd"><h2>'+tt('Calendar')+'</h2></div>'
    +'<div class="p4cal"><div class="p4nav"><button onclick="P4.move(-1)">‹</button><b>'+esc(title)+'</b><div style="display:flex;gap:6px"><button class="td" onclick="P4.today()">'+tt('Today')+'</button><button onclick="P4.move(1)">›</button></div></div>'
    +'<div class="p4dn">'+dn.map(x=>'<span>'+x+'</span>').join('')+'</div><div class="p4grid">'+grid+'</div>'
-   +'<div class="p4leg"><span><i style="background:'+COL.meet+'"></i>'+tt('Meetings')+'</span><span><i style="background:'+COL.task+'"></i>'+tt('Tasks')+'</span>'+(boss(m)||m.crew?'<span><i style="background:'+COL.crew+'"></i>'+tt('Crews')+'</span>':'')+(m.role==='worker'?'':'<span><i style="background:'+COL.insp+'"></i>'+tt('Inspection')+'</span>')+'<span><i style="background:'+COL.off+'"></i>'+tt('Time off')+'</span></div></div>'
+   +'<div class="p4leg"><span><i style="background:'+COL.meet+'"></i>'+tt('Meetings')+'</span><span><i style="background:'+COL.task+'"></i>'+tt('Tasks')+'</span>'+(m.role==='worker'?'':'<span><i style="background:'+COL.insp+'"></i>'+tt('Inspection')+'</span>')+'<span><i style="background:'+COL.off+'"></i>'+tt('Time off')+'</span></div></div>'
    +'<div class="p4dayhd"><b>'+esc(dayTitle)+'</b><div class="add">'+(canM?'<button onclick="P4.addMeet()">+ '+tt('Meeting')+'</button>':'')+(canT?'<button onclick="P4.addTask()">+ '+tt('Task')+'</button>':'')+'</div></div>'
    +(ev.length?ev.map((e,i)=>evHtml(e,'P4.open('+i+')')).join(''):'<div class="p4empty">'+tt('Nothing on this day.')+'</div>')
    +comingUp(m);
