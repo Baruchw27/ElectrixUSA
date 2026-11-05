@@ -18,7 +18,7 @@ const M=()=>{try{return me();}catch(e){return null;}};
 const LIST_OFFICE=['shia'];
 const officeList=m=>!!m&&m.role!=='worker'&&LIST_OFFICE.includes(String(m.name||'').trim().split(/\s+/)[0].toLowerCase());
 const listView=m=>!!m&&(m.role==='worker'||officeList(m));
-window.P10_listView=listView;
+window.P10_listView=listView;window.P10_officeList=officeList;
 /* Baruch 11/4 23:01: "Show by: Job | Type" — Type = kind of work. Every task gets a type: the one picked on it (j.kind),
    else the app's own tasks (O&R, rough complete billing/inspection, inspections) and else a guess from the words. */
 const TYPES=[['insp','🏛','Inspections'],['bill','🧾','Billing'],['mat','📦','Material'],['orr','⚡','O&R'],['pay','⏱','Payroll'],['est','📐','Estimates'],['coll','💵','Collections'],['other','•','Other']];
@@ -111,10 +111,11 @@ function render(){const m=M();const el=$('jobList');const pg=$('pg-jobs');if(!m|
   const on=typeof jobView==='undefined'||jobView==='open';
   /* Baruch 10/29 01:27: the new page is a trial for the field guys only — the office and owner keep their board.
      They only get the small "Check it" list above the board when someone finished a task they asked to check. */
-  const field=listView(m);pg.classList.toggle('p10',field&&on&&!searching);pg.classList.toggle('p10keep',officeList(m));
+  const field=listView(m);pg.classList.toggle('p10',field&&on&&!searching);pg.classList.toggle('p10keep',officeList(m));if(!(officeList(m)&&window.P14))pg.classList.remove('p14');
   let cb=$('p10chkbox');if(!cb){cb=document.createElement('div');cb.id='p10chkbox';el.parentNode.insertBefore(cb,el);}cb.innerHTML='';
   if(!field){if(on&&!searching){const ck=(D.jobs||[]).filter(j=>j&&!j.deleted&&j.status==='done'&&j.check&&j.chk==='wait'&&j.from===m.id);
       if(ck.length)cb.innerHTML='<div class="p10sec g"><span>✅ '+esc(tt('Check it'))+'</span><span>'+ck.length+'</span></div>'+ck.map(checkCard).join('');}return;}
+  if(!searching&&officeList(m)&&window.P14&&P14.render){if(!on){try{jobView='open';}catch(e){}}cb.innerHTML='';pg.classList.add('p10');P14.render(m,el);return;}
   if(!on||searching)return;
   let L=[];try{L=visibleJobs().filter(OPEN);}catch(e){L=(D.jobs||[]).filter(OPEN);}
   const chk=(D.jobs||[]).filter(j=>j&&!j.deleted&&j.status==='done'&&j.check&&j.chk==='wait'&&j.from===m.id).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
