@@ -21,7 +21,7 @@ const S_ES={'Mark rough done':'Marcar rough terminado','Ready for finishing':'Li
 'Tasks':'Tareas','All':'Todas','Notes':'Notas','Note':'Nota','Files':'Archivos','No open tasks':'No hay tareas abiertas','No notes yet — add the first one so everyone on the job sees it.':'Todavía no hay notas — agrega la primera para que todos en el trabajo la vean.',
 'No files yet':'Todavía no hay archivos','Add file':'Agregar archivo','Add link':'Agregar enlace','Inspection scheduled':'Inspección agendada','Inspection booked':'Inspección agendada','O&R request':'Pedido O&R','This file did not finish uploading — please add it again':'Este archivo no terminó de subirse — por favor agrégalo otra vez','Opening':'Abriendo','Could not open the file':'No se pudo abrir el archivo','You can\'t open this file':'No puedes abrir este archivo','GPS fence not set — nobody can punch in':'Cerca GPS sin poner — nadie puede marcar','GPS fence from the address — not checked yet':'Cerca GPS por la dirección — sin revisar','can\'t punch in — fix the fence':'no puede marcar — arregla la cerca','not checked':'sin revisar','Add photos':'Agregar fotos','Take a photo':'Tomar una foto','Choose from photos':'Elegir de las fotos','pick as many as you want':'elige las que quieras','photos':'fotos','photo added':'foto agregada','photos added':'fotos agregadas','not added (40 at a time)':'no agregadas (40 a la vez)','Photo':'Foto','Remove job':'Quitar trabajo','Remove this job?':'¿Quitar este trabajo?','Remove this file?':'¿Quitar este archivo?','Remove this link?':'¿Quitar este enlace?','Rename file':'Cambiar nombre','Rename':'Cambiar nombre','Replace':'Reemplazar','Delete':'Borrar','Share':'Compartir','Open':'Abrir','Link':'Enlace','File':'Archivo','More':'Más','Inspection requested':'Inspección pedida','Inspections':'Inspecciones','Booked':'Agendada','Passed':'Pasó','Failed':'Falló','Waiting to be booked':'Esperando agendar','booked by':'agendada por','No inspections yet':'Todavía no hay inspecciones','Rough inspection':'Inspección de rough','Final inspection':'Inspección final','Inspection':'Inspección','Inspection requested — waiting to be booked':'Inspección pedida — esperando agendar',
 'Ready for inspection':'Listo para inspección','All details':'Todos los detalles','photos':'fotos','No photos yet':'Todavía no hay fotos','Add the first photo':'Agrega la primera foto',
-'Owner':'Dueño','Name':'Nombre','Phone':'Teléfono','Permit':'Permiso','Permit #':'Permiso #','Job':'Trabajo','Address':'Dirección','GPS fence':'Cerca GPS','Edit':'Editar','Save':'Guardar','Cancel':'Cancelar',
+'Owner':'Dueño','Door lock':'Cerradura (código)','O&R project #':'O&R proyecto #','Name':'Nombre','Phone':'Teléfono','Permit':'Permiso','Permit #':'Permiso #','Job':'Trabajo','Address':'Dirección','GPS fence':'Cerca GPS','Edit':'Editar','Save':'Guardar','Cancel':'Cancelar',
 'Add a field':'Agregar un campo','Field name':'Nombre del campo','Value':'Valor','Not set':'Sin poner','This week':'Esta semana','Last week':'Semana pasada','This month':'Este mes',
 'Hours':'Horas','People':'Personas','Spent':'Gastado','Who was here':'Quién estuvo','Schedule':'Horario','Material':'Material','Money spent':'Dinero gastado',
 'Per person, per day':'Por persona, por día','Came and left, each day':'Llegó y salió, cada día','Ordered and from the garage':'Pedido y del garaje','Material · gas · receipts':'Material · gasolina · recibos',
@@ -138,7 +138,7 @@ P13.close=close;
 /* ---------- data helpers ---------- */
 const site=()=>{try{return D.sites.find(x=>x.id===fdSite)}catch(e){return null}};
 const can=(fn,m)=>{try{return !!fn(m||M())}catch(e){return false}};
-/* Baruch 11/5 02:27: the field guys see everything on the job (photos, info, notes, files) — but not the owner, not inspections, and they can't delete anything */
+/* Baruch 11/5 02:27 + 02:40: the field guys see all the job's photos, the notes, the files shared with them, the door lock — not the owner, the permit, inspections or O&R, and they can't delete anything */
 const isW=m=>{try{m=m||M();return !!m&&m.role==='worker';}catch(e){return false}};
 const fVis=(f,m)=>{if(isW(m))return true;try{return fileVisible(f,m)}catch(e){return true}};
 const nm=id=>{try{return nameOf(id)}catch(e){return id||''}};
@@ -160,8 +160,8 @@ function who(j){const to=j.to||[];if(!to.length)return '';try{const c=(D.crews||
 function notes(s){const L=(s.notes||[]).map(n=>({id:n.id,txt:n.text||'',photo:n.photo||'',by:n.by,ts:n.ts||0,shared:1}));
   try{if(typeof kMine==='function')kMine().filter(n=>n.site===s.id&&!n.trashed).forEach(n=>L.push({id:n.id,txt:[n.title,n.text].filter(Boolean).join('\n')||(n.items||[]).map(i=>(i.done?'✓ ':'• ')+i.t).join('\n'),photo:n.img||'',by:n.owner,ts:n.edited||n.created||0,mine:1}));}catch(e){}
   return L.filter(n=>n.txt||n.photo).sort((a,b)=>b.ts-a.ts);}
-function files(s){const m=M();const F=(s.files||[]).filter(f=>fVis(f,m)).filter(f=>f.kind!=='img').map(f=>({id:f.id,name:String(f.name||'File').replace(/\.(pdf|docx?|xlsx?|csv|dwg|jpe?g|png|heic)$/i,''),ts:f.ts,kind:/\.pdf$/i.test(f.name||'')||f.kind==='pdf'||/pdf/.test(f.type||'')?'PDF':(/\.(xlsx?|csv)$/i.test(f.name||'')?'XLS':/\.(docx?)$/i.test(f.name||'')?'DOC':/\.dwg$/i.test(f.name||'')?'DWG':'FILE'),file:1}));
-  const Lk=(s.links||[]).filter(f=>fVis(f,m)).map(l=>({id:l.id,name:l.title||l.url,url:l.url,ts:l.ts||0,kind:'LINK'}));
+function files(s){const m=M();const F=(s.files||[]).filter(f=>{try{return fileVisible(f,m)}catch(e){return true}}).filter(f=>f.kind!=='img').map(f=>({id:f.id,name:String(f.name||'File').replace(/\.(pdf|docx?|xlsx?|csv|dwg|jpe?g|png|heic)$/i,''),ts:f.ts,kind:/\.pdf$/i.test(f.name||'')||f.kind==='pdf'||/pdf/.test(f.type||'')?'PDF':(/\.(xlsx?|csv)$/i.test(f.name||'')?'XLS':/\.(docx?)$/i.test(f.name||'')?'DOC':/\.dwg$/i.test(f.name||'')?'DWG':'FILE'),file:1}));
+  const Lk=(s.links||[]).filter(f=>{try{return fileVisible(f,m)}catch(e){return true}}).map(l=>({id:l.id,name:l.title||l.url,url:l.url,ts:l.ts||0,kind:'LINK'}));
   return F.concat(Lk).sort((a,b)=>(b.ts||0)-(a.ts||0));}
 const FCOL={PDF:'#d63a2b',XLS:'#1e8e4e',DOC:'#2459d6',DWG:'#7a4fd0',FILE:'#5d6470',LINK:'#5d6470'};
 function hereNow(s){const ps=(D.punches||[]).filter(p=>p.site===s.id&&!p.out&&!p.away);if(!ps.length)return null;
@@ -227,7 +227,7 @@ function draw(){
        +(nt.length?nt.slice(0,3).map(n=>noteRow(n,s,m)).join('')+(nt.length>3?'<div class="j2muted" style="cursor:pointer" onclick="P13.notes()">+ '+(nt.length-3)+' '+E(T('Notes')).toLowerCase()+'</div>':''):'<div class="j2muted">'+E(T('No notes yet — add the first one so everyone on the job sees it.'))+'</div>')+'</div>'
      +'<div class="j2card"><div class="j2h">'+E(T('Files'))+' · '+fl.length+'<button class="go" onclick="P13.files()">'+E(T('All'))+I('chev','s')+'</button></div>'
        +(fl.length?'<div class="j2files">'+fl.slice(0,3).map(fileTile).join('')+'</div>':'<div class="j2muted">'+E(T('No files yet'))+(can(canEditFolder)?' · <a style="color:var(--j2ink2);font-weight:600;cursor:pointer" onclick="P13.upload()">'+E(T('Add file'))+'</a>':'')+'</div>')+'</div>'
-     +(or.length?'<div class="j2card" style="padding:0">'+or.map(x=>'<div class="j2line" onclick="P13.orr(\''+J(x.id)+'\')">'+I('bolt','s')+'<span>O&amp;R · '+E(T(orrType(x)))+'</span><em>'+E(T(orrStep(x)))+I('chev','s')+'</em></div>').join('')+'</div>':'')
+     +(or.length&&!isW(m)?'<div class="j2card" style="padding:0">'+or.map(x=>'<div class="j2line" onclick="P13.orr(\''+J(x.id)+'\')">'+I('bolt','s')+'<span>O&amp;R · '+E(T(orrType(x)))+'</span><em>'+E(T(orrStep(x)))+I('chev','s')+'</em></div>').join('')+'</div>':'')
      +'<div class="j2small">'
        +fenceLine(s)+(isW(m)?'':inspLine(s))
        +(!or.length&&orrStaff(m)?'<button onclick="P13.orrNew()">'+I('bolt','s')+'+ '+E(T('O&R request'))+'</button>':'')+'</div>'
@@ -306,8 +306,10 @@ P13.info=()=>{const s=site();if(!s)return;const m=M();const ed=can(canEditFolder
   const extra=(s.info||[]).filter(x=>x&&x.k);
   sheet('m-j2s',T('Job info'),String(s.name||'').split(',')[0],
    '<div class="j2body" style="gap:0">'+(isW(m)?'':'<div class="j2lb" style="margin-top:2px">'+E(T('Owner'))+'</div><div class="j2card" style="padding:0"><div class="j2kv"><span>'+E(T('Name'))+'</span><b>'+(s.client?E(s.client):'<span style="color:var(--j2mut)">'+E(T('Not set'))+'</span>')+'</b></div><div class="j2kv"><span>'+E(T('Phone'))+'</span>'+ph+'</div></div>')
-   +'<div class="j2lb">'+E(T('Permit'))+'</div><div class="j2card" style="padding:0"><div class="j2kv"><span>'+E(T('Permit #'))+'</span><b>'+(s.permit?E(s.permit):'<span style="color:var(--j2mut)">'+E(T('Not set'))+'</span>')+'</b></div></div>'
+   +(isW(m)?'':'<div class="j2lb">'+E(T('Permit'))+'</div><div class="j2card" style="padding:0"><div class="j2kv"><span>'+E(T('Permit #'))+'</span><b>'+(s.permit?E(s.permit):'<span style="color:var(--j2mut)">'+E(T('Not set'))+'</span>')+'</b></div></div>')
    +'<div class="j2lb">'+E(T('Job'))+'</div><div class="j2card" style="padding:0"><div class="j2kv"><span>'+E(T('Address'))+'</span><b>'+E(s.name)+'</b></div>'
+     +'<div class="j2kv"><span>'+E(T('Door lock'))+'</span><b>'+(s.lock?E(s.lock):'<span style="color:var(--j2mut)">'+E(T('Not set'))+'</span>')+'</b></div>'
+     +(isW(m)?'':(()=>{const W=(D.orr||[]).filter(x=>x&&!x.deleted&&x.site===s.id&&x.wo);return '<div class="j2kv"><span>'+E(T('O&R project #'))+'</span><b>'+(W.length?W.map(x=>E(x.wo)+(W.length>1?' <span style="color:var(--j2mut);font-weight:500">· '+E(T(orrType(x)))+'</span>':'')).join('<br>'):'<span style="color:var(--j2mut)">'+E(T('Not set'))+'</span>')+'</b></div>';})())
      +'<div class="j2kv"><span>'+E(T(mgr.length>1?'Site managers':'Site manager'))+'</span><b>'+(mgr.length?mgr.map(id=>E(nm(id))+(can(canAssignMgr)?' <button class="j2plus" style="width:20px;height:20px;vertical-align:-4px" onclick="P13.rmMgr(\''+J(id)+'\')" aria-label="'+E(T('Remove'))+'">'+I('x','s')+'</button>':'')).join('<br>'):E(T('Not set'))+'')+'</b></div>'
      +'<div class="j2kv" style="cursor:pointer" onclick="P13.fence()"><span>'+E(T('GPS fence'))+'</span><b'+(!s.lat?' style="color:#c0392b"':!s.fenceOk?' style="color:#c77700"':'')+'>'+(s.lat?E((s.rad||300)+' ft')+(s.fenceOk?' ✓':' · '+E(T('not checked'))):E(T('Not set')))+'</b></div>'
      +extra.map(x=>'<div class="j2kv"><span>'+E(x.k)+'</span><b>'+E(x.v)+'</b></div>').join('')+'</div>'
@@ -364,9 +366,9 @@ function fenceLine(s){if(!fenceEd())return '';let h='';
   const f=fenceState(s);h+='<button'+(f.c?' style="color:'+f.c+'"':'')+' onclick="P13.fence()">'+I('pin','s')+E(f.t)+'</button>';return h;}
 P13.editInfo=()=>{const s=site();if(!s)return;const extra=(s.info||[]).filter(x=>x&&x.k);
   const f=(id,l,v,type)=>'<div class="j2lb" style="margin:12px 4px 6px">'+E(l)+'</div><input id="'+id+'" class="j2in" value="'+E(v||'')+'"'+(type?' inputmode="'+type+'"':'')+'>';
-  sheet('m-j2t',T('Edit'),T('Job info'),'<div class="j2body" style="gap:0">'+f('j2c',T('Owner')+' · '+T('Name'),s.client)+f('j2p',T('Owner')+' · '+T('Phone'),s.phone,'tel')+f('j2pm',T('Permit #'),s.permit)
+  sheet('m-j2t',T('Edit'),T('Job info'),'<div class="j2body" style="gap:0">'+f('j2c',T('Owner')+' · '+T('Name'),s.client)+f('j2p',T('Owner')+' · '+T('Phone'),s.phone,'tel')+f('j2pm',T('Permit #'),s.permit)+f('j2lk',T('Door lock'),s.lock)
     +extra.map((x,i)=>f('j2x'+i,x.k,x.v)).join('')+'<button class="j2save" onclick="P13.saveInfo()">'+E(T('Save'))+'</button></div>');};
-P13.saveInfo=()=>{const s=site();if(!s)return;const v=id=>(($(id)||{}).value||'').trim();s.client=v('j2c');s.phone=v('j2p');s.permit=v('j2pm');
+P13.saveInfo=()=>{const s=site();if(!s)return;const v=id=>(($(id)||{}).value||'').trim();s.client=v('j2c');s.phone=v('j2p');s.permit=v('j2pm');{const lk=v('j2lk');if(lk)s.lock=lk;else delete s.lock;}
   (s.info||[]).forEach((x,i)=>{if($('j2x'+i))x.v=v('j2x'+i);});s.info=(s.info||[]).filter(x=>x&&x.k);try{save();}catch(e){}close('m-j2t');refresh();P13.info();};
 P13.addField=()=>{sheet('m-j2t',T('Add a field'),T('Job info'),'<div class="j2body" style="gap:0"><div class="j2lb" style="margin:6px 4px 6px">'+E(T('Field name'))+'</div><input id="j2fk" class="j2in"><div class="j2lb" style="margin:12px 4px 6px">'+E(T('Value'))+'</div><input id="j2fv" class="j2in"><button class="j2save" onclick="P13.saveField()">'+E(T('Save'))+'</button></div>');setTimeout(()=>{const x=$('j2fk');if(x)x.focus();},250);};
 P13.saveField=()=>{const s=site();const k=(($('j2fk')||{}).value||'').trim(),v=(($('j2fv')||{}).value||'').trim();if(!s||!k)return;(s.info=s.info||[]).push({k,v});try{save();}catch(e){}close('m-j2t');P13.info();};
@@ -592,4 +594,22 @@ window.fdAdd=function(inp){const all=[...((inp&&inp.files)||[])];const imgs=all.
 try{fdAdd=window.fdAdd;}catch(e){}
 })();
 /* Baruch 11/5 02:27 — the field guys' Home: full width like everyone (the round buttons float over it), and no meetings & inspections */
-(function(){const st=document.createElement('style');st.id='p13field';st.textContent='html.p9w body #homeBody .p7c{margin-right:0!important}html.p9w body #homeBody .p7c[data-k=meets]{display:none!important}';document.head.appendChild(st);})();
+(function(){const st=document.createElement('style');st.id='p13field';st.textContent='html.p9w body #homeBody .p7c{margin-right:0!important}';document.head.appendChild(st);})();
+/* Baruch 11/5 02:40: "Meetings can stay if there is meetings … But inspections, they have nothing to do with" — the field guys' Home card shows only their meetings */
+(function(){if(typeof window.renderHome!=='function')return;const _rh=window.renderHome;
+const M=()=>{try{return me();}catch(e){return null;}};const $=id=>document.getElementById(id);const E=x=>esc(x);
+const T=x=>{try{const r=t(x);if(r&&r!==x)return r;}catch(e){}return ({Meetings:'Reuniones',Meeting:'Reunión',today:'hoy',Tomorrow:'Mañana'})[x]&&lang()==='es'?({Meetings:'Reuniones',Meeting:'Reunión',today:'hoy',Tomorrow:'Mañana'})[x]:x;};
+const I=()=>'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
+window.renderHome=function(){const r=_rh.apply(this,arguments);try{const m=M();const hb=$('homeBody');if(!m||!hb||m.role!=='worker')return r;
+  const old=hb.querySelector('.p7c[data-k=meets]');const now=Date.now();const td=new Date().toDateString();const tm=new Date();tm.setDate(tm.getDate()+1);const tms=tm.toDateString();
+  const ft=at=>new Date(at).toLocaleTimeString(LOC(),{hour:'numeric',minute:'2-digit'});
+  const day=at=>{const d=new Date(at).toDateString();return d===td?ft(at):d===tms?T('Tomorrow')+' '+ft(at):new Date(at).toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'});};
+  let L=[];try{L=(D.meets||[]).filter(x=>x&&!x.deleted&&x.at>=now-3600000&&x.at<now+7*86400000&&inMeet(x,m.id)).sort((a,b)=>a.at-b.at);}catch(e){}
+  if(!L.length){if(old)old.remove();return r;}
+  let f=false;try{f=localStorage.getItem('p7f_meets')==='1';}catch(e){}
+  const todayN=L.filter(x=>new Date(x.at).toDateString()===td).length;
+  const rows=L.slice(0,5).map(x=>'<div class="p7r one" onclick="goTab(\'cal\')"><span class="tm">'+E(day(x.at))+'</span><div class="w">'+E(x.title||T('Meeting'))+'<small>'+[x.site?E(String(siteName(x.site)).split(',')[0]):'',(()=>{try{return E(meetWhoLine(x));}catch(e){return '';}})()].filter(Boolean).join(' · ')+'</small></div></div>').join('');
+  const ic=old?(old.querySelector('.p7h .ic')||{}).outerHTML||'':'<span class="ic" style="background:#e8912d1f;color:#e8912d">'+I()+'</span>';
+  const h='<div class="p7h" onclick="P7.fold(\'meets\')">'+ic+'<b>'+E(T('Meetings'))+'</b><span class="n">'+(todayN?todayN+' '+E(T('today')):L.length)+'</span><span class="ch">▾</span></div><div class="bd">'+rows+'</div>';
+  if(old){old.innerHTML=h;}else{const d=document.createElement('div');d.className='p7c'+(f?' fold':'');d.dataset.k='meets';d.innerHTML=h;hb.appendChild(d);}
+}catch(e){console.error('p13 meets',e);}return r;};try{renderHome=window.renderHome;}catch(x){}})();
