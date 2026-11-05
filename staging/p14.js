@@ -104,6 +104,7 @@ html[data-theme=dark] .p14ring i{background:#000}
 .p14btn.g{background:var(--p14chip);color:var(--p14ink)}.p14btn[disabled]{opacity:.55}
 .p14dn .p14c{background:var(--p14ok);border-color:var(--p14ok);display:flex;align-items:center;justify-content:center;color:#fff}.p14dn .p14c .p14i{width:13px;height:13px;stroke-width:2.6}
 .p14dn .w b{text-decoration:line-through;color:var(--p14mut)!important}
+.p14dn.cx .p14c{background:var(--p14mut);border-color:var(--p14mut)}
 .p14ln{display:flex;align-items:center;gap:10px;padding:13px 14px;font-size:15px;font-weight:600;color:var(--p14ink);cursor:pointer}
 .p14ln .n{margin-left:auto;font-size:13.5px;color:var(--p14mut);font-weight:500}.p14ln .cv{color:#b5b8be}
 .p14ln.b>.p14i:first-child{color:var(--p14blue)}.p14ln.g>.p14i:first-child{color:var(--p14ok)}.p14ln.o>.p14i:first-child{color:#c27c0e}
@@ -146,8 +147,8 @@ function row(j,m,o){o=o||{};const I=jsq(j.id);const lt=late(j);const red=!!j.pri
   const right=o.park?'<button class="p14btn g" onclick="event.stopPropagation();P14.unpark(\''+I+'\')">'+esc(tt('Back now'))+'</button>':'<span class="p14rt">'+tick+'</span>';
   return '<div class="p14r'+(red?' red':'')+'" onclick="P14.open(\''+I+'\')"><button class="p14c" aria-label="'+esc(tt('Done'))+'" onclick="event.stopPropagation();markDone(\''+I+'\')"></button>'
     +'<div class="w"><b>'+esc(txt(j))+ageTag(j)+tags+'</b>'+(bits.length?'<small>'+bits.join(' · ')+'</small>':'')+'</div>'+right+'</div>';}
-function doneRow(j,m,o){o=o||{};const I=jsq(j.id);const who=j.doneBy&&j.doneBy!==m.id?first(j.doneBy)+' · ':'';
-  return '<div class="p14r p14dn" onclick="P14.open(\''+I+'\')"><span class="p14c">'+ic('tick')+'</span><div class="w"><b>'+esc(txt(j))+'</b><small>'+(j.site&&o.site!==false?esc(short(siteName(j.site)))+' · ':'')+esc(who)+esc(ftime(j.doneAt))+'</small></div>'
+function doneRow(j,m,o){o=o||{};const I=jsq(j.id);const who=(j.cancel?tt('Cancelled')+(j.cancelBy&&j.cancelBy!==m.id?' '+tt('by')+' '+first(j.cancelBy):'')+(j.cancelWhy?' ('+j.cancelWhy+')':''):(j.doneBy&&j.doneBy!==m.id?first(j.doneBy):''));const whoS=who?who+' · ':'';
+  return '<div class="p14r p14dn'+(j.cancel?' cx':'')+'" onclick="P14.open(\''+I+'\')"><span class="p14c">'+ic('tick')+'</span><div class="w"><b>'+esc(txt(j))+'</b><small>'+(j.site&&o.site!==false?esc(short(siteName(j.site)))+' · ':'')+esc(whoS)+esc(ftime(j.doneAt))+'</small></div>'
     +(o.undo?'<button class="p14btn g" onclick="event.stopPropagation();P14.undo(\''+I+'\')">'+esc(tt('Undo'))+'</button>':'')+'</div>';}
 function checkRow(j){const I=jsq(j.id);const ph=(j.photos||[]).filter(p=>p&&p.d).slice(-4);
   return '<div class="p14chk"><b>'+esc(first(j.doneBy))+' '+esc(tt('finished'))+': '+esc(txt(j))+'</b><small>'+(j.site?esc(short(siteName(j.site)))+' · ':'')+esc(ftime(j.doneAt))+'</small>'
@@ -217,7 +218,7 @@ const rerender=()=>{try{renderJobs();}catch(e){}};
 P14.by=v=>{LS('p14by',v);rerender();};
 P14.tf=v=>{LS('p14tf',v||null);rerender();};
 P14.open=id=>{try{openJobDetail(id);}catch(e){}};
-P14.undo=id=>{const j=(D.jobs||[]).find(x=>x.id===id);if(!j)return;j.status='open';delete j.doneAt;delete j.doneBy;
+P14.undo=id=>{const j=(D.jobs||[]).find(x=>x.id===id);if(!j)return;j.status='open';delete j.doneAt;delete j.doneBy;delete j.cancel;delete j.cancelBy;delete j.cancelWhy;
   if(j.chk==='wait')j.chk='';Object.keys(j).forEach(k=>{if(k.startsWith('done_'))delete j[k];});save();rerender();toast(tt('Back on your list'),'green');};
 P14.unpark=id=>{const j=(D.jobs||[]).find(x=>x.id===id);if(!j)return;delete j.park;delete j.parkBy;save();rerender();try{if(!$('m-jobd').classList.contains('hid'))openJobDetail(id);}catch(e){}};
 P14.park=id=>{const j=(D.jobs||[]).find(x=>x.id===id);const m=M();if(!j||!m)return;let d=Date.now()+3*D1;if(new Date(d).getDay()===6)d+=D1;
@@ -294,4 +295,44 @@ try{if(typeof ES==='object')Object.assign(ES,{"left today":"pendientes hoy","Whe
   "is back — their tasks go back to them only?":"ya volvió — ¿sus tareas vuelven solo a él/ella?","Back on their own list":"De vuelta en su propia lista","You are covering for":"Estás cubriendo a","New task for":"Nueva tarea para","you are covering":"tú cubres",
   "Tasks you sent":"Tareas que enviaste","waiting":"esperando","done today":"hechas hoy","Nudge":"Recordar","Nudged":"Recordado","nudged":"recordado","Nudge sent to":"Recordatorio enviado a","Already nudged in the last hour":"Ya se recordó en la última hora","Reminder from":"Recordatorio de",
   "Nothing waiting on others":"Nada esperando a otros","Nothing yet today":"Nada todavía hoy","Nothing of this type.":"Nada de este tipo.","Back":"Atrás"});}catch(e){}
+
+/* ── Baruch 11/5 11:40: cancel a task that isn't needed ("a task to make an O&R service … not always necessary";
+   "the customer didn't want it in the end … marked it as done, but it's not technically done"). Cancelled = closed, off every list,
+   marked "Cancelled" (not "Done"), the sender is told. Works on an open task, and on one already marked done by mistake. ── */
+const canCancel=(j,m)=>!!j&&!!m&&!j.deleted&&(boss(m)||m.role==='office'||j.from===m.id||isMine(j,m));
+P14.cancel=id=>{const j=(D.jobs||[]).find(x=>x.id===id);const m=M();if(!canCancel(j,m))return;
+  askPrompt(tt(j.status==='done'?'It was not done — cancel it':'Cancel this task'),[{label:tt('Why? (optional)'),value:''}],([why])=>{why=String(why||'').trim().slice(0,120);
+    const wasDone=j.status==='done';j.status='done';j.cancel=true;j.cancelBy=m.id;j.cancelAt=Date.now();if(why)j.cancelWhy=why;else delete j.cancelWhy;
+    if(!wasDone){j.doneAt=Date.now();j.doneBy=m.id;}else{j.doneBy=m.id;}
+    Object.keys(j).forEach(k=>{if(k.startsWith('done_'))delete j[k];});if(j.chk==='wait')j.chk='';
+    // the automatic "Apply to O&R" task: cancelling it means this job needs no O&R request
+    if(j.orrAuto==='apply'){const s=(D.sites||[]).find(x=>x.id===j.site);if(s)s.orrNone=true;}
+    // done already → the server sent "Done by …" back then; tell the sender it was cancelled after all
+    if(wasDone){try{const to=[j.from].filter(x=>x&&x!==m.id);if(to.length)pushTo(to,()=>('✕ '+t('Cancelled by')+' '+nameOf(m.id)+': '+String(j.desc||'').slice(0,60)+(why?' — '+why:'')),'info',{job:j.id});}catch(e){}}
+    save();try{hide('m-jobd');}catch(e){}try{renderJobs();}catch(e){}try{if(typeof renderHome==='function')renderHome();}catch(e){}toast(tt('Task cancelled'),'green');});};
+P14.uncancel=id=>{const j=(D.jobs||[]).find(x=>x.id===id);const m=M();if(!j||!m||!(boss(m)||j.cancelBy===m.id||j.from===m.id))return;
+  j.status='open';delete j.cancel;delete j.cancelBy;delete j.cancelAt;delete j.cancelWhy;delete j.doneAt;delete j.doneBy;save();try{openJobDetail(id);}catch(e){}try{renderJobs();}catch(e){}toast(tt('Back on the list'),'green');};
+if(typeof window.openJobDetail==='function'){const _oc=window.openJobDetail;window.openJobDetail=function(id){const r=_oc.apply(this,arguments);try{
+    const old=$('p14cx');if(old)old.remove();const j=(D.jobs||[]).find(x=>x.id===id);const m=M();const ch=$('jdChat');if(!j||!m||!ch)return r;
+    // the O&R bar belongs only to O&R tasks still open (it stayed on from the task opened before)
+    if(!(j.orr||j.orrAuto)||j.cancel||m.role==='worker')document.querySelectorAll('#m-jobd .orrtaskbar').forEach(x=>x.remove());
+    if(j.cancel)document.querySelectorAll('#m-jobd button[onclick*="undoDone"]').forEach(x=>x.style.display='none');
+    const d=document.createElement('div');d.id='p14cx';d.style.cssText='margin:8px 0';const I=jsq(j.id);
+    if(j.cancel){d.innerHTML='<div class="p14cxb">'+ic('alert')+'<span style="flex:1"><b>'+esc(tt('Cancelled'))+'</b> · '+esc(first(j.cancelBy||j.doneBy))+(j.cancelAt?' · '+esc(new Date(j.cancelAt).toLocaleDateString(LOC(),{month:'short',day:'numeric'}))+' '+esc(ftime(j.cancelAt)):'')+(j.cancelWhy?'<small>'+esc(j.cancelWhy)+'</small>':'')+'</span>'
+        +((boss(m)||j.cancelBy===m.id||j.from===m.id)?'<button class="p14cxu" onclick="P14.uncancel(\''+I+'\')">'+esc(tt('Undo'))+'</button>':'')+'</div>';}
+    else if(canCancel(j,m)){d.innerHTML='<button class="p14cxbtn" onclick="P14.cancel(\''+I+'\')">'+ic('x')+esc(tt(j.status==='done'?'It was not done — cancel it':'Cancel task — not needed'))+'</button>';}
+    else return r;
+    ch.parentNode.insertBefore(d,ch);
+  }catch(e){}return r;};try{openJobDetail=window.openJobDetail;}catch(x){}}
+P.x='<path d="M18 6 6 18M6 6l12 12"/>';
+if(typeof window.undoDone==='function'){const _ud=window.undoDone;window.undoDone=function(id){const j=(D.jobs||[]).find(x=>x.id===id);if(j&&j.cancel){delete j.cancel;delete j.cancelBy;delete j.cancelAt;delete j.cancelWhy;}return _ud.apply(this,arguments);};try{undoDone=window.undoDone;}catch(x){}}
+(function(){const st=document.createElement('style');st.textContent=`
+.p14cxbtn{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:#c0392b;font:600 13.5px/1 inherit;font-family:inherit;padding:8px 2px;cursor:pointer}
+html[data-theme=dark] .p14cxbtn{color:#ff6b5e}
+.p14cxb{display:flex;align-items:center;gap:9px;background:#f1f2f4;color:#3c4049;border-radius:11px;padding:9px 11px;font-size:13.5px}
+.p14cxb small{display:block;color:#80858f;font-size:12.5px;margin-top:2px}
+.p14cxu{border:0;border-radius:999px;background:#fff;color:#0f1115;font:600 12.5px/1 inherit;font-family:inherit;padding:7px 12px;box-shadow:0 0 0 1px #e3e5e8}
+html[data-theme=dark] .p14cxb{background:#2c2c2e;color:#e5e5ea}html[data-theme=dark] .p14cxu{background:#1c1c1e;color:#f2f2f7;box-shadow:0 0 0 1px #3a3a3c}
+`;document.head.appendChild(st);})();
+try{if(typeof ES==='object')Object.assign(ES,{"Cancelled":"Cancelada","by":"por","Cancelled by":"Cancelada por","Cancel this task":"Cancelar esta tarea","Cancel task — not needed":"Cancelar tarea — no hace falta","It was not done — cancel it":"No se hizo — cancelarla","Why? (optional)":"¿Por qué? (opcional)","Task cancelled":"Tarea cancelada","Back on the list":"De vuelta en la lista"});}catch(e){}
 })();
