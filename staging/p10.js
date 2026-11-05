@@ -13,6 +13,12 @@ if(window.EX_P10_OFF)return;
 const $=id=>document.getElementById(id);
 const tt=x=>{try{return typeof t==='function'?t(x):x;}catch(e){return x;}};
 const M=()=>{try{return me();}catch(e){return null;}};
+/* Baruch 11/4 22:49: "Change Shia tasks layout for now away from Trello to the kind of task the guys have" —
+   these office people get the crews' task page too (by first name; add more here). They keep + New task and the filters. */
+const LIST_OFFICE=['shia'];
+const officeList=m=>!!m&&m.role!=='worker'&&LIST_OFFICE.includes(String(m.name||'').trim().split(/\s+/)[0].toLowerCase());
+const listView=m=>!!m&&(m.role==='worker'||officeList(m));
+window.P10_listView=listView;
 const day0=()=>{const d=new Date();d.setHours(0,0,0,0);return d.getTime();};
 const OPEN=j=>j&&j.status!=='done'&&!j.deleted;
 const due=j=>{try{return gpDue(j);}catch(e){return null;}};
@@ -21,7 +27,7 @@ const crewMembers=j=>{const out=[];tos(j).forEach(id=>{const c=(D.crews||[]).fin
 const short=s=>String(s||'').split(',')[0];
 const txt=j=>{let x='';try{x=jobText(j);}catch(e){x=j.desc||'';}return String(x||'').replace(/^O&R · [^:]*: /,'');};
 const css=`
-#pg-jobs.p10 #jobChips,#pg-jobs.p10 #p2snzNote,#pg-jobs.p10 .stats,#pg-jobs.p10 #addJobBtn{display:none!important}
+#pg-jobs.p10 #jobChips,#pg-jobs.p10 #p2snzNote,#pg-jobs.p10 .stats,#pg-jobs.p10:not(.p10keep) #addJobBtn{display:none!important}
 html body #pg-jobs.p10 #vOpen,html body #pg-jobs.p10 #vDone{padding:5px 8px!important;font-size:13px!important;min-height:0!important;height:auto!important;line-height:1.3!important}
 html body #pg-jobs.p10 #vOpen{border-radius:8px!important}html body #pg-jobs.p10 div:has(>#vOpen){padding:3px!important;border-radius:10px!important;margin-bottom:6px!important}
 #pg-jobs.p10 #vOpen{border-radius:8px!important}#pg-jobs.p10 #vOpen:not(.on),#pg-jobs.p10 #vDone:not(.on){background:none!important}
@@ -86,7 +92,7 @@ function render(){const m=M();const el=$('jobList');const pg=$('pg-jobs');if(!m|
   const on=typeof jobView==='undefined'||jobView==='open';
   /* Baruch 10/29 01:27: the new page is a trial for the field guys only — the office and owner keep their board.
      They only get the small "Check it" list above the board when someone finished a task they asked to check. */
-  const field=m.role==='worker';pg.classList.toggle('p10',field&&on&&!searching);
+  const field=listView(m);pg.classList.toggle('p10',field&&on&&!searching);pg.classList.toggle('p10keep',officeList(m));
   let cb=$('p10chkbox');if(!cb){cb=document.createElement('div');cb.id='p10chkbox';el.parentNode.insertBefore(cb,el);}cb.innerHTML='';
   if(!field){if(on&&!searching){const ck=(D.jobs||[]).filter(j=>j&&!j.deleted&&j.status==='done'&&j.check&&j.chk==='wait'&&j.from===m.id);
       if(ck.length)cb.innerHTML='<div class="p10sec g"><span>✅ '+esc(tt('Check it'))+'</span><span>'+ck.length+'</span></div>'+ck.map(checkCard).join('');}return;}
@@ -151,6 +157,6 @@ if(typeof window.openJobDetail==='function'){const _oj2=window.openJobDetail;win
     if(h){const d=document.createElement('div');d.id='p10each';d.className='card';d.style.cssText='padding:10px 13px;margin:8px 0';d.innerHTML=h;ch.parentNode.insertBefore(d,ch);}
   }catch(e){}return r;};try{openJobDetail=window.openJobDetail;}catch(x){}}
 // the board's "List" picker goes with the board
-if(typeof window.bDetailCol==='function'){const _bd=window.bDetailCol;window.bDetailCol=function(){const m=M();return m&&m.role==='worker'?'':_bd.apply(this,arguments);};try{bDetailCol=window.bDetailCol;}catch(x){}}
+if(typeof window.bDetailCol==='function'){const _bd=window.bDetailCol;window.bDetailCol=function(){const m=M();return listView(m)?'':_bd.apply(this,arguments);};try{bDetailCol=window.bDetailCol;}catch(x){}}
 try{if($('pg-jobs')&&$('pg-jobs').classList.contains('on'))renderJobs();}catch(e){}
 })();
