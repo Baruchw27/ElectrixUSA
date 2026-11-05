@@ -19,7 +19,7 @@ const ES_ON=()=>{try{return lang()==='es'}catch(e){return false}};
 const S_ES={'Mark rough done':'Marcar rough terminado','Ready for finishing':'Listo para terminación','Site manager':'Encargado','Site managers':'Encargados',
 'No site manager yet':'Sin encargado todavía','here':'aquí','on site':'en el sitio','people here':'personas aquí','Directions':'Cómo llegar','Job info':'Info del trabajo','Reports':'Reportes',
 'Tasks':'Tareas','All':'Todas','Notes':'Notas','Note':'Nota','Files':'Archivos','No open tasks':'No hay tareas abiertas','No notes yet — add the first one so everyone on the job sees it.':'Todavía no hay notas — agrega la primera para que todos en el trabajo la vean.',
-'No files yet':'Todavía no hay archivos','Add file':'Agregar archivo','Add link':'Agregar enlace','Inspection scheduled':'Inspección agendada','Inspection booked':'Inspección agendada','O&R request':'Pedido O&R','Opening':'Abriendo','Could not open the file':'No se pudo abrir el archivo','You can\'t open this file':'No puedes abrir este archivo','GPS fence not set — nobody can punch in':'Cerca GPS sin poner — nadie puede marcar','GPS fence from the address — not checked yet':'Cerca GPS por la dirección — sin revisar','can\'t punch in — fix the fence':'no puede marcar — arregla la cerca','not checked':'sin revisar','Add photos':'Agregar fotos','Take a photo':'Tomar una foto','Choose from photos':'Elegir de las fotos','pick as many as you want':'elige las que quieras','photos':'fotos','photo added':'foto agregada','photos added':'fotos agregadas','not added (40 at a time)':'no agregadas (40 a la vez)','Photo':'Foto','Remove job':'Quitar trabajo','Remove this job?':'¿Quitar este trabajo?','Remove this file?':'¿Quitar este archivo?','Remove this link?':'¿Quitar este enlace?','Rename file':'Cambiar nombre','Rename':'Cambiar nombre','Replace':'Reemplazar','Delete':'Borrar','Share':'Compartir','Open':'Abrir','Link':'Enlace','File':'Archivo','More':'Más','Inspection requested':'Inspección pedida','Inspections':'Inspecciones','Booked':'Agendada','Passed':'Pasó','Failed':'Falló','Waiting to be booked':'Esperando agendar','booked by':'agendada por','No inspections yet':'Todavía no hay inspecciones','Rough inspection':'Inspección de rough','Final inspection':'Inspección final','Inspection':'Inspección','Inspection requested — waiting to be booked':'Inspección pedida — esperando agendar',
+'No files yet':'Todavía no hay archivos','Add file':'Agregar archivo','Add link':'Agregar enlace','Inspection scheduled':'Inspección agendada','Inspection booked':'Inspección agendada','O&R request':'Pedido O&R','This file did not finish uploading — please add it again':'Este archivo no terminó de subirse — por favor agrégalo otra vez','Opening':'Abriendo','Could not open the file':'No se pudo abrir el archivo','You can\'t open this file':'No puedes abrir este archivo','GPS fence not set — nobody can punch in':'Cerca GPS sin poner — nadie puede marcar','GPS fence from the address — not checked yet':'Cerca GPS por la dirección — sin revisar','can\'t punch in — fix the fence':'no puede marcar — arregla la cerca','not checked':'sin revisar','Add photos':'Agregar fotos','Take a photo':'Tomar una foto','Choose from photos':'Elegir de las fotos','pick as many as you want':'elige las que quieras','photos':'fotos','photo added':'foto agregada','photos added':'fotos agregadas','not added (40 at a time)':'no agregadas (40 a la vez)','Photo':'Foto','Remove job':'Quitar trabajo','Remove this job?':'¿Quitar este trabajo?','Remove this file?':'¿Quitar este archivo?','Remove this link?':'¿Quitar este enlace?','Rename file':'Cambiar nombre','Rename':'Cambiar nombre','Replace':'Reemplazar','Delete':'Borrar','Share':'Compartir','Open':'Abrir','Link':'Enlace','File':'Archivo','More':'Más','Inspection requested':'Inspección pedida','Inspections':'Inspecciones','Booked':'Agendada','Passed':'Pasó','Failed':'Falló','Waiting to be booked':'Esperando agendar','booked by':'agendada por','No inspections yet':'Todavía no hay inspecciones','Rough inspection':'Inspección de rough','Final inspection':'Inspección final','Inspection':'Inspección','Inspection requested — waiting to be booked':'Inspección pedida — esperando agendar',
 'Ready for inspection':'Listo para inspección','All details':'Todos los detalles','photos':'fotos','No photos yet':'Todavía no hay fotos','Add the first photo':'Agrega la primera foto',
 'Owner':'Dueño','Name':'Nombre','Phone':'Teléfono','Permit':'Permiso','Permit #':'Permiso #','Job':'Trabajo','Address':'Dirección','GPS fence':'Cerca GPS','Edit':'Editar','Save':'Guardar','Cancel':'Cancelar',
 'Add a field':'Agregar un campo','Field name':'Nombre del campo','Value':'Valor','Not set':'Sin poner','This week':'Esta semana','Last week':'Semana pasada','This month':'Este mes',
@@ -264,6 +264,7 @@ P13.done=id=>{const j=(D.jobs||[]).find(x=>x.id===id);if(!j)return;if(j.status==
 P13.addTask=()=>{const s=site();if(!s)return;try{openJob();setTimeout(()=>{const x=$('jSite');if(x)x.value=s.id;},60);}catch(e){}};
 P13.openFile=id=>{try{const s=site();const f=s&&(s.files||[]).find(x=>x.id===id);   // PDFs: the in-app reader (Baruch 11/4)
   if(f&&isTrelloFile(f)){openTrello(f,s.id);return;}
+  if(f&&!f.d&&!f.url){toast('⚠ '+T('This file did not finish uploading — please add it again'));return;}
   if(f&&f.d&&typeof EX_view==='function'&&(/pdf/i.test(f.kind||'')||/\.pdf$/i.test(f.name||'')||/^data:application\/pdf/.test(String(f.d)))){EX_view(f.d,f.name,'pdf');return;}
   fdOpen(id);}catch(e){}};
 P13.orr=id=>{try{ORR.open(id);}catch(e){}};
@@ -548,4 +549,42 @@ if(typeof window.EX_view==='function'){const _v=window.EX_view;
   try{EX_view=window.EX_view;}catch(_){}
   if(typeof window.EX_closeView==='function'){const _c=window.EX_closeView;window.EX_closeView=function(){V.tok++;try{if(V.io)V.io.disconnect();if(V.doc)V.doc.destroy();}catch(_){}V.doc=null;return _c.apply(this,arguments);};}
 }
+})();
+
+/* Big files (Baruch 11/4: Shia's PDF on 216 N Pascack didn't open). The live upload saved any non-photo file over 1.5 MB
+   EMPTY (no file inside). Now files go straight to the server's file storage (up to 50 MB) and are saved only once they
+   are there; without signal it says so instead of saving an empty file. Where the newer upload (fdStoreFile) is already
+   in the app, this stays out of the way. A file saved empty before shows a clear message instead of doing nothing. */
+(function(){
+if(typeof window.fdAdd!=='function')return;
+// Baruch 11/4 (option 1): documents go onto the job's Trello card (free, no total limit, 10 MB per file); the app keeps a link
+// and opens them through the server. Over 10 MB, a job with no Trello card, or Trello refusing → the app's own storage (max 50 MB).
+const tt=s=>{try{return t(s)||s;}catch(e){return s;}};
+const ES={'Uploading…':'Subiendo…','too big':'muy grande','File not saved — needs a signal. Try again when you have service.':'Archivo no guardado — necesita señal. Intenta de nuevo cuando tengas servicio.'};
+const T=s=>{let es=false;try{es=lang()==='es';}catch(e){}return es&&ES[s]?ES[s]:tt(s);};
+const MAX=(typeof MEDIA_MAX_MB==='number'?MEDIA_MAX_MB:50)*1048576;
+async function toTrello(f,siteId){const C=window.EX_CFG||{};if(!C.url)return null;
+  try{let sess=null;try{sess=window.EX_sb?(await EX_sb.auth.getSession()).data.session:null;}catch(e){}
+    const h={apikey:C.anonKey||'','Content-Type':f.type||'application/octet-stream','x-file-name':encodeURIComponent(f.name||'file')};if(sess)h.Authorization='Bearer '+sess.access_token;
+    const r=await fetch(C.url.replace(/\/$/,'')+'/functions/v1/trello-files?upload=1&site='+encodeURIComponent(siteId),{method:'POST',headers:h,body:f});
+    if(!r.ok)return null;const j=await r.json();return j&&j.tid&&/^https:\/\/(?:api\.)?trello\.com\/1\/cards\//.test(String(j.url||''))?j:null;}catch(e){return null;}}
+const kindOf=f=>/pdf/.test(f.type)||/\.pdf$/i.test(f.name)?'pdf':/word|docx?/.test(f.type+f.name)?'doc':/sheet|xlsx?|csv/.test(f.type+f.name)?'sheet':'file';
+const _add=window.fdAdd;
+window.fdAdd=function(inp){const all=[...((inp&&inp.files)||[])];const imgs=all.filter(f=>/^image\//.test(f.type||''));const docs=all.filter(f=>!/^image\//.test(f.type||'')).slice(0,8);
+  if(imgs.length)_add({files:imgs,value:''});
+  docs.forEach(async f=>{let s=null;try{s=D.sites.find(x=>x.id===fdSite);}catch(e){}if(!s)return;
+    if(f.size>MAX){toast('⚠ '+f.name+' — '+T('too big')+' (max '+Math.round(MAX/1048576)+' MB)');return;}
+    let d='',tr=null;
+    if(window.EX_REAL){toast('⏳ '+T('Uploading…')+' '+f.name);
+      if(navigator.onLine!==false&&f.size<=10*1048576&&/trello\.com\/c\//.test(String(s.trello||'')))tr=await toTrello(f,s.id);
+      if(!tr){try{if(window.EX_uploadBlob&&navigator.onLine!==false)d=await window.EX_uploadBlob(f,'media')||'';}catch(e){d='';}
+        if(!d){toast('⚠ '+f.name+': '+T('File not saved — needs a signal. Try again when you have service.'));return;}}}
+    else{if(f.size>=1500000){toast('⚠ '+f.name+' — '+T('too big'));return;}d=await new Promise(ok=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=()=>ok('');r.readAsDataURL(f);});if(!d)return;}
+    s.files=s.files||[];
+    if(tr)s.files.push({id:'ft'+tr.tid,tid:tr.tid,name:tr.name||f.name,kind:kindOf(f),url:tr.url,mime:tr.mime||f.type||'',bytes:tr.bytes||f.size,by:me().id,ts:Date.now()});
+    else s.files.push({id:nid('f'),name:f.name,kind:kindOf(f),d,by:me().id,ts:Date.now()});save();
+    try{P13._after&&P13._after();}catch(e){}try{renderSites();}catch(e){}document.querySelectorAll('.toast').forEach(x=>x.remove());toast('📎 '+f.name,'green');
+    try{if(s.crew)pushTo([s.crew],()=>('📁 '+t('New file in')+' '+s.name+': '+f.name),'info',{site:s.id});}catch(e){}});
+  try{if(inp&&'value' in inp)inp.value='';}catch(e){}};
+try{fdAdd=window.fdAdd;}catch(e){}
 })();
