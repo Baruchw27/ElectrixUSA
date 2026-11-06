@@ -1,31 +1,40 @@
 // Offline support: the app opens even with no signal; data waits on the phone and syncs later.
-const C='electrix-v87';
-const SHELL=['./','index.html','sync.js','extras.js','config.js','manifest.json','icon-192.png','icon-512.png','apple-touch-icon.png','logo-light.svg','logo-dark.svg','scanner-v2.js','scanner-v2-ui.js','catalog-real.json','sched-v21.js','p2.js','p4.js','p5.js','p6.js','p7.js','p8.js','p9.js','p10.js','p11.js','p12.js','p13.js','p14.js','mat-es.js'];
+const C='electrix-v88';
+// Baruch 11/5: libraries and opened files stay on the phone across app updates (they used to be downloaded again after every update)
+const BASEC=C.indexOf('electrix-staging')===0?'electrix-staging':'electrix';const LIBC=BASEC+'-libs',FILEC=BASEC+'-files',OPENC=BASEC+'-open',KEEP=[LIBC,FILEC,OPENC];
+const SHELL=['./','index.html','sync.js','extras.js','config.js','manifest.json','icon-192.png','icon-512.png','apple-touch-icon.png','logo-light.svg','logo-dark.svg','scanner-v2.js','scanner-v2-ui.js','catalog-real.json','sched-v21.js','p2.js','p4.js','p5.js','p6.js','p7.js','p8.js','p9.js','p10.js','p11.js','p12.js','p13.js','p14.js','p15.js','mat-es.js'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));});
-self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C&&!k.startsWith('electrix-staging')).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C&&!k.startsWith('electrix-staging')&&!KEEP.includes(k)).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET')return;
   // photos, receipts, voice notes, videos are private: open them with the signed-in person's pass
-  if(u.pathname.includes('/storage/v1/object/public/files/')){e.respondWith(privateFile(e,u));return;}
+  if(u.pathname.includes('/storage/v1/object/public/files/')){e.respondWith(e.request.headers.get('range')?privateFile(e,u):keptFirst(e.request.url,()=>privateFile(e,u)));return;}
+  if(u.pathname.includes('/functions/v1/trello-files')&&u.searchParams.get('file')){e.respondWith(keptFirst(e.request.url,()=>fetch(e.request)));return;}
   if(/supabase\.co$/.test(u.hostname)||u.pathname.includes('/realtime')||u.pathname.includes('/rest/')||u.pathname.includes('/auth/'))return; // live data never cached
-  const sameOrigin=u.origin===location.origin;const isLib=/cdn\.jsdelivr\.net|fonts\.(googleapis|gstatic)\.com|unpkg\.com|tile\.openstreetmap|arcgisonline/.test(u.hostname);
+  const sameOrigin=u.origin===location.origin;const isLib=/cdn\.jsdelivr\.net|fonts\.(googleapis|gstatic)\.com|unpkg\.com|cdnjs\.cloudflare\.com|tile\.openstreetmap|arcgisonline/.test(u.hostname);
   if(!sameOrigin&&!isLib)return;
   // libraries with a version in the address never change: saved copy first (instant, works with no signal)
-  if(isLib&&/@\d/.test(u.pathname)){e.respondWith(caches.match(e.request).then(hit=>hit||netSave(e.request,fetch(e.request))));return;}
+  if(isLib&&(/@\d/.test(u.pathname)||/\/\d+\.\d+\.\d+\//.test(u.pathname))){e.respondWith(caches.match(e.request).then(hit=>hit||libSave(e.request,fetch(e.request))));return;}
   // app files: newest from the network, but never wait more than a few seconds — then use the saved copy
   const net=sameOrigin?fetch(e.request.url,{cache:'no-cache',credentials:'same-origin'}):fetch(e.request);
   e.respondWith(raceSaved(e.request,netSave(e.request,net),e.request.mode==='navigate'?3500:5000));});
+function libSave(req,p){return p.then(r=>{if(r.ok||r.type==='opaque'){const cp=r.clone();caches.open(LIBC).then(c=>c.put(req,cp)).catch(()=>{});}return r;});}
+// opened files: kept on the phone (newest 120); the first time from the server, after that instantly
+async function keptFirst(key,get){try{const c=await caches.open(FILEC);const hit=await c.match(key);if(hit)return hit;const r=await get();
+  if(r&&r.ok&&r.status===200){const cp=r.clone();c.put(key,cp).then(()=>c.keys()).then(ks=>{if(ks.length>120)return Promise.all(ks.slice(0,ks.length-120).map(k=>c.delete(k)));}).catch(()=>{});}return r;}catch(x){return get();}}
 function netSave(req,p){return p.then(r=>{if(r.ok){const cp=r.clone();caches.open(C).then(c=>c.put(req,cp)).catch(()=>{});}return r;});}
 function saved(req){return caches.match(req,{ignoreSearch:true}).then(r=>r||(req.mode==='navigate'?caches.match('index.html'):null));}
 function raceSaved(req,net,ms){return new Promise(res=>{let done=false;const fin=r=>{if(!done&&r){done=true;res(r);}};
   net.then(fin).catch(()=>saved(req).then(r=>{if(!done){done=true;res(r||Response.error());}}));
   setTimeout(()=>{if(done)return;saved(req).then(r=>{if(r)fin(r);});},ms);});}
 // tapping a notification opens the app on that message's job / screen
-self.addEventListener('notificationclick',e=>{e.notification.close();const id=(e.notification.data||{}).id||'';const act=e.action||'';   // P2: "done" / "reply" buttons (Android)
-  e.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(cs=>{const c=cs[0];
-    if(c){return c.focus().then(w=>{try{(w||c).postMessage(act?{type:'ex-act',id,act}:{type:'ex-open',id});}catch(x){}});}
-    return self.clients.openWindow('./'+(id?'?n='+encodeURIComponent(id)+(act?'&act='+encodeURIComponent(act):''):''));}));});
+self.addEventListener('notificationclick',e=>{e.notification.close();const dd=e.notification.data||{};const id=dd.id||'';const act=e.action||'';const link=dd.link||null;const msg=dd.msg||'';   // P2: "done" / "reply" buttons (Android)
+  // Baruch 11/5: the tap remembers where it points (id + link) — the app reads it even if the phone opens it without the address
+  const keep=act?Promise.resolve():caches.open(OPENC).then(c=>c.put('./__open',new Response(JSON.stringify({id,link,msg,ts:Date.now()}),{headers:{'Content-Type':'application/json'}}))).catch(()=>{});
+  e.waitUntil(keep.then(()=>self.clients.matchAll({type:'window',includeUncontrolled:true})).then(cs=>{const c=cs[0];
+    if(c){return c.focus().then(w=>{try{(w||c).postMessage(act?{type:'ex-act',id,act}:{type:'ex-open2',id,link,msg});}catch(x){}});}
+    return self.clients.openWindow('./'+(id?'?n='+encodeURIComponent(id)+(link?'&l='+encodeURIComponent(JSON.stringify(link)):'')+(act?'&act='+encodeURIComponent(act):''):''));}));});
 self.addEventListener('push',e=>{let d={};try{d=e.data.json();}catch(x){d={title:'Electrix',body:e.data?e.data.text():''};}
-  const o={body:d.body||'',icon:'icon-192.png',badge:'icon-192.png',tag:d.id||undefined,data:{id:d.id||''}};
+  const o={body:d.body||'',icon:'icon-192.png',badge:'icon-192.png',tag:d.id||undefined,data:{id:d.id||'',link:d.link||null,msg:String(d.body||'').slice(0,200)}};
   if(d.job)o.actions=[{action:'done',title:d.lang==='es'?'✓ Hecho':'✓ Mark done'},{action:'reply',title:d.lang==='es'?'Responder':'Reply'}];   // P2: task alerts get buttons (Android)
   const jobs=[self.registration.showNotification(d.title||'Electrix',o)];
   if(typeof d.badge==='number'&&self.navigator&&self.navigator.setAppBadge)jobs.push(self.navigator.setAppBadge(d.badge).catch(()=>{}));   // P2: unread count on the app icon

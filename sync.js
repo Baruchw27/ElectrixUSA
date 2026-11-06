@@ -117,9 +117,13 @@ function diff(){const ops=[];
     Object.keys(was).forEach(id=>{if(!(id in cur)){let meta={};if(k==='keep'){try{const o=JSON.parse(was[id]);meta={owner:o.owner,collab:o.collab||[]};}catch(e){}}ops.push({coll:k,id,del:true,meta});}});
     snap[k]=now;});
   const sc=scalars();const wasS=snap._||{};const nowS={};
-  Object.keys(sc).forEach(id=>{const j=canon(sc[id]);nowS[id]=j;if(wasS[id]!==j)ops.push({coll:'_',id,data:{v:sc[id]},j,base:null});});
-  Object.keys(wasS).forEach(id=>{if(!(id in sc))ops.push({coll:'_',id,del:true});});
+  // Baruch 11/5: company settings can only be changed by the owner / managers / all-access / Payroll — other phones never send them
+  // (Menachem's and Matty's computers tried 252 times a week and were refused each time)
+  const canSc=canScalar();
+  Object.keys(sc).forEach(id=>{const j=canon(sc[id]);nowS[id]=j;if(wasS[id]!==j&&canSc)ops.push({coll:'_',id,data:{v:sc[id]},j,base:null});});
+  Object.keys(wasS).forEach(id=>{if(!(id in sc)&&canSc)ops.push({coll:'_',id,del:true});});
   snap._=nowS;return ops;}
+function canScalar(){try{const m=typeof me==='function'?me():null;if(!m)return true;return m.role==='owner'||m.role==='manager'||!!m.all||(m.role==='office'&&m.title==='Payroll');}catch(e){return true;}}
 function takeSnap(){snap={};colls().forEach(k=>{const cur=recordsOf(k);const now={};Object.keys(cur).forEach(id=>now[id]=canon(cur[id]));snap[k]=now;});const sc=scalars();const nowS={};Object.keys(sc).forEach(id=>nowS[id]=canon(sc[id]));snap._=nowS;}
 
 window.EX_afterSave=function(){if(!REAL||!(ready||localReady)||applying)return;const ops=diff();if(!ops.length)return;

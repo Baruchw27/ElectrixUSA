@@ -10,10 +10,10 @@
 html.exboot .top,html.exboot .pg,html.exboot .tabs,html.exboot #p2fab,html.exboot #p7fm,html.exboot #p8pin{visibility:hidden!important}
 html.exboot body{background:#f2f2f7 url(logo-light.svg) center 42%/min(62%,300px) no-repeat!important}
 @media (prefers-color-scheme:dark){html.exboot body{background:#000 url(logo-dark.svg) center 42%/min(62%,300px) no-repeat!important}}</style>
-<script>window.EX_VER='vh20c1105';</script><script src="config.js"></script>
+<script>window.EX_VER='vh21c1106';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vh20c1105"></script>
-<script src="extras.js?vh20c1105"></script>
+<script src="sync.js?vh21c1106"></script>
+<script src="extras.js?vh21c1106"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -1630,10 +1630,10 @@ function parseVoice(text,keepText){
   // assignee
   const targets=assignTargets();
   let hit=targets.find(x=>t.includes(x.label.split(' ')[0].toLowerCase()));
-  if(!hit)hit=targets.find(x=>{const c=crewOf(x.id);return c&&t.includes(c.name.toLowerCase());});
+  if(!hit)hit=targets.find(x=>{const c=crewOf(x.id);return c&&t.includes(String(c.name||'').toLowerCase());});
   targets.filter(x=>t.includes(x.label.split(' ')[0].toLowerCase())).forEach(x=>{const b=document.querySelector(`#jAssign input[value="${x.id}"]`);if(b)b.checked=true;});
   // site
-  let sHit=D.sites.find(s=>{const w=s.name.toLowerCase().split(/[ ,]+/).filter(x=>x.length>2);return w.some(x=>t.includes(x))&&w.filter(x=>t.includes(x)).length>=Math.min(2,w.length);});
+  let sHit=D.sites.find(s=>{const w=String(s.name||'').toLowerCase().split(/[ ,]+/).filter(x=>x.length>2);return w.some(x=>t.includes(x))&&w.filter(x=>t.includes(x)).length>=Math.min(2,w.length);});
   sHit=null;   // E1: a task never picks a job by itself (Baruch 2026-10-22) — the person picks it, or leaves it empty
   // due
   const due=document.getElementById('jDue');
@@ -4987,7 +4987,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vh20c1105"></script><script src="scanner-v2-ui.js?vh20c1105"></script><script src="sched-v21.js?vh20c1105"></script><script src="p2.js?vh20c1105"></script><script src="p4.js?vh20c1105"></script><script src="p5.js?vh20c1105"></script><script src="p6.js?vh20c1105"></script><script src="p7.js?vh20c1105"></script><script src="p8.js?vh20c1105"></script><script src="p9.js?vh20c1105"></script><script src="p10.js?vh20c1105"></script><script src="p11.js?vh20c1105"></script><script src="p12.js?vh20c1105"></script><script src="p13.js?vh20c1105"></script><script src="p14.js?vh20c1105"></script>
+<script src="scanner-v2.js?vh21c1106"></script><script src="scanner-v2-ui.js?vh21c1106"></script><script src="sched-v21.js?vh21c1106"></script><script src="p2.js?vh21c1106"></script><script src="p4.js?vh21c1106"></script><script src="p5.js?vh21c1106"></script><script src="p6.js?vh21c1106"></script><script src="p7.js?vh21c1106"></script><script src="p8.js?vh21c1106"></script><script src="p9.js?vh21c1106"></script><script src="p10.js?vh21c1106"></script><script src="p11.js?vh21c1106"></script><script src="p12.js?vh21c1106"></script><script src="p13.js?vh21c1106"></script><script src="p14.js?vh21c1106"></script><script src="p15.js?vh21c1106"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,

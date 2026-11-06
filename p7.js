@@ -230,7 +230,7 @@ if(typeof window.renderHome==='function'){const _rh=window.renderHome;window.ren
   try{_rh.apply(this,arguments);}catch(e){}
   // Baruch 21:41: keep "Needs action" — take the alerts the app already works out (overdue, off site, no job tomorrow,
   // inspections to book, not punched in, punch fixes, receipts, GPS…) and show them as one compact card at the top
-  let att=[];try{const tile=[...el.querySelectorAll('.tile')].find(x=>{const h=x.querySelector('h3');return h&&/needs attention|necesita atenci/i.test(h.textContent);});
+  let att=[];try{const tile=[...el.querySelectorAll('.tile')].find(x=>{const h=x.querySelector('h3');return h&&/needs attention|necesita atenci|requiere atenci/i.test(h.textContent);});
     if(tile)att=[...tile.querySelectorAll('.att span')].filter(x=>!x.classList.contains('g')).map(x=>({red:x.classList.contains('r'),txt:x.textContent.trim(),act:x.getAttribute('onclick')||''}));}catch(e){}
   try{hubHome(m,el,att);}catch(e){console.error('p7 home',e);}};}
 

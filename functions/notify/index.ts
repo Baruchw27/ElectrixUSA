@@ -37,6 +37,8 @@ Deno.serve(async (req) => {
   const job = lk && typeof lk === "object" && lk.job ? String(lk.job) : undefined;
   const payload: Record<string, unknown> = { title: "Electrix", body: String(msg).slice(0, 180), id: id || "", lang: emp.data?.lang === "es" ? "es" : "en" };
   if (job) payload.job = job;
+  // Baruch 11/5: tapping the phone notification opens exactly what it is about (task / job / inspection / O&R) — even before the app has the message
+  if (lk && typeof lk === "object") payload.link = lk;
   if (badge !== undefined) payload.badge = badge;
   const { data: mine } = await sb.from("records").select("id,data,updated_at").eq("coll", "push").eq("deleted", false).eq("data->>who", to);
   let sent = 0; const errs: string[] = [];
