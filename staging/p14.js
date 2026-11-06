@@ -96,6 +96,7 @@ html[data-theme=dark] .p14ring i{background:#000}
 .p14r.red .p14c{border-color:var(--p14red)}
 .p14cm{border:none!important;display:flex;align-items:center;justify-content:center;color:#b7791f;cursor:pointer}.p14cm .p14i{width:19px;height:19px}
 .p14r .cv{flex:none;width:16px;height:16px;color:var(--g3);align-self:center}
+.p14more{flex:none;align-self:center;border:none;background:none;color:var(--g4);font-size:22px;line-height:1;padding:2px 6px;cursor:pointer;font-family:inherit}
 .p14r .w{flex:1;min-width:0}.p14r .w b{display:block;font-weight:500;font-size:15px;line-height:1.3;color:var(--p14ink)}
 .p14r .w small{display:block;color:var(--p14mut);font-size:12.5px;margin-top:2px}.p14r .w small .l{color:var(--p14red);font-weight:600}
 .p14age{display:inline-block;font-size:11px;font-weight:600;color:var(--p14mut);background:var(--p14chip);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
@@ -137,13 +138,33 @@ const P14=window.P14={};
 P14.fold=k=>{const f=!folded(k);LS('p14f_'+k,f?'1':'0');document.querySelectorAll('.p14h[data-k="'+CSS.escape(k)+'"]').forEach(h=>h.classList.toggle('fold',f));};
 const head=(k,label,n,cls,icon,extra)=>'<div class="p14h'+(cls?' '+cls:'')+(folded(k)?' fold':'')+'" data-k="'+esc(k)+'" onclick="P14.fold(\''+jsq(k)+'\')">'+(icon?ic(icon):'')+'<span>'+esc(label)+'</span>'+(extra||'')+'<span class="n">'+n+'</span>'+ic('chev','cv')+'</div>';
 
-function matRow(j,m,o){o=o||{};const I=jsq(j.__mat);const bits=[];
+function matRow(j,m,o){o=o||{};const I=jsq(j.__mat);const lt=late(j);const bits=[];
   if(o.site!==false&&(j.site||j.addr))bits.push(esc(short(j.site?siteName(j.site):j.addr)));
   if(o.from!==false&&j.from&&j.from!==m.id)bits.push(esc(tt('from'))+' '+esc(first(j.from)));
-  if(j.need)bits.push(esc(tt('needed'))+': '+esc(tt(j.need)));
+  if(j.dueDate)bits.push(lt?'<span class="l">'+esc(tt('Late'))+'</span>':esc(tt('get it ready'))+' '+esc(j.dueDate===today()?tt('today'):j.dueDate===ymd(day0()+D1)?tt('tomorrow'):fdate(j.dueDate)));
+  if(j.need)bits.push(esc(tt('needed'))+': '+esc(j.needD&&j.needD!==today()&&j.needD!==ymd(day0()+D1)?fdate(j.needD):tt(j.need)));
+  if(o.park)bits.push(esc(tt('back on'))+' '+esc(fdate(j.park)));
   const tag='<span class="p14tag">'+ic('box')+esc(tt(j.part?'Partly ready':'Material request'))+'</span>';
-  return '<div class="p14r'+(j.pri?' red':'')+'" onclick="P14.mat(\''+I+'\')"><span class="p14c p14cm">'+ic('box')+'</span>'
-    +'<div class="w"><b>'+esc(j.desc)+ageTag(j)+tag+'</b>'+(bits.length?'<small>'+bits.join(' · ')+'</small>':'')+'</div>'+ic('chev','cv')+'</div>';}
+  const right=o.park?'<button class="p14btn g" onclick="event.stopPropagation();P14.matSet(\''+I+'\',\'park\',null)">'+esc(tt('Back now'))+'</button>'
+    :'<button class="p14more" aria-label="'+esc(tt('Options'))+'" onclick="event.stopPropagation();P14.matOpts(\''+I+'\')">⋯</button>';
+  return '<div class="p14r'+(j.pri||lt?' red':'')+'" onclick="P14.mat(\''+I+'\')"><span class="p14c p14cm">'+ic('box')+'</span>'
+    +'<div class="w"><b>'+esc(j.desc)+ageTag(j)+tag+'</b>'+(bits.length?'<small>'+bits.join(' · ')+'</small>':'')+'</div>'+right+'</div>';}
+// task options for a material request (saved on the request itself): when to get it ready, urgent, waiting for a reply
+P14.matSet=(id,f,v)=>{const x=(D.mats||[]).find(r=>r.id===id);if(!x)return;if(v===null||v===undefined)delete x[f];else x[f]=v;
+  try{if(typeof liTouch==='function')liTouch('mats',x);else save();}catch(e){save();}rerender();};
+P14.matOpts=id=>{const x=(D.mats||[]).find(r=>r.id===id);if(!x||!window.P15||!P15.list)return P14.mat(id);
+  const t=today(),tm=ymd(day0()+D1);let d2=day0()+2*D1;while([0,6].includes(new Date(d2).getDay()))d2+=D1;const d2y=ymd(d2);const cur=doByYmd(x);
+  const mark=v=>cur===v?' ✓':'';const isPri=x.pri===undefined?/asap/i.test(x.when||''):!!x.pri;
+  const pickDay=()=>askPrompt(tt('Get it ready by'),[{label:tt('Day'),value:cur||t,type:'date'}],([v])=>{v=String(v||'').trim();if(/^\d{4}-\d{2}-\d{2}$/.test(v))P14.matSet(id,'doBy',v);});
+  const waitDay=()=>{let d=Date.now()+3*D1;if(new Date(d).getDay()===6)d+=D1;askPrompt(tt('Waiting for a reply'),[{label:tt('Put it back on my list on'),value:ymd(d),type:'date'}],([v])=>{v=String(v||'').trim();if(!/^\d{4}-\d{2}-\d{2}$/.test(v)||v<=t){toast(tt('Pick a day after today'));return;}P14.matSet(id,'park',v);toast(tt('Waiting for a reply')+' · '+tt('back on')+' '+fdate(v),'green');});};
+  P15.list(matTitle(x),tt('needed')+': '+tt(x.when||'—')+(x.site?' · '+short(siteName(x.site)):''),[
+    {t:tt('Open the request'),go:()=>P14.mat(id)},
+    {t:tt('Get it ready today')+mark(t),go:()=>P14.matSet(id,'doBy',t)},
+    {t:tt('Get it ready tomorrow')+mark(tm),go:()=>P14.matSet(id,'doBy',tm)},
+    {t:tt('Get it ready on')+' '+fdate(d2y)+mark(d2y),go:()=>P14.matSet(id,'doBy',d2y)},
+    {t:tt('Pick a day…'),go:pickDay},
+    {t:isPri?tt('Not urgent'):tt('Mark urgent'),go:()=>P14.matSet(id,'pri',!isPri)},
+    x.park?{t:tt('Back now'),go:()=>P14.matSet(id,'park',null)}:{t:tt('Waiting for a reply'),s:tt('Hide it until a day you pick'),go:waitDay}]);};
 function row(j,m,o){if(j&&j.__mat)return matRow(j,m,o);o=o||{};const I=jsq(j.id);const lt=late(j);const red=!!j.pri||lt;
   const bits=[];
   if(o.site!==false&&j.site)bits.push(esc(short(siteName(j.site))));
@@ -184,21 +205,34 @@ const matState=x=>{try{return matSt(x);}catch(e){return x.status==='delivered'?'
 function matTitle(x){let L=[];try{L=liItems(x).filter(i=>!i.done).map(i=>(i.q?i.q+'× ':'')+(i.t||i.name||''));}catch(e){}
   if(!L.length)L=String(x.items||'').split('\n').map(z=>z.trim()).filter(z=>z&&!/^📍/.test(z));
   L=L.filter(Boolean);return (L[0]||tt('Material request')).slice(0,70)+(L.length>1?' +'+(L.length-1):'');}
+// when the crew needs it, read from what they picked ("Today", "Tomorrow morning", "Friday, Nov 6", "This week", "ASAP")
+function needYmd(x){const w=String(x.when||'').toLowerCase();const t0=day0();if(!w)return '';
+  if(/asap|today|this morning|hoy|urgente/.test(w))return ymd(gpDay(x.ts||Date.now()));   // asked for 'today' 3 days ago = late
+  if(/tomorrow|mañana/.test(w)){const b=gpDay(x.ts||Date.now());return ymd(b+D1);}
+  if(/this week|esta semana/.test(w)){const d=new Date(gpDay(x.ts||Date.now()));const add=(5-d.getDay()+7)%7;return ymd(d.getTime()+add*D1);}
+  const mm=w.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})/);
+  if(mm){const MO=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(mm[1]);const y=new Date().getFullYear();let d=new Date(y,MO,+mm[2],12);if(d.getTime()<t0-180*D1)d=new Date(y+1,MO,+mm[2],12);return ymd(d.getTime());}
+  return '';}
+// the day Menachem should get it ready: what he set, else the working day before it is needed (never before today)
+function prevWork(y){let d=fromYmd(y)-D1;while([0,6].includes(new Date(d).getDay()))d-=D1;return ymd(d);}
+function doByYmd(x){if(x.doBy)return x.doBy;const n=needYmd(x);if(!n)return '';const t=today();if(n<=t)return n;const p=prevWork(n);return p<t?t:p;}
 function matTasks(m){if(!matHandler(m))return [];
   return (D.mats||[]).filter(x=>x&&!x.deleted&&['requested','partial'].includes(matState(x))&&!(Array.isArray(x.assign)&&x.assign.length&&!x.assign.includes(m.id)))
-    .map(x=>({id:'mat:'+x.id,__mat:x.id,kind:'mat',status:'open',desc:matTitle(x),site:x.site||'',addr:x.addr||'',from:x.from,ts:x.ts||0,need:x.when||'',part:matState(x)==='partial',pri:/asap/i.test(x.when||'')}));}
+    .map(x=>({id:'mat:'+x.id,__mat:x.id,kind:'mat',status:'open',desc:matTitle(x),site:x.site||'',addr:x.addr||'',from:x.from,ts:x.ts||0,need:x.when||'',needD:needYmd(x),dueDate:doByYmd(x)||undefined,park:x.park||undefined,part:matState(x)==='partial',pri:x.pri===undefined?/asap/i.test(x.when||''):!!x.pri}));}
 P14.mat=id=>{try{if(typeof openList==='function')openList('mats',id);else goTab('mat');}catch(e){try{goTab('mat');}catch(x){}}};
 function data(m){const all=(D.jobs||[]).filter(j=>j&&!j.deleted);const t0=day0();
   const mineAll=all.filter(j=>isMine(j,m));
   const open=mineAll.filter(OPEN);
   const cover=open.filter(j=>j.cov&&j.cov.c===m.id);
-  const park=open.filter(j=>!(j.cov&&j.cov.c===m.id)&&parked(j));
-  const mine=open.filter(j=>!(j.cov&&j.cov.c===m.id)&&!parked(j)).concat(matTasks(m));
+  const park0=open.filter(j=>!(j.cov&&j.cov.c===m.id)&&parked(j));
+  const MT=matTasks(m);
+  const mine=open.filter(j=>!(j.cov&&j.cov.c===m.id)&&!parked(j)).concat(MT.filter(j=>!parked(j)));
   const doneToday=mineAll.filter(j=>j.status==='done'&&(j.doneAt||0)>=t0&&(j.doneBy===m.id||!j.doneBy)).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
   const sent=all.filter(j=>j.from===m.id&&!isMine(j,m));
   const waiting=sent.filter(OPEN);
   const othersDone=all.filter(j=>j.from===m.id&&j.status==='done'&&(j.doneAt||0)>=t0&&j.doneBy&&j.doneBy!==m.id).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
   const chk=all.filter(j=>j.status==='done'&&j.check&&j.chk==='wait'&&j.from===m.id).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
+  const park=park0.concat(MT.filter(parked));
   return {mine,park,cover,doneToday,waiting,othersDone,chk};}
 
 function render(m,el){const pg=$('pg-jobs');pg.classList.add('p14');
@@ -354,5 +388,5 @@ html[data-theme=dark] .p14cxbtn{color:#ff6b5e}
 .p14cxu{border:0;border-radius:999px;background:#fff;color:#0f1115;font:600 12.5px/1 inherit;font-family:inherit;padding:7px 12px;box-shadow:0 0 0 1px #e3e5e8}
 html[data-theme=dark] .p14cxb{background:#2c2c2e;color:#e5e5ea}html[data-theme=dark] .p14cxu{background:#1c1c1e;color:#f2f2f7;box-shadow:0 0 0 1px #3a3a3c}
 `;document.head.appendChild(st);})();
-try{if(typeof ES==='object')Object.assign(ES,{"Material request":"Pedido de material","Partly ready":"Parcialmente listo","needed":"para","request":"pedido","Cancelled":"Cancelada","by":"por","Cancelled by":"Cancelada por","Cancel this task":"Cancelar esta tarea","Cancel task — not needed":"Cancelar tarea — no hace falta","It was not done — cancel it":"No se hizo — cancelarla","Why? (optional)":"¿Por qué? (opcional)","Task cancelled":"Tarea cancelada","Back on the list":"De vuelta en la lista"});}catch(e){}
+try{if(typeof ES==='object')Object.assign(ES,{"get it ready":"preparar","Get it ready by":"Preparar para","Get it ready today":"Preparar hoy","Get it ready tomorrow":"Preparar mañana","Get it ready on":"Preparar el","Pick a day…":"Elegir día…","Day":"Día","Open the request":"Abrir el pedido","Mark urgent":"Marcar urgente","Not urgent":"Quitar urgente","Hide it until a day you pick":"Ocultar hasta el día que elijas","Options":"Opciones","tomorrow":"mañana","Material request":"Pedido de material","Partly ready":"Parcialmente listo","needed":"para","request":"pedido","Cancelled":"Cancelada","by":"por","Cancelled by":"Cancelada por","Cancel this task":"Cancelar esta tarea","Cancel task — not needed":"Cancelar tarea — no hace falta","It was not done — cancel it":"No se hizo — cancelarla","Why? (optional)":"¿Por qué? (opcional)","Task cancelled":"Tarea cancelada","Back on the list":"De vuelta en la lista"});}catch(e){}
 })();
