@@ -96,7 +96,8 @@ html[data-theme=dark] .p14ring i{background:#000}
 .p14r.red .p14c{border-color:var(--p14red)}
 .p14cm{border:none!important;display:flex;align-items:center;justify-content:center;color:#b7791f;cursor:pointer}.p14cm .p14i{width:19px;height:19px}
 .p14r .cv{flex:none;width:16px;height:16px;color:var(--g3);align-self:center}
-.p14more{flex:none;align-self:center;border:none;background:none;color:var(--g4);font-size:22px;line-height:1;padding:2px 6px;cursor:pointer;font-family:inherit}
+.p14r .p14more{flex:0 0 auto!important;width:34px!important;max-width:34px!important;min-width:0!important;height:30px;margin:0!important;align-self:center;border:none!important;background:none!important;box-shadow:none!important;color:var(--g4);font-size:22px;line-height:1;padding:0!important;cursor:pointer;font-family:inherit}
+.p14r>.w{flex:1 1 auto;min-width:0}
 .p14r .w{flex:1;min-width:0}.p14r .w b{display:block;font-weight:500;font-size:15px;line-height:1.3;color:var(--p14ink)}
 .p14r .w small{display:block;color:var(--p14mut);font-size:12.5px;margin-top:2px}.p14r .w small .l{color:var(--p14red);font-weight:600}
 .p14age{display:inline-block;font-size:11px;font-weight:600;color:var(--p14mut);background:var(--p14chip);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
