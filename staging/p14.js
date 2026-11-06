@@ -16,7 +16,7 @@ const ymd=ms=>{const d=new Date(ms);return d.getFullYear()+'-'+String(d.getMonth
 const fromYmd=s=>new Date(s+'T12:00').getTime();
 const today=()=>ymd(Date.now());
 const OPEN=j=>j&&j.status!=='done'&&!j.deleted;
-const due=j=>{try{return gpDue(j);}catch(e){return null;}};
+const due=j=>{if(j&&j.dueDate&&/^\d{4}-\d{2}-\d{2}$/.test(j.dueDate)){try{return gpDay(new Date(j.dueDate+'T12:00'));}catch(e){}}try{return gpDue(j);}catch(e){return null;}};
 const late=j=>{const d=due(j);return d!==null&&d<day0();};
 const first=id=>String(nameOf(id)||'').split(' ')[0];
 const short=s=>String(s||'').split(',')[0];
