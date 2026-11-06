@@ -94,6 +94,8 @@ html[data-theme=dark] .p14ring i{background:#000}
 .p14r+.p14r,.p14box>.p14ln+.p14ln{border-top:1px solid var(--p14line)}
 .p14c{flex:none;width:21px;height:21px;border-radius:50%;border:1.8px solid #c7c9ce;background:none;margin-top:1px;padding:0;cursor:pointer}
 .p14r.red .p14c{border-color:var(--p14red)}
+.p14cm{border:none!important;display:flex;align-items:center;justify-content:center;color:#b7791f;cursor:pointer}.p14cm .p14i{width:19px;height:19px}
+.p14r .cv{flex:none;width:16px;height:16px;color:var(--g3);align-self:center}
 .p14r .w{flex:1;min-width:0}.p14r .w b{display:block;font-weight:500;font-size:15px;line-height:1.3;color:var(--p14ink)}
 .p14r .w small{display:block;color:var(--p14mut);font-size:12.5px;margin-top:2px}.p14r .w small .l{color:var(--p14red);font-weight:600}
 .p14age{display:inline-block;font-size:11px;font-weight:600;color:var(--p14mut);background:var(--p14chip);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
@@ -135,7 +137,14 @@ const P14=window.P14={};
 P14.fold=k=>{const f=!folded(k);LS('p14f_'+k,f?'1':'0');document.querySelectorAll('.p14h[data-k="'+CSS.escape(k)+'"]').forEach(h=>h.classList.toggle('fold',f));};
 const head=(k,label,n,cls,icon,extra)=>'<div class="p14h'+(cls?' '+cls:'')+(folded(k)?' fold':'')+'" data-k="'+esc(k)+'" onclick="P14.fold(\''+jsq(k)+'\')">'+(icon?ic(icon):'')+'<span>'+esc(label)+'</span>'+(extra||'')+'<span class="n">'+n+'</span>'+ic('chev','cv')+'</div>';
 
-function row(j,m,o){o=o||{};const I=jsq(j.id);const lt=late(j);const red=!!j.pri||lt;
+function matRow(j,m,o){o=o||{};const I=jsq(j.__mat);const bits=[];
+  if(o.site!==false&&(j.site||j.addr))bits.push(esc(short(j.site?siteName(j.site):j.addr)));
+  if(o.from!==false&&j.from&&j.from!==m.id)bits.push(esc(tt('from'))+' '+esc(first(j.from)));
+  if(j.need)bits.push(esc(tt('needed'))+': '+esc(tt(j.need)));
+  const tag='<span class="p14tag">'+ic('box')+esc(tt(j.part?'Partly ready':'Material request'))+'</span>';
+  return '<div class="p14r'+(j.pri?' red':'')+'" onclick="P14.mat(\''+I+'\')"><span class="p14c p14cm">'+ic('box')+'</span>'
+    +'<div class="w"><b>'+esc(j.desc)+ageTag(j)+tag+'</b>'+(bits.length?'<small>'+bits.join(' · ')+'</small>':'')+'</div>'+ic('chev','cv')+'</div>';}
+function row(j,m,o){if(j&&j.__mat)return matRow(j,m,o);o=o||{};const I=jsq(j.id);const lt=late(j);const red=!!j.pri||lt;
   const bits=[];
   if(o.site!==false&&j.site)bits.push(esc(short(siteName(j.site))));
   if(o.from!==false&&j.from&&j.from!==m.id)bits.push(esc(tt('from'))+' '+esc(first(j.from)));
@@ -168,12 +177,23 @@ function groups(L,by){const G={},order=[];const put=(k,lab,icon,j,rank)=>{if(!G[
   if(by==='job'||by==='from')out.sort((a,b)=>(a.rank-b.rank)||(b.L.some(late)-a.L.some(late))||String(a.lab).localeCompare(String(b.lab)));else out.sort((a,b)=>a.rank-b.rank);
   return out;}
 
+/* Baruch 11/6: Menachem's material requests show on his task page like a task; tapping one opens the real request.
+   They are not tasks (nothing new is saved) — the line goes away when the request is ready / picked up / done. */
+const matHandler=m=>!!m&&m.role==='office'&&m.title==='Material';
+const matState=x=>{try{return matSt(x);}catch(e){return x.status==='delivered'?'completed':x.status==='ordered'?'ready':'requested';}};
+function matTitle(x){let L=[];try{L=liItems(x).filter(i=>!i.done).map(i=>(i.q?i.q+'× ':'')+(i.t||i.name||''));}catch(e){}
+  if(!L.length)L=String(x.items||'').split('\n').map(z=>z.trim()).filter(z=>z&&!/^📍/.test(z));
+  L=L.filter(Boolean);return (L[0]||tt('Material request')).slice(0,70)+(L.length>1?' +'+(L.length-1):'');}
+function matTasks(m){if(!matHandler(m))return [];
+  return (D.mats||[]).filter(x=>x&&!x.deleted&&['requested','partial'].includes(matState(x))&&!(Array.isArray(x.assign)&&x.assign.length&&!x.assign.includes(m.id)))
+    .map(x=>({id:'mat:'+x.id,__mat:x.id,kind:'mat',status:'open',desc:matTitle(x),site:x.site||'',addr:x.addr||'',from:x.from,ts:x.ts||0,need:x.when||'',part:matState(x)==='partial',pri:/asap/i.test(x.when||'')}));}
+P14.mat=id=>{try{if(typeof openList==='function')openList('mats',id);else goTab('mat');}catch(e){try{goTab('mat');}catch(x){}}};
 function data(m){const all=(D.jobs||[]).filter(j=>j&&!j.deleted);const t0=day0();
   const mineAll=all.filter(j=>isMine(j,m));
   const open=mineAll.filter(OPEN);
   const cover=open.filter(j=>j.cov&&j.cov.c===m.id);
   const park=open.filter(j=>!(j.cov&&j.cov.c===m.id)&&parked(j));
-  const mine=open.filter(j=>!(j.cov&&j.cov.c===m.id)&&!parked(j));
+  const mine=open.filter(j=>!(j.cov&&j.cov.c===m.id)&&!parked(j)).concat(matTasks(m));
   const doneToday=mineAll.filter(j=>j.status==='done'&&(j.doneAt||0)>=t0&&(j.doneBy===m.id||!j.doneBy)).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
   const sent=all.filter(j=>j.from===m.id&&!isMine(j,m));
   const waiting=sent.filter(OPEN);
@@ -334,5 +354,5 @@ html[data-theme=dark] .p14cxbtn{color:#ff6b5e}
 .p14cxu{border:0;border-radius:999px;background:#fff;color:#0f1115;font:600 12.5px/1 inherit;font-family:inherit;padding:7px 12px;box-shadow:0 0 0 1px #e3e5e8}
 html[data-theme=dark] .p14cxb{background:#2c2c2e;color:#e5e5ea}html[data-theme=dark] .p14cxu{background:#1c1c1e;color:#f2f2f7;box-shadow:0 0 0 1px #3a3a3c}
 `;document.head.appendChild(st);})();
-try{if(typeof ES==='object')Object.assign(ES,{"Cancelled":"Cancelada","by":"por","Cancelled by":"Cancelada por","Cancel this task":"Cancelar esta tarea","Cancel task — not needed":"Cancelar tarea — no hace falta","It was not done — cancel it":"No se hizo — cancelarla","Why? (optional)":"¿Por qué? (opcional)","Task cancelled":"Tarea cancelada","Back on the list":"De vuelta en la lista"});}catch(e){}
+try{if(typeof ES==='object')Object.assign(ES,{"Material request":"Pedido de material","Partly ready":"Parcialmente listo","needed":"para","request":"pedido","Cancelled":"Cancelada","by":"por","Cancelled by":"Cancelada por","Cancel this task":"Cancelar esta tarea","Cancel task — not needed":"Cancelar tarea — no hace falta","It was not done — cancel it":"No se hizo — cancelarla","Why? (optional)":"¿Por qué? (opcional)","Task cancelled":"Tarea cancelada","Back on the list":"De vuelta en la lista"});}catch(e){}
 })();
