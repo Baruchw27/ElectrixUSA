@@ -32,6 +32,12 @@ async function kick(){if(!window.EX_REAL||typeof window.EX_saveNow!=='function')
 P15.kick=kick;
 function catchUp(){try{if(window.EX_REAL&&typeof window.EX_catchUp==='function')EX_catchUp();}catch(e){}}
 setInterval(kick,15000);
+// backup (Baruch 11/6): if the server library's sign-in queue is jammed for 2 minutes, restart the app quietly.
+// Unsent changes are kept on the device and go out right after the restart.
+let jam=0;setInterval(()=>{try{const a=window.EX_sb&&window.EX_sb.auth;if(!a){jam=0;return;}
+  const stuck=a.lockAcquired&&(a.pendingInLock||[]).length>0;jam=stuck?jam+1:0;
+  if(jam>=4){const f=document.activeElement;const typing=f&&/INPUT|TEXTAREA|SELECT/.test(f.tagName)&&f.value;
+    if(!typing||document.hidden){try{window.EX_logErr&&EX_logErr('auth-stuck','server queue jammed — restarted');}catch(e){}location.reload();}}}catch(e){}},30000);
 // other people's changes: a quiet look every 2 minutes while the app is on screen (the live line can drop on a sleeping computer)
 setInterval(()=>{if(document.visibilityState==='visible')catchUp();},120000);
 ['online','focus','pageshow'].forEach(ev=>window.addEventListener(ev,()=>{kick();catchUp();}));
