@@ -355,7 +355,11 @@ function liveRecord(coll,id){const v=D[coll];if(Array.isArray(v))return v.find(x
 function stripEmp(x){const r=Object.assign({},x);EMP_STRIP.forEach(f=>delete r[f]);r.authEmail=emailFor(x);return r;}
 // B1: rows the server handed back from an action (e.g. send_task) — take them as the truth, nothing to send
 window.EX_adopt=function(rows){try{adopt(rows);localSave();bump();}catch(e){log(e);}};
-function localSave(){if(!window.EX_STALE){try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){}}if(Object.keys(queue).length&&st.qStored===false)saveQ();}
+function localSave(){let ok=false;if(!window.EX_STALE){try{localStorage.setItem(KEY,JSON.stringify(D));ok=true;}catch(e){}}if(Object.keys(queue).length&&st.qStored===false)saveQ();return ok;}
+// quick start (11/6): remember up to when this phone's copy matches the server, so the next start downloads only what changed
+let fullAt=0;
+function seenWho(){try{return String(cachedEmail()||'').toLowerCase();}catch(e){return '';}}
+function seenSave(ok){try{if(!ok||!lastPull){localStorage.removeItem('ex_srvseen');return;}localStorage.setItem('ex_srvseen',JSON.stringify({t:lastPull,uid:seenWho(),full:fullAt}));}catch(e){}}
 
 // ---------- pull ----------
 // History the phone keeps only for a while (see pruneOld in the app): download just the recent part, so the start-up
@@ -369,7 +373,7 @@ async function pullAll(){const rows=[];const PAGE=1000;
   async function pages(mk){let from=0;while(true){const r=await withTO(mk().order('coll').order('id').range(from,from+PAGE-1),20000,'download');if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<PAGE)break;from+=PAGE;}}
   await pages(()=>sb.from('records').select('coll,id,data,deleted,updated_at').not('coll','in','('+HIST_COLLS.join(',')+')'));
   await pages(()=>sb.from('records').select('coll,id,data,deleted,updated_at').in('coll',HIST_COLLS).gt('updated_at',since));
-  lastPull=srvTime(rows,t0);try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}return rows;}
+  lastPull=srvTime(rows,t0);fullAt=Date.now();try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}return rows;}
 // signed in but the server no longer lets this person in (turned off by the office): wipe this phone's copy and go to sign-in
 async function turnedOff(){let member=true;try{const r=await withTO(sb.rpc('is_member'),6000,'access check');if(r&&!r.error&&r.data===false){const t=await withTO(sb.rpc('no_team_yet'),6000,'team check');member=!!(t&&t.data===true);}}catch(e){return false;}
   if(member)return false;
@@ -394,7 +398,7 @@ async function catchUp1(){if(!REAL||!ready||catching||!st.online)return;catching
     lastPull=rows.length?srvTime(rows,t0):(lastPull||t0);try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}rows.forEach(r=>{if(r.coll==='stock'&&!r.deleted&&r.data&&queue[r.coll+'\u0001'+r.id]&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,r.data.qty,null,r.data.qv);});
     // a record that arrived live while this catch-up was in flight is newer than what the catch-up fetched: keep it
     const fresh=rows.filter(r=>!queue[r.coll+'\u0001'+r.id]&&!((liveAt[r.coll+'\u0001'+r.id]||0)>=t0));
-    if(fresh.length){applyRows(fresh,{replace:false});fresh.forEach(r=>{const k=r.coll;if(r.deleted){if(snap[k])delete snap[k][r.id];}else{(snap[k]=snap[k]||{})[r.id]=canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));}});localSave();bump();}
+    if(fresh.length){applyRows(fresh,{replace:false});fresh.forEach(r=>{const k=r.coll;if(r.deleted){if(snap[k])delete snap[k][r.id];}else{(snap[k]=snap[k]||{})[r.id]=canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));}});seenSave(localSave());bump();}else seenSave(localSave());
     if(nu){try{if(old&&old!==nu)await withTO(sb.removeChannel(old),3000,'reconnect');}catch(e){}}
     else{try{if(sb.removeAllChannels)await withTO(sb.removeAllChannels(),3000,'reconnect');}catch(e){}subscribe();}
     flush();st.err='';paint();}
@@ -411,7 +415,7 @@ function listKeepNewer(old,inc){if(!old||typeof old!=='object'||!inc||typeof inc
   return out||inc;}
 let refreshing=false;
 async function refreshAll(){if(refreshing||!REAL||!ready||!st.online)return;refreshing=true;
-  try{if(await turnedOff())return;const rows=await pullAll();if(rows.length){applyRows(rows,{replace:true});applyPendingQueue();takeSnap();localSave();bump();}
+  try{if(await turnedOff())return;const rows=await pullAll();if(rows.length){applyRows(rows,{replace:true});applyPendingQueue();takeSnap();seenSave(localSave());bump();}
     try{if(typeof applyTabs==='function')applyTabs();if(typeof renderAll==='function')renderAll();}catch(e){}}
   catch(e){log('refresh',e);}finally{refreshing=false;}}
 window.EX_refreshAll=refreshAll;
@@ -649,7 +653,29 @@ window.EX_boot=async function(){if(!REAL)return {real:false};
   return {real:true,email};};
 // the job list and the material catalog ship with the app; if the database doesn't have them yet, the owner's phone fills them in once
 const SEEDABLE=['sites','stock'];
-window.EX_start=async function(){if(!REAL||ready)return;const local={};SEEDABLE.forEach(k=>{if(D[k])local[k]=JSON.parse(JSON.stringify(D[k]));});
+// quick start: the app already opened from this phone's copy; fetch only what changed since that copy was last in step
+// with the server (same person, under 5 days old). A full download still runs in the background twice a day, so anything
+// the server stopped or started showing this person (without the record itself changing) is corrected the same day.
+async function quickStart(){let sv=null;try{sv=JSON.parse(localStorage.getItem('ex_srvseen')||'null');}catch(e){}
+  const uidNow=seenWho();
+  if(!localReady||!sv||!sv.t||!sv.uid||sv.uid!==uidNow||Date.now()-sv.t>5*864e5||!((D.emps||[]).length>1))return false;
+  if(await turnedOff())return true;
+  let ch=null;try{ch=subscribe();const w0=Date.now();while(!ch._ok&&Date.now()-w0<4000)await new Promise(r=>setTimeout(r,100));}catch(e){}
+  const since=new Date(sv.t-3*60000).toISOString();const t0=Date.now();const rows=[];let from=0;
+  try{while(true){const r=await withTO(sb.from('records').select('coll,id,data,deleted,updated_at').gt('updated_at',since).order('updated_at').range(from,from+999),20000,'quick start');if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<1000)break;from+=1000;}}
+  catch(e){try{if(ch&&sb.removeChannel)await withTO(sb.removeChannel(ch),3000,'reconnect');}catch(x){}throw e;}
+  lastPull=rows.length?srvTime(rows,t0):sv.t;fullAt=+sv.full||0;try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}
+  rows.forEach(r=>{if(r.coll==='stock'&&!r.deleted&&r.data&&queue[r.coll+'\u0001'+r.id]&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,r.data.qty,null,r.data.qv);});
+  const fresh=rows.filter(r=>!queue[r.coll+'\u0001'+r.id]&&!((liveAt[r.coll+'\u0001'+r.id]||0)>=t0));
+  const meChanged=fresh.some(r=>r.coll==='emps'&&r.id===window.EX_ME);
+  if(fresh.length){applyRows(fresh,{replace:false});fresh.forEach(r=>{const k=r.coll;if(r.deleted){if(snap[k])delete snap[k][r.id];}else{(snap[k]=snap[k]||{})[r.id]=canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));}});}
+  try{if(typeof pruneOld==='function')pruneOld();}catch(e){log('prune',e);}
+  seenSave(localSave());ready=true;flush();paint();bump();log('quick start',rows.length+' changed');
+  if(meChanged||Date.now()-fullAt>12*3600000)setTimeout(()=>{refreshAll();},meChanged?500:20000);
+  return true;}
+window.EX_start=async function(){if(!REAL||ready)return;
+  try{if(await quickStart())return;}catch(e){log('quick start failed — full download',e);}
+  const local={};SEEDABLE.forEach(k=>{if(D[k])local[k]=JSON.parse(JSON.stringify(D[k]));});
   const rows=await pullAll();
   if(!rows.length&&await turnedOff())return;
   if(rows.length){applyRows(rows,{replace:true});applyPendingQueue();takeSnap();   // B2: unsent work back on top at once — no wait in between
@@ -665,7 +691,7 @@ window.EX_start=async function(){if(!REAL||ready)return;const local={};SEEDABLE.
   seeded.forEach(k=>{const cur=recordsOf(k);Object.keys(cur).forEach(id=>{queue[k+'\u0001'+id]={coll:k,id,data:cur[id]};});});if(seeded.length)saveQ();
   if(!rows.length&&window.EX_allowSeed){Object.keys(queue).length||(function(){const ops=[];colls().forEach(k=>{const cur=recordsOf(k);Object.keys(cur).forEach(id=>ops.push({coll:k,id,data:cur[id]}));});const sc=scalars();Object.keys(sc).forEach(id=>ops.push({coll:'_',id,data:{v:sc[id]}}));ops.forEach(o=>queue[o.coll+'\u0001'+o.id]=o);saveQ();})();}
   try{if(typeof pruneOld==='function'&&pruneOld())localSave();}catch(e){log('prune',e);}
-  localSave();ready=true;subscribe();flush();paint();};
+  seenSave(localSave());ready=true;subscribe();flush();paint();};
 window.EX_ready=()=>ready;
 // safe to forget a record from the phone only when the server already has exactly this version and nothing is waiting
 // older history asked for on purpose (Hours / Job hours for a past period): load it from the server and keep it on the
