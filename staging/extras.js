@@ -27,7 +27,7 @@ if(CFG.url&&CFG.ai&&!(window.claude&&window.claude.use)){
   window.EX_errBuf=buf;
   window.addEventListener('error',e=>{const m=(e&&e.message)||'';if(!m||/ResizeObserver|^Script error\.?$/.test(m))return;EX_report('error',m,String(e.filename||'').split('/').pop().split('?')[0]+':'+(e.lineno||''));});
   window.addEventListener('unhandledrejection',e=>{const r=e&&e.reason;const m=(r&&(r.message||String(r)))||'';if(!m||/AbortError|NetworkError|Failed to fetch|Load failed|timeout|offline/i.test(m))return;EX_report('error','(async) '+m,'');});
-  window.addEventListener('ex-rejected',e=>{const rows=(e.detail&&e.detail.rows)||[];if(rows.length)EX_report('refused','server refused a save: '+[...new Set(rows.map(r=>r.coll))].join(', '),'');});
+  window.addEventListener('ex-rejected',e=>{const rows=(e.detail&&e.detail.rows)||[];if(rows.length)EX_report('refused','server refused a save: '+[...new Set(rows.map(r=>r.coll==='_'?'_:'+r.id:r.coll))].join(', '),'');});
   // changes waiting more than 6 hours while the phone is online = stuck (reported once)
   setInterval(()=>{try{const s=window.EX_SYNC||{};const now=Date.now();let since=+localStorage.getItem('ex_pend_since')||0;
     if(s.pending>0){if(!since){since=now;localStorage.setItem('ex_pend_since',String(now));}
@@ -178,11 +178,22 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){hiddenAt=D
   document.addEventListener('change',e=>{if(e.target&&e.target.type==='file')window.__exPickAt=Date.now();},true);
   async function check(){if(!window.EX_VER||!navigator.onLine)return;try{const r=await fetch('version.json?'+Date.now(),{cache:'no-store'});if(!r.ok)return;const j=await r.json();if(!j.v||j.v===window.EX_VER)return;
       let tried='';try{tried=sessionStorage.getItem('ex_upd')||'';}catch(e){}if(tried===j.v)return; // never loop
-      if(busy()){pending=true;return;}try{sessionStorage.setItem('ex_upd',j.v);}catch(e){}location.reload();}catch(e){}}
+      // Baruch 11/5 ("it crashes a lot"): a new version no longer restarts the app while someone is using it — it updates
+      // while the app is in the background, when it was away a while, in the first seconds after opening, or when they tap "Update ready"
+      if(busy()){pending=true;return;}
+      if(!document.hidden&&Date.now()-bootAt>15000&&!(backAt&&Date.now()-backAt<4000&&awayFor>60000)){pending=true;updChip();return;}
+      go(j.v);}catch(e){}}
+  const bootAt=Date.now();let hidAt=0,backAt=0,awayFor=0;
+  function go(v){try{sessionStorage.setItem('ex_upd',v);}catch(e){}location.reload();}
+  function updChip(){if(document.getElementById('exUpd'))return;const b=document.createElement('button');b.id='exUpd';b.type='button';
+    let es=false;try{es=(typeof lang==='function'&&lang()==='es');}catch(e){}b.textContent=es?'↻ Actualización lista — toca para reiniciar':'↻ Update ready — tap to restart';
+    b.style.cssText='position:fixed;right:12px;top:calc(60px + env(safe-area-inset-top));z-index:960;border:0;border-radius:999px;background:#1c1c1e;color:#fff;font:600 12.5px/1.2 -apple-system,system-ui,sans-serif;padding:8px 12px;box-shadow:0 3px 12px rgba(0,0,0,.25)';
+    b.onclick=()=>{if(!busy()){pending=false;try{sessionStorage.removeItem('ex_upd');}catch(e){}location.reload();}};document.body.appendChild(b);}
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){hidAt=Date.now();if(pending&&!busy()){pending=false;check();}}else{backAt=Date.now();awayFor=hidAt?Date.now()-hidAt:0;}});
   window.EX_checkVersion=check;
   setTimeout(check,4000);setInterval(()=>{if(document.visibilityState==='visible')check();},180000);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')check();});
-  setInterval(()=>{if(pending&&!busy()){pending=false;check();}},5000);
+  setInterval(()=>{if(pending&&!busy()&&(document.hidden||!document.getElementById('exUpd'))){pending=false;check();}},5000);
 })();
 
 // ---------- private files: give the background helper the sign-in pass (it never leaves the phone) ----------
