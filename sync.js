@@ -9,7 +9,7 @@
 const CFG=window.EX_CFG||{};
 const REAL=!!(CFG.url&&CFG.anonKey&&window.supabase);
 window.EX_REAL=REAL;
-const SKIP=new Set(['role','nextId','stockLog']); // never uploaded (stockLog = authoritative, server-written only)
+const SKIP=new Set(['role','nextId','stockLog','trelloLists']);   // trelloLists: company Trello list map, written only by the server (Baruch 11/6: office computers kept re-sending / deleting it) // never uploaded (stockLog = authoritative, server-written only)
 const EMP_STRIP=['pass'];                       // never leaves the phone
 const DOMAIN=CFG.domain||'electrixusa.app';
 const BLOB_MIN=60000;                           // data: URLs longer than this go to storage
@@ -193,7 +193,7 @@ let suppressRejectToast=false; // EX_saveNow shows its own message at the point 
 let flushInFlight=null;
 function flush(){if(!REAL||!ready||!st.online)return Promise.resolve();if(flushInFlight)return flushInFlight;
   flushInFlight=_flush();const done=()=>{flushInFlight=null;};flushInFlight.then(done,done);return flushInFlight;}
-async function _flush(){const keys=Object.keys(queue);if(!keys.length){lastReject=[];return;}flushing=true;st.flushing=true;paint();
+async function _flush(){Object.keys(queue).forEach(k=>{const o=queue[k];if(o&&(SKIP.has(o.coll)||(o.coll==='_'&&SKIP.has(o.id))))delete queue[k];});const keys=Object.keys(queue);if(!keys.length){lastReject=[];return;}flushing=true;st.flushing=true;paint();
   let skipped=0;const myRej=[];lastFlushError=null;
   try{const ups=[],dels=[],refs=[];
     for(const k of keys){const o=queue[k];if(o.del)dels.push(o);else{
@@ -577,8 +577,16 @@ window.EX_whoami=function(){return st.user;};
 // ---------- boot ----------
 window.EX_boot=async function(){if(!REAL)return {real:false};
   try{await durRestore();}catch(e){}   // a newer copy of unsent work that only IndexedDB could hold
-  sb=window.supabase.createClient(CFG.url,CFG.anonKey,{auth:{persistSession:true,storageKey:'ex_auth',lock:async(_n,_t,fn)=>await fn()}});
-  sbAux=window.supabase.createClient(CFG.url,CFG.anonKey,{auth:{persistSession:false,autoRefreshToken:false,storageKey:'ex_aux',lock:async(_n,_t,fn)=>await fn()}});
+  // Baruch 11/6: no request may hang forever. The server library runs sign-in requests one at a time and queues every
+  // save behind them; one sign-in request that never answered left 51 saves waiting on Shia's computer. Each request
+  // now gives up after a while (uploads get longer), so the queue always moves and the save is simply retried.
+  const tFetch=(input,init)=>{init=init||{};const url=String((input&&input.url)||input);
+    const ms=/\/storage\/v1\/object\//.test(url)&&String(init.method||'GET').toUpperCase()!=='GET'?180000:/\/auth\/v1\//.test(url)?15000:45000;
+    const c=new AbortController();const tm=setTimeout(()=>{try{c.abort();}catch(e){}},ms);
+    if(init.signal){if(init.signal.aborted)c.abort();else init.signal.addEventListener('abort',()=>{try{c.abort();}catch(e){}},{once:true});}
+    return fetch(input,Object.assign({},init,{signal:c.signal})).finally(()=>clearTimeout(tm));};
+  sb=window.supabase.createClient(CFG.url,CFG.anonKey,{auth:{persistSession:true,storageKey:'ex_auth',lock:async(_n,_t,fn)=>await fn()},global:{fetch:tFetch}});
+  sbAux=window.supabase.createClient(CFG.url,CFG.anonKey,{auth:{persistSession:false,autoRefreshToken:false,storageKey:'ex_aux',lock:async(_n,_t,fn)=>await fn()},global:{fetch:tFetch}});
   window.EX_sb=sb;
   let email=null,uid=null;try{const s=await withTO(sb.auth.getSession(),6000,'sign-in');const u=s.data.session&&s.data.session.user;email=u?u.email:null;uid=u?u.id:null;}catch(e){email=cachedEmail();st.slow=true;}st.user=email;
   // account switch: if the person signed in now is not the one this phone's cached data belongs to, drop the old copy first
