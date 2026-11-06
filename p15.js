@@ -36,7 +36,7 @@ setInterval(kick,15000);
 setInterval(()=>{if(document.visibilityState==='visible')catchUp();},120000);
 ['online','focus','pageshow'].forEach(ev=>window.addEventListener(ev,()=>{kick();catchUp();}));
 document.addEventListener('visibilitychange',()=>{kick();if(document.visibilityState==='visible')catchUp();});
-function pill(){let el=$('p15save');const n=pending();const show=n&&since&&Date.now()-since>20000;
+function pill(){let el=$('p15save');const n=pending();if(n&&!since)since=Date.now();if(!n)since=0;const show=n&&since&&Date.now()-since>20000;
   if(!show){if(el)el.remove();return;}
   if(!el){el=document.createElement('button');el.id='p15save';el.type='button';el.onclick=()=>{el.textContent='↑ '+tt('Saving…');kick();};document.body.appendChild(el);}
   el.textContent=(navigator.onLine===false?'📵 ':'')+tt(navigator.onLine===false?'No signal — saved on this phone, sends when back':'Not saved yet — tap to send')+' ('+n+')';}
@@ -67,7 +67,7 @@ const LISTS={
     list(tt('Roughing jobs need a site manager'),tt('Tap a job to pick its site manager'),L.map(s=>({t:short(s.name),go:()=>openSite(s.id)})));},
   insp:()=>{const L=(D.insp||[]).filter(i=>i&&!i.deleted&&i.status==='requested');
     list(tt('Inspections to book'),'',L.map(i=>{const s=(D.sites||[]).find(x=>x.id===i.site);return {t:short(s?s.name:i.site),s:tt(i.kind==='final'?'Final inspection':i.kind==='rough'?'Rough inspection':'Inspection')+(i.by?' · '+tt('requested by')+' '+nameOfSafe(i.by):''),go:()=>{try{openInspBook(i.id);}catch(e){openSite(i.site);}}};}));},
-  overdue:()=>{const L=(D.jobs||[]).filter(j=>j&&!j.deleted&&j.status==='ov');
+  overdue:()=>{const L=(D.jobs||[]).filter(j=>j&&!j.deleted&&(typeof isLate==='function'?isLate(j):j.status==='ov'));
     list(tt('Overdue tasks'),'',L.map(j=>({t:String(j.desc||'').slice(0,80),s:[(j.site?short((D.sites||[]).find(x=>x.id===j.site)?.name||''):''),tos(j).map(nameOfSafe).join(', ')].filter(Boolean).join(' · '),go:()=>{try{openJobDetail(j.id);}catch(e){}}})));},
   away:()=>{const L=(D.punches||[]).filter(p=>p&&p.away&&!p.out);
     list(tt('Off site'),tt('Punched in but away from the job'),L.map(p=>{const s=(D.sites||[]).find(x=>x.id===p.site);return {t:nameOfSafe(p.who),s:s?short(s.name):'',go:()=>{if(s)openSite(s.id);else try{goTab('hours');}catch(e){}}};}));}

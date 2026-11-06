@@ -36,7 +36,7 @@ setInterval(kick,15000);
 setInterval(()=>{if(document.visibilityState==='visible')catchUp();},120000);
 ['online','focus','pageshow'].forEach(ev=>window.addEventListener(ev,()=>{kick();catchUp();}));
 document.addEventListener('visibilitychange',()=>{kick();if(document.visibilityState==='visible')catchUp();});
-function pill(){let el=$('p15save');const n=pending();const show=n&&since&&Date.now()-since>20000;
+function pill(){let el=$('p15save');const n=pending();if(n&&!since)since=Date.now();if(!n)since=0;const show=n&&since&&Date.now()-since>20000;
   if(!show){if(el)el.remove();return;}
   if(!el){el=document.createElement('button');el.id='p15save';el.type='button';el.onclick=()=>{el.textContent='↑ '+tt('Saving…');kick();};document.body.appendChild(el);}
   el.textContent=(navigator.onLine===false?'📵 ':'')+tt(navigator.onLine===false?'No signal — saved on this phone, sends when back':'Not saved yet — tap to send')+' ('+n+')';}
