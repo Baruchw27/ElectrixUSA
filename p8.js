@@ -164,7 +164,7 @@ const st=document.createElement('style');st.textContent=css;document.body.append
 /* pinned glass buttons on Home (Baruch 22:20: Tasks, Jobs, Schedule, O&R always on the right side of Home; ☰ for the rest) */
 const PIN=['jobs','sites','sched','orr'];
 const MATPIN=['menachem','shauly','yossi'];   /* Baruch 11/6: Material instead of O&R on their Home */
-const pinFor=m=>m&&m.role==='worker'?['jobs','sched','mat','code']:(m&&MATPIN.includes(String(m.name||'').trim().split(/\s+/)[0].toLowerCase())?['jobs','sites','sched','mat']:PIN);   /* Baruch 10/29: field Home buttons */
+const pinFor=m=>m&&m.role==='worker'?['punch','jobs','sched','mat','code']:(m&&MATPIN.includes(String(m.name||'').trim().split(/\s+/)[0].toLowerCase())?['jobs','sites','sched','mat']:PIN);   /* Baruch 10/29: field Home buttons */
 const pcss=`
 #p8pin{position:fixed;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:59;display:none;flex-direction:column;gap:12px;align-items:center}
 body:has(#pg-home.on) #p8pin{display:flex}
