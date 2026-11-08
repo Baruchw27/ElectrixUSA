@@ -4,7 +4,8 @@ revoke all on private.fc_keys from public, anon, authenticated;
 create or replace function public.fc_set_key(p_k text, p_v text) returns text language plpgsql security definer set search_path to 'public' as $f$
 declare me jsonb := public.my_emp_data(); v text := btrim(coalesce(p_v, ''));
 begin
-  if coalesce(me->>'role','') <> 'owner' then raise exception 'only the owner can set the Fingercheck keys' using errcode = '42501'; end if;
+  if not (me->>'role' = 'owner' or (me->>'role' = 'office' and me->>'title' = 'Payroll')) then
+    raise exception 'only the owner or Payroll can set the Fingercheck keys' using errcode = '42501'; end if;
   if p_k not in ('api','usa','inc') then raise exception 'unknown key' using errcode = '22023'; end if;
   if v = '' then delete from private.fc_keys where k = p_k; return null; end if;
   if length(v) > 500 or v ~ '\s' then raise exception 'that does not look like a key' using errcode = '22023'; end if;
