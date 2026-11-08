@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
   const secretOf = (co: string) => ks[co] || (co === "usa" ? Deno.env.get("FINGERCHECK_CLIENT_SECRET") || "" : "");
   const fc = async (co: string, path: string) => {
     try {
-      const r = await fetch(FC + path, { headers: { APIKEY: KEY, ClientSecretKey: secretOf(co), Accept: "application/json" }, signal: AbortSignal.timeout(20000) });
+      const r = await fetch(FC + path, { headers: { APIKEY: KEY, ClientSecretKey: secretOf(co), Accept: "application/json" }, signal: AbortSignal.timeout(60000) });
       const txt = await r.text(); let body: unknown = txt; try { body = JSON.parse(txt); } catch (_) { /* text */ }
       return { status: r.status, body };
     } catch (e) { return { status: 0, body: String(e).slice(0, 200) }; }
