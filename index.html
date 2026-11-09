@@ -10,10 +10,10 @@
 html.exboot .top,html.exboot .pg,html.exboot .tabs,html.exboot #p2fab,html.exboot #p7fm,html.exboot #p8pin{visibility:hidden!important}
 html.exboot body{background:#f2f2f7 url(logo-light.svg) center 42%/min(62%,300px) no-repeat!important}
 @media (prefers-color-scheme:dark){html.exboot body{background:#000 url(logo-dark.svg) center 42%/min(62%,300px) no-repeat!important}}</style>
-<script>window.EX_VER='vh33c1109';</script><script src="config.js"></script>
+<script>window.EX_VER='vh34c1109';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vh33c1109"></script>
-<script src="extras.js?vh33c1109"></script>
+<script src="sync.js?vh34c1109"></script>
+<script src="extras.js?vh34c1109"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -3801,15 +3801,31 @@ function repBar(label,val,max,color,right){const pct=max?Math.round(val/max*100)
 // ── Labor cost (Baruch 11/8): what each job and each week really cost.
 // A worker's week is priced from his Fingercheck paycheck when there is one (exact), otherwise from his hourly rate
 // (overtime after 40 at 1.5×) — shown as "estimate". Travel: paid on the paycheck, or the app's own trips.
-function laborModel(from,until){const wk={},pay={};const wkey=ts=>dkey(weekStart(new Date(ts)));const lo=(from||0)-8*864e5,hi=(until===Infinity||!until)?Infinity:until+8*864e5;
-  D.punches.forEach(p=>{if(!p||p.in<lo||p.in>=hi||!payCounts(p)||!(p.out||p.away))return;const k=p.who+'|'+wkey(p.in);wk[k]=(wk[k]||0)+punchDur(p);});
+// Baruch 11/9: Reports — hours older than what the phone keeps come added up from the server (labor_hist), so 'All time'
+// opens fast. H = that answer ({state:'ok',cut,agg,raw}); punches on the phone older than H.cut are then not counted again.
+const _labHist={};
+function repHist(from,redraw){const cut=Math.floor((Date.now()-LOCAL_HIST_DAYS*864e5)/36e5)*36e5;if(from>=cut)return null;const k=Math.floor(from)+'|'+cut;let s=_labHist[k];
+  if(!s||(s.state==='fail'&&Date.now()-s.at>8000)){s=_labHist[k]={state:'loading',cut,at:Date.now(),agg:[],raw:[]};const sb=window.EX_sb;
+    if(!window.EX_REAL||!sb||!sb.rpc)s.state='fail';
+    else sb.rpc('labor_hist',{p_from:Math.floor(from),p_to:cut}).then(r=>{if(!r||r.error){s.state='fail';s.at=Date.now();}else{const rows=r.data||[];
+        s.agg=rows.filter(x=>x.kind==='agg').map(x=>({who:x.who,wk:x.wk,site:x.site||'none',h:+x.h||0,agg:true}));
+        s.raw=rows.filter(x=>x.kind==='raw'&&x.rec&&x.rec.in!=null).map(x=>x.rec);s.state='ok';}try{redraw();}catch(e){}},()=>{s.state='fail';s.at=Date.now();try{redraw();}catch(e){}});}
+  return s;}
+function repHistNote(H){if(!H||H.state==='ok')return '';return H.state==='loading'?'<div class="note" style="margin-bottom:6px">⏳ '+t('Older than 4 months — loading from the server…')+'</div>':'<div class="note" style="margin-bottom:6px;color:#c0392b">⚠ '+t('Older than 4 months — could not load it from the server (no connection?). Try again when online.')+'</div>';}
+// every hour that counts in [from,until): {who,in,site,h,wk?} — phone punches + (with H) the server's old totals
+function repPun(from,until,H){const ok=H&&H.state==='ok';const inR=ts=>ts>=from&&ts<until;const one=p=>({who:p.who,in:p.in,site:p.site||'none',h:punchDur(p)});
+  const out=D.punches.filter(p=>p&&inR(p.in)&&payCounts(p)&&(p.out||p.away)&&!(ok&&p.in<H.cut)).map(one);
+  if(ok){H.agg.forEach(a=>out.push(a));H.raw.forEach(p=>{if(inR(p.in)&&payCounts(p)&&(p.out||p.away))out.push(one(p));});}return out;}
+function laborModel(from,until,H){const wk={},pay={};const wkey=ts=>dkey(weekStart(new Date(ts)));const lo=(from||0)-8*864e5,hi=(until===Infinity||!until)?Infinity:until+8*864e5;const ok=H&&H.state==='ok';
+  D.punches.forEach(p=>{if(!p||p.in<lo||p.in>=hi||!payCounts(p)||!(p.out||p.away)||(ok&&p.in<H.cut))return;const k=p.who+'|'+wkey(p.in);wk[k]=(wk[k]||0)+punchDur(p);});
+  if(ok){H.agg.forEach(a=>{const k=a.who+'|'+a.wk;wk[k]=(wk[k]||0)+a.h;});H.raw.forEach(p=>{if(!payCounts(p)||!(p.out||p.away))return;const k=p.who+'|'+wkey(p.in);wk[k]=(wk[k]||0)+punchDur(p);});}
   (D.fcpay||[]).forEach(c=>{if(!c||c.deleted||!c.periodBegin)return;const k=c.who+'|'+c.periodBegin;const o=pay[k]||(pay[k]={wages:0,h:0,tr:0,gross:0,ot:0});o.wages+=(+c.reg||0)+(+c.ot||0);o.h+=(+c.regH||0)+(+c.otH||0);o.ot+=+c.otH||0;o.tr+=+c.travel||0;o.gross+=+c.gross||0;});
   const perHour=k=>{const P=pay[k];if(P&&P.h>0)return {r:P.wages/P.h,est:false};const who=k.split('|')[0];const r=rateOf(who);if(r==null)return {r:0,est:true,none:true};const h=wk[k]||0;const ot=Math.max(0,h-OT_AFTER);return {r:h?r*(h+0.5*ot)/h:r,est:true};};
   return {wk,pay,wkey,perHour};}
-function repLabor(from,until,money_){const L=laborModel(from,until);const inR=ts=>ts>=from&&ts<until;
-  const pun=D.punches.filter(p=>p&&inR(p.in)&&payCounts(p)&&(p.out||p.away));
+function repLabor(from,until,money_,H){const L=laborModel(from,until,H);const inR=ts=>ts>=from&&ts<until;
+  const pun=repPun(from,until,H);const wkOf=p=>p.wk||L.wkey(p.in);
   const job={};let est=false,noRate={};
-  pun.forEach(p=>{const k=p.who+'|'+L.wkey(p.in);const h=punchDur(p);const pr=L.perHour(k);if(pr.est)est=true;if(pr.none)noRate[p.who]=1;const sk=p.site||'none';const j=job[sk]||(job[sk]={h:0,lab:0,mat:0,tr:0});j.h+=h;j.lab+=h*pr.r;});
+  pun.forEach(p=>{const k=p.who+'|'+wkOf(p);const h=p.h;const pr=L.perHour(k);if(pr.est)est=true;if(pr.none)noRate[p.who]=1;const sk=p.site||'none';const j=job[sk]||(job[sk]={h:0,lab:0,mat:0,tr:0});j.h+=h;j.lab+=h*pr.r;});
   D.exps.filter(x=>x.type==='material'&&x.site&&inR(new Date(x.date+'T12:00').getTime())).forEach(x=>{const j=job[x.site]||(job[x.site]={h:0,lab:0,mat:0,tr:0});j.mat+=x.amt||0;});
   (D.travel||[]).filter(x=>travelCounts(x)&&x.site&&inR(new Date(x.date+'T12:00').getTime())).forEach(x=>{const j=job[x.site]||(job[x.site]={h:0,lab:0,mat:0,tr:0});j.tr+=travelPayOf(x);});
   const tot=j=>(money_?j.lab:0)+j.mat+(money_?j.tr:0);
@@ -3818,10 +3834,10 @@ function repLabor(from,until,money_){const L=laborModel(from,until);const inR=ts
       return '<div style="padding:6px 0;border-bottom:1px solid var(--g1)"><div class="row" style="align-items:baseline"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px">'+esc(siteName(k))+'</span><b style="white-space:nowrap">'+money(tot(j))+'</b></div>'
         +'<div style="height:6px;background:var(--g1);border-radius:3px;margin:4px 0"><div style="height:6px;width:'+Math.round(tot(j)/mx*100)+'%;background:var(--blue-mid);border-radius:3px"></div></div>'
         +'<div style="font-size:12px;color:var(--g4);display:flex;flex-wrap:wrap;gap:2px 10px"><span>'+t('Labor')+' '+j.h.toFixed(1)+' h'+(money_?' · '+money(j.lab):'')+'</span><span>'+t('Material')+' '+money(j.mat)+'</span>'+(money_&&j.tr?'<span>'+t('Travel')+' '+money(j.tr)+'</span>':'')+'</div></div>';}).join('')
-      +'<div style="font-size:11px;color:var(--g4);margin-top:6px">'+(money_?t('Labor = hours × what each man was paid that week (from his Fingercheck paycheck; if there is none yet, his hourly rate with overtime).')+(est?' '+t('Some weeks are estimates — no paycheck yet.'):''):t('Labor dollars are shown to the owner and Payroll only.'))+(Object.keys(noRate).length?' '+t('No rate for')+': '+Object.keys(noRate).map(nameOf).map(esc).join(', ')+'.':'')+'</div>'
+      +'<div style="font-size:11px;color:var(--g4);margin-top:6px">'+(money_?t('Labor = hours × what each man was paid that week (from his Fingercheck paycheck; if there is none yet, his hourly rate with overtime).')+(est?' '+t('Some weeks are estimates — no paycheck yet.'):''):t('Labor dollars are shown to the owner and Payroll only.'))+(Object.keys(noRate).length?' '+t('No rate for')+': '+Object.keys(noRate).map(nameOf).sort().map(esc).join(', ')+'.':'')+'</div>'
     :'<div class="empty">—</div>')+'</div>';
   // weeks
-  const weeks={};pun.forEach(p=>{const w=L.wkey(p.in);const o=weeks[w]||(weeks[w]={h:0,who:{}});const h=punchDur(p);o.h+=h;o.who[p.who]=(o.who[p.who]||0)+h;});
+  const weeks={};pun.forEach(p=>{const w=wkOf(p);const o=weeks[w]||(weeks[w]={h:0,who:{}});const h=p.h;o.h+=h;o.who[p.who]=(o.who[p.who]||0)+h;});
   (D.fcpay||[]).forEach(c=>{if(c&&!c.deleted&&c.periodBegin&&inR(new Date(c.periodBegin+'T12:00').getTime()))weeks[c.periodBegin]=weeks[c.periodBegin]||{h:0,who:{}};});
   const wl=Object.keys(weeks).sort().reverse().slice(0,12);
   const row=w=>{const o=weeks[w];let ot=0,wages=0,tr=0,isEst=false;Object.keys(o.who).forEach(who=>{const h=o.who[who];ot+=Math.max(0,h-OT_AFTER);const k=who+'|'+w;const P=L.pay[k];if(P){wages+=P.wages;tr+=P.tr;}else{const pr=L.perHour(k);wages+=h*pr.r;isEst=true;}});
@@ -3850,8 +3866,8 @@ function renderRep(){const m=me();if(!seesRep(m))return;
   const months=[];for(let i=5;i>=0;i--){const d=new Date(td.getFullYear(),td.getMonth()-i,1);const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');months.push({k,l:d.toLocaleDateString(LOC(),{month:'short'}),gas:0,mat:0});}
   D.exps.forEach(x=>{const mm=months.find(q=>x.date.startsWith(q.k));if(mm)mm[x.type==='gas'?'gas':'mat']+=x.amt||0;});const mMax=Math.max(1,...months.map(q=>q.gas+q.mat));
   // hours in range
-  const histN=(repRange==='year'||repRange==='all')&&typeof oldRangeNote==='function'?oldRangeNote('punches',Math.max(from,repRange==='all'?new Date(2025,0,1).getTime():new Date(td.getFullYear(),0,1).getTime()),Date.now(),renderRep):'';
-  const pun=D.punches.filter(p=>inR(p.in)&&payCounts(p));const hrsBy={},hrsSite={},hrsSiteWho={};pun.forEach(p=>{const end=p.out||p.away;if(!end)return;const d=punchDur(p);hrsBy[p.who]=(hrsBy[p.who]||0)+d;const sk=p.site||'none';hrsSite[sk]=(hrsSite[sk]||0)+d;(hrsSiteWho[sk]=hrsSiteWho[sk]||{})[p.who]=(hrsSiteWho[sk][p.who]||0)+d;});const hsk=Object.keys(hrsSite).sort((a,b)=>hrsSite[b]-hrsSite[a]);const hsMax=hsk.length?hrsSite[hsk[0]]:0;const hp=Object.keys(hrsBy).sort((a,b)=>hrsBy[b]-hrsBy[a]);const hMax=hp.length?hrsBy[hp[0]]:0;const hTot=Object.values(hrsBy).reduce((s,v)=>s+v,0);
+  const H=(repRange==='year'||repRange==='all')?repHist(Math.max(from,new Date(2025,0,1).getTime()),renderRep):null;const histN=repHistNote(H);
+  const pun=repPun(from,until,H);const hrsBy={},hrsSite={},hrsSiteWho={};pun.forEach(p=>{const d=p.h;hrsBy[p.who]=(hrsBy[p.who]||0)+d;const sk=p.site||'none';hrsSite[sk]=(hrsSite[sk]||0)+d;(hrsSiteWho[sk]=hrsSiteWho[sk]||{})[p.who]=(hrsSiteWho[sk][p.who]||0)+d;});const hsk=Object.keys(hrsSite).sort((a,b)=>hrsSite[b]-hrsSite[a]);const hsMax=hsk.length?hrsSite[hsk[0]]:0;const hp=Object.keys(hrsBy).sort((a,b)=>hrsBy[b]-hrsBy[a]);const hMax=hp.length?hrsBy[hp[0]]:0;const hTot=Object.values(hrsBy).reduce((s,v)=>s+v,0);
   const card=(title,body)=>'<div class="card"><div class="sec" style="margin-top:0">'+title+'</div>'+body+'</div>';
   document.getElementById('repBody').innerHTML=histN+
     '<div class="stats" style="grid-template-columns:1fr 1fr"><div class="st"><b style="color:var(--blue)">'+money(sum(ex))+'</b><span>'+t('Total spent')+' · '+ex.length+' '+t('receipts')+'</span></div><div class="st"><b style="color:var(--amber)">'+money(sum(gas))+'</b><span>⛽ '+t('Gas')+' · '+gas.length+'</span></div><div class="st"><b style="color:var(--green)">'+money(sum(mat))+'</b><span>🧰 '+t('Material')+' · '+mat.length+'</span></div><div class="st"><b style="color:#c0392b">'+money(sum(owed))+'</b><span>👤 '+t('Owed to guys')+' · '+owed.length+'</span></div></div>'+
@@ -3860,7 +3876,7 @@ function renderRep(){const m=me();if(!seesRep(m))return;
     card(t('By person'),people.length?people.map(id=>repBar(esc(nameOf(id))+' <span style="color:var(--g4);font-size:11px">('+byP[id].n+')</span>',byP[id].gas+byP[id].mat,pMax,'var(--blue-mid)',money(byP[id].gas+byP[id].mat)+' <span style="font-weight:400;color:var(--g4);font-size:11px">⛽'+money(byP[id].gas).replace('.00','')+'</span>')).join(''):'<div class="empty">—</div>')+
     card(t('Material by job site'),sites.length?sites.map(k=>repBar(k==='none'?t('No site'):esc(siteName(k)),byS[k],sMax,'var(--green)',money(byS[k]))).join(''):'<div class="empty">—</div>')+
     card(t('Material by store'),vends.length?vends.map(k=>repBar(esc(k),byV[k],vMax,'var(--amber)',money(byV[k]))).join(''):'<div class="empty">—</div>')+
-    repLabor(from,until,canEditHours(m))+
+    repLabor(from,until,canEditHours(m),H)+
     card(t('Hours by job')+' · '+hTot.toFixed(1)+' h',hsk.length?hsk.map(k=>'<div onclick="this.querySelector(\'.who\').style.display=this.querySelector(\'.who\').style.display===\'none\'?\'block\':\'none\'" style="cursor:pointer">'+repBar(k==='none'?t('No site'):esc(siteName(k)),hrsSite[k],hsMax,'var(--blue-mid)',hrsSite[k].toFixed(1)+' h')+'<div class="who" style="display:none;padding:0 0 6px 10px">'+Object.keys(hrsSiteWho[k]).sort((a,b)=>hrsSiteWho[k][b]-hrsSiteWho[k][a]).map(id=>'<div class="ln" style="font-size:12px"><span>'+esc(nameOf(id))+'</span><span>'+hrsSiteWho[k][id].toFixed(1)+' h</span></div>').join('')+'</div></div>').join('')+'<div style="font-size:11px;color:var(--g4)">'+t('Tap a job to see who worked there.')+'</div>':'<div class="empty">—</div>')+
     card(t('Hours by person')+' · '+hTot.toFixed(1)+' h',hp.length?hp.map(id=>repBar(esc(nameOf(id)),hrsBy[id],hMax,'var(--blue)',hrsBy[id].toFixed(1)+' h')).join(''):'<div class="empty">—</div>')+
     '<button class="btn sec2" onclick="repExport()">⬇ '+t('Export receipts (CSV)')+'</button>';
@@ -5221,7 +5237,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vh33c1109"></script><script src="scanner-v2-ui.js?vh33c1109"></script><script src="sched-v21.js?vh33c1109"></script><script src="p2.js?vh33c1109"></script><script src="p4.js?vh33c1109"></script><script src="p5.js?vh33c1109"></script><script src="p6.js?vh33c1109"></script><script src="p7.js?vh33c1109"></script><script src="p8.js?vh33c1109"></script><script src="p9.js?vh33c1109"></script><script src="p10.js?vh33c1109"></script><script src="p11.js?vh33c1109"></script><script src="p12.js?vh33c1109"></script><script src="p13.js?vh33c1109"></script><script src="p14.js?vh33c1109"></script><script src="p15.js?vh33c1109"></script>
+<script src="scanner-v2.js?vh34c1109"></script><script src="scanner-v2-ui.js?vh34c1109"></script><script src="sched-v21.js?vh34c1109"></script><script src="p2.js?vh34c1109"></script><script src="p4.js?vh34c1109"></script><script src="p5.js?vh34c1109"></script><script src="p6.js?vh34c1109"></script><script src="p7.js?vh34c1109"></script><script src="p8.js?vh34c1109"></script><script src="p9.js?vh34c1109"></script><script src="p10.js?vh34c1109"></script><script src="p11.js?vh34c1109"></script><script src="p12.js?vh34c1109"></script><script src="p13.js?vh34c1109"></script><script src="p14.js?vh34c1109"></script><script src="p15.js?vh34c1109"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
