@@ -10,10 +10,10 @@
 html.exboot .top,html.exboot .pg,html.exboot .tabs,html.exboot #p2fab,html.exboot #p7fm,html.exboot #p8pin{visibility:hidden!important}
 html.exboot body{background:#f2f2f7 url(logo-light.svg) center 42%/min(62%,300px) no-repeat!important}
 @media (prefers-color-scheme:dark){html.exboot body{background:#000 url(logo-dark.svg) center 42%/min(62%,300px) no-repeat!important}}</style>
-<script>window.EX_VER='vs51c1108';</script><script src="config.js"></script>
+<script>window.EX_VER='vs52c1108';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vs51c1108"></script>
-<script src="extras.js?vs51c1108"></script>
+<script src="sync.js?vs52c1108"></script>
+<script src="extras.js?vs52c1108"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -3189,6 +3189,7 @@ function loginLangToggle(){window.__LOGINLANG=lang()==='es'?'en':'es';try{localS
 try{window.__LOGINLANG=localStorage.getItem('ex_loginlang')||null;}catch(e){}
 // build a text as it reads for someone else (their language, their date format)
 function inLang(l,fn){const o=window.__LANG;window.__LANG=l||'en';try{return String(fn());}finally{window.__LANG=o;}}
+Object.assign(ES,{"Week": "Semana", "Day": "Día", "no OT": "sin extra", "missing punch": "falta marca", "did not punch": "no marcó", "punches": "marcas", "FIX CREW": "ARREGLAR CUADRILLA", "Cancel": "Cancelar", "Select to fix together": "Seleccionar para arreglar juntos", "hours": "horas", "overtime": "horas extra", "missing": "faltan", "week": "semana", "Sun": "Dom", "Mon": "Lun", "Tue": "Mar", "Wed": "Mié", "Thu": "Jue", "Fri": "Vie", "Sat": "Sáb"});
 Object.assign(ES,{"Today": "Hoy", "To fix": "Por arreglar", "Punch log": "Registro de marcas", "Job hours": "Horas por trabajo", "Setup": "Ajustes", "Missing punch-out": "Falta la salida", "Nothing to fix right now.": "Nada que arreglar ahora."});
 Object.assign(ES,{"Only the ones missing a punch-out":"Solo los que no marcaron la salida"});
 Object.assign(ES,{"Time cards": "Tarjetas de tiempo", "Time card": "Tarjeta de tiempo", "Select": "Seleccionar", "Last week": "Semana pasada", "missing punch-out": "falta la salida", "No crew": "Sin cuadrilla", "Fix together": "Arreglar juntos", "selected": "seleccionados", "Tap a man to open his time card. Select to fix a whole crew at once.": "Toque a un trabajador para abrir su tarjeta. Seleccione para arreglar a toda una cuadrilla a la vez.", "Add hours": "Agregar horas", "no punch-out": "sin salida", "Day": "Día", "What to do": "Qué hacer", "Set the punch-out (missing or wrong)": "Poner la salida (falta o está mal)", "Set the punch-in (first punch of the day)": "Poner la entrada (primera del día)", "Add a whole day (they did not punch at all)": "Agregar un día entero (no marcaron nada)", "In": "Entrada", "Out": "Salida", "Job": "Trabajo", "Reason": "Razón", "e.g. crew forgot to punch out": "p. ej. la cuadrilla olvidó marcar la salida", "Apply to": "Aplicar a", "fixed": "arreglados", "skipped": "saltados", "inactive": "inactivo", "Sunday": "Domingo", "Monday": "Lunes", "Tuesday": "Martes", "Wednesday": "Miércoles", "Thursday": "Jueves", "Friday": "Viernes", "Saturday": "Sábado", "Total": "Total"});
@@ -3571,28 +3572,48 @@ function tcGroups(ws){const we=ws+7*864e5;const worked=new Set(D.punches.filter(
   const rest=field.filter(e=>!e.crew||!crewOf(e.crew)).sort(srt);if(rest.length)G.push({id:'',name:t('No crew'),people:rest});return G;}
 function tcPunches(who,ws){const we=ws+7*864e5;return D.punches.filter(p=>p&&p.who===who&&p.in>=ws&&p.in<we&&!p.voided&&!p.rejected).sort((a,b)=>a.in-b.in);}
 const tcMissing=p=>!p.out&&!p.away&&Date.now()-p.in>14*36e5;
-function tcRow(e,ws,sel){const P=tcPunches(e.id,ws);const s=weekStats(e.id,new Date(ws+12*36e5));const DL=['S','M','T','W','T','F','S'];
-  const cells=DL.map((l,i)=>{const dp=P.filter(p=>dayIndex(p.in,ws)===i);const miss=dp.some(tcMissing),ed=dp.some(p=>p.edits&&p.edits.length),pend=dp.some(p=>p.pending);const h=s.days[i];
-    return '<div style="flex:1;text-align:center;border-radius:6px;padding:3px 0;'+(miss?'background:rgba(192,57,43,.14);':pend?'background:rgba(230,126,34,.14);':'')+'"><div style="font-size:10px;color:var(--g4)">'+l+'</div><div style="font-size:12.5px;font-weight:600;color:'+(miss?'#c0392b':h?'var(--g5)':'var(--g3)')+'">'+(miss?'!':h?h.toFixed(1):'·')+(ed?'<span style="color:var(--blue-mid)">•</span>':'')+'</div></div>';}).join('');
-  const nMiss=P.filter(tcMissing).length;
-  return '<div class="tcr" style="display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--g1);cursor:pointer" onclick="'+(sel?'tcToggle(\''+jsq(e.id)+'\')':'openTimeCard(\''+jsq(e.id)+'\')')+'">'
+let tcMode='week',tcDay=null;try{tcMode=localStorage.getItem('ex_tcmode')||'week';}catch(e){}
+function tcSetMode(m){tcMode=m;try{localStorage.setItem('ex_tcmode',m);}catch(e){}renderTimeCards();}
+function tcSetDay(i){tcDay=i;renderTimeCards();}
+const tcBox_=(v,l,red)=>'<div style="flex:1;background:var(--g1);border-radius:10px;padding:7px 4px;text-align:center"><b style="display:block;font-size:17px;'+(red?'color:#c0392b':'')+'">'+v+'</b><span style="font-size:11px;color:var(--g4)">'+l+'</span></div>';
+function tcRow(e,ws,sel){const P=tcPunches(e.id,ws);const s=weekStats(e.id,new Date(ws+12*36e5));
+  const dots=[0,1,2,3,4,5,6].map(i=>{const dp=P.filter(p=>dayIndex(p.in,ws)===i);const miss=dp.some(tcMissing);return '<i style="display:block;width:10px;height:10px;border-radius:3px;background:'+(miss?'#c0392b':s.days[i]?'var(--blue-mid)':'var(--g2)')+';opacity:'+(miss||!s.days[i]?1:.45)+'"></i>';}).join('');
+  const nMiss=P.filter(tcMissing).length,ed=P.some(p=>p.edits&&p.edits.length);
+  return '<div style="display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--g1);cursor:pointer" onclick="'+(sel?'tcToggle(\''+jsq(e.id)+'\')':'openTimeCard(\''+jsq(e.id)+'\')')+'">'
     +(sel?'<div style="width:22px;height:22px;border-radius:6px;border:2px solid var(--blue-mid);flex:none;display:flex;align-items:center;justify-content:center;'+(tcSel.has(e.id)?'background:var(--blue-mid);color:#fff':'')+'">'+(tcSel.has(e.id)?'✓':'')+'</div>':'')
-    +'<div style="flex:1;min-width:0"><div class="row" style="align-items:baseline"><span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(e.name)+(e.lead?' <span style="color:var(--amber)">★</span>':'')+(e.inactive?' <span style="font-size:11px;color:var(--g4)">'+t('inactive')+'</span>':'')+'</span><span style="white-space:nowrap;font-size:13px"><b>'+s.total.toFixed(2)+'</b> h'+(s.ot?' · <span style="color:#c0392b">'+s.ot.toFixed(2)+' OT</span>':'')+'</span></div>'
-    +'<div style="display:flex;gap:2px;margin-top:4px">'+cells+'</div>'+(nMiss?'<div style="font-size:11.5px;color:#c0392b;margin-top:2px">'+nMiss+' '+t('missing punch-out')+'</div>':'')+'</div></div>';}
+    +'<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(e.name)+(e.lead?' <span style="color:var(--amber)">★</span>':'')+(e.inactive?' <span style="font-size:11px;color:var(--g4)">'+t('inactive')+'</span>':'')+(ed?' <span style="color:var(--blue-mid);font-size:12px">✎</span>':'')+'</div><div style="display:flex;gap:3px;margin-top:5px">'+dots+'</div></div>'
+    +'<div style="text-align:right;white-space:nowrap"><b style="font-size:15px">'+s.total.toFixed(1)+' h</b><div style="font-size:12px;color:'+(s.ot?'#c0392b':'var(--g4)')+'">'+(s.ot?s.ot.toFixed(1)+' OT':t('no OT'))+'</div></div>'
+    +(nMiss?'<span style="font-size:11px;padding:2px 7px;border-radius:9px;background:rgba(192,57,43,.12);color:#c0392b;white-space:nowrap">'+t('missing punch')+'</span>':'')
+    +(sel?'':'<span style="color:var(--g3)">›</span>')+'</div>';}
+function tcDayRow(e,ws,di){const dp=tcPunches(e.id,ws).filter(p=>dayIndex(p.in,ws)===di);
+  const miss=dp.some(tcMissing);const first=dp[0],last=dp[dp.length-1];const h=dp.reduce((q,p)=>q+((p.out||p.away)?punchDur(p):0),0);
+  const sites=[...new Set(dp.map(p=>siteName(p.site)).filter(Boolean))];
+  return '<div style="display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--g1);cursor:pointer" onclick="openTimeCard(\''+jsq(e.id)+'\')"><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(e.name)+(e.lead?' <span style="color:var(--amber)">★</span>':'')+'</div><div style="font-size:12px;color:var(--g4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(sites.length?esc(sites.join(' · ').replace(/, NY \d{5}/g,'')):t('did not punch'))+(dp.length>1?' · '+dp.length+' '+t('punches'):'')+'</div></div>'
+    +(dp.length?'<div style="font-size:14px;white-space:nowrap">'+fmtT(first.in)+' – '+(miss?'<b style="color:#c0392b">?</b>':fmtT(last.out||last.away))+'</div><div style="width:42px;text-align:right;font-weight:700;font-size:15px">'+(miss?'':h.toFixed(1))+'</div>':'<div style="color:var(--g3);font-size:13px">—</div>')+'</div>';}
 function renderTimeCards(){const box=document.getElementById('tcBox');if(!box)return;const m=me();if(!canEditHours(m)){box.innerHTML='';return;}
-  const ws=tcStart(),we=ws+7*864e5;const G=tcGroups(ws);const sel=!!tcSel;
+  const ws=tcStart(),we=ws+7*864e5;const G=tcGroups(ws);const sel=!!tcSel&&tcMode==='week';
+  if(tcDay==null){const td=dayIndex(Date.now(),ws);tcDay=td>=0&&td<7?Math.max(1,td-1):1;}
   const all=G.flatMap(g=>g.people);let tot=0,ot=0,miss=0;all.forEach(e=>{const s=weekStats(e.id,new Date(ws+12*36e5));tot+=s.total;ot+=s.ot;miss+=tcPunches(e.id,ws).filter(tcMissing).length;});
   const hn=typeof oldRangeNote==='function'?oldRangeNote('punches',ws,we,renderTimeCards):'';
   const lbl=new Date(ws).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' – '+new Date(we-864e5).toLocaleDateString(LOC(),{month:'short',day:'numeric'});
-  box.innerHTML='<div class="card" style="padding:12px 14px">'
-    +'<div class="row" style="align-items:center"><b style="font-size:16px">'+t('Time cards')+'</b><button class="btn" style="width:auto;padding:7px 12px;font-size:13px;'+(sel?'':'background:var(--g1);color:var(--g5)')+'" onclick="tcSelMode()">'+(sel?t('Done'):t('Select'))+'</button></div>'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0 4px"><button class="btn" style="width:auto;padding:6px 14px;background:var(--g1);color:var(--g5)" onclick="tcMove(-1)">‹</button><div style="text-align:center"><b>'+lbl+'</b><div style="font-size:11.5px;color:var(--g4)">'+(ws===weekStart().getTime()?t('This week'):ws===weekStart().getTime()-7*864e5?t('Last week'):'')+'</div></div><button class="btn" style="width:auto;padding:6px 14px;background:var(--g1);color:var(--g5)" onclick="tcMove(1)">›</button></div>'
-    +'<div style="display:flex;gap:14px;font-size:13px;margin:4px 0 6px;flex-wrap:wrap"><span><b>'+tot.toFixed(2)+'</b> h</span><span style="color:'+(ot?'#c0392b':'var(--g4)')+'">'+ot.toFixed(2)+' OT</span><span style="color:'+(miss?'#c0392b':'var(--g4)')+'">'+miss+' '+t('missing punch-out')+'</span></div>'+hn
-    +G.map(g=>{const ids=g.people.map(e=>e.id);const allOn=sel&&ids.every(id=>tcSel.has(id));
-      return '<div style="margin-top:8px"><div class="row" style="align-items:center;padding:4px 0">'+(sel?'<span style="display:flex;gap:8px;align-items:center;cursor:pointer" onclick="tcToggleCrew(\''+jsq(g.id)+'\')"><span style="width:20px;height:20px;border-radius:6px;border:2px solid var(--blue-mid);display:inline-flex;align-items:center;justify-content:center;'+(allOn?'background:var(--blue-mid);color:#fff':'')+'">'+(allOn?'✓':'')+'</span><b style="font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:var(--g4)">'+esc(g.name)+'</b></span>':'<b style="font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:var(--g4)">'+esc(g.name)+'</b>')+'<span style="font-size:12px;color:var(--g4)">'+g.people.reduce((q,e)=>q+weekStats(e.id,new Date(ws+12*36e5)).total,0).toFixed(1)+' h</span></div>'
-        +g.people.map(e=>tcRow(e,ws,sel)).join('')+'</div>';}).join('')
-    +(sel?'<div style="position:sticky;bottom:8px;margin-top:10px"><button class="btn" '+(tcSel.size?'':'disabled ')+'onclick="openBulkFix()">'+t('Fix together')+' · '+tcSel.size+' '+t('selected')+'</button></div>':'<div style="font-size:11.5px;color:var(--g4);margin-top:8px">'+t('Tap a man to open his time card. Select to fix a whole crew at once.')+'</div>')
-    +'</div>';}
+  const nav=(fn,txt,sub)=>'<div style="display:flex;align-items:center;justify-content:space-between"><button class="btn" style="width:auto;padding:6px 14px;background:var(--g1);color:var(--g5)" onclick="'+fn+'(-1)">‹</button><div style="text-align:center"><b style="font-size:16px">'+txt+'</b><div style="font-size:11.5px;color:var(--g4)">'+sub+'</div></div><button class="btn" style="width:auto;padding:6px 14px;background:var(--g1);color:var(--g5)" onclick="'+fn+'(1)">›</button></div>';
+  const DL=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];const dayDate=new Date(ws+tcDay*864e5+12*36e5);
+  let head='<div class="card" style="padding:12px 14px">'
+    +'<div style="display:flex;gap:6px;margin-bottom:10px;background:var(--g1);border-radius:10px;padding:3px">'+[['week',t('Week')],['day',t('Day')]].map(([k,l])=>'<div onclick="tcSetMode(\''+k+'\')" style="flex:1;text-align:center;padding:6px 0;border-radius:8px;font-weight:600;font-size:13.5px;cursor:pointer;'+(tcMode===k?'background:var(--g5);color:var(--g0,#fff)':'color:var(--g4)')+'">'+l+'</div>').join('')+'</div>'
+    +(tcMode==='week'?nav('tcMove',lbl,ws===weekStart().getTime()?t('This week'):ws===weekStart().getTime()-7*864e5?t('Last week'):'')
+       +'<div style="display:flex;gap:6px;margin-top:10px">'+tcBox_(tot.toFixed(1),t('hours'))+tcBox_(ot.toFixed(1),t('overtime'),ot>0)+tcBox_(miss,t('missing'),miss>0)+'</div>'
+     :nav('tcDayMove',dayDate.toLocaleDateString(LOC(),{weekday:'long',month:'short',day:'numeric'}),t('week')+' '+lbl)
+       +'<div style="display:flex;gap:4px;margin-top:10px">'+DL.map((d,i)=>'<div onclick="tcSetDay('+i+')" style="flex:1;text-align:center;padding:6px 0;border-radius:8px;font-size:12.5px;cursor:pointer;'+(i===tcDay?'background:var(--g5);color:var(--g0,#fff)':'background:var(--g1)')+'">'+t(d).slice(0,2)+'</div>').join('')+'</div>')
+    +'</div>'+hn;
+  const body=G.map(g=>{const ids=g.people.map(e=>e.id);const allOn=sel&&ids.every(id=>tcSel.has(id));
+      const gh=tcMode==='week'?g.people.reduce((q,e)=>q+weekStats(e.id,new Date(ws+12*36e5)).total,0):g.people.reduce((q,e)=>q+tcPunches(e.id,ws).filter(p=>dayIndex(p.in,ws)===tcDay&&(p.out||p.away)).reduce((a,p)=>a+punchDur(p),0),0);
+      const right=tcMode==='day'?'<span style="font-size:12px;color:var(--blue-mid);font-weight:700;cursor:pointer;letter-spacing:.3px" onclick="tcFixCrew(\''+jsq(g.id)+'\')">'+t('FIX CREW')+'</span>':'<span style="font-size:12px;color:var(--g4)">'+gh.toFixed(1)+' h</span>';
+      return '<div class="row" style="align-items:center;margin:12px 2px 4px">'+(sel?'<span style="display:flex;gap:8px;align-items:center;cursor:pointer" onclick="tcToggleCrew(\''+jsq(g.id)+'\')"><span style="width:20px;height:20px;border-radius:6px;border:2px solid var(--blue-mid);display:inline-flex;align-items:center;justify-content:center;'+(allOn?'background:var(--blue-mid);color:#fff':'')+'">'+(allOn?'✓':'')+'</span>':'<span>')+'<b style="font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--g4)">'+esc(g.name)+'</b></span>'+right+'</div>'
+        +'<div class="card" style="padding:0 14px">'+g.people.map(e=>tcMode==='week'?tcRow(e,ws,sel):tcDayRow(e,ws,tcDay)).join('').replace('border-top:1px solid var(--g1)','border-top:none')+'</div>';}).join('');
+  const foot=tcMode==='week'?(sel?'<div style="position:sticky;bottom:8px;margin-top:10px"><button class="btn" '+(tcSel.size?'':'disabled ')+'onclick="openBulkFix()">'+t('Fix together')+' · '+tcSel.size+' '+t('selected')+'</button></div><button class="btn sec2" style="margin-top:8px" onclick="tcSelMode()">'+t('Cancel')+'</button>':'<button class="btn sec2" style="margin-top:12px" onclick="tcSelMode()">'+t('Select to fix together')+'</button>'):'';
+  box.innerHTML=head+body+foot;}
+function tcDayMove(n){let d=tcDay+n;if(d<0){tcMove(-1);tcDay=6;}else if(d>6){tcMove(1);tcDay=0;}else tcDay=d;renderTimeCards();}
+function tcFixCrew(cid){const g=tcGroups(tcStart()).find(x=>x.id===cid);if(!g)return;tcSel=new Set(g.people.map(e=>e.id));openBulkFix();try{document.getElementById('bfDay').selectedIndex=tcDay;}catch(e){}}
 function tcSelMode(){tcSel=tcSel?null:new Set();renderTimeCards();}
 function tcToggle(id){if(!tcSel)return;tcSel.has(id)?tcSel.delete(id):tcSel.add(id);renderTimeCards();}
 function tcToggleCrew(cid){if(!tcSel)return;const g=tcGroups(tcStart()).find(x=>x.id===cid);if(!g)return;const ids=g.people.map(e=>e.id);const on=ids.every(id=>tcSel.has(id));ids.forEach(id=>on?tcSel.delete(id):tcSel.add(id));renderTimeCards();}
@@ -5442,7 +5463,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vs51c1108"></script><script src="scanner-v2-ui.js?vs51c1108"></script><script src="sched-v21.js?vs51c1108"></script><script src="p2.js?vs51c1108"></script><script src="p4.js?vs51c1108"></script><script src="p5.js?vs51c1108"></script><script src="p6.js?vs51c1108"></script><script src="p7.js?vs51c1108"></script><script src="p8.js?vs51c1108"></script><script src="p9.js?vs51c1108"></script><script src="p10.js?vs51c1108"></script><script src="p11.js?vs51c1108"></script><script src="p12.js?vs51c1108"></script><script src="p13.js?vs51c1108"></script><script src="p14.js?vs51c1108"></script><script src="p15.js?vs51c1108"></script><script src="selftest.js?vs51c1108"></script>
+<script src="scanner-v2.js?vs52c1108"></script><script src="scanner-v2-ui.js?vs52c1108"></script><script src="sched-v21.js?vs52c1108"></script><script src="p2.js?vs52c1108"></script><script src="p4.js?vs52c1108"></script><script src="p5.js?vs52c1108"></script><script src="p6.js?vs52c1108"></script><script src="p7.js?vs52c1108"></script><script src="p8.js?vs52c1108"></script><script src="p9.js?vs52c1108"></script><script src="p10.js?vs52c1108"></script><script src="p11.js?vs52c1108"></script><script src="p12.js?vs52c1108"></script><script src="p13.js?vs52c1108"></script><script src="p14.js?vs52c1108"></script><script src="p15.js?vs52c1108"></script><script src="selftest.js?vs52c1108"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
