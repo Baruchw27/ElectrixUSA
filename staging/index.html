@@ -10,10 +10,10 @@
 html.exboot .top,html.exboot .pg,html.exboot .tabs,html.exboot #p2fab,html.exboot #p7fm,html.exboot #p8pin{visibility:hidden!important}
 html.exboot body{background:#f2f2f7 url(logo-light.svg) center 42%/min(62%,300px) no-repeat!important}
 @media (prefers-color-scheme:dark){html.exboot body{background:#000 url(logo-dark.svg) center 42%/min(62%,300px) no-repeat!important}}</style>
-<script>window.EX_VER='vs52c1108';</script><script src="config.js"></script>
+<script>window.EX_VER='vs53c1108';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vs52c1108"></script>
-<script src="extras.js?vs52c1108"></script>
+<script src="sync.js?vs53c1108"></script>
+<script src="extras.js?vs53c1108"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -3585,6 +3585,17 @@ function tcRow(e,ws,sel){const P=tcPunches(e.id,ws);const s=weekStats(e.id,new D
     +'<div style="text-align:right;white-space:nowrap"><b style="font-size:15px">'+s.total.toFixed(1)+' h</b><div style="font-size:12px;color:'+(s.ot?'#c0392b':'var(--g4)')+'">'+(s.ot?s.ot.toFixed(1)+' OT':t('no OT'))+'</div></div>'
     +(nMiss?'<span style="font-size:11px;padding:2px 7px;border-radius:9px;background:rgba(192,57,43,.12);color:#c0392b;white-space:nowrap">'+t('missing punch')+'</span>':'')
     +(sel?'':'<span style="color:var(--g3)">›</span>')+'</div>';}
+function tcTable(people,ws,sel){const DL=['S','M','T','W','T','F','S'];
+  const th='<tr>'+(sel?'<th></th>':'')+'<th style="text-align:left"></th>'+DL.map(d=>'<th style="font-size:10.5px;color:var(--g4);font-weight:600;padding:6px 0">'+d+'</th>').join('')+'<th style="font-size:10.5px;color:var(--g4);font-weight:600">'+t('Total')+'</th></tr>';
+  const rows=people.map((e,ri)=>{const P=tcPunches(e.id,ws);const s=weekStats(e.id,new Date(ws+12*36e5));const bt=ri?'border-top:1px solid var(--g1);':'';
+    const cells=[0,1,2,3,4,5,6].map(i=>{const dp=P.filter(p=>dayIndex(p.in,ws)===i);const miss=dp.some(tcMissing),ed=dp.some(p=>p.edits&&p.edits.length);const h=s.days[i];
+      return '<td style="'+bt+'text-align:center;padding:9px 0;font-size:12.5px;'+(miss?'color:#c0392b;font-weight:800':h?'':'color:var(--g3)')+'">'+(miss?'!':h?h.toFixed(1):'·')+(ed?'<span style="color:var(--blue-mid)">•</span>':'')+'</td>';}).join('');
+    const nm=e.name.split(' ')[0];
+    return '<tr style="cursor:pointer" onclick="'+(sel?'tcToggle(\''+jsq(e.id)+'\')':'openTimeCard(\''+jsq(e.id)+'\')')+'">'
+      +(sel?'<td style="'+bt+'width:26px"><div style="width:20px;height:20px;border-radius:6px;border:2px solid var(--blue-mid);display:flex;align-items:center;justify-content:center;font-size:12px;'+(tcSel.has(e.id)?'background:var(--blue-mid);color:#fff':'')+'">'+(tcSel.has(e.id)?'✓':'')+'</div></td>':'')
+      +'<td style="'+bt+'text-align:left;font-weight:600;font-size:13px;white-space:nowrap;max-width:92px;overflow:hidden;text-overflow:ellipsis;padding:9px 4px 9px 0">'+esc(nm)+(e.lead?' <span style="color:var(--amber)">★</span>':'')+'</td>'+cells
+      +'<td style="'+bt+'text-align:right;white-space:nowrap;padding-left:4px"><b style="font-size:13.5px">'+s.total.toFixed(1)+'</b>'+(s.ot?'<div style="font-size:10.5px;color:#c0392b">+'+s.ot.toFixed(1)+' OT</div>':'')+'</td></tr>';}).join('');
+  return '<table style="width:100%;border-collapse:collapse">'+th+rows+'</table>';}
 function tcDayRow(e,ws,di){const dp=tcPunches(e.id,ws).filter(p=>dayIndex(p.in,ws)===di);
   const miss=dp.some(tcMissing);const first=dp[0],last=dp[dp.length-1];const h=dp.reduce((q,p)=>q+((p.out||p.away)?punchDur(p):0),0);
   const sites=[...new Set(dp.map(p=>siteName(p.site)).filter(Boolean))];
@@ -3609,7 +3620,7 @@ function renderTimeCards(){const box=document.getElementById('tcBox');if(!box)re
       const gh=tcMode==='week'?g.people.reduce((q,e)=>q+weekStats(e.id,new Date(ws+12*36e5)).total,0):g.people.reduce((q,e)=>q+tcPunches(e.id,ws).filter(p=>dayIndex(p.in,ws)===tcDay&&(p.out||p.away)).reduce((a,p)=>a+punchDur(p),0),0);
       const right=tcMode==='day'?'<span style="font-size:12px;color:var(--blue-mid);font-weight:700;cursor:pointer;letter-spacing:.3px" onclick="tcFixCrew(\''+jsq(g.id)+'\')">'+t('FIX CREW')+'</span>':'<span style="font-size:12px;color:var(--g4)">'+gh.toFixed(1)+' h</span>';
       return '<div class="row" style="align-items:center;margin:12px 2px 4px">'+(sel?'<span style="display:flex;gap:8px;align-items:center;cursor:pointer" onclick="tcToggleCrew(\''+jsq(g.id)+'\')"><span style="width:20px;height:20px;border-radius:6px;border:2px solid var(--blue-mid);display:inline-flex;align-items:center;justify-content:center;'+(allOn?'background:var(--blue-mid);color:#fff':'')+'">'+(allOn?'✓':'')+'</span>':'<span>')+'<b style="font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--g4)">'+esc(g.name)+'</b></span>'+right+'</div>'
-        +'<div class="card" style="padding:0 14px">'+g.people.map(e=>tcMode==='week'?tcRow(e,ws,sel):tcDayRow(e,ws,tcDay)).join('').replace('border-top:1px solid var(--g1)','border-top:none')+'</div>';}).join('');
+        +'<div class="card" style="padding:'+(tcMode==='week'?'4px 12px':'0 14px')+'">'+(tcMode==='week'?tcTable(g.people,ws,sel):g.people.map(e=>tcDayRow(e,ws,tcDay)).join('').replace('border-top:1px solid var(--g1)','border-top:none'))+'</div>';}).join('');
   const foot=tcMode==='week'?(sel?'<div style="position:sticky;bottom:8px;margin-top:10px"><button class="btn" '+(tcSel.size?'':'disabled ')+'onclick="openBulkFix()">'+t('Fix together')+' · '+tcSel.size+' '+t('selected')+'</button></div><button class="btn sec2" style="margin-top:8px" onclick="tcSelMode()">'+t('Cancel')+'</button>':'<button class="btn sec2" style="margin-top:12px" onclick="tcSelMode()">'+t('Select to fix together')+'</button>'):'';
   box.innerHTML=head+body+foot;}
 function tcDayMove(n){let d=tcDay+n;if(d<0){tcMove(-1);tcDay=6;}else if(d>6){tcMove(1);tcDay=0;}else tcDay=d;renderTimeCards();}
@@ -5463,7 +5474,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vs52c1108"></script><script src="scanner-v2-ui.js?vs52c1108"></script><script src="sched-v21.js?vs52c1108"></script><script src="p2.js?vs52c1108"></script><script src="p4.js?vs52c1108"></script><script src="p5.js?vs52c1108"></script><script src="p6.js?vs52c1108"></script><script src="p7.js?vs52c1108"></script><script src="p8.js?vs52c1108"></script><script src="p9.js?vs52c1108"></script><script src="p10.js?vs52c1108"></script><script src="p11.js?vs52c1108"></script><script src="p12.js?vs52c1108"></script><script src="p13.js?vs52c1108"></script><script src="p14.js?vs52c1108"></script><script src="p15.js?vs52c1108"></script><script src="selftest.js?vs52c1108"></script>
+<script src="scanner-v2.js?vs53c1108"></script><script src="scanner-v2-ui.js?vs53c1108"></script><script src="sched-v21.js?vs53c1108"></script><script src="p2.js?vs53c1108"></script><script src="p4.js?vs53c1108"></script><script src="p5.js?vs53c1108"></script><script src="p6.js?vs53c1108"></script><script src="p7.js?vs53c1108"></script><script src="p8.js?vs53c1108"></script><script src="p9.js?vs53c1108"></script><script src="p10.js?vs53c1108"></script><script src="p11.js?vs53c1108"></script><script src="p12.js?vs53c1108"></script><script src="p13.js?vs53c1108"></script><script src="p14.js?vs53c1108"></script><script src="p15.js?vs53c1108"></script><script src="selftest.js?vs53c1108"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
