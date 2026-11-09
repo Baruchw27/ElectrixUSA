@@ -651,6 +651,9 @@ window.EX_ready=()=>ready;
 // so it is never uploaded again and can be forgotten safely later.
 const holdUntil={};
 window.EX_loadRange=async function(coll,from,to,opts){opts=opts||{};if(!REAL||!sb||!ready||!st.online)return {ok:false,offline:true};
+  // Baruch 11/8: a long period came back cut off (the server sends at most a few thousand rows, picked by id) — so a man's
+  // year showed only a handful of days. Long periods are now fetched one month at a time, each one complete.
+  if(!opts._part&&to-from>35*864e5){let n=0,full=false;for(let a=from;a<to;){const b=Math.min(to,a+31*864e5);const r=await window.EX_loadRange(coll,a,b,Object.assign({},opts,{_part:true,limit:5000}));if(!r.ok)return r;n+=r.n||0;full=full||r.full;a=b;}return {ok:true,n,full};}
   try{const r=await withTO(sb.rpc('history_records',{p_coll:coll,p_from:Math.floor(from),p_to:Math.ceil(to),p_who:opts.who||null,p_site:opts.site||null,p_limit:opts.limit||3000}),20000,'history');
     if(r.error)return {ok:false,error:r.error.message||'error'};const rows=(r.data||[]).filter(x=>x&&x.coll===coll&&!queue[x.coll+'\u0001'+x.id]);
     const until=Date.now()+4*3600000;rows.forEach(x=>{holdUntil[x.coll+'\u0001'+x.id]=until;});
