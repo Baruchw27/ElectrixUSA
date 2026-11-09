@@ -10,10 +10,10 @@
 html.exboot .top,html.exboot .pg,html.exboot .tabs,html.exboot #p2fab,html.exboot #p7fm,html.exboot #p8pin{visibility:hidden!important}
 html.exboot body{background:#f2f2f7 url(logo-light.svg) center 42%/min(62%,300px) no-repeat!important}
 @media (prefers-color-scheme:dark){html.exboot body{background:#000 url(logo-dark.svg) center 42%/min(62%,300px) no-repeat!important}}</style>
-<script>window.EX_VER='vh32c1109';</script><script src="config.js"></script>
+<script>window.EX_VER='vh33c1109';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vh32c1109"></script>
-<script src="extras.js?vh32c1109"></script>
+<script src="sync.js?vh33c1109"></script>
+<script src="extras.js?vh33c1109"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -3850,7 +3850,7 @@ function renderRep(){const m=me();if(!seesRep(m))return;
   const months=[];for(let i=5;i>=0;i--){const d=new Date(td.getFullYear(),td.getMonth()-i,1);const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');months.push({k,l:d.toLocaleDateString(LOC(),{month:'short'}),gas:0,mat:0});}
   D.exps.forEach(x=>{const mm=months.find(q=>x.date.startsWith(q.k));if(mm)mm[x.type==='gas'?'gas':'mat']+=x.amt||0;});const mMax=Math.max(1,...months.map(q=>q.gas+q.mat));
   // hours in range
-  const histN=(repRange==='year'||repRange==='all')&&typeof oldRangeNote==='function'?oldRangeNote('punches',Math.max(from,new Date(td.getFullYear()-(repRange==='all'?5:0),0,1).getTime()),Date.now(),renderRep):'';
+  const histN=(repRange==='year'||repRange==='all')&&typeof oldRangeNote==='function'?oldRangeNote('punches',Math.max(from,repRange==='all'?new Date(2025,0,1).getTime():new Date(td.getFullYear(),0,1).getTime()),Date.now(),renderRep):'';
   const pun=D.punches.filter(p=>inR(p.in)&&payCounts(p));const hrsBy={},hrsSite={},hrsSiteWho={};pun.forEach(p=>{const end=p.out||p.away;if(!end)return;const d=punchDur(p);hrsBy[p.who]=(hrsBy[p.who]||0)+d;const sk=p.site||'none';hrsSite[sk]=(hrsSite[sk]||0)+d;(hrsSiteWho[sk]=hrsSiteWho[sk]||{})[p.who]=(hrsSiteWho[sk][p.who]||0)+d;});const hsk=Object.keys(hrsSite).sort((a,b)=>hrsSite[b]-hrsSite[a]);const hsMax=hsk.length?hrsSite[hsk[0]]:0;const hp=Object.keys(hrsBy).sort((a,b)=>hrsBy[b]-hrsBy[a]);const hMax=hp.length?hrsBy[hp[0]]:0;const hTot=Object.values(hrsBy).reduce((s,v)=>s+v,0);
   const card=(title,body)=>'<div class="card"><div class="sec" style="margin-top:0">'+title+'</div>'+body+'</div>';
   document.getElementById('repBody').innerHTML=histN+
@@ -5221,7 +5221,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vh32c1109"></script><script src="scanner-v2-ui.js?vh32c1109"></script><script src="sched-v21.js?vh32c1109"></script><script src="p2.js?vh32c1109"></script><script src="p4.js?vh32c1109"></script><script src="p5.js?vh32c1109"></script><script src="p6.js?vh32c1109"></script><script src="p7.js?vh32c1109"></script><script src="p8.js?vh32c1109"></script><script src="p9.js?vh32c1109"></script><script src="p10.js?vh32c1109"></script><script src="p11.js?vh32c1109"></script><script src="p12.js?vh32c1109"></script><script src="p13.js?vh32c1109"></script><script src="p14.js?vh32c1109"></script><script src="p15.js?vh32c1109"></script>
+<script src="scanner-v2.js?vh33c1109"></script><script src="scanner-v2-ui.js?vh33c1109"></script><script src="sched-v21.js?vh33c1109"></script><script src="p2.js?vh33c1109"></script><script src="p4.js?vh33c1109"></script><script src="p5.js?vh33c1109"></script><script src="p6.js?vh33c1109"></script><script src="p7.js?vh33c1109"></script><script src="p8.js?vh33c1109"></script><script src="p9.js?vh33c1109"></script><script src="p10.js?vh33c1109"></script><script src="p11.js?vh33c1109"></script><script src="p12.js?vh33c1109"></script><script src="p13.js?vh33c1109"></script><script src="p14.js?vh33c1109"></script><script src="p15.js?vh33c1109"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,

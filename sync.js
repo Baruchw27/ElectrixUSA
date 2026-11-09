@@ -378,13 +378,17 @@ async function refreshAll(){if(refreshing||!REAL||!ready||!st.online)return;refr
 window.EX_refreshAll=refreshAll;
 function applyRows(rows,{replace}){applying=true;try{
   if(replace){colls().forEach(k=>{if(k==='_')return;D[k]=Array.isArray(D[k])?[]:{};});}
-  rows.forEach(r=>{if(r.deleted){if(r.coll==='_')delete D[r.id];else delRecord(r.coll,r.id);return;}
+  // Baruch 11/9: Reports 'all time' brought in ~11,000 old punches and froze the phone — looking each one up in a long list
+  // was slow (every row searched the whole list). Many rows at once now use a quick lookup by id.
+  const big=rows.length>50,ix={};const setRec=(c,id,d)=>{const v=D[c];if(!big||!Array.isArray(v))return setRecord(c,id,d);let m=ix[c];if(!m){m=new Map();v.forEach((x,i)=>{if(x&&x.id!=null)m.set(x.id,i);});ix[c]=m;}
+    const i=m.get(id);if(i!=null&&v[i]&&v[i].id===id){const o=v[i];Object.keys(o).forEach(q=>delete o[q]);Object.assign(o,d);}else{m.set(id,v.length);v.push(d);}};
+  rows.forEach(r=>{if(r.deleted){if(r.coll==='_')delete D[r.id];else{delRecord(r.coll,r.id);delete ix[r.coll];}return;}
     if(r.coll==='_'){D[r.id]=r.data&&'v' in r.data?r.data.v:r.data;return;}
     if(!(r.coll in D))D[r.coll]=/^[a-z]+$/.test(r.coll)&&!['sched','mylist','punchlists','keepLabels','base'].includes(r.coll)?[]:{};
     // stock history rows are written by the server without an id inside: keep the id, or the phone's copy loses it
     let data=r.data;if(data&&typeof data==='object'&&!Array.isArray(data)&&!data.id&&Array.isArray(D[r.coll]))data=Object.assign({id:r.id},data);   // Baruch 10/27: a record the server wrote without an id inside (Trello jobs) must keep its id, or each phone saves it again as a new copyif(r.coll==='emps'){const old=liveRecord('emps',r.id);if(old&&old.pass)data.pass=old.pass;}
     if(!replace&&(r.coll==='keep'||r.coll==='mats'))data=listKeepNewer(liveRecord(r.coll,r.id),data);
-    setRecord(r.coll,r.id,data);if(r.coll==='stock'&&data&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,data.qty,null,data.qv);
+    setRec(r.coll,r.id,data);if(r.coll==='stock'&&data&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,data.qty,null,data.qv);
     if(r.coll==='stockLog'&&window.EX_stockLogSeen){try{window.EX_stockLogSeen(r.id);}catch(e){}}});
   }finally{applying=false;}}
 function applyPendingQueue(){Object.values(queue).forEach(o=>{applying=true;try{if(o.coll==='_'){if(o.del)delete D[o.id];else D[o.id]=o.data.v;}else if(o.del)delRecord(o.coll,o.id);else setRecord(o.coll,o.id,o.data);}finally{applying=false;}});}
@@ -653,11 +657,14 @@ const holdUntil={};
 window.EX_loadRange=async function(coll,from,to,opts){opts=opts||{};if(!REAL||!sb||!ready||!st.online)return {ok:false,offline:true};
   // Baruch 11/8: a long period came back cut off (the server sends at most a few thousand rows, picked by id) — so a man's
   // year showed only a handful of days. Long periods are now fetched one month at a time, each one complete.
-  if(!opts._part&&to-from>35*864e5){let n=0,full=false;for(let a=from;a<to;){const b=Math.min(to,a+31*864e5);const r=await window.EX_loadRange(coll,a,b,Object.assign({},opts,{_part:true,limit:5000}));if(!r.ok)return r;n+=r.n||0;full=full||r.full;a=b;}return {ok:true,n,full};}
+  // Baruch 11/9: 'all time' was slow — parts are now 2 months, 3 at a time, and the phone copy is saved once at the end.
+  if(!opts._part&&to-from>35*864e5){const parts=[];for(let a=from;a<to;){const b=Math.min(to,a+61*864e5);parts.push([a,b]);a=b;}let n=0,full=false,bad=null,k=0;
+    const run=async()=>{while(k<parts.length&&!bad){const [a,b]=parts[k++];const r=await window.EX_loadRange(coll,a,b,Object.assign({},opts,{_part:true,_noSave:true,limit:5000}));if(!r.ok){bad=r;return;}n+=r.n||0;full=full||r.full;}};
+    await Promise.all([run(),run(),run()]);if(n)localSave();return bad||{ok:true,n,full};}
   try{const r=await withTO(sb.rpc('history_records',{p_coll:coll,p_from:Math.floor(from),p_to:Math.ceil(to),p_who:opts.who||null,p_site:opts.site||null,p_limit:opts.limit||3000}),20000,'history');
     if(r.error)return {ok:false,error:r.error.message||'error'};const rows=(r.data||[]).filter(x=>x&&x.coll===coll&&!queue[x.coll+'\u0001'+x.id]);
     const until=Date.now()+4*3600000;rows.forEach(x=>{holdUntil[x.coll+'\u0001'+x.id]=until;});
-    if(rows.length){applyRows(rows,{replace:false});rows.forEach(x=>{(snap[x.coll]=snap[x.coll]||{})[x.id]=canon(upStrip(x.coll,x.data));});localSave();}
+    if(rows.length){applyRows(rows,{replace:false});rows.forEach(x=>{(snap[x.coll]=snap[x.coll]||{})[x.id]=canon(upStrip(x.coll,x.data));});if(!opts._noSave)localSave();}
     return {ok:true,n:rows.length,full:(r.data||[]).length>=(opts.limit||3000)};}catch(e){return {ok:false,error:(e&&e.message)||'error'};}};
 window.EX_canForget=function(coll,rec){if(!rec||!rec.id)return false;if((holdUntil[coll+'\u0001'+rec.id]||0)>Date.now())return false;if(queue[coll+'\u0001'+rec.id])return false;const s=snap[coll]&&snap[coll][rec.id];return !!s&&s===canon(upStrip(coll,rec));};
 // the phone keeps only recent history (the server keeps everything): forget old rows here without deleting them anywhere
