@@ -10,10 +10,10 @@
 html.exboot .top,html.exboot .pg,html.exboot .tabs,html.exboot #p2fab,html.exboot #p7fm,html.exboot #p8pin{visibility:hidden!important}
 html.exboot body{background:#f2f2f7 url(logo-light.svg) center 42%/min(62%,300px) no-repeat!important}
 @media (prefers-color-scheme:dark){html.exboot body{background:#000 url(logo-dark.svg) center 42%/min(62%,300px) no-repeat!important}}</style>
-<script>window.EX_VER='vs47c1108';</script><script src="config.js"></script>
+<script>window.EX_VER='vs48c1108';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vs47c1108"></script>
-<script src="extras.js?vs47c1108"></script>
+<script src="sync.js?vs48c1108"></script>
+<script src="extras.js?vs48c1108"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -3513,7 +3513,8 @@ function lunchInfo(p){const tot=lunchMs(p);if(!tot)return {lunch:0,paid:0,unpaid
 // Baruch 11/8: pay starts at 8:00 — a clock-in before 8 counts from 8. Exact minutes, no rounding.
 const PAY_FROM_H=8;function payStart(p){if(p&&p.src==='fingercheck')return p.in;   // history from Fingercheck: paid as Fingercheck counted it
   const d=new Date(p.in);d.setHours(PAY_FROM_H,0,0,0);return Math.max(p.in,d.getTime());}
-function punchDur(p){const end=p.out||p.away||Date.now();let d=Math.max(0,end-payStart(p))/3600000;d-=lunchInfo(p).unpaid/3600000;return Math.max(0,d);}
+function punchDur(p){if(p&&p.src==='fingercheck'&&p.out)return Math.max(0,(p.out-p.in)/3600000);   // Fingercheck history has no breaks: quick path
+  const end=p.out||p.away||Date.now();let d=Math.max(0,end-payStart(p))/3600000;d-=lunchInfo(p).unpaid/3600000;return Math.max(0,d);}
 // material-run minutes inside one clock entry (shown for information; paid, never deducted)
 function runMs(p){if(!p)return 0;return _ivLen(_lunchParts(p).runT);}
 // one person's day: worked (clock time, material runs included), paid lunch, unpaid lunch, payable (worked minus unpaid lunch) — hours
@@ -3870,12 +3871,12 @@ function repBar(label,val,max,color,right){const pct=max?Math.round(val/max*100)
 // ── Labor cost (Baruch 11/8): what each job and each week really cost.
 // A worker's week is priced from his Fingercheck paycheck when there is one (exact), otherwise from his hourly rate
 // (overtime after 40 at 1.5×) — shown as "estimate". Travel: paid on the paycheck, or the app's own trips.
-function laborModel(){const wk={},pay={};const wkey=ts=>dkey(weekStart(new Date(ts)));
-  D.punches.forEach(p=>{if(!p||!payCounts(p)||!(p.out||p.away))return;const k=p.who+'|'+wkey(p.in);wk[k]=(wk[k]||0)+punchDur(p);});
+function laborModel(from,until){const wk={},pay={};const wkey=ts=>dkey(weekStart(new Date(ts)));const lo=(from||0)-8*864e5,hi=(until===Infinity||!until)?Infinity:until+8*864e5;
+  D.punches.forEach(p=>{if(!p||p.in<lo||p.in>=hi||!payCounts(p)||!(p.out||p.away))return;const k=p.who+'|'+wkey(p.in);wk[k]=(wk[k]||0)+punchDur(p);});
   (D.fcpay||[]).forEach(c=>{if(!c||c.deleted||!c.periodBegin)return;const k=c.who+'|'+c.periodBegin;const o=pay[k]||(pay[k]={wages:0,h:0,tr:0,gross:0,ot:0});o.wages+=(+c.reg||0)+(+c.ot||0);o.h+=(+c.regH||0)+(+c.otH||0);o.ot+=+c.otH||0;o.tr+=+c.travel||0;o.gross+=+c.gross||0;});
   const perHour=k=>{const P=pay[k];if(P&&P.h>0)return {r:P.wages/P.h,est:false};const who=k.split('|')[0];const r=rateOf(who);if(r==null)return {r:0,est:true,none:true};const h=wk[k]||0;const ot=Math.max(0,h-OT_AFTER);return {r:h?r*(h+0.5*ot)/h:r,est:true};};
   return {wk,pay,wkey,perHour};}
-function repLabor(from,until,money_){const L=laborModel();const inR=ts=>ts>=from&&ts<until;
+function repLabor(from,until,money_){const L=laborModel(from,until);const inR=ts=>ts>=from&&ts<until;
   const pun=D.punches.filter(p=>p&&inR(p.in)&&payCounts(p)&&(p.out||p.away));
   const job={};let est=false,noRate={};
   pun.forEach(p=>{const k=p.who+'|'+L.wkey(p.in);const h=punchDur(p);const pr=L.perHour(k);if(pr.est)est=true;if(pr.none)noRate[p.who]=1;const sk=p.site||'none';const j=job[sk]||(job[sk]={h:0,lab:0,mat:0,tr:0});j.h+=h;j.lab+=h*pr.r;});
@@ -5351,7 +5352,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vs47c1108"></script><script src="scanner-v2-ui.js?vs47c1108"></script><script src="sched-v21.js?vs47c1108"></script><script src="p2.js?vs47c1108"></script><script src="p4.js?vs47c1108"></script><script src="p5.js?vs47c1108"></script><script src="p6.js?vs47c1108"></script><script src="p7.js?vs47c1108"></script><script src="p8.js?vs47c1108"></script><script src="p9.js?vs47c1108"></script><script src="p10.js?vs47c1108"></script><script src="p11.js?vs47c1108"></script><script src="p12.js?vs47c1108"></script><script src="p13.js?vs47c1108"></script><script src="p14.js?vs47c1108"></script><script src="p15.js?vs47c1108"></script><script src="selftest.js?vs47c1108"></script>
+<script src="scanner-v2.js?vs48c1108"></script><script src="scanner-v2-ui.js?vs48c1108"></script><script src="sched-v21.js?vs48c1108"></script><script src="p2.js?vs48c1108"></script><script src="p4.js?vs48c1108"></script><script src="p5.js?vs48c1108"></script><script src="p6.js?vs48c1108"></script><script src="p7.js?vs48c1108"></script><script src="p8.js?vs48c1108"></script><script src="p9.js?vs48c1108"></script><script src="p10.js?vs48c1108"></script><script src="p11.js?vs48c1108"></script><script src="p12.js?vs48c1108"></script><script src="p13.js?vs48c1108"></script><script src="p14.js?vs48c1108"></script><script src="p15.js?vs48c1108"></script><script src="selftest.js?vs48c1108"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
