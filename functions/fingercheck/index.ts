@@ -156,7 +156,9 @@ Deno.serve(async (req) => {
     const sites: Record<string, string[]> = {};
     for (const s of srows || []) { const k = skey(s.data?.name || ""); if (k) (sites[k] ||= []).push(s.id); }
     const clean = (t: string) => String(t || "").replace(/['"\\<>`]/g, "").trim().slice(0, 90);
-    const siteOf = (jd: string) => { const k = skey(jd); const c = k ? sites[k] : null; return c && c.length === 1 ? c[0] : (jd ? "fc:" + clean(jd) : null); };
+    const alias: Record<string, string> = {};   // Baruch 11/8: Fingercheck job names that are a job in the app under another name
+    for (const s of srows || []) for (const al of (Array.isArray(s.data?.fcAlias) ? s.data.fcAlias : [])) alias[String(al)] = s.id;
+    const siteOf = (jd: string) => { if (alias[jd]) return alias[jd]; const k = skey(jd); const c = k ? sites[k] : null; return c && c.length === 1 ? c[0] : (jd ? "fc:" + clean(jd) : null); };
     const at = (t: string) => { const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/.exec(t || ""); return m ? nyAt(m[1], +m[2], +m[3]) : null; };
     const tc = await fc(co, `v1/Reports/GetAllTimeCardsForDateRange?startDate=${from}&endDate=${to}`);
     if (tc.status !== 200) return json({ error: "Fingercheck time cards answered " + tc.status }, 502);
