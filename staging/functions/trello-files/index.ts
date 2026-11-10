@@ -44,6 +44,7 @@ Deno.serve(async (req) => {
   const { data: cfgRows } = await sb.from("server_config").select("k,v");
   const cfg: Record<string, string> = {}; for (const r of cfgRows || []) cfg[r.k] = r.v;
   const KEY = cfg["trello_key"], TOKEN = cfg["trello_token"], BOARD = cfg["trello_board"], SECRET = cfg["secret"] || "";
+  const V2 = (cfg["plans_v2"] || "on") !== "off";   // server switch for the fast-plans pilot (off = everything works exactly as before)
   const BASE = (cfg["trello_sync_api_base"] || "https://api.trello.com/1").replace(/\/$/, "");
   if (!KEY || !TOKEN || !BOARD) return json({ error: "trello config missing" }, 500);
   const oauth = { Authorization: `OAuth oauth_consumer_key="${KEY}", oauth_token="${TOKEN}"` };
@@ -80,14 +81,16 @@ Deno.serve(async (req) => {
     if (!f) return json({ error: "not this job's file" }, 404);
     if (!allowed(m, f)) return json({ error: "not allowed" }, 403);
     const tid = cm[2];
+    const pilot = V2 && url.searchParams.get("pc") === "1";   // only the fast-plans pilot uses the kept copies
     // 1) our short-term copy, if someone opened this plan recently
-    const kept = await sb.storage.from(CACHE_BUCKET).download(`pdf/${tid}.pdf`);
-    if (!kept.error && kept.data && kept.data.size) {
+    const kept = pilot ? await sb.storage.from(CACHE_BUCKET).download(`pdf/${tid}.pdf`) : { error: true, data: null };
+    if (pilot && !kept.error && kept.data && kept.data.size) {
       waitUntil(hit(tid));
       return new Response(kept.data, { status: 200, headers: { "Content-Type": "application/pdf", "Content-Length": String(kept.data.size), "Cache-Control": "private, max-age=3600", "x-plan-src": "kept", ...CORS } });
     }
     // 2) straight from Trello (the saved link IS the download link — no extra "file details" trip); old links fall back
-    let dl = await fetch(String(f.url || fileUrl), { headers: oauth });
+    // (pilot) the saved link IS the download link — one Trello trip; everyone else: exactly as before (details, then download)
+    let dl: Response = pilot ? await fetch(String(f.url || fileUrl), { headers: oauth }) : new Response(null, { status: 599 });
     let type = dl.headers.get("content-type") || "";
     if (!dl.ok || !dl.body) {
       const meta = await fetch(`${BASE}/cards/${cm[1]}/attachments/${tid}?` + new URLSearchParams({ key: KEY, token: TOKEN, fields: "url,mimeType,name" }));
@@ -101,7 +104,7 @@ Deno.serve(async (req) => {
     const headers: Record<string, string> = { "Content-Type": type, "Cache-Control": "private, max-age=3600", "x-plan-src": "trello", ...CORS };
     if (len) headers["Content-Length"] = String(len);
     // 3) keep a short-term copy of PDFs while sending (the phone does not wait for this)
-    if (isPdf && (!len || len <= CACHE_MAX_FILE)) {
+    if (pilot && isPdf && (!len || len <= CACHE_MAX_FILE)) {
       const [toPhone, toKeep] = dl.body.tee();
       waitUntil((async () => {
         const buf = await new Response(toKeep).arrayBuffer();
@@ -120,6 +123,7 @@ Deno.serve(async (req) => {
 
   // ---------- links to kept copies / previews for the plans this person may see ----------
   if (req.method === "POST" && url.searchParams.get("resolve") === "1") {
+    if (!V2) return json({ plans: {}, off: true });
     const m = await me(); if (!m) return json({ error: "sign in" }, 401);
     let body: { items?: { site: string; tid: string }[] } = {}; try { body = await req.json(); } catch (_) { /* empty */ }
     const items = (Array.isArray(body.items) ? body.items : []).filter((x) => x && typeof x.site === "string" && TID.test(String(x.tid))).slice(0, 300);
@@ -146,6 +150,7 @@ Deno.serve(async (req) => {
 
   // ---------- a phone made the first-page preview + thumbnail of a plan: keep them (small images) ----------
   if (req.method === "POST" && url.searchParams.get("preview") === "1") {
+    if (!V2) return json({ error: "off" }, 404);
     const m = await me(); if (!m) return json({ error: "sign in" }, 401);
     const siteId = url.searchParams.get("site") || ""; const tid = url.searchParams.get("tid") || "";
     if (!TID.test(tid)) return json({ error: "bad plan" }, 400);
@@ -160,6 +165,15 @@ Deno.serve(async (req) => {
     const b = await sb.storage.from(CACHE_BUCKET).upload(`th/${tid}.jpg`, new Blob([th], { type: "image/jpeg" }), { contentType: "image/jpeg", upsert: true });
     if (a.error || b.error) return json({ error: "save failed" }, 500);
     return json({ ok: true, bytes: pv.byteLength + th.byteLength });
+  }
+
+  // ---------- pilot measurements (opening times, sizes, where the plan came from) for Baruch's report ----------
+  if (req.method === "POST" && url.searchParams.get("log") === "1") {
+    const m = await me(); if (!m) return json({ error: "sign in" }, 401);
+    let body: { kind?: string; data?: unknown } = {}; try { body = await req.json(); } catch (_) { /* empty */ }
+    const txt = JSON.stringify(body.data ?? {}); if (txt.length > 4000) return json({ error: "too big" }, 413);
+    await sb.rpc("plancache_log", { p_who: m.id, p_kind: String(body.kind || "").slice(0, 20), p_data: JSON.parse(txt) });
+    return json({ ok: true });
   }
 
   // ---------- a document added in the app goes onto the job's Trello card (Baruch 11/4: "stored in Trello, opens in our app") ----------
@@ -244,5 +258,13 @@ Deno.serve(async (req) => {
     if (error) { failed += add.length; continue; }
     added += +n || 0; if (n) out.push({ job: d.name, added: n });
   }
-  return json({ countOnly, added, photosCopied: photos, waitingForNextRun: waiting, failed, jobs: out.length, list: out.slice(0, 60) });
+  // fast-plans storage stays small: previews and kept copies of plans that are no longer on an active job are removed
+  let cleaned = 0;
+  if (!countOnly) {
+    const { data: gone } = await sb.rpc("plancache_orphans", { p_stages: [...ACTIVE] });
+    const names = (gone || []).map((x: { name: string }) => x.name).slice(0, 500);
+    if (names.length) { const rm = await sb.storage.from(CACHE_BUCKET).remove(names); if (!rm.error) { cleaned = names.length;
+      const tids = names.filter((n: string) => n.startsWith("pdf/")).map((n: string) => n.slice(4, 28)); if (tids.length) await sb.rpc("plancache_forget", { p_tids: tids }); } }
+  }
+  return json({ countOnly, added, photosCopied: photos, waitingForNextRun: waiting, failed, jobs: out.length, list: out.slice(0, 60), plansCleaned: cleaned });
 });

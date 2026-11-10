@@ -51,3 +51,32 @@ revoke all on function public.plancache_put(text, bigint), public.plancache_hit(
   public.plancache_forget(text[]), public.plancache_have(text[]) from public, anon, authenticated;
 grant execute on function public.plancache_put(text, bigint), public.plancache_hit(text), public.plancache_over(bigint),
   public.plancache_forget(text[]), public.plancache_have(text[]) to service_role;
+
+-- pilot measurements (opening times, sizes, where the plan came from, network) for Baruch's report
+create table if not exists private.plan_metrics (
+  id bigserial primary key,
+  at timestamptz not null default now(),
+  who text,
+  kind text,
+  data jsonb
+);
+create or replace function public.plancache_log(p_who text, p_kind text, p_data jsonb)
+returns void language sql security definer set search_path to 'public' as $f$
+  insert into private.plan_metrics (who, kind, data) values (p_who, p_kind, p_data);
+$f$;
+
+-- previews / thumbnails / kept copies whose plan is no longer on any active job (older than a day) → removed by the cron run
+create or replace function public.plancache_orphans(p_stages text[])
+returns table (name text) language sql security definer set search_path to 'public', 'storage' as $f$
+  with live as (
+    select distinct coalesce(f->>'tid', substring(f->>'url' from '/attachments/([0-9a-f]{24})')) tid
+    from public.records s, jsonb_array_elements(case when jsonb_typeof(s.data->'files') = 'array' then s.data->'files' else '[]'::jsonb end) f
+    where s.coll = 'sites' and not s.deleted and coalesce(s.data->>'stage', 'active') = any(p_stages))
+  select o.name from storage.objects o
+  where o.bucket_id = 'plancache' and o.created_at < now() - interval '1 day'
+    and substring(o.name from '^(?:pdf|pv|th)/([0-9a-f]{24})\.') is not null
+    and substring(o.name from '^(?:pdf|pv|th)/([0-9a-f]{24})\.') not in (select tid from live where tid is not null);
+$f$;
+
+revoke all on function public.plancache_log(text, text, jsonb), public.plancache_orphans(text[]) from public, anon, authenticated;
+grant execute on function public.plancache_log(text, text, jsonb), public.plancache_orphans(text[]) to service_role;
