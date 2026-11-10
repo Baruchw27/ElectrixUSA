@@ -10,13 +10,17 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 //    may see that job's file (owner, managers, office, material, the person who added it, or people it was shared with).
 // POST modes run only for the database cron secret (x-push-secret) or a signed-in owner / manager / office person.
 //
-// v4 — Baruch 11/9 "plans must open almost instantly, without paying for storage we don't need":
-//  • ?file= no longer asks Trello for the file details first (one trip less); the download goes straight to Trello.
-//  • A SHORT-TERM copy of opened plans is kept in the private 'plancache' bucket (capped, oldest-used removed first), so the
-//    next person gets it from our storage instead of Trello. The original always stays on Trello.
+// v4 — Baruch 11/9 "plans must open almost instantly, without paying for storage we don't need" (PILOT: only requests with
+// pc=1 from the fast-plans pilot use the new parts; everyone else is served exactly as before; server_config plans_v2=off
+// turns the new parts off entirely):
+//  • (pilot) ?file= does not ask Trello for the file details first (one trip less); the download goes straight to Trello.
+//  • (pilot) A SHORT-TERM copy of opened plans is kept in the private 'plancache' bucket (capped, oldest-used removed
+//    first), so the next person gets it from our storage instead of Trello. The original always stays on Trello.
 //  • POST ?resolve=1 {items:[{site,tid}]} → for the plans this person may see: short-lived links to the kept copy and to the
 //    first-page preview / thumbnail, when we have them.
 //  • POST ?preview=1&site=&tid= {pv,th} (JPEG data) → saves the first-page preview + thumbnail a phone made (small images).
+//  • POST ?log=1 → pilot measurements for Baruch's report.
+//  • The cron run also removes previews / kept copies of plans no longer on an active job.
 //  • The bucket is private: nothing in it can be opened without a link from this function (same permission check as ?file=).
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
 const SB_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -88,8 +92,7 @@ Deno.serve(async (req) => {
       waitUntil(hit(tid));
       return new Response(kept.data, { status: 200, headers: { "Content-Type": "application/pdf", "Content-Length": String(kept.data.size), "Cache-Control": "private, max-age=3600", "x-plan-src": "kept", ...CORS } });
     }
-    // 2) straight from Trello (the saved link IS the download link — no extra "file details" trip); old links fall back
-    // (pilot) the saved link IS the download link — one Trello trip; everyone else: exactly as before (details, then download)
+    // 2) (pilot) the saved link IS the download link — one Trello trip; everyone else: exactly as before (details, then download)
     let dl: Response = pilot ? await fetch(String(f.url || fileUrl), { headers: oauth }) : new Response(null, { status: 599 });
     let type = dl.headers.get("content-type") || "";
     if (!dl.ok || !dl.body) {
@@ -103,9 +106,9 @@ Deno.serve(async (req) => {
     const isPdf = /pdf/i.test(type);
     const headers: Record<string, string> = { "Content-Type": type, "Cache-Control": "private, max-age=3600", "x-plan-src": "trello", ...CORS };
     if (len) headers["Content-Length"] = String(len);
-    // 3) keep a short-term copy of PDFs while sending (the phone does not wait for this)
+    // 3) (pilot) keep a short-term copy of PDFs while sending (the phone does not wait for this)
     if (pilot && isPdf && (!len || len <= CACHE_MAX_FILE)) {
-      const [toPhone, toKeep] = dl.body.tee();
+      const [toPhone, toKeep] = dl.body!.tee();
       waitUntil((async () => {
         const buf = await new Response(toKeep).arrayBuffer();
         if (!buf.byteLength || buf.byteLength > CACHE_MAX_FILE) return;
@@ -261,10 +264,12 @@ Deno.serve(async (req) => {
   // fast-plans storage stays small: previews and kept copies of plans that are no longer on an active job are removed
   let cleaned = 0;
   if (!countOnly) {
-    const { data: gone } = await sb.rpc("plancache_orphans", { p_stages: [...ACTIVE] });
-    const names = (gone || []).map((x: { name: string }) => x.name).slice(0, 500);
-    if (names.length) { const rm = await sb.storage.from(CACHE_BUCKET).remove(names); if (!rm.error) { cleaned = names.length;
-      const tids = names.filter((n: string) => n.startsWith("pdf/")).map((n: string) => n.slice(4, 28)); if (tids.length) await sb.rpc("plancache_forget", { p_tids: tids }); } }
+    try {
+      const { data: gone } = await sb.rpc("plancache_orphans", { p_stages: [...ACTIVE] });
+      const names = (gone || []).map((x: { name: string }) => x.name).slice(0, 500);
+      if (names.length) { const rm = await sb.storage.from(CACHE_BUCKET).remove(names); if (!rm.error) { cleaned = names.length;
+        const tids = names.filter((n: string) => n.startsWith("pdf/")).map((n: string) => n.slice(4, 28)); if (tids.length) await sb.rpc("plancache_forget", { p_tids: tids }); } }
+    } catch (_) { /* never breaks the Trello sync */ }
   }
   return json({ countOnly, added, photosCopied: photos, waitingForNextRun: waiting, failed, jobs: out.length, list: out.slice(0, 60), plansCleaned: cleaned });
 });

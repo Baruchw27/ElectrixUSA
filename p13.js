@@ -321,7 +321,8 @@ P13.info=()=>{const s=site();if(!s)return;const m=M();const ed=can(canEditFolder
 const TRELLO_RX=/^https:\/\/(?:api\.)?trello\.com\/1\/cards\/[0-9a-f]{24}\/attachments\/([0-9a-f]{24})/;
 function isTrelloFile(f){return !!f&&!f.d&&TRELLO_RX.test(String(f.url||''));}
 async function srvHeaders(){const C=window.EX_CFG||{};let s=null;try{s=window.EX_sb?(await EX_sb.auth.getSession()).data.session:null;}catch(e){}return Object.assign({apikey:C.anonKey||''},s?{Authorization:'Bearer '+s.access_token}:{});}
-async function openTrello(f,siteId){const C=window.EX_CFG||{};if(!C.url){try{window.open(f.url,'_blank','noopener');}catch(e){}return;}
+async function openTrello(f,siteId){if(window.EX_PLANS&&EX_PLANS.handles(f)){try{return await EX_PLANS.open(f,siteId);}catch(e){}}   // p16 pilot: fast plans (only when switched on for this person)
+  const C=window.EX_CFG||{};if(!C.url){try{window.open(f.url,'_blank','noopener');}catch(e){}return;}
   try{toast('⏳ '+T('Opening')+' '+f.name);}catch(e){}
   try{const r=await fetch(C.url.replace(/\/$/,'')+'/functions/v1/trello-files?file='+encodeURIComponent(f.url)+'&site='+encodeURIComponent(siteId||''),{headers:await srvHeaders()});
     if(!r.ok)throw new Error(r.status===403?T('You can\'t open this file'):'HTTP '+r.status);

@@ -80,3 +80,7 @@ $f$;
 
 revoke all on function public.plancache_log(text, text, jsonb), public.plancache_orphans(text[]) from public, anon, authenticated;
 grant execute on function public.plancache_log(text, text, jsonb), public.plancache_orphans(text[]) to service_role;
+
+-- the storage rules written for the other buckets would otherwise also let anyone read / upload here: only the server may
+create policy "plancache: server only" on storage.objects as restrictive for all to public
+  using (bucket_id <> 'plancache') with check (bucket_id <> 'plancache');
