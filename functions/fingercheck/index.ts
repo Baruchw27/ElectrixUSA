@@ -3,13 +3,16 @@
 // Keys: typed in the app by the owner (Settings → Fingercheck connection) into private.fc_keys — write-only, read here
 // through fc_keys_server() (service role only). Old Edge Function secrets still work as a fallback:
 //   FINGERCHECK_APIKEY, FINGERCHECK_CLIENT_SECRET (= the "usa" company)
-// Nothing is ever written to Fingercheck by this version.
+// Nothing is written to Fingercheck except by action 'push' with send=true while server_config fc_write='on'.
 // Only the owner or Payroll (signed in) may call it. Actions (POST JSON {action, co?, ...}):
 //   status     → which keys are saved; for each company: can Fingercheck be reached, active employee count, next payroll
 //   sample     → Fingercheck's own example punch object (to build the punch sender exactly to their format)
 //   employees  → one company's active employees (number + name only) matched by name to Electrix people
 //   import     → {co, from, to, write} past time cards → punches (src 'fingercheck'), paychecks → 'fcpay'; read-only toward Fingercheck
 //   hours      → one week (Sunday–Saturday, New York time): Electrix payable hours per person next to Fingercheck's time cards
+//   push       → (Baruch 11/10) hours fixed in the app → Fingercheck. {ids, send}. Without send=true it only PREVIEWS what would
+//                be sent. Sending needs the server switch server_config fc_write='on' (off by default) — only hours (punches)
+//                are added / changed / removed; rates, employees and paychecks are never touched.
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
 const FC = "https://developer.fingercheck.com/api/";
@@ -89,7 +92,15 @@ Deno.serve(async (req) => {
       return { status: r.status, body };
     } catch (e) { return { status: 0, body: String(e).slice(0, 200) }; }
   };
-  let a: Record<string, string> = {}; try { a = await req.json(); } catch (_) { /* empty */ }
+  const fcWrite = async (co: string, method: string, path: string, body: unknown) => {
+    try {
+      const r = await fetch(FC + path, { method, headers: { APIKEY: KEY, ClientSecretKey: secretOf(co), Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(60000) });
+      const txt = await r.text(); let b: unknown = txt; try { b = JSON.parse(txt); } catch (_) { /* text */ }
+      const ok = r.status >= 200 && r.status < 300 && !(b && typeof b === "object" && (b as any).IsSuccessStatusCode === false);
+      return { ok, status: r.status, body: typeof b === "string" ? b.slice(0, 300) : b };
+    } catch (e) { return { ok: false, status: 0, body: String(e).slice(0, 200) }; }
+  };
+  let a: Record<string, any> = {}; try { a = await req.json(); } catch (_) { /* empty */ }
   const action = a.action || "status";
   const co = COS.includes(a.co as any) ? a.co : "inc";
   const has = (c: string) => !!(KEY && secretOf(c));
@@ -171,7 +182,7 @@ Deno.serve(async (req) => {
       const jd = clean(x.JobDescriptionPunch || ""); const site = siteOf(jd); if (site && !site.startsWith("fc:")) matched++;
       const id = "fc_" + String(x.InPunchID || (num + "_" + hin)).replace(/[^A-Za-z0-9_.:|@-]/g, "");
       hours += Number(x.Hours || 0);
-      punches.push({ id, who, site, in: hin, out: hout, src: "fingercheck", fcCo: co, fcNum: num, fcHours: Math.round(Number(x.Hours || 0) * 10000) / 10000, fcJob: jd || null, fcEdited: !!(x.IsInPunchEdit || x.IsOutPunchEdit) || undefined });
+      punches.push({ id, who, site, in: hin, out: hout, src: "fingercheck", fcCo: co, fcNum: num, fcHours: Math.round(Number(x.Hours || 0) * 10000) / 10000, fcJob: jd || null, fcJobCode: x.JobPunch ? String(x.JobPunch) : undefined, fcInId: x.InPunchID || undefined, fcOutId: x.OutPunchID || undefined, fcEdited: !!(x.IsInPunchEdit || x.IsOutPunchEdit) || undefined });
     }
     const pd = await fc(co, `v1/Reports/GetAllPayrollCheckDetailsForDateRange?startDate=${from}&endDate=${to}`);
     if (pd.status !== 200) return json({ error: "Fingercheck paychecks answered " + pd.status }, 502);
@@ -194,6 +205,21 @@ Deno.serve(async (req) => {
       unmapped, paychecks: pays.length, gross: Math.round(pays.reduce((q, c) => q + c.gross, 0) * 100) / 100, travel: Math.round(travel * 100) / 100, written: false };
     if (write) {
       const now = new Date().toISOString();
+      // Baruch 11/10: never overwrite hours fixed in the app that were not sent to Fingercheck yet; keep the change log of
+      // ones that were sent; and don't bring back a copy of a punch the app itself added to Fingercheck.
+      const ids = punches.map((p) => p.id), keep: Record<string, any> = {}, skipIds = new Set<string>(); let protectedN = 0;
+      for (let i = 0; i < ids.length; i += 300) {
+        const { data: ex } = await adm.from("records").select("id,data").eq("coll", "punches").in("id", ids.slice(i, i + 300));
+        for (const r of ex || []) keep[r.id] = r.data || {};
+        const ins = punches.slice(i, i + 300).map((p) => p.fcInId).filter(Boolean);
+        if (ins.length) { const { data: mine } = await adm.from("records").select("id,data").eq("coll", "punches").in("data->>fcInId", ins);
+          for (const r of mine || []) if (!String(r.id).startsWith("fc_")) skipIds.add("fc_" + String(r.data?.fcInId || "").replace(/[^A-Za-z0-9_.:|@-]/g, "")); }
+      }
+      const pend = (d: any) => d && ((d.fcSync && d.fcSync.state !== "sent") || (!d.fcSync && Array.isArray(d.edits) && d.edits.length) || (!d.fcSync && d.voided));
+      const kept = punches.filter((p) => { if (skipIds.has(p.id)) return false; if (pend(keep[p.id])) { protectedN++; return false; } return true; })
+        .map((p) => { const o = keep[p.id]; return o && o.fcSync ? { ...p, edits: o.edits, fcSync: o.fcSync } : p; });
+      (summary as any).protectedEdits = protectedN; (summary as any).linkedToApp = skipIds.size;
+      punches.length = 0; punches.push(...kept);
       const rows = punches.map((p) => ({ coll: "punches", id: p.id, data: JSON.parse(JSON.stringify(p)), deleted: false, updated_by: "fingercheck", updated_at: now }))
         .concat(pays.map((c: any) => ({ coll: "fcpay", id: c.id, data: c, deleted: false, updated_by: "fingercheck", updated_at: now })));
       for (let i = 0; i < rows.length; i += 400) {
@@ -204,5 +230,104 @@ Deno.serve(async (req) => {
     }
     return json(summary);
   }
+  if (action === "push") return await push();
   return json({ error: "unknown action" }, 400);
+
+  // ───────── push: hours fixed in the app → Fingercheck (preview unless send=true and the server switch is on) ─────────
+  async function push() {
+    const send = String(a.send) === "true";
+    const ids: string[] = Array.isArray(a.ids) ? a.ids.slice(0, 150).map(String) : [];
+    if (!ids.length) return json({ error: "nothing to send" }, 400);
+    const { data: cfg } = await adm.from("server_config").select("v").eq("k", "fc_write").maybeSingle();
+    const writeOn = cfg?.v === "on";
+    if (send && !writeOn) return json({ error: "Sending to Fingercheck is switched off", writeOn }, 403);
+    const { data: prow } = await adm.from("records").select("id,data").eq("coll", "punches").in("id", ids);
+    const { data: rr } = await adm.from("records").select("id,data").eq("coll", "rates").eq("deleted", false);
+    const numOf: Record<string, { fc: string; co: string }> = {};
+    for (const r of rr || []) if (r.data?.fc) numOf[r.id] = { fc: String(r.data.fc), co: COS.includes(r.data.co) ? r.data.co : "inc" };
+    const nameOf: Record<string, string> = {}; for (const e of emps || []) nameOf[e.id] = e.data?.name || e.id;
+    const P = (prow || []).map((r: any) => ({ ...(r.data || {}), id: r.id }));
+    for (const p of P) if (!numOf[p.who] && p.fcNum) numOf[p.who] = { fc: String(p.fcNum), co: COS.includes(p.fcCo) ? p.fcCo : "inc" };
+    // fresh Fingercheck time cards for the days involved (and the 30 days before, to know each job's Fingercheck code)
+    const days = P.flatMap((p: any) => [p.in, p.edits && p.edits[0] && p.edits[0].from && p.edits[0].from.in].filter(Boolean)).map((t: number) => dkey(t)).sort();
+    if (!days.length) return json({ error: "nothing to send" }, 400);
+    const last = days[days.length - 1], first = days[0];
+    if (Date.parse(last) - Date.parse(first) > 30 * 86400000) return json({ error: "send one month at a time" }, 400);
+    const from = dkey(Math.min(Date.parse(first + "T12:00:00Z"), Date.parse(last + "T12:00:00Z") - 30 * 86400000));
+    const cos = [...new Set(P.map((p: any) => (numOf[p.who] || { co: "inc" }).co))];
+    const rows: Record<string, any[]> = {};
+    for (const c of cos) { if (!has(c)) return json({ error: "Fingercheck keys are not saved for " + CO_NAME[c] }, 400);
+      const r = await fc(c, `v1/Reports/GetAllTimeCardsForDateRange?startDate=${from}&endDate=${last}`);
+      if (r.status !== 200) return json({ error: "Fingercheck time cards answered " + r.status }, 502); rows[c] = asList(r.body); }
+    const at = (t: string) => { const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/.exec(t || ""); return m ? nyAt(m[1], +m[2], +m[3]) : null; };
+    const { data: srows } = await adm.from("records").select("id,data").eq("coll", "sites").eq("deleted", false);
+    const skey = (t: string) => { const w = String(t || "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim().split(" ").filter((x) => !["n", "s", "e", "w", "north", "south", "east", "west"].includes(x)); return w.length >= 2 && /^\d+$/.test(w[0]) ? w[0] + " " + w[1] : ""; };
+    const sites: Record<string, string[]> = {}; const alias: Record<string, string> = {}; const sname: Record<string, string> = {};
+    for (const s of srows || []) { sname[s.id] = s.data?.name || ""; const k = skey(s.data?.name || ""); if (k) (sites[k] ||= []).push(s.id);
+      for (const al of (Array.isArray(s.data?.fcAlias) ? s.data.fcAlias : [])) alias[String(al)] = s.id; }
+    const siteOfDesc = (jd: string) => { const c0 = String(jd || "").replace(/['"\\<>`]/g, "").trim(); if (alias[c0]) return alias[c0]; const k = skey(c0); const c = k ? sites[k] : null; return c && c.length === 1 ? c[0] : null; };
+    const byIn: Record<string, any> = {}; const codeOfSite: Record<string, string> = {};
+    for (const c of cos) for (const x of rows[c]) { if (x.InPunchID) byIn[String(x.InPunchID)] = { ...x, _co: c };
+      if (x.JobPunch) { const sid = siteOfDesc(x.JobDescriptionPunch || ""); if (sid && !codeOfSite[sid]) codeOfSite[sid] = String(x.JobPunch); } }
+    for (const p of P) if (p.site && p.fcJobCode && !codeOfSite[p.site]) codeOfSite[p.site] = String(p.fcJobCode);
+    const nyIso = (ms: number) => { const f = new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour12: false, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(new Date(ms));
+      const g = (k: string) => (f.find((x) => x.type === k) || { value: "00" }).value; const hh = g("hour") === "24" ? "00" : g("hour");
+      const local = Date.UTC(+g("year"), +g("month") - 1, +g("day"), +hh, +g("minute"), +g("second")); const off = Math.round((local - ms) / 60000);
+      const sg = off < 0 ? "-" : "+"; const ao = Math.abs(off); return `${g("year")}-${g("month")}-${g("day")}T${hh}:${g("minute")}:00${sg}${String(Math.floor(ao / 60)).padStart(2, "0")}:${String(ao % 60).padStart(2, "0")}`; };
+    const items: any[] = [];
+    for (const p of P) {
+      const it: any = { id: p.id, who: p.who, name: nameOf[p.who] || p.who, day: dkey(p.in), ops: [] as any[], problem: null as string | null };
+      items.push(it);
+      const n = numOf[p.who]; if (!n) { it.problem = "no Fingercheck number for this person"; continue; }
+      it.co = n.co; const base = (type: number, t: number, job: string | null, pid: string | null) => ({ EmployeeNumber: n.fc, PunchType: type, TimePunch: nyIso(t), Job: job, PunchID: pid, Note: "Fixed in Electrix app" });
+      const fcIn = p.src === "fingercheck" ? (p.fcInId || String(p.id).replace(/^fc_/, "")) : (p.fcInId || null);
+      const row = fcIn ? byIn[fcIn] : null;
+      const job = p.site ? (codeOfSite[p.site] || null) : null;
+      it.before = row ? { in: at(row.TimeIn), out: at(row.TimeOut), job: row.JobDescriptionPunch || null } : null;
+      it.after = p.voided ? null : { in: p.in, out: p.out || null, job: sname[p.site] || null };
+      if (fcIn && !row) { if (p.voided) { it.done = "already gone in Fingercheck"; continue; } it.problem = "this punch is not in Fingercheck anymore — it was changed or removed there"; continue; }
+      if (row && row.EmployeeNumber != null && String(row.EmployeeNumber) !== n.fc) { it.problem = "the person was changed — fix this one in Fingercheck"; continue; }
+      if (row) { const orig = p.edits && p.edits[0] && p.edits[0].from; const fin = at(row.TimeIn), fout = at(row.TimeOut);
+        const same = (x: number | null, y: number | null) => (x == null && y == null) || (x != null && y != null && Math.abs(x - y) < 60000);
+        if (orig && !(same(fin, orig.in) && same(fout, orig.out ?? null)) && !(same(fin, p.in) && same(fout, p.out || null)))
+          { it.problem = "it was also changed in Fingercheck meanwhile — fix this one in Fingercheck"; continue; } }
+      if (p.site && !job && !p.voided) it.note = "this job has no Fingercheck job code yet — sent without a job";
+      if (p.voided) { if (row) { it.ops.push({ kind: "delete", what: "in", body: base(0, at(row.TimeIn)!, row.JobPunch || null, String(row.InPunchID)) });
+          if (row.OutPunchID) it.ops.push({ kind: "delete", what: "out", body: base(1, at(row.TimeOut)!, row.JobPunch || null, String(row.OutPunchID)) }); }
+        continue; }
+      if (!row) { it.ops.push({ kind: "add", what: "in", body: base(0, p.in, job, null) }); if (p.out) it.ops.push({ kind: "add", what: "out", body: base(1, p.out, job, null) }); continue; }
+      const jobNow = job || (row.JobPunch ? String(row.JobPunch) : null); const jobChanged = !!job && String(row.JobPunch || "") !== job;
+      const fin = at(row.TimeIn), fout = at(row.TimeOut);
+      if (jobChanged || fin == null || Math.abs(fin - p.in) >= 60000) it.ops.push({ kind: "edit", what: "in", body: base(0, p.in, jobNow, String(row.InPunchID)) });
+      if (p.out) { if (row.OutPunchID) { if (jobChanged || fout == null || Math.abs(fout - p.out) >= 60000) it.ops.push({ kind: "edit", what: "out", body: base(1, p.out, jobNow, String(row.OutPunchID)) }); }
+        else it.ops.push({ kind: "add", what: "out", body: base(1, p.out, jobNow, null) }); }
+      else if (row.OutPunchID) { it.problem = "a punch-out can't be taken away here — fix this one in Fingercheck"; it.ops = []; continue; }
+      if (!it.ops.length) it.done = "already the same in Fingercheck";
+    }
+    if (!send) return json({ preview: true, writeOn, items: items.map((x) => ({ ...x, ops: x.ops.map((o: any) => ({ kind: o.kind, what: o.what, time: o.body.TimePunch, job: o.body.Job })) })) });
+    // send, one punch at a time; stop that punch at its first refusal
+    const nowIso = new Date().toISOString(); const res: any[] = [];
+    for (const it of items) {
+      const p = P.find((x: any) => x.id === it.id); let err: string | null = it.problem; const done: any[] = [];
+      if (!err) for (const o of it.ops) {
+        const path = o.kind === "add" ? "v1/Punch/AddPunch" : o.kind === "edit" ? "v1/Punch/EditPunch" : "v1/Punch/DeletePunch";
+        const r = await fcWrite(it.co, o.kind === "delete" ? "DELETE" : "POST", path, o.body);
+        done.push({ kind: o.kind, what: o.what, status: r.status, ok: r.ok }); if (!r.ok) { err = "Fingercheck answered " + r.status + (typeof r.body === "string" ? ": " + r.body.slice(0, 120) : ""); break; }
+      }
+      const fcSync = err ? { state: it.problem ? "problem" : "error", at: Date.now(), by: me.id, err, done } : { state: "sent", at: Date.now(), by: me.id, done };
+      await adm.from("records").update({ data: { ...p, id: undefined, fcSync }, updated_at: nowIso, updated_by: "fingercheck-send" }).eq("coll", "punches").eq("id", it.id);
+      res.push({ id: it.id, name: it.name, day: it.day, ok: !err, err, done });
+    }
+    // added punches: find their new Fingercheck ids so a later import doesn't bring a second copy
+    const added = items.filter((it) => res.find((r) => r.id === it.id && r.ok) && it.ops.some((o: any) => o.kind === "add" && o.what === "in"));
+    if (added.length) for (const c of [...new Set(added.map((x) => x.co))]) {
+      const ds = added.filter((x) => x.co === c).map((x) => x.day).sort();
+      const r = await fc(c, `v1/Reports/GetAllTimeCardsForDateRange?startDate=${ds[0]}&endDate=${ds[ds.length - 1]}`); const L = asList(r.body);
+      for (const it of added.filter((x) => x.co === c)) { const p = P.find((x: any) => x.id === it.id); const n = numOf[p.who];
+        const m = L.find((x: any) => String(x.EmployeeNumber) === n.fc && Math.abs((at(x.TimeIn) || 0) - p.in) < 60000);
+        if (m) { const { data: cur } = await adm.from("records").select("data").eq("coll", "punches").eq("id", it.id).maybeSingle();
+          await adm.from("records").update({ data: { ...(cur?.data || {}), fcInId: m.InPunchID || undefined, fcOutId: m.OutPunchID || undefined, fcNum: n.fc, fcCo: c }, updated_at: new Date().toISOString(), updated_by: "fingercheck-send" }).eq("coll", "punches").eq("id", it.id); } }
+    }
+    return json({ sent: true, results: res });
+  }
 });

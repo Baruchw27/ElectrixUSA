@@ -10,10 +10,10 @@
 html.exboot .top,html.exboot .pg,html.exboot .tabs,html.exboot #p2fab,html.exboot #p7fm,html.exboot #p8pin{visibility:hidden!important}
 html.exboot body{background:#f2f2f7 url(logo-light.svg) center 42%/min(62%,300px) no-repeat!important}
 @media (prefers-color-scheme:dark){html.exboot body{background:#000 url(logo-dark.svg) center 42%/min(62%,300px) no-repeat!important}}</style>
-<script>window.EX_VER='vh39c1109';</script><script src="config.js"></script>
+<script>window.EX_VER='vh40c1110';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vh39c1109"></script>
-<script src="extras.js?vh39c1109"></script>
+<script src="sync.js?vh40c1110"></script>
+<script src="extras.js?vh40c1110"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -3442,7 +3442,7 @@ function tcSiteOpts(cur){let L=liveSites().map(s=>[s.id,s.name]);if(cur&&!L.some
   return (cur?'':'<option value="">— '+esc(t('Job'))+' —</option>')+L.map(([id,n])=>'<option value="'+esc(id)+'"'+(id===cur?' selected':'')+'>'+esc(n)+'</option>').join('');}
 function tcDayEdit(e,ws,di,dp){const tm=x=>x?new Date(x).toTimeString().slice(0,5):'';const day=dkey(new Date(ws+di*864e5+12*36e5));const S='font-size:15px;padding:6px 6px;min-width:0';
   const line=(id,site,a,b,h,extra)=>'<div style="background:var(--g1);border-radius:10px;padding:8px;margin-bottom:6px"><select id="tce_s_'+id+'" style="'+S+';width:100%;margin-bottom:6px">'+tcSiteOpts(site)+'</select>'
-    +'<div style="display:flex;gap:6px;align-items:center"><input type="time" id="tce_i_'+id+'" value="'+a+'" style="'+S+';flex:1"><span>–</span><input type="time" id="tce_o_'+id+'" value="'+b+'" style="'+S+';flex:1"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">'+extra+'</div></div>';
+    +(typeof id==='string'&&!/^new_/.test(id)&&fcPending(D.punches.find(x=>x.id===id))&&canSendFC()?'<div style="font-size:11.5px;color:var(--amber);margin:-2px 2px 4px">'+esc(t('not sent'))+' · Fingercheck</div>':'')+'<div style="display:flex;gap:6px;align-items:center"><input type="time" id="tce_i_'+id+'" value="'+a+'" style="'+S+';flex:1"><span>–</span><input type="time" id="tce_o_'+id+'" value="'+b+'" style="'+S+';flex:1"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">'+extra+'</div></div>';
   return '<div style="padding:0 0 10px" onclick="event.stopPropagation()">'
     +dp.map(p=>line(p.id,p.site,tm(p.in),tm(p.out||p.away),0,'<button class="bs" style="white-space:nowrap" onclick="tcSaveP(\''+jsq(p.id)+'\',\''+jsq(e.id)+'\')">'+esc(t('Save'))+'</button><button class="bs" style="white-space:nowrap;color:#c0392b" onclick="tcDelP(\''+jsq(p.id)+'\',\''+jsq(e.id)+'\')">'+esc(t(p.voided?'Restore':'Remove'))+'</button>')).join('')
     +'<div style="font-size:12.5px;font-weight:600;color:var(--g4);margin:8px 2px 4px">+ '+esc(t('Add hours'))+'</div>'
@@ -3472,7 +3472,7 @@ function renderTimeCards(){const box=document.getElementById('tcBox');if(!box)re
        +'<div style="display:flex;gap:6px;margin-top:10px">'+tcBox_(tot.toFixed(1),t('hours'))+tcBox_(ot.toFixed(1),t('overtime'),ot>0)+tcBox_(miss,t('missing'),miss>0)+(TRAVEL_ON?tcBox_(money(trv).replace(/\.00$/,''),t('travel')):'')+'</div>'
      :nav('tcDayMove',dayDate.toLocaleDateString(LOC(),{weekday:'long',month:'short',day:'numeric'}),t('week')+' '+lbl)
        +'<div style="display:flex;gap:4px;margin-top:10px">'+DL.map((d,i)=>'<div onclick="tcSetDay('+i+')" style="flex:1;text-align:center;padding:6px 0;border-radius:8px;font-size:12.5px;cursor:pointer;'+(i===tcDay?'background:var(--g5);color:var(--g0,#fff)':'background:var(--g1)')+'">'+t(d).slice(0,2)+'</div>').join('')+'</div>')
-    +'</div>'+hn;
+    +'</div>'+hn+fcSendBar(ws,we);
   const body=G.map(g=>{const ids=g.people.map(e=>e.id);const allOn=sel&&ids.every(id=>tcSel.has(id));
       const gh=tcMode==='week'?g.people.reduce((q,e)=>q+weekStats(e.id,new Date(ws+12*36e5)).total,0):g.people.reduce((q,e)=>q+tcPunches(e.id,ws).filter(p=>dayIndex(p.in,ws)===tcDay&&(p.out||p.away)).reduce((a,p)=>a+punchDur(p),0),0);
       const right=tcMode==='day'?'<span style="font-size:12px;color:var(--blue-mid);font-weight:700;cursor:pointer;letter-spacing:.3px" onclick="tcFixCrew(\''+jsq(g.id)+'\')">'+t('FIX CREW')+'</span>':'<span style="font-size:12px;color:var(--g4)">'+gh.toFixed(1)+' h</span>';
@@ -3480,6 +3480,36 @@ function renderTimeCards(){const box=document.getElementById('tcBox');if(!box)re
         +'<div class="card" style="padding:'+(tcMode==='week'?'4px 12px':'0 14px')+'">'+(tcMode==='week'?tcTable(g.people,ws,sel):g.people.map(e=>tcDayRow(e,ws,tcDay)).join('').replace('<div style="border-top:1px solid var(--g1)">','<div>'))+'</div>';}).join('');
   const foot=tcMode==='week'?(sel?'<div style="position:sticky;bottom:8px;margin-top:10px"><button class="btn" '+(tcSel.size?'':'disabled ')+'onclick="openBulkFix()">'+t('Fix together')+' · '+tcSel.size+' '+t('selected')+'</button></div><button class="btn sec2" style="margin-top:8px" onclick="tcSelMode()">'+t('Cancel')+'</button>':'<button class="btn sec2" style="margin-top:12px" onclick="tcSelMode()">'+t('Select to fix together')+'</button>'):'';
   box.innerHTML=head+body+foot;}
+function canSendFC(m){m=m||me();return !!m&&(m.role==='owner'||(m.role==='office'&&m.title==='Payroll'));}
+function fcWeekPending(ws,we){return D.punches.filter(p=>p&&fcPending(p)&&((p.in>=ws&&p.in<we)||(p.edits&&p.edits[0]&&p.edits[0].from&&p.edits[0].from.in>=ws&&p.edits[0].from.in<we)));}
+function fcSendBar(ws,we){if(!canSendFC())return '';const L=fcWeekPending(ws,we);if(!L.length)return '';const bad=L.filter(p=>p.fcSync.state!=='pending').length;
+  return '<div class="card" style="padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="fcSendOpen()"><div style="flex:1;min-width:0"><b style="font-size:14px">'+esc(t('Send to Fingercheck'))+'</b><div style="font-size:12px;color:var(--g4)">'+L.length+' '+esc(t(L.length===1?'change not sent yet':'changes not sent yet'))+(bad?' · <span style="color:#c0392b">'+bad+' '+esc(t('need a look'))+'</span>':'')+'</div></div><span style="color:var(--blue-mid);font-weight:700">›</span></div>';}
+let fcPrev=null;
+async function fcSendOpen(){const ws=tcStart(),we=ws+7*864e5;const L=fcWeekPending(ws,we);if(!L.length)return;
+  rateSheet('<div style="font-weight:700;font-size:17px">'+esc(t('Send to Fingercheck'))+'</div><div id="fcsBody" style="font-size:13px;color:var(--g4);margin-top:8px">'+esc(t('Checking Fingercheck…'))+'</div>');
+  let r;try{r=await EX_sb.functions.invoke('fingercheck',{body:{action:'push',ids:L.map(p=>p.id)}});}catch(e){r={error:e};}
+  const el=document.getElementById('fcsBody');if(!el)return;
+  if(r.error||!r.data||!r.data.items){el.innerHTML='<span style="color:#c0392b">'+esc(t('Could not reach Fingercheck. Try again.'))+'</span>';return;}
+  fcPrev=r.data;el.innerHTML=fcPrevHtml(r.data);}
+function fcSpan(x){if(!x)return '<span style="color:#c0392b">'+esc(t('removed'))+'</span>';return fmtT(x.in)+' – '+(x.out?fmtT(x.out):'—')+(x.job?' · '+esc(String(x.job).replace(/, NY \d{5}/,'')):'');}
+function fcPrevHtml(d){const ok=d.items.filter(x=>!x.problem&&x.ops.length),skip=d.items.filter(x=>!x.problem&&!x.ops.length),bad=d.items.filter(x=>x.problem);
+  const row=x=>'<div style="padding:8px 0;border-top:1px solid var(--g2)"><div style="display:flex;justify-content:space-between;gap:8px"><b style="color:var(--g5)">'+esc(x.name)+'</b><span>'+new Date(x.day+'T12:00').toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'})+'</span></div>'
+    +'<div style="color:var(--g4)">'+esc(t('Fingercheck now'))+': '+(x.before?fcSpan(x.before):esc(t('nothing')))+'</div><div style="color:var(--g5)">'+esc(t('After sending'))+': '+fcSpan(x.after)+'</div>'
+    +(x.problem?'<div style="color:#c0392b">'+esc(t(x.problem))+'</div><div style="text-align:right;margin-top:4px"><button class="bs" onclick="fcClear(\''+jsq(x.id)+'\',this)">'+esc(t('Done in Fingercheck'))+'</button></div>':'')+(x.note?'<div style="color:var(--amber)">'+esc(t(x.note))+'</div>':'')+(x.done?'<div style="color:var(--green)">'+esc(t(x.done))+'</div>':'')+'</div>';
+  return '<div style="color:var(--g5)">'+(ok.length?ok.length+' '+esc(t('changes will be sent'))+'.':esc(t('Nothing to send.')))+'</div>'+d.items.map(row).join('')
+    +(ok.length?(d.writeOn?'<button class="btn" style="margin-top:12px" id="fcsGo" onclick="fcSendGo()">'+esc(t('Send'))+' '+ok.length+' '+esc(t('to Fingercheck'))+'</button>'
+      :'<div class="note" style="margin-top:12px">'+esc(t('Sending to Fingercheck is not switched on yet — this is only a preview.'))+'</div>'):'')
+    +(bad.length?'<div style="margin-top:8px;font-size:12px;color:var(--g4)">'+esc(t('The ones in red need to be fixed in Fingercheck itself.'))+'</div>':'');}
+function fcClear(id,b){const p=D.punches.find(x=>x.id===id);if(!p)return;p.fcSync={state:'sent',manual:true,at:Date.now(),by:me().id};save();if(b){b.disabled=true;b.textContent='✓';}try{renderTimeCards();}catch(e){}}
+async function fcSendGo(){if(!fcPrev)return;const ids=fcPrev.items.filter(x=>!x.problem&&x.ops.length).map(x=>x.id);if(!ids.length)return;const b=document.getElementById('fcsGo');if(b){b.disabled=true;b.textContent=t('Sending…');}
+  try{await (window.EX_saveNow?window.EX_saveNow({keys:ids.map(i=>['punches',i])}):Promise.resolve());}catch(e){}
+  let r;try{r=await EX_sb.functions.invoke('fingercheck',{body:{action:'push',ids,send:true}});}catch(e){r={error:e};}
+  const el=document.getElementById('fcsBody');if(!el)return;
+  if(r.error||!r.data||!r.data.results){el.innerHTML='<span style="color:#c0392b">'+esc(t('Not sent — try again.'))+'</span>';if(b)b.disabled=false;return;}
+  const R=r.data.results,okN=R.filter(x=>x.ok).length;
+  el.innerHTML='<div style="color:var(--green);font-weight:700">✓ '+okN+' '+esc(t('sent to Fingercheck'))+'</div>'+R.filter(x=>!x.ok).map(x=>'<div style="color:#c0392b;padding-top:6px">'+esc(x.name)+' · '+esc(x.day)+': '+esc(x.err||'')+'</div>').join('');
+  try{if(typeof window.EX_refreshAll==='function')window.EX_refreshAll();}catch(e){}setTimeout(()=>{try{renderHours();}catch(e){}},1500);}
+try{Object.assign(ES,{"Send to Fingercheck":"Enviar a Fingercheck","change not sent yet":"cambio sin enviar","changes not sent yet":"cambios sin enviar","need a look":"para revisar","Checking Fingercheck…":"Revisando Fingercheck…","Could not reach Fingercheck. Try again.":"No se pudo conectar con Fingercheck. Intenta de nuevo.","removed":"quitado","Fingercheck now":"Fingercheck ahora","After sending":"Después de enviar","nothing":"nada","changes will be sent":"cambios se enviarán","Nothing to send.":"Nada que enviar.","Send":"Enviar","to Fingercheck":"a Fingercheck","Sending to Fingercheck is not switched on yet — this is only a preview.":"El envío a Fingercheck aún no está activado — esto es solo una vista previa.","The ones in red need to be fixed in Fingercheck itself.":"Los que están en rojo hay que arreglarlos en Fingercheck.","Sending…":"Enviando…","Not sent — try again.":"No se envió — intenta de nuevo.","sent to Fingercheck":"enviados a Fingercheck","not sent":"sin enviar","no Fingercheck number for this person":"esta persona no tiene número de Fingercheck","this punch is not in Fingercheck anymore — it was changed or removed there":"esta marca ya no está en Fingercheck — la cambiaron o quitaron allí","the person was changed — fix this one in Fingercheck":"se cambió la persona — arréglalo en Fingercheck","it was also changed in Fingercheck meanwhile — fix this one in Fingercheck":"también la cambiaron en Fingercheck — arréglala en Fingercheck","this job has no Fingercheck job code yet — sent without a job":"este trabajo no tiene código en Fingercheck — se envía sin trabajo","a punch-out can't be taken away here — fix this one in Fingercheck":"no se puede quitar una salida aquí — arréglalo en Fingercheck","already gone in Fingercheck":"ya no está en Fingercheck","already the same in Fingercheck":"ya está igual en Fingercheck","Done in Fingercheck":"Hecho en Fingercheck"});}catch(e){}
 function tcDayMove(n){let d=tcDay+n;if(d<0){tcMove(-1);tcDay=6;}else if(d>6){tcMove(1);tcDay=0;}else tcDay=d;renderTimeCards();}
 function tcFixCrew(cid){const g=tcGroups(tcStart()).find(x=>x.id===cid);if(!g)return;tcSel=new Set(g.people.map(e=>e.id));openBulkFix();try{document.getElementById('bfDay').selectedIndex=tcDay;}catch(e){}}
 function tcSelMode(){tcSel=tcSel?null:new Set();renderTimeCards();}
@@ -3511,9 +3541,9 @@ function applyBulkFix(){const day=document.getElementById('bfDay').value,what=do
   if(what==='add'&&!site){toast(t('Pick the job'));return;}
   const at=hm=>new Date(day+'T'+hm).getTime();const done=[],skipped=[];const me_=me().id;
   [...tcSel].forEach(who=>{const dp=D.punches.filter(p=>p&&p.who===who&&!p.voided&&!p.rejected&&dkey(new Date(p.in))===day).sort((a,b)=>a.in-b.in);
-    const log=(p,nin,nout)=>{(p.edits=p.edits||[]).push({by:me_,at:Date.now(),why,from:{in:p.in,out:p.out||p.away||null},to:{in:nin,out:nout}});p.in=nin;p.out=nout;delete p.away;delete p.breakStart;};
+    const log=(p,nin,nout)=>{(p.edits=p.edits||[]).push({by:me_,at:Date.now(),why,from:{in:p.in,out:p.out||p.away||null},to:{in:nin,out:nout}});fcMark(p);p.in=nin;p.out=nout;delete p.away;delete p.breakStart;};
     if(what==='add'){const inT=at(ti),outT=at(to)>inT?at(to):at(to)+864e5;if(punchOverlap(who,inT,outT,null)){skipped.push(who);return;}
-      D.punches.push({id:nid('p'),who,site,in:inT,out:outT,edits:[{by:me_,at:Date.now(),why,from:{in:inT,out:outT},to:{in:inT,out:outT}}]});done.push(who);}
+      D.punches.push({id:nid('p'),who,site,in:inT,out:outT,fcSync:{state:'pending',at:Date.now(),by:me_},edits:[{by:me_,at:Date.now(),why,from:{in:inT,out:outT},to:{in:inT,out:outT}}]});done.push(who);}
     else if(what==='out'){const only=(document.getElementById('bfOnly')||{}).checked;const p=dp.filter(x=>!x.out).pop()||(only?null:dp[dp.length-1]);if(!p){skipped.push(who);return;}let o=at(to);if(o<=p.in)o+=864e5;log(p,p.in,o);done.push(who);}
     else{const p=dp[0];if(!p){skipped.push(who);return;}const i=at(ti);if(p.out&&i>=p.out){skipped.push(who);return;}log(p,i,p.out||null);done.push(who);}
     pushTo([who],()=>('🕒 '+t('Your hours were changed by')+' '+nameOf(me_)+': '+new Date(day+'T12:00').toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' — '+why));});
@@ -3564,16 +3594,19 @@ function savePunchEdit(){if(!peIdx){if(!document.getElementById('peWho').value){
   if(!d||!ti){toast(t('Date and punch-in are required'));return;}
   const who=document.getElementById('peWho').value,site=document.getElementById('peSite').value;
   applyPunchEdit({id:peIdx,who,site,d,ti,to,why});}
+// Baruch 11/10: every hour change made in the app waits in "Send to Fingercheck" until Payroll sends it.
+function fcMark(p){if(p)p.fcSync={state:'pending',at:Date.now(),by:me().id};return p;}
+function fcPending(p){return !!(p&&p.fcSync&&p.fcSync.state!=='sent');}
 function applyPunchEdit({id,who,site,d,ti,to,why}){
   const inT=new Date(d+'T'+ti).getTime();let outT=to?new Date(d+'T'+to).getTime():null;if(outT&&outT<inT)outT+=86400000;
-  if(id===null){D.punches.push({id:nid('p'),who,site,in:inT,out:outT,edits:[{by:me().id,at:Date.now(),why,from:{in:inT,out:outT},to:{in:inT,out:outT}}]});pushTo([who],()=>('🕒 '+t('Hours added by')+' '+nameOf(me().id)+': '+new Date(inT).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' '+fmtT(inT)+'–'+(outT?fmtT(outT):'—')));}
-  else{const p=D.punches.find(x=>x.id===id);if(!p){toast(t('That punch was changed or removed meanwhile — open it again.'));hide('m-pe');renderHours();return;}(p.edits=p.edits||[]).push({by:me().id,at:Date.now(),why,from:{in:p.in,out:p.out||p.away||null},to:{in:inT,out:outT}});p.who=who;p.site=site;p.in=inT;p.out=outT;delete p.away;delete p.breakStart;const inR=(a,b)=>a>=inT&&(outT==null||b<=outT);if(p.breaks)p.breaks=p.breaks.filter(b=>inR(b.s,b.e));if(p.trips)p.trips=p.trips.filter(tr=>tr.back&&inR(tr.left,tr.back));
+  if(id===null){D.punches.push({id:nid('p'),who,site,in:inT,out:outT,fcSync:{state:'pending',at:Date.now(),by:me().id},edits:[{by:me().id,at:Date.now(),why,from:{in:inT,out:outT},to:{in:inT,out:outT}}]});pushTo([who],()=>('🕒 '+t('Hours added by')+' '+nameOf(me().id)+': '+new Date(inT).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' '+fmtT(inT)+'–'+(outT?fmtT(outT):'—')));}
+  else{const p=D.punches.find(x=>x.id===id);if(!p){toast(t('That punch was changed or removed meanwhile — open it again.'));hide('m-pe');renderHours();return;}(p.edits=p.edits||[]).push({by:me().id,at:Date.now(),why,from:{in:p.in,out:p.out||p.away||null},to:{in:inT,out:outT}});fcMark(p);p.who=who;p.site=site;p.in=inT;p.out=outT;delete p.away;delete p.breakStart;const inR=(a,b)=>a>=inT&&(outT==null||b<=outT);if(p.breaks)p.breaks=p.breaks.filter(b=>inR(b.s,b.e));if(p.trips)p.trips=p.trips.filter(tr=>tr.back&&inR(tr.left,tr.back));
     pushTo([who],()=>('🕒 '+t('Your hours were changed by')+' '+nameOf(me().id)+': '+new Date(inT).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' '+fmtT(inT)+'–'+(outT?fmtT(outT):'—')+(why?' — '+why:'')));}
   save();hide('m-pe');renderHours();renderPunch();toast('✓ '+t('Saved'),'green');}
 function delPunch(){const p=D.punches.find(x=>x.id===peIdx);if(!p){hide('m-pe');renderHours();return;}const undo=!!p.voided;
   askPrompt(undo?t('Restore this clock entry'):t('Remove this clock entry'),[{label:t('Note (optional)'),value:''}],([why])=>{why=(why||'').trim();voidPunch(p,why);});}
 function voidPunch(p,why){const undo=!!p.voided;{
-    const at=Date.now(),span={in:p.in,out:p.out||p.away||null};(p.edits=p.edits||[]).push({by:me().id,at,why,void:!undo,restore:undo,from:span,to:span});
+    const at=Date.now(),span={in:p.in,out:p.out||p.away||null};(p.edits=p.edits||[]).push({by:me().id,at,why,void:!undo,restore:undo,from:span,to:span});fcMark(p);
     if(undo)delete p.voided;else{p.voided={by:me().id,at,why};if(!p.out){p.out=at;delete p.away;delete p.breakStart;pushTo([p.who],()=>('🕒 '+t('Your open clock entry was removed by the office — clock in again if you are working')+(why?' ('+why+')':'')),'warn',{tab:'punch'});}}
     save();hide('m-pe');renderHours();renderPunch();toast('✓ '+(undo?t('Restored'):t('Removed — kept in the history')),'green');}}
 
@@ -5281,7 +5314,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vh39c1109"></script><script src="scanner-v2-ui.js?vh39c1109"></script><script src="sched-v21.js?vh39c1109"></script><script src="p2.js?vh39c1109"></script><script src="p4.js?vh39c1109"></script><script src="p5.js?vh39c1109"></script><script src="p6.js?vh39c1109"></script><script src="p7.js?vh39c1109"></script><script src="p8.js?vh39c1109"></script><script src="p9.js?vh39c1109"></script><script src="p10.js?vh39c1109"></script><script src="p11.js?vh39c1109"></script><script src="p12.js?vh39c1109"></script><script src="p13.js?vh39c1109"></script><script src="p14.js?vh39c1109"></script><script src="p15.js?vh39c1109"></script><script src="p16.js?vh39c1109"></script>
+<script src="scanner-v2.js?vh40c1110"></script><script src="scanner-v2-ui.js?vh40c1110"></script><script src="sched-v21.js?vh40c1110"></script><script src="p2.js?vh40c1110"></script><script src="p4.js?vh40c1110"></script><script src="p5.js?vh40c1110"></script><script src="p6.js?vh40c1110"></script><script src="p7.js?vh40c1110"></script><script src="p8.js?vh40c1110"></script><script src="p9.js?vh40c1110"></script><script src="p10.js?vh40c1110"></script><script src="p11.js?vh40c1110"></script><script src="p12.js?vh40c1110"></script><script src="p13.js?vh40c1110"></script><script src="p14.js?vh40c1110"></script><script src="p15.js?vh40c1110"></script><script src="p16.js?vh40c1110"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
