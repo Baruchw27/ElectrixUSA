@@ -128,6 +128,22 @@ Deno.serve(async (req) => {
       for (const k of Object.keys(x)) if (!/ssn|social|tax|birth|dob|bank|account|routing|address|phone|email|salary|rate|wage/i.test(k)) o[k] = strip(x[k]); return o; } return x; };
     return json({ status: r.status, body: strip(r.body) });
   }
+  // careful one-off punch fixes (Baruch 11/10, overnight shifts): {co, ops:[{kind: add|edit|delete, EmployeeNumber, PunchType,
+  // TimePunch, Job?, PunchID?, ISExplicit?}]} — needs the sending switch (fc_write='on'); answers Fingercheck's reply per op
+  if (action === "fix") {
+    const { data: cfg } = await adm.from("server_config").select("v").eq("k", "fc_write").maybeSingle();
+    if (cfg?.v !== "on") return json({ error: "Sending to Fingercheck is switched off" }, 403);
+    const ops = Array.isArray(a.ops) ? a.ops.slice(0, 10) : []; const out: any[] = [];
+    for (const o of ops) {
+      const kind = String(o.kind || ""); const path = kind === "add" ? "v1/Punch/AddPunch" : kind === "edit" ? "v1/Punch/EditPunch" : kind === "delete" ? "v1/Punch/DeletePunch" : "";
+      if (!path) { out.push({ error: "bad kind" }); continue; }
+      const body = { EmployeeNumber: String(o.EmployeeNumber || ""), PunchType: Number(o.PunchType) || 0, TimePunch: String(o.TimePunch || ""), Job: o.Job ?? null,
+        PunchID: o.PunchID ?? null, ISExplicit: !!o.ISExplicit, Note: "Fixed in Electrix app" };
+      const r = await fcWrite(co, kind === "delete" ? "DELETE" : "POST", path, body); out.push({ kind, ok: r.ok, status: r.status, body: r.body });
+      if (!r.ok) break;
+    }
+    return json({ results: out });
+  }
   if (action === "sample") { const r = await fc(co, "v1/Punch/GetClockPunchMetaDataListSampleObject"); return json(r, r.status === 200 ? 200 : 502); }
   const { data: emps } = await adm.from("records").select("id,data").eq("coll", "emps").eq("deleted", false);
   const people = (emps || []).map((e: any) => ({ id: e.id, name: e.data?.name || "", clock: e.data?.clock !== false, inactive: !!e.data?.inactive, fc: e.data?.fcNum || null }))
