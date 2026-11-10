@@ -3537,7 +3537,7 @@ function openBulkFix(){if(!tcSel||!tcSel.size)return;const ws=tcStart();const DL
     +'<button class="btn" style="margin-top:12px" onclick="applyBulkFix()">'+t('Apply to')+' '+tcSel.size+'</button>');
   try{const ids=[...tcSel];const mi=[1,2,3,4,5,6,0].find(i=>ids.some(w=>tcPunches(w,ws).some(p=>tcMissing(p)&&dayIndex(p.in,ws)===i)));const di=mi!=null?mi:Math.min(6,Math.max(1,new Date().getDay()-1));document.getElementById('bfDay').selectedIndex=di;}catch(e){}bfShow();}
 function bfShow(){const w=(document.getElementById('bfWhat')||{}).value;const sh=(id,v)=>{const el=document.getElementById(id);if(el)el.style.display=v?'':'none';};sh('bfInW',w!=='out');sh('bfOutW',w!=='in');sh('bfSiteW',w==='add');sh('bfOnlyW',w==='out');}
-function applyBulkFix(){const day=document.getElementById('bfDay').value,what=document.getElementById('bfWhat').value,ti=document.getElementById('bfIn').value,to=document.getElementById('bfOut').value,site=document.getElementById('bfSite').value,why=document.getElementById('bfWhy').value.trim();
+function applyBulkFix(){const day=document.getElementById('bfDay').value,what=document.getElementById('bfWhat').value,ti=document.getElementById('bfIn').value,to=document.getElementById('bfOut').value,site=document.getElementById('bfSite').value,why=whyOr(document.getElementById('bfWhy').value);
   if(what==='add'&&!site){toast(t('Pick the job'));return;}
   const at=hm=>new Date(day+'T'+hm).getTime();const done=[],skipped=[];const me_=me().id;
   [...tcSel].forEach(who=>{const dp=D.punches.filter(p=>p&&p.who===who&&!p.voided&&!p.rejected&&dkey(new Date(p.in))===day).sort((a,b)=>a.in-b.in);
@@ -3597,7 +3597,9 @@ function savePunchEdit(){if(!peIdx){if(!document.getElementById('peWho').value){
 // Baruch 11/10: every hour change made in the app waits in "Send to Fingercheck" until Payroll sends it.
 function fcMark(p){if(p)p.fcSync={state:'pending',at:Date.now(),by:me().id};return p;}
 function fcPending(p){return !!(p&&p.fcSync&&p.fcSync.state!=='sent');}
-function applyPunchEdit({id,who,site,d,ti,to,why}){
+// Baruch 11/10: a note is optional — the server still keeps a reason on every change, so an empty note becomes "Fixed in Time cards"
+function whyOr(w){w=String(w||'').trim();return w.length>=3?w:'Fixed in Time cards';}
+function applyPunchEdit({id,who,site,d,ti,to,why}){why=whyOr(why);
   const inT=new Date(d+'T'+ti).getTime();let outT=to?new Date(d+'T'+to).getTime():null;if(outT&&outT<inT)outT+=86400000;
   if(id===null){D.punches.push({id:nid('p'),who,site,in:inT,out:outT,fcSync:{state:'pending',at:Date.now(),by:me().id},edits:[{by:me().id,at:Date.now(),why,from:{in:inT,out:outT},to:{in:inT,out:outT}}]});pushTo([who],()=>('🕒 '+t('Hours added by')+' '+nameOf(me().id)+': '+new Date(inT).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' '+fmtT(inT)+'–'+(outT?fmtT(outT):'—')));}
   else{const p=D.punches.find(x=>x.id===id);if(!p){toast(t('That punch was changed or removed meanwhile — open it again.'));hide('m-pe');renderHours();return;}(p.edits=p.edits||[]).push({by:me().id,at:Date.now(),why,from:{in:p.in,out:p.out||p.away||null},to:{in:inT,out:outT}});fcMark(p);p.who=who;p.site=site;p.in=inT;p.out=outT;delete p.away;delete p.breakStart;const inR=(a,b)=>a>=inT&&(outT==null||b<=outT);if(p.breaks)p.breaks=p.breaks.filter(b=>inR(b.s,b.e));if(p.trips)p.trips=p.trips.filter(tr=>tr.back&&inR(tr.left,tr.back));
@@ -3605,7 +3607,7 @@ function applyPunchEdit({id,who,site,d,ti,to,why}){
   save();hide('m-pe');renderHours();renderPunch();toast('✓ '+t('Saved'),'green');}
 function delPunch(){const p=D.punches.find(x=>x.id===peIdx);if(!p){hide('m-pe');renderHours();return;}const undo=!!p.voided;
   askPrompt(undo?t('Restore this clock entry'):t('Remove this clock entry'),[{label:t('Note (optional)'),value:''}],([why])=>{why=(why||'').trim();voidPunch(p,why);});}
-function voidPunch(p,why){const undo=!!p.voided;{
+function voidPunch(p,why){why=whyOr(why);const undo=!!p.voided;{
     const at=Date.now(),span={in:p.in,out:p.out||p.away||null};(p.edits=p.edits||[]).push({by:me().id,at,why,void:!undo,restore:undo,from:span,to:span});fcMark(p);
     if(undo)delete p.voided;else{p.voided={by:me().id,at,why};if(!p.out){p.out=at;delete p.away;delete p.breakStart;pushTo([p.who],()=>('🕒 '+t('Your open clock entry was removed by the office — clock in again if you are working')+(why?' ('+why+')':'')),'warn',{tab:'punch'});}}
     save();hide('m-pe');renderHours();renderPunch();toast('✓ '+(undo?t('Restored'):t('Removed — kept in the history')),'green');}}
