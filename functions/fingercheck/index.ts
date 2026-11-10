@@ -176,13 +176,16 @@ Deno.serve(async (req) => {
     const punches: any[] = [], unmapped: Record<string, number> = {}; let hours = 0, open = 0, matched = 0;
     for (const x of asList(tc.body)) {
       const hin = at(x.TimeIn), hout = at(x.TimeOut); const num = String(x.EmployeeNumber || "");
-      if (!hin || !hout || hout <= hin) { open++; continue; }
+      // Baruch 11/10: a punch-in with no punch-out from an earlier day comes in as "missing punch-out" (so Payroll can fix
+      // that real entry); today's open punches (still working) and broken rows are skipped as before
+      const missingOut = !!hin && !x.TimeOut && dkey(hin) < dkey(Date.now());
+      if (!hin || (!missingOut && (!hout || hout <= hin))) { open++; continue; }
       const who = whoOf(num, x.FirstName || "", x.LastName || "");
       if (!who) { const nm = clean((x.FirstName || "") + " " + (x.LastName || "")); unmapped[nm] = Math.round(((unmapped[nm] || 0) + Number(x.Hours || 0)) * 100) / 100; continue; }
       const jd = clean(x.JobDescriptionPunch || ""); const site = siteOf(jd); if (site && !site.startsWith("fc:")) matched++;
       const id = "fc_" + String(x.InPunchID || (num + "_" + hin)).replace(/[^A-Za-z0-9_.:|@-]/g, "");
       hours += Number(x.Hours || 0);
-      punches.push({ id, who, site, in: hin, out: hout, src: "fingercheck", fcCo: co, fcNum: num, fcHours: Math.round(Number(x.Hours || 0) * 10000) / 10000, fcJob: jd || null, fcJobCode: x.JobPunch ? String(x.JobPunch) : undefined, fcInId: x.InPunchID || undefined, fcOutId: x.OutPunchID || undefined, fcEdited: !!(x.IsInPunchEdit || x.IsOutPunchEdit) || undefined });
+      punches.push({ id, who, site, in: hin, out: missingOut ? null : hout, fcOpen: missingOut || undefined, src: "fingercheck", fcCo: co, fcNum: num, fcHours: Math.round(Number(x.Hours || 0) * 10000) / 10000, fcJob: jd || null, fcJobCode: x.JobPunch ? String(x.JobPunch) : undefined, fcInId: x.InPunchID || undefined, fcOutId: x.OutPunchID || undefined, fcEdited: !!(x.IsInPunchEdit || x.IsOutPunchEdit) || undefined });
     }
     const pd = await fc(co, `v1/Reports/GetAllPayrollCheckDetailsForDateRange?startDate=${from}&endDate=${to}`);
     if (pd.status !== 200) return json({ error: "Fingercheck paychecks answered " + pd.status }, 502);
@@ -215,6 +218,10 @@ Deno.serve(async (req) => {
         if (ins.length) { const { data: mine } = await adm.from("records").select("id,data").eq("coll", "punches").in("data->>fcInId", ins);
           for (const r of mine || []) if (!String(r.id).startsWith("fc_")) skipIds.add("fc_" + String(r.data?.fcInId || "").replace(/[^A-Za-z0-9_.:|@-]/g, "")); }
       }
+      const opens = punches.filter((p) => p.fcOpen);
+      if (opens.length) { const lo = Math.min(...opens.map((p) => p.in)) - 1200000, hi = Math.max(...opens.map((p) => p.in)) + 1200000;
+        const { data: appP } = await adm.from("records").select("id,data").eq("coll", "punches").eq("deleted", false).gte("data->>in", String(lo)).lte("data->>in", String(hi));
+        for (const o of opens) if ((appP || []).some((r: any) => !String(r.id).startsWith("fc_") && r.data?.who === o.who && !r.data?.voided && Math.abs(Number(r.data?.in) - o.in) <= 1200000)) skipIds.add(o.id); }
       const pend = (d: any) => d && ((d.fcSync && d.fcSync.state !== "sent") || (!d.fcSync && Array.isArray(d.edits) && d.edits.length) || (!d.fcSync && d.voided));
       const kept = punches.filter((p) => { if (skipIds.has(p.id)) return false; if (pend(keep[p.id])) { protectedN++; return false; } return true; })
         .map((p) => { const o = keep[p.id]; return o && o.fcSync ? { ...p, edits: o.edits, fcSync: o.fcSync } : p; });
@@ -281,24 +288,27 @@ Deno.serve(async (req) => {
       const n = numOf[p.who]; if (!n) { it.problem = "no Fingercheck number for this person"; continue; }
       it.co = n.co; const base = (type: number, t: number, job: string | null, pid: string | null) => ({ EmployeeNumber: n.fc, PunchType: type, TimePunch: nyIso(t), Job: job, PunchID: pid, Note: "Fixed in Electrix app" });
       const fcIn = p.src === "fingercheck" ? (p.fcInId || String(p.id).replace(/^fc_/, "")) : (p.fcInId || null);
-      const row = fcIn ? byIn[fcIn] : null;
+      let row = fcIn ? byIn[fcIn] : null; let adopt = false;
+      if (!fcIn && !p.voided) { const L2 = (rows[n.co] || []).filter((x: any) => String(x.EmployeeNumber) === n.fc && !x.TimeOut && x.InPunchID && Math.abs((at(x.TimeIn) || 0) - p.in) <= 1200000);
+        if (L2.length === 1) { row = L2[0]; adopt = true; it.adopt = true; it.note = "Fingercheck already has this punch-in with no punch-out — only the punch-out is sent"; } }
       const job = p.site ? (codeOfSite[p.site] || null) : null;
       it.before = row ? { in: at(row.TimeIn), out: at(row.TimeOut), job: row.JobDescriptionPunch || null } : null;
       it.after = p.voided ? null : { in: p.in, out: p.out || null, job: sname[p.site] || null };
       if (fcIn && !row) { if (p.voided) { it.done = "already gone in Fingercheck"; continue; } it.problem = "this punch is not in Fingercheck anymore — it was changed or removed there"; continue; }
       if (row && row.EmployeeNumber != null && String(row.EmployeeNumber) !== n.fc) { it.problem = "the person was changed — fix this one in Fingercheck"; continue; }
-      if (row) { const orig = p.edits && p.edits[0] && p.edits[0].from; const fin = at(row.TimeIn), fout = at(row.TimeOut);
+      if (row && !adopt) { const orig = p.edits && p.edits[0] && p.edits[0].from; const fin = at(row.TimeIn), fout = at(row.TimeOut);
         const same = (x: number | null, y: number | null) => (x == null && y == null) || (x != null && y != null && Math.abs(x - y) < 60000);
         if (orig && !(same(fin, orig.in) && same(fout, orig.out ?? null)) && !(same(fin, p.in) && same(fout, p.out || null)))
           { it.problem = "it was also changed in Fingercheck meanwhile — fix this one in Fingercheck"; continue; } }
-      if (p.site && !job && !p.voided) it.note = "this job has no Fingercheck job code yet — sent without a job";
+      if (p.site && !job && !p.voided && !adopt) it.note = "this job has no Fingercheck job code yet — sent without a job";
       if (p.voided) { if (row) { it.ops.push({ kind: "delete", what: "in", body: base(0, at(row.TimeIn)!, row.JobPunch || null, String(row.InPunchID)) });
           if (row.OutPunchID) it.ops.push({ kind: "delete", what: "out", body: base(1, at(row.TimeOut)!, row.JobPunch || null, String(row.OutPunchID)) }); }
         continue; }
       if (!row) { it.ops.push({ kind: "add", what: "in", body: base(0, p.in, job, null) }); if (p.out) it.ops.push({ kind: "add", what: "out", body: base(1, p.out, job, null) }); continue; }
       const jobNow = job || (row.JobPunch ? String(row.JobPunch) : null); const jobChanged = !!job && String(row.JobPunch || "") !== job;
       const fin = at(row.TimeIn), fout = at(row.TimeOut);
-      if (jobChanged || fin == null || Math.abs(fin - p.in) >= 60000) it.ops.push({ kind: "edit", what: "in", body: base(0, p.in, jobNow, String(row.InPunchID)) });
+      // (an adopted open punch keeps Fingercheck's own punch-in unless it is more than 5 minutes off)
+      if (jobChanged || fin == null || Math.abs(fin - p.in) >= (adopt ? 300000 : 60000)) it.ops.push({ kind: "edit", what: "in", body: base(0, p.in, jobNow, String(row.InPunchID)) });
       if (p.out) { if (row.OutPunchID) { if (jobChanged || fout == null || Math.abs(fout - p.out) >= 60000) it.ops.push({ kind: "edit", what: "out", body: base(1, p.out, jobNow, String(row.OutPunchID)) }); }
         else it.ops.push({ kind: "add", what: "out", body: base(1, p.out, jobNow, null) }); }
       else if (row.OutPunchID) { it.problem = "a punch-out can't be taken away here — fix this one in Fingercheck"; it.ops = []; continue; }
@@ -319,14 +329,15 @@ Deno.serve(async (req) => {
       res.push({ id: it.id, name: it.name, day: it.day, ok: !err, err, done });
     }
     // added punches: find their new Fingercheck ids so a later import doesn't bring a second copy
-    const added = items.filter((it) => res.find((r) => r.id === it.id && r.ok) && it.ops.some((o: any) => o.kind === "add" && o.what === "in"));
+    const added = items.filter((it) => res.find((r) => r.id === it.id && r.ok) && (it.adopt || it.ops.some((o: any) => o.kind === "add" && o.what === "in")));
     if (added.length) for (const c of [...new Set(added.map((x) => x.co))]) {
       const ds = added.filter((x) => x.co === c).map((x) => x.day).sort();
       const r = await fc(c, `v1/Reports/GetAllTimeCardsForDateRange?startDate=${ds[0]}&endDate=${ds[ds.length - 1]}`); const L = asList(r.body);
       for (const it of added.filter((x) => x.co === c)) { const p = P.find((x: any) => x.id === it.id); const n = numOf[p.who];
-        const m = L.find((x: any) => String(x.EmployeeNumber) === n.fc && Math.abs((at(x.TimeIn) || 0) - p.in) < 60000);
+        const m = L.find((x: any) => String(x.EmployeeNumber) === n.fc && Math.abs((at(x.TimeIn) || 0) - p.in) < (it.adopt ? 1200000 : 60000));
         if (m) { const { data: cur } = await adm.from("records").select("data").eq("coll", "punches").eq("id", it.id).maybeSingle();
-          await adm.from("records").update({ data: { ...(cur?.data || {}), fcInId: m.InPunchID || undefined, fcOutId: m.OutPunchID || undefined, fcNum: n.fc, fcCo: c }, updated_at: new Date().toISOString(), updated_by: "fingercheck-send" }).eq("coll", "punches").eq("id", it.id); } }
+          const keepIn = it.adopt && at(m.TimeIn) ? { in: at(m.TimeIn) } : {};
+          await adm.from("records").update({ data: { ...(cur?.data || {}), ...keepIn, fcInId: m.InPunchID || undefined, fcOutId: m.OutPunchID || undefined, fcNum: n.fc, fcCo: c }, updated_at: new Date().toISOString(), updated_by: "fingercheck-send" }).eq("coll", "punches").eq("id", it.id); } }
     }
     return json({ sent: true, results: res });
   }
