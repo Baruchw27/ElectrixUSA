@@ -117,6 +117,17 @@ Deno.serve(async (req) => {
     return json(out);
   }
   if (!has(co) && action !== "hours") return json({ error: "Fingercheck keys are not saved for " + CO_NAME[co] }, 400);
+  // read-only: the raw punches behind the time cards (to see exactly how Fingercheck stores them); private fields removed
+  if (action === "raw") {
+    const okD = (x: string) => /^\d{4}-\d{2}-\d{2}$/.test(x || "");
+    if (!okD(a.from) || !okD(a.to)) return json({ error: "from/to" }, 400);
+    const emp = String(a.emp || "").replace(/[^0-9A-Za-z]/g, "");
+    const r = await fc(co, emp ? `v1/Reports/GetAllTimeCardRawDataForDateRangeByEmployeeNumber?startDate=${a.from}&endDate=${a.to}&employeeNumber=${emp}`
+      : `v1/Reports/GetAllTimeCardRawDataForDateRange?startDate=${a.from}&endDate=${a.to}`);
+    const strip = (x: any): any => { if (Array.isArray(x)) return x.map(strip); if (x && typeof x === "object") { const o: any = {};
+      for (const k of Object.keys(x)) if (!/ssn|social|tax|birth|dob|bank|account|routing|address|phone|email|salary|rate|wage/i.test(k)) o[k] = strip(x[k]); return o; } return x; };
+    return json({ status: r.status, body: strip(r.body) });
+  }
   if (action === "sample") { const r = await fc(co, "v1/Punch/GetClockPunchMetaDataListSampleObject"); return json(r, r.status === 200 ? 200 : 502); }
   const { data: emps } = await adm.from("records").select("id,data").eq("coll", "emps").eq("deleted", false);
   const people = (emps || []).map((e: any) => ({ id: e.id, name: e.data?.name || "", clock: e.data?.clock !== false, inactive: !!e.data?.inactive, fc: e.data?.fcNum || null }))
