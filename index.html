@@ -10,10 +10,10 @@
 html.exboot .top,html.exboot .pg,html.exboot .tabs,html.exboot #p2fab,html.exboot #p7fm,html.exboot #p8pin{visibility:hidden!important}
 html.exboot body{background:#f2f2f7 url(logo-light.svg) center 42%/min(62%,300px) no-repeat!important}
 @media (prefers-color-scheme:dark){html.exboot body{background:#000 url(logo-dark.svg) center 42%/min(62%,300px) no-repeat!important}}</style>
-<script>window.EX_VER='vh38c1109';</script><script src="config.js"></script>
+<script>window.EX_VER='vh39c1109';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vh38c1109"></script>
-<script src="extras.js?vh38c1109"></script>
+<script src="sync.js?vh39c1109"></script>
+<script src="extras.js?vh39c1109"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -1096,7 +1096,7 @@ body.exro #pg-jobs .acts button,body.exro #pg-jobs .bsel,body.exro #addJobTop,bo
   <label data-i18n="Job site">Job site</label><select id="peSite"></select>
   <label data-i18n="Date">Date</label><input id="peDate" type="date">
   <div style="display:flex;gap:8px"><div style="flex:1"><label data-i18n="Punch in">Punch in</label><input id="peIn" type="time"></div><div style="flex:1"><label data-i18n="Punch out">Punch out</label><input id="peOut" type="time"></div></div>
-  <label data-i18n="Reason for change">Reason for change</label><input id="peWhy" placeholder="Required — e.g. forgot to punch out">
+  <label data-i18n="Note (optional)">Note (optional)</label><input id="peWhy" placeholder="e.g. forgot to punch out">
   <div class="note" id="peLog" style="margin-top:10px;display:none"></div>
   <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" onclick="savePunchEdit()" data-i18n="Save">Save</button><button class="btn rd" id="peDel" style="width:auto;padding:12px 14px" onclick="delPunch()" data-i18n="Delete">Delete</button><button class="btn sec2" style="width:auto;padding:12px 14px" onclick="hide('m-pe')" data-i18n="Cancel">Cancel</button></div>
 </div></div>
@@ -3420,11 +3420,44 @@ function tcTable(people,ws,sel){const DL=['S','M','T','W','T','F','S'];
       +'<td style="'+bt+'text-align:left;font-weight:600;font-size:13px;white-space:nowrap;max-width:92px;overflow:hidden;text-overflow:ellipsis;padding:9px 4px 9px 0">'+esc(nm)+(e.lead?' <span style="color:var(--amber)">★</span>':'')+'</td>'+cells
       +'<td style="'+bt+'text-align:right;white-space:nowrap;padding-left:4px"><b style="font-size:13.5px">'+s.total.toFixed(1)+'</b>'+(s.ot?'<div style="font-size:10.5px;color:#c0392b">+'+s.ot.toFixed(1)+' OT</div>':'')+(()=>{const tp=tcTravel(e.id,ws);return tp?'<div style="font-size:10.5px;color:var(--green)">'+money(tp)+'</div>':'';})()+'</td></tr>';}).join('');
   return '<table style="width:100%;border-collapse:collapse">'+th+rows+'</table>';}
+// Baruch 11/9: Day view — hours per job right on the row when someone worked on more than one job, and tapping a person
+// opens their day right here to fix it (no new page). Saving uses the same rules as "Edit punch": a reason is required,
+// the change is logged and the worker gets the same notice.
+let tcOpenRow=null;
 function tcDayRow(e,ws,di){const dp=tcPunches(e.id,ws).filter(p=>dayIndex(p.in,ws)===di);
   const miss=dp.some(tcMissing);const first=dp[0],last=dp[dp.length-1];const h=dp.reduce((q,p)=>q+((p.out||p.away)?punchDur(p):0),0);
-  const sites=[...new Set(dp.map(p=>siteName(p.site)).filter(Boolean))];
-  return '<div style="display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--g1);cursor:pointer" onclick="openTimeCard(\''+jsq(e.id)+'\')"><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(e.name)+(e.lead?' <span style="color:var(--amber)">★</span>':'')+'</div><div style="font-size:12px;color:var(--g4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(sites.length?esc(sites.join(' · ').replace(/, NY \d{5}/g,'')):t('did not punch'))+(dp.length>1?' · '+dp.length+' '+t('punches'):'')+'</div></div>'
-    +(dp.length?'<div style="font-size:14px;white-space:nowrap">'+fmtT(first.in)+' – '+(miss?'<b style="color:#c0392b">?</b>':fmtT(last.out||last.away))+'</div><div style="width:42px;text-align:right;font-weight:700;font-size:15px">'+(miss?'':h.toFixed(1))+'</div>':'<div style="color:var(--g3);font-size:13px">—</div>')+'</div>';}
+  const by=new Map();dp.forEach(p=>{const k=p.site||'';const o=by.get(k)||{h:0,miss:false};if(p.out||p.away)o.h+=punchDur(p);else o.miss=true;by.set(k,o);});
+  const nm=k=>(siteName(k)||t('No site')).replace(/, NY \d{5}/g,'');
+  const sub=by.size>1?dp.slice().sort((x,y)=>x.in-y.in).map(p=>{const end=p.out||p.away;const mi=tcMissing(p);return '<div style="font-size:12.5px;color:var(--g4);padding:2px 0"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(nm(p.site||''))+'</div><div style="display:flex;justify-content:space-between;gap:8px"><span style="color:var(--g5)">'+fmtT(p.in)+' – '+(mi||!end?'<b style="color:#c0392b">?</b>':fmtT(end))+'</span><b style="color:var(--g5);white-space:nowrap">'+(mi||!end?'':punchDur(p).toFixed(1)+' h')+'</b></div></div>';}).join('')
+    :'<div style="font-size:12px;color:var(--g4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(dp.length?esc(nm([...by.keys()][0])):t('did not punch'))+(dp.length>1?' · '+dp.length+' '+t('punches'):'')+'</div>';
+  const open=tcOpenRow===e.id+'|'+di;
+  const multi=by.size>1;
+  return '<div style="border-top:1px solid var(--g1)"><div style="cursor:pointer;padding:10px 0" onclick="tcRowTap(\''+jsq(e.id)+'\','+di+')"><div style="display:flex;gap:10px;align-items:center"><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(e.name)+(e.lead?' <span style="color:var(--amber)">★</span>':'')+'</div>'+(multi?'<div style="font-size:12px;color:var(--g4)">'+by.size+' '+esc(t('jobs'))+'</div>':sub)+'</div>'
+    +(dp.length?'<div style="font-size:14px;white-space:nowrap">'+fmtT(first.in)+' – '+(miss?'<b style="color:#c0392b">?</b>':fmtT(last.out||last.away))+'</div><div style="width:42px;text-align:right;font-weight:700;font-size:15px">'+(miss?'':h.toFixed(1))+'</div>':'<div style="color:var(--g3);font-size:13px">—</div>')
+    +'<div style="color:var(--blue-mid);font-size:13px;width:14px;text-align:center">'+(open?'▴':'✎')+'</div></div>'
+    +(multi?'<div style="margin:6px 24px 0 10px;padding-left:8px;border-left:2px solid var(--g2)">'+sub+'</div>':'')+'</div>'
+    +(open?tcDayEdit(e,ws,di,dp):'')+'</div>';}
+function tcRowTap(who,di){const k=who+'|'+di;tcOpenRow=tcOpenRow===k?null:k;renderTimeCards();}
+function tcSiteOpts(cur){let L=liveSites().map(s=>[s.id,s.name]);if(cur&&!L.some(x=>x[0]===cur))L.push([cur,siteName(cur)||cur]);
+  return (cur?'':'<option value="">— '+esc(t('Job'))+' —</option>')+L.map(([id,n])=>'<option value="'+esc(id)+'"'+(id===cur?' selected':'')+'>'+esc(n)+'</option>').join('');}
+function tcDayEdit(e,ws,di,dp){const tm=x=>x?new Date(x).toTimeString().slice(0,5):'';const day=dkey(new Date(ws+di*864e5+12*36e5));const S='font-size:15px;padding:6px 6px;min-width:0';
+  const line=(id,site,a,b,h,extra)=>'<div style="background:var(--g1);border-radius:10px;padding:8px;margin-bottom:6px"><select id="tce_s_'+id+'" style="'+S+';width:100%;margin-bottom:6px">'+tcSiteOpts(site)+'</select>'
+    +'<div style="display:flex;gap:6px;align-items:center"><input type="time" id="tce_i_'+id+'" value="'+a+'" style="'+S+';flex:1"><span>–</span><input type="time" id="tce_o_'+id+'" value="'+b+'" style="'+S+';flex:1"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">'+extra+'</div></div>';
+  return '<div style="padding:0 0 10px" onclick="event.stopPropagation()">'
+    +dp.map(p=>line(p.id,p.site,tm(p.in),tm(p.out||p.away),0,'<button class="bs" style="white-space:nowrap" onclick="tcSaveP(\''+jsq(p.id)+'\',\''+jsq(e.id)+'\')">'+esc(t('Save'))+'</button><button class="bs" style="white-space:nowrap;color:#c0392b" onclick="tcDelP(\''+jsq(p.id)+'\',\''+jsq(e.id)+'\')">'+esc(t(p.voided?'Restore':'Remove'))+'</button>')).join('')
+    +'<div style="font-size:12.5px;font-weight:600;color:var(--g4);margin:8px 2px 4px">+ '+esc(t('Add hours'))+'</div>'
+    +line('new_'+e.id,'','','',0,'<button class="bs" style="white-space:nowrap" onclick="tcAddP(\''+jsq(e.id)+'\',\''+day+'\')">'+esc(t('Add'))+'</button>')
+    +'<input id="tce_why_'+e.id+'" placeholder="'+esc(t('Note (optional)'))+'" style="font-size:15px;margin-top:4px">'
+    +'<div style="text-align:right;margin-top:6px"><span style="font-size:12.5px;color:var(--blue-mid);cursor:pointer" onclick="openTimeCard(\''+jsq(e.id)+'\')">'+esc(t('Whole week'))+' ›</span></div></div>';}
+function tcWhy(who){const el=document.getElementById('tce_why_'+who);return (el&&el.value||'').trim();}   // note is optional
+function tcV(k,id){const el=document.getElementById('tce_'+k+'_'+id);return el?el.value:'';}
+function tcSaveP(id,who){const p=D.punches.find(x=>x.id===id);if(!p){toast(t('That punch was changed or removed meanwhile — open it again.'));renderHours();return;}
+  const ti=tcV('i',id),to=tcV('o',id),site=tcV('s',id);if(!ti){toast(t('Date and punch-in are required'));return;}const why=tcWhy(who);
+  applyPunchEdit({id,who:p.who,site:site||p.site,d:dkey(new Date(p.in)),ti,to,why});}
+function tcAddP(who,day){const k='new_'+who;const ti=tcV('i',k),to=tcV('o',k),site=tcV('s',k);if(!site){toast(t('Pick the job'));return;}if(!ti){toast(t('Date and punch-in are required'));return;}const why=tcWhy(who);
+  applyPunchEdit({id:null,who,site,d:day,ti,to,why});}
+function tcDelP(id,who){const p=D.punches.find(x=>x.id===id);if(!p){renderHours();return;}const why=tcWhy(who);voidPunch(p,why);}
+try{Object.assign(ES,{"Add hours":"Agregar horas","Add":"Agregar","Reason for the change (required)":"Motivo del cambio (obligatorio)","Whole week":"Semana completa","Job":"Trabajo","No site":"Sin trabajo","Restore":"Restaurar","jobs":"trabajos","Note (optional)":"Nota (opcional)"});}catch(e){}
 function renderTimeCards(){const box=document.getElementById('tcBox');if(!box)return;const m=me();if(!canEditHours(m)){box.innerHTML='';return;}
   const ws=tcStart(),we=ws+7*864e5;const G=tcGroups(ws);const sel=!!tcSel&&tcMode==='week';
   if(tcDay==null){const td=dayIndex(Date.now(),ws);tcDay=td>=0&&td<7?Math.max(1,td-1):1;}
@@ -3444,7 +3477,7 @@ function renderTimeCards(){const box=document.getElementById('tcBox');if(!box)re
       const gh=tcMode==='week'?g.people.reduce((q,e)=>q+weekStats(e.id,new Date(ws+12*36e5)).total,0):g.people.reduce((q,e)=>q+tcPunches(e.id,ws).filter(p=>dayIndex(p.in,ws)===tcDay&&(p.out||p.away)).reduce((a,p)=>a+punchDur(p),0),0);
       const right=tcMode==='day'?'<span style="font-size:12px;color:var(--blue-mid);font-weight:700;cursor:pointer;letter-spacing:.3px" onclick="tcFixCrew(\''+jsq(g.id)+'\')">'+t('FIX CREW')+'</span>':'<span style="font-size:12px;color:var(--g4)">'+gh.toFixed(1)+' h</span>';
       return '<div class="row" style="align-items:center;margin:12px 2px 4px">'+(sel?'<span style="display:flex;gap:8px;align-items:center;cursor:pointer" onclick="tcToggleCrew(\''+jsq(g.id)+'\')"><span style="width:20px;height:20px;border-radius:6px;border:2px solid var(--blue-mid);display:inline-flex;align-items:center;justify-content:center;'+(allOn?'background:var(--blue-mid);color:#fff':'')+'">'+(allOn?'✓':'')+'</span>':'<span>')+'<b style="font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--g4)">'+esc(g.name)+'</b></span>'+right+'</div>'
-        +'<div class="card" style="padding:'+(tcMode==='week'?'4px 12px':'0 14px')+'">'+(tcMode==='week'?tcTable(g.people,ws,sel):g.people.map(e=>tcDayRow(e,ws,tcDay)).join('').replace('border-top:1px solid var(--g1)','border-top:none'))+'</div>';}).join('');
+        +'<div class="card" style="padding:'+(tcMode==='week'?'4px 12px':'0 14px')+'">'+(tcMode==='week'?tcTable(g.people,ws,sel):g.people.map(e=>tcDayRow(e,ws,tcDay)).join('').replace('<div style="border-top:1px solid var(--g1)">','<div>'))+'</div>';}).join('');
   const foot=tcMode==='week'?(sel?'<div style="position:sticky;bottom:8px;margin-top:10px"><button class="btn" '+(tcSel.size?'':'disabled ')+'onclick="openBulkFix()">'+t('Fix together')+' · '+tcSel.size+' '+t('selected')+'</button></div><button class="btn sec2" style="margin-top:8px" onclick="tcSelMode()">'+t('Cancel')+'</button>':'<button class="btn sec2" style="margin-top:12px" onclick="tcSelMode()">'+t('Select to fix together')+'</button>'):'';
   box.innerHTML=head+body+foot;}
 function tcDayMove(n){let d=tcDay+n;if(d<0){tcMove(-1);tcDay=6;}else if(d>6){tcMove(1);tcDay=0;}else tcDay=d;renderTimeCards();}
@@ -3470,12 +3503,12 @@ function openBulkFix(){if(!tcSel||!tcSel.size)return;const ws=tcStart();const DL
     +'<div style="display:flex;gap:8px;margin-top:10px"><label id="bfInW" style="flex:1;font-size:13px">'+t('In')+'<input type="time" id="bfIn" value="08:00" style="font-size:15px"></label><label id="bfOutW" style="flex:1;font-size:13px">'+t('Out')+'<input type="time" id="bfOut" value="17:00" style="font-size:15px"></label></div>'
     +'<label id="bfOnlyW" style="display:flex;gap:8px;align-items:center;font-size:13.5px;margin-top:10px"><input type="checkbox" id="bfOnly" checked style="width:20px;height:20px">'+t('Only the ones missing a punch-out')+'</label>'
     +'<label id="bfSiteW" style="display:block;font-size:13px;margin-top:10px">'+t('Job')+'<select id="bfSite" style="font-size:15px"><option value="">— '+t('pick')+' —</option>'+liveSites().map(x=>'<option value="'+x.id+'">'+esc(x.name)+'</option>').join('')+'</select></label>'
-    +'<label style="display:block;font-size:13px;margin-top:10px">'+t('Reason')+'<input id="bfWhy" placeholder="'+t('e.g. crew forgot to punch out')+'" style="font-size:15px"></label>'
+    +'<label style="display:block;font-size:13px;margin-top:10px">'+t('Note (optional)')+'<input id="bfWhy" placeholder="'+t('e.g. crew forgot to punch out')+'" style="font-size:15px"></label>'
     +'<button class="btn" style="margin-top:12px" onclick="applyBulkFix()">'+t('Apply to')+' '+tcSel.size+'</button>');
   try{const ids=[...tcSel];const mi=[1,2,3,4,5,6,0].find(i=>ids.some(w=>tcPunches(w,ws).some(p=>tcMissing(p)&&dayIndex(p.in,ws)===i)));const di=mi!=null?mi:Math.min(6,Math.max(1,new Date().getDay()-1));document.getElementById('bfDay').selectedIndex=di;}catch(e){}bfShow();}
 function bfShow(){const w=(document.getElementById('bfWhat')||{}).value;const sh=(id,v)=>{const el=document.getElementById(id);if(el)el.style.display=v?'':'none';};sh('bfInW',w!=='out');sh('bfOutW',w!=='in');sh('bfSiteW',w==='add');sh('bfOnlyW',w==='out');}
 function applyBulkFix(){const day=document.getElementById('bfDay').value,what=document.getElementById('bfWhat').value,ti=document.getElementById('bfIn').value,to=document.getElementById('bfOut').value,site=document.getElementById('bfSite').value,why=document.getElementById('bfWhy').value.trim();
-  if(why.length<3){toast(t('Write a reason for the change'));return;}if(what==='add'&&!site){toast(t('Pick the job'));return;}
+  if(what==='add'&&!site){toast(t('Pick the job'));return;}
   const at=hm=>new Date(day+'T'+hm).getTime();const done=[],skipped=[];const me_=me().id;
   [...tcSel].forEach(who=>{const dp=D.punches.filter(p=>p&&p.who===who&&!p.voided&&!p.rejected&&dkey(new Date(p.in))===day).sort((a,b)=>a.in-b.in);
     const log=(p,nin,nout)=>{(p.edits=p.edits||[]).push({by:me_,at:Date.now(),why,from:{in:p.in,out:p.out||p.away||null},to:{in:nin,out:nout}});p.in=nin;p.out=nout;delete p.away;delete p.breakStart;};
@@ -3514,7 +3547,7 @@ function renderHours(){
     grand+=tot;
     const ot=(hrRange==='week'&&!siteFilter)?Math.max(0,tot-OT_AFTER):0;return '<div class="card"><div class="row" style="margin-bottom:6px"><b>'+esc(nameOf(who))+'</b><span>'+((hrRange==='week'&&!siteFilter)?'<span class="badge b-open">'+Math.min(tot,OT_AFTER).toFixed(2)+' '+t('reg')+'</span> '+(ot?'<span class="badge b-ov">'+ot.toFixed(2)+' '+t('OT')+'</span>':''):'<span class="badge b-open">'+tot.toFixed(2)+' h</span>')+'</span></div>'+items+'</div>';}).join('')+((hrRange==='week'&&!siteFilter)?(()=>{const reg=Object.keys(by).reduce((a,w)=>{const tt=by[w].reduce((q,{p})=>q+((p.out||p.away)&&payCounts(p)?punchDur(p):0),0);return a+Math.min(tt,OT_AFTER);},0);return '<div class="card" style="text-align:right;font-weight:700">'+t('Week total')+': '+grand.toFixed(2)+' h · '+t('Regular')+' '+reg.toFixed(2)+' · <span style="color:#c0392b">'+t('Overtime')+' '+(grand-reg).toFixed(2)+'</span></div>';})():(siteFilter?'<div class="card" style="text-align:right;font-weight:700">'+t('Total at this job')+': '+grand.toFixed(2)+' h</div>':''));
 }
-function openPunchEdit(i){const p0=i===null?null:D.punches[i];if(p0&&!p0.id)p0.id=nid('p');peIdx=p0?p0.id:null;const m=me();const p=p0;
+function openPunchEdit(i){const p0=i==null?null:(typeof i==='string'?D.punches.find(x=>x&&x.id===i):D.punches[i])||null;if(p0&&!p0.id)p0.id=nid('p');peIdx=p0?p0.id:null;const m=me();const p=p0;
   document.getElementById('peTitle').textContent=p?t('Edit punch'):t('Add missed punch');
   document.getElementById('peWho').innerHTML=(p?'':'<option value="">— '+t('pick')+' —</option>')+D.emps.filter(e=>e.role!=='office'&&e.role!=='owner').map(e=>'<option value="'+e.id+'">'+esc(e.name)+'</option>').join('');
   document.getElementById('peSite').innerHTML=(p?'':'<option value="">— '+t('pick')+' —</option>')+liveSites().map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');if(!p){document.getElementById('peWho').value='';document.getElementById('peSite').value='';}
@@ -3529,18 +3562,20 @@ function openPunchEdit(i){const p0=i===null?null:D.punches[i];if(p0&&!p0.id)p0.i
   show('m-pe');}
 function savePunchEdit(){if(!peIdx){if(!document.getElementById('peWho').value){toast(t('Pick the person'));return;}if(!document.getElementById('peSite').value){toast(t('Pick the job'));return;}}const d=document.getElementById('peDate').value,ti=document.getElementById('peIn').value,to=document.getElementById('peOut').value,why=document.getElementById('peWhy').value.trim();
   if(!d||!ti){toast(t('Date and punch-in are required'));return;}
-  const inT=new Date(d+'T'+ti).getTime();let outT=to?new Date(d+'T'+to).getTime():null;if(outT&&outT<inT)outT+=86400000;
   const who=document.getElementById('peWho').value,site=document.getElementById('peSite').value;
-  if(why.length<3){toast(t('Write a reason for the change'));return;}
-  if(peIdx===null){D.punches.push({id:nid('p'),who,site,in:inT,out:outT,edits:[{by:me().id,at:Date.now(),why,from:{in:inT,out:outT},to:{in:inT,out:outT}}]});pushTo([who],()=>('🕒 '+t('Hours added by')+' '+nameOf(me().id)+': '+new Date(inT).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' '+fmtT(inT)+'–'+(outT?fmtT(outT):'—')));}
-  else{const p=D.punches.find(x=>x.id===peIdx);if(!p){toast(t('That punch was changed or removed meanwhile — open it again.'));hide('m-pe');renderHours();return;}(p.edits=p.edits||[]).push({by:me().id,at:Date.now(),why,from:{in:p.in,out:p.out||p.away||null},to:{in:inT,out:outT}});p.who=who;p.site=site;p.in=inT;p.out=outT;delete p.away;delete p.breakStart;const inR=(a,b)=>a>=inT&&(outT==null||b<=outT);if(p.breaks)p.breaks=p.breaks.filter(b=>inR(b.s,b.e));if(p.trips)p.trips=p.trips.filter(tr=>tr.back&&inR(tr.left,tr.back));
-    pushTo([who],()=>('🕒 '+t('Your hours were changed by')+' '+nameOf(me().id)+': '+new Date(inT).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' '+fmtT(inT)+'–'+(outT?fmtT(outT):'—')+' — '+why));}
+  applyPunchEdit({id:peIdx,who,site,d,ti,to,why});}
+function applyPunchEdit({id,who,site,d,ti,to,why}){
+  const inT=new Date(d+'T'+ti).getTime();let outT=to?new Date(d+'T'+to).getTime():null;if(outT&&outT<inT)outT+=86400000;
+  if(id===null){D.punches.push({id:nid('p'),who,site,in:inT,out:outT,edits:[{by:me().id,at:Date.now(),why,from:{in:inT,out:outT},to:{in:inT,out:outT}}]});pushTo([who],()=>('🕒 '+t('Hours added by')+' '+nameOf(me().id)+': '+new Date(inT).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' '+fmtT(inT)+'–'+(outT?fmtT(outT):'—')));}
+  else{const p=D.punches.find(x=>x.id===id);if(!p){toast(t('That punch was changed or removed meanwhile — open it again.'));hide('m-pe');renderHours();return;}(p.edits=p.edits||[]).push({by:me().id,at:Date.now(),why,from:{in:p.in,out:p.out||p.away||null},to:{in:inT,out:outT}});p.who=who;p.site=site;p.in=inT;p.out=outT;delete p.away;delete p.breakStart;const inR=(a,b)=>a>=inT&&(outT==null||b<=outT);if(p.breaks)p.breaks=p.breaks.filter(b=>inR(b.s,b.e));if(p.trips)p.trips=p.trips.filter(tr=>tr.back&&inR(tr.left,tr.back));
+    pushTo([who],()=>('🕒 '+t('Your hours were changed by')+' '+nameOf(me().id)+': '+new Date(inT).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' '+fmtT(inT)+'–'+(outT?fmtT(outT):'—')+(why?' — '+why:'')));}
   save();hide('m-pe');renderHours();renderPunch();toast('✓ '+t('Saved'),'green');}
 function delPunch(){const p=D.punches.find(x=>x.id===peIdx);if(!p){hide('m-pe');renderHours();return;}const undo=!!p.voided;
-  askPrompt(undo?t('Restore this clock entry'):t('Remove this clock entry'),[{label:t('Reason (required)'),value:''}],([why])=>{why=(why||'').trim();if(why.length<3){toast(t('Write a reason for the change'));return;}
+  askPrompt(undo?t('Restore this clock entry'):t('Remove this clock entry'),[{label:t('Note (optional)'),value:''}],([why])=>{why=(why||'').trim();voidPunch(p,why);});}
+function voidPunch(p,why){const undo=!!p.voided;{
     const at=Date.now(),span={in:p.in,out:p.out||p.away||null};(p.edits=p.edits||[]).push({by:me().id,at,why,void:!undo,restore:undo,from:span,to:span});
-    if(undo)delete p.voided;else{p.voided={by:me().id,at,why};if(!p.out){p.out=at;delete p.away;delete p.breakStart;pushTo([p.who],()=>('🕒 '+t('Your open clock entry was removed by the office — clock in again if you are working')+' ('+why+')'),'warn',{tab:'punch'});}}
-    save();hide('m-pe');renderHours();renderPunch();toast('✓ '+(undo?t('Restored'):t('Removed — kept in the history')),'green');});}
+    if(undo)delete p.voided;else{p.voided={by:me().id,at,why};if(!p.out){p.out=at;delete p.away;delete p.breakStart;pushTo([p.who],()=>('🕒 '+t('Your open clock entry was removed by the office — clock in again if you are working')+(why?' ('+why+')':'')),'warn',{tab:'punch'});}}
+    save();hide('m-pe');renderHours();renderPunch();toast('✓ '+(undo?t('Restored'):t('Removed — kept in the history')),'green');}}
 
 // ───────────── JOB HOURS DASHBOARD — owner + Payroll only (gated by canEditHours; data is RLS-limited) ─────────────
 // Reuses punchDur (lunch rule and manual corrections are already inside it; material runs are paid time) and weekStart (Sun–Sat).
@@ -5246,7 +5281,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vh38c1109"></script><script src="scanner-v2-ui.js?vh38c1109"></script><script src="sched-v21.js?vh38c1109"></script><script src="p2.js?vh38c1109"></script><script src="p4.js?vh38c1109"></script><script src="p5.js?vh38c1109"></script><script src="p6.js?vh38c1109"></script><script src="p7.js?vh38c1109"></script><script src="p8.js?vh38c1109"></script><script src="p9.js?vh38c1109"></script><script src="p10.js?vh38c1109"></script><script src="p11.js?vh38c1109"></script><script src="p12.js?vh38c1109"></script><script src="p13.js?vh38c1109"></script><script src="p14.js?vh38c1109"></script><script src="p15.js?vh38c1109"></script><script src="p16.js?vh38c1109"></script>
+<script src="scanner-v2.js?vh39c1109"></script><script src="scanner-v2-ui.js?vh39c1109"></script><script src="sched-v21.js?vh39c1109"></script><script src="p2.js?vh39c1109"></script><script src="p4.js?vh39c1109"></script><script src="p5.js?vh39c1109"></script><script src="p6.js?vh39c1109"></script><script src="p7.js?vh39c1109"></script><script src="p8.js?vh39c1109"></script><script src="p9.js?vh39c1109"></script><script src="p10.js?vh39c1109"></script><script src="p11.js?vh39c1109"></script><script src="p12.js?vh39c1109"></script><script src="p13.js?vh39c1109"></script><script src="p14.js?vh39c1109"></script><script src="p15.js?vh39c1109"></script><script src="p16.js?vh39c1109"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
