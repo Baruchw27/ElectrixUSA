@@ -137,7 +137,8 @@ Deno.serve(async (req) => {
     for (const o of ops) {
       const kind = String(o.kind || ""); const path = kind === "add" ? "v1/Punch/AddPunch" : kind === "edit" ? "v1/Punch/EditPunch" : kind === "delete" ? "v1/Punch/DeletePunch" : "";
       if (!path) { out.push({ error: "bad kind" }); continue; }
-      const body = { EmployeeNumber: String(o.EmployeeNumber || ""), PunchType: Number(o.PunchType) || 0, TimePunch: String(o.TimePunch || ""), Job: o.Job ?? null,
+      const extra = o.extra && typeof o.extra === "object" ? o.extra : {};   // extra punch fields to try (e.g. the work date)
+      const body = { ...extra, EmployeeNumber: String(o.EmployeeNumber || ""), PunchType: Number(o.PunchType) || 0, TimePunch: String(o.TimePunch || ""), Job: o.Job ?? null,
         PunchID: o.PunchID ?? null, ISExplicit: !!o.ISExplicit, Note: "Fixed in Electrix app" };
       const r = await fcWrite(co, kind === "delete" ? "DELETE" : "POST", path, body); out.push({ kind, ok: r.ok, status: r.status, body: r.body });
       if (!r.ok) break;
