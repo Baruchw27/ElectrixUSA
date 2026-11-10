@@ -3437,28 +3437,36 @@ function tcDayRow(e,ws,di){const dp=tcPunches(e.id,ws).filter(p=>dayIndex(p.in,w
     +'<div style="color:var(--blue-mid);font-size:13px;width:14px;text-align:center">'+(open?'▴':'✎')+'</div></div>'
     +(multi?'<div style="margin:6px 24px 0 10px;padding-left:8px;border-left:2px solid var(--g2)">'+sub+'</div>':'')+'</div>'
     +(open?tcDayEdit(e,ws,di,dp):'')+'</div>';}
-function tcRowTap(who,di){const k=who+'|'+di;tcOpenRow=tcOpenRow===k?null:k;renderTimeCards();}
+function tcRowTap(who,di){const k=who+'|'+di;tcOpenRow=tcOpenRow===k?null:k;Object.keys(tcDirty).forEach(x=>delete tcDirty[x]);document.activeElement&&document.activeElement.blur&&document.activeElement.blur();renderTimeCards();}
 function tcSiteOpts(cur){let L=liveSites().map(s=>[s.id,s.name]);if(cur&&!L.some(x=>x[0]===cur))L.push([cur,siteName(cur)||cur]);
   return (cur?'':'<option value="">— '+esc(t('Job'))+' —</option>')+L.map(([id,n])=>'<option value="'+esc(id)+'"'+(id===cur?' selected':'')+'>'+esc(n)+'</option>').join('');}
 function tcDayEdit(e,ws,di,dp){const tm=x=>x?new Date(x).toTimeString().slice(0,5):'';const day=dkey(new Date(ws+di*864e5+12*36e5));const S='font-size:15px;padding:6px 6px;min-width:0';
-  const line=(id,site,a,b,h,extra)=>'<div style="background:var(--g1);border-radius:10px;padding:8px;margin-bottom:6px"><select id="tce_s_'+id+'" style="'+S+';width:100%;margin-bottom:6px">'+tcSiteOpts(site)+'</select>'
-    +(typeof id==='string'&&!/^new_/.test(id)&&fcPending(D.punches.find(x=>x.id===id))&&canSendFC()?'<div style="font-size:11.5px;color:var(--amber);margin:-2px 2px 4px">'+esc(t('not sent'))+' · Fingercheck</div>':'')+'<div style="display:flex;gap:6px;align-items:center"><input type="time" id="tce_i_'+id+'" value="'+a+'" style="'+S+';flex:1"><span>–</span><input type="time" id="tce_o_'+id+'" value="'+b+'" style="'+S+';flex:1"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">'+extra+'</div></div>';
+  const line=(id,site,a,b,h,extra)=>'<div style="background:var(--g1);border-radius:10px;padding:8px;margin-bottom:6px"><select id="tce_s_'+id+'" onchange="tcKeep(this.id,this.value)" style="'+S+';width:100%;margin-bottom:6px">'+tcSiteOpts(site)+'</select>'
+    +(typeof id==='string'&&!/^new_/.test(id)&&fcPending(D.punches.find(x=>x.id===id))&&canSendFC()?'<div style="font-size:11.5px;color:var(--amber);margin:-2px 2px 4px">'+esc(t('not sent'))+' · Fingercheck</div>':'')+'<div style="display:flex;gap:6px;align-items:center"><input type="time" id="tce_i_'+id+'" value="'+a+'" oninput="tcKeep(this.id,this.value)" style="'+S+';flex:1"><span>–</span><input type="time" id="tce_o_'+id+'" value="'+b+'" oninput="tcKeep(this.id,this.value)" style="'+S+';flex:1"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">'+extra+'</div></div>';
   return '<div style="padding:0 0 10px" onclick="event.stopPropagation()">'
     +dp.map(p=>line(p.id,p.site,tm(p.in),tm(p.out||p.away),0,'<button class="bs" style="white-space:nowrap" onclick="tcSaveP(\''+jsq(p.id)+'\',\''+jsq(e.id)+'\')">'+esc(t('Save'))+'</button><button class="bs" style="white-space:nowrap;color:#c0392b" onclick="tcDelP(\''+jsq(p.id)+'\',\''+jsq(e.id)+'\')">'+esc(t(p.voided?'Restore':'Remove'))+'</button>')).join('')
     +'<div style="font-size:12.5px;font-weight:600;color:var(--g4);margin:8px 2px 4px">+ '+esc(t('Add hours'))+'</div>'
     +line('new_'+e.id,'','','',0,'<button class="bs" style="white-space:nowrap" onclick="tcAddP(\''+jsq(e.id)+'\',\''+day+'\')">'+esc(t('Add'))+'</button>')
-    +'<input id="tce_why_'+e.id+'" placeholder="'+esc(t('Note (optional)'))+'" style="font-size:15px;margin-top:4px">'
+    +'<input id="tce_why_'+e.id+'" oninput="tcKeep(this.id,this.value)" placeholder="'+esc(t('Note (optional)'))+'" style="font-size:15px;margin-top:4px">'
     +'<div style="text-align:right;margin-top:6px"><span style="font-size:12.5px;color:var(--blue-mid);cursor:pointer" onclick="openTimeCard(\''+jsq(e.id)+'\')">'+esc(t('Whole week'))+' ›</span></div></div>';}
 function tcWhy(who){const el=document.getElementById('tce_why_'+who);return (el&&el.value||'').trim();}   // note is optional
 function tcV(k,id){const el=document.getElementById('tce_'+k+'_'+id);return el?el.value:'';}
 function tcSaveP(id,who){const p=D.punches.find(x=>x.id===id);if(!p){toast(t('That punch was changed or removed meanwhile — open it again.'));renderHours();return;}
   const ti=tcV('i',id),to=tcV('o',id),site=tcV('s',id);if(!ti){toast(t('Date and punch-in are required'));return;}const why=tcWhy(who);
-  applyPunchEdit({id,who:p.who,site:site||p.site,d:dkey(new Date(p.in)),ti,to,why});}
+  tcForget(id);tcForget(who);document.activeElement&&document.activeElement.blur&&document.activeElement.blur();applyPunchEdit({id,who:p.who,site:site||p.site,d:dkey(new Date(p.in)),ti,to,why});}
 function tcAddP(who,day){const k='new_'+who;const ti=tcV('i',k),to=tcV('o',k),site=tcV('s',k);if(!site){toast(t('Pick the job'));return;}if(!ti){toast(t('Date and punch-in are required'));return;}const why=tcWhy(who);
-  applyPunchEdit({id:null,who,site,d:day,ti,to,why});}
-function tcDelP(id,who){const p=D.punches.find(x=>x.id===id);if(!p){renderHours();return;}const why=tcWhy(who);voidPunch(p,why);}
+  tcForget('new_'+who);tcForget(who);document.activeElement&&document.activeElement.blur&&document.activeElement.blur();applyPunchEdit({id:null,who,site,d:day,ti,to,why});}
+function tcDelP(id,who){const p=D.punches.find(x=>x.id===id);if(!p){renderHours();return;}const why=tcWhy(who);tcForget(id);tcForget(who);voidPunch(p,why);}
 try{Object.assign(ES,{"Add hours":"Agregar horas","Add":"Agregar","Reason for the change (required)":"Motivo del cambio (obligatorio)","Whole week":"Semana completa","Job":"Trabajo","No site":"Sin trabajo","Restore":"Restaurar","jobs":"trabajos","Note (optional)":"Nota (opcional)"});}catch(e){}
-function renderTimeCards(){const box=document.getElementById('tcBox');if(!box)return;const m=me();if(!canEditHours(m)){box.innerHTML='';return;}
+// Baruch 11/10 "keeps bouncing back": a redraw (his own save coming back, someone else's change) must not wipe what Payroll
+// is typing or jump the page — wait while a field in the open day is being edited, keep typed values and the scroll.
+const tcDirty={};let tcWait=false;
+function tcEditing(){const a=document.activeElement;return !!(a&&a.id&&/^tce_/.test(a.id)&&document.getElementById('tcBox')&&document.getElementById('tcBox').contains(a));}
+function tcLater(){if(tcWait)return;tcWait=true;const box=document.getElementById('tcBox');const go=()=>{setTimeout(()=>{if(tcEditing())return;tcWait=false;box&&box.removeEventListener('focusout',go);renderTimeCards();},250);};if(box)box.addEventListener('focusout',go);else tcWait=false;}
+function tcKeep(id,v){tcDirty[id]=v;}
+function tcForget(key){Object.keys(tcDirty).forEach(k=>{if(k.endsWith('_'+key))delete tcDirty[k];});}
+function renderTimeCards(){const box=document.getElementById('tcBox');if(!box)return;if(tcEditing()){tcLater();return;}
+  const sy=window.scrollY,sc=[];{let e=box.parentElement;while(e){if(e.scrollHeight>e.clientHeight&&e.scrollTop)sc.push([e,e.scrollTop]);e=e.parentElement;}}const m=me();if(!canEditHours(m)){box.innerHTML='';return;}
   const ws=tcStart(),we=ws+7*864e5;const G=tcGroups(ws);const sel=!!tcSel&&tcMode==='week';
   if(tcDay==null){const td=dayIndex(Date.now(),ws);tcDay=td>=0&&td<7?Math.max(1,td-1):1;}
   const all=G.flatMap(g=>g.people);let tot=0,ot=0,miss=0;let trv=0;all.forEach(e=>{const s=weekStats(e.id,new Date(ws+12*36e5));tot+=s.total;ot+=s.ot;miss+=tcPunches(e.id,ws).filter(tcMissing).length;trv+=tcTravel(e.id,ws);});
@@ -3479,7 +3487,9 @@ function renderTimeCards(){const box=document.getElementById('tcBox');if(!box)re
       return '<div class="row" style="align-items:center;margin:12px 2px 4px">'+(sel?'<span style="display:flex;gap:8px;align-items:center;cursor:pointer" onclick="tcToggleCrew(\''+jsq(g.id)+'\')"><span style="width:20px;height:20px;border-radius:6px;border:2px solid var(--blue-mid);display:inline-flex;align-items:center;justify-content:center;'+(allOn?'background:var(--blue-mid);color:#fff':'')+'">'+(allOn?'✓':'')+'</span>':'<span>')+'<b style="font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--g4)">'+esc(g.name)+'</b></span>'+right+'</div>'
         +'<div class="card" style="padding:'+(tcMode==='week'?'4px 12px':'0 14px')+'">'+(tcMode==='week'?tcTable(g.people,ws,sel):g.people.map(e=>tcDayRow(e,ws,tcDay)).join('').replace('<div style="border-top:1px solid var(--g1)">','<div>'))+'</div>';}).join('');
   const foot=tcMode==='week'?(sel?'<div style="position:sticky;bottom:8px;margin-top:10px"><button class="btn" '+(tcSel.size?'':'disabled ')+'onclick="openBulkFix()">'+t('Fix together')+' · '+tcSel.size+' '+t('selected')+'</button></div><button class="btn sec2" style="margin-top:8px" onclick="tcSelMode()">'+t('Cancel')+'</button>':'<button class="btn sec2" style="margin-top:12px" onclick="tcSelMode()">'+t('Select to fix together')+'</button>'):'';
-  box.innerHTML=head+body+foot;}
+  box.innerHTML=head+body+foot;
+  for(const k in tcDirty){const el=document.getElementById(k);if(el)el.value=tcDirty[k];}
+  try{sc.forEach(([e,t])=>{e.scrollTop=t;});window.scrollTo(0,sy);}catch(e){}}
 function canSendFC(m){m=m||me();return !!m&&(m.role==='owner'||(m.role==='office'&&m.title==='Payroll'));}
 function fcWeekPending(ws,we){return D.punches.filter(p=>p&&fcPending(p)&&((p.in>=ws&&p.in<we)||(p.edits&&p.edits[0]&&p.edits[0].from&&p.edits[0].from.in>=ws&&p.edits[0].from.in<we)));}
 function fcSendBar(ws,we){if(!canSendFC())return '';const L=fcWeekPending(ws,we);if(!L.length)return '';const bad=L.filter(p=>p.fcSync.state!=='pending').length;
