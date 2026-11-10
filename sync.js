@@ -321,6 +321,16 @@ function seenSave(ok){try{if(!ok||!lastPull){localStorage.removeItem('ex_srvseen
 // History the phone keeps only for a while (see pruneOld in the app): download just the recent part, so the start-up
 // download (and the phone copy) does not keep growing month after month. Everything stays on the server.
 const HIST_COLLS=['punches','travel','stockLog','inbox','goHomeLog'],HIST_DAYS=130;
+// Baruch 11/9: old hours brought in from Fingercheck (or fixed on the server) were changed today, so every phone got ALL
+// 11,000 old punches again (by 'changed recently', not by the punch date) and slowed right down. Punches and travel older
+// than the phone keeps are now left on the server — unless this phone already holds that record (then it is updated).
+const HIST_MS=HIST_DAYS*864e5;
+function oldHist(r){if(!r||r.deleted||!r.data||typeof r.data!=='object')return false;const lim=Date.now()-HIST_MS;
+  if(r.coll==='punches'){const t=+r.data.out||+r.data.in||0;return t>0&&t<lim;}
+  if(r.coll==='travel'){const t=Date.parse((r.data.date||'')+'T12:00');return t>0&&t<lim;}return false;}
+function dropOld(rows){if(!rows.some(oldHist))return rows;const have=new Set();['punches','travel'].forEach(k=>{(Array.isArray(D[k])?D[k]:[]).forEach(x=>{if(x&&x.id)have.add(k+'\u0001'+x.id);});});
+  return rows.filter(r=>!oldHist(r)||have.has(r.coll+'\u0001'+r.id)||!!queue[r.coll+'\u0001'+r.id]);}
+let saveT=null;function saveSoon(){clearTimeout(saveT);saveT=setTimeout(()=>{saveT=null;localSave();},800);}
 // the newest change time the SERVER reported (its clock, not this phone's) — the next catch-up starts from there
 function srvTime(rows,fallback){let mx=0;for(const r of rows){const v=r&&r.updated_at?Date.parse(r.updated_at):0;if(v>mx)mx=v;}return mx||fallback;}
 async function pullAll(){const rows=[];const PAGE=1000;
@@ -328,7 +338,10 @@ async function pullAll(){const rows=[];const PAGE=1000;
   // pages are read in a fixed order (coll, id); without an order a row changed mid-download could be missed or doubled
   async function pages(mk){let from=0;while(true){const r=await withTO(mk().order('coll').order('id').range(from,from+PAGE-1),20000,'download');if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<PAGE)break;from+=PAGE;}}
   await pages(()=>sb.from('records').select('coll,id,data,deleted,updated_at').not('coll','in','('+HIST_COLLS.join(',')+')'));
-  await pages(()=>sb.from('records').select('coll,id,data,deleted,updated_at').in('coll',HIST_COLLS).gt('updated_at',since));
+  const lim=Date.now()-HIST_MS,limD=new Date(lim).toISOString().slice(0,10);
+  await pages(()=>sb.from('records').select('coll,id,data,deleted,updated_at').eq('coll','punches').gt('updated_at',since).gte('data->>in',String(lim-2*864e5)));
+  await pages(()=>sb.from('records').select('coll,id,data,deleted,updated_at').eq('coll','travel').gt('updated_at',since).gte('data->>date',limD));
+  await pages(()=>sb.from('records').select('coll,id,data,deleted,updated_at').in('coll',HIST_COLLS.filter(k=>k!=='punches'&&k!=='travel')).gt('updated_at',since));
   lastPull=srvTime(rows,t0);fullAt=Date.now();try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}return rows;}
 // signed in but the server no longer lets this person in (turned off by the office): wipe this phone's copy and go to sign-in
 async function turnedOff(){let member=true;try{const r=await withTO(sb.rpc('is_member'),6000,'access check');if(r&&!r.error&&r.data===false){const t=await withTO(sb.rpc('no_team_yet'),6000,'team check');member=!!(t&&t.data===true);}}catch(e){return false;}
@@ -353,7 +366,7 @@ async function catchUp1(){if(!REAL||!ready||catching||!st.online)return;catching
     while(true){const r=await withTO(sb.from('records').select('coll,id,data,deleted,updated_at').gt('updated_at',since).order('updated_at').range(from,from+999),20000,'catch-up');if(r.error)throw r.error;rows.push(...r.data);if(r.data.length<1000)break;from+=1000;}
     lastPull=rows.length?srvTime(rows,t0):(lastPull||t0);try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}rows.forEach(r=>{if(r.coll==='stock'&&!r.deleted&&r.data&&queue[r.coll+'\u0001'+r.id]&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,r.data.qty,null,r.data.qv);});
     // a record that arrived live while this catch-up was in flight is newer than what the catch-up fetched: keep it
-    const fresh=rows.filter(r=>!queue[r.coll+'\u0001'+r.id]&&!((liveAt[r.coll+'\u0001'+r.id]||0)>=t0));
+    const fresh=dropOld(rows).filter(r=>!queue[r.coll+'\u0001'+r.id]&&!((liveAt[r.coll+'\u0001'+r.id]||0)>=t0));
     if(fresh.length){applyRows(fresh,{replace:false});fresh.forEach(r=>{const k=r.coll;if(r.deleted){if(snap[k])delete snap[k][r.id];}else{(snap[k]=snap[k]||{})[r.id]=canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));}});seenSave(localSave());bump();}else seenSave(localSave());
     if(nu){try{if(old&&old!==nu)await withTO(sb.removeChannel(old),3000,'reconnect');}catch(e){}}
     else{try{if(sb.removeAllChannels)await withTO(sb.removeAllChannels(),3000,'reconnect');}catch(e){}subscribe();}
@@ -395,7 +408,7 @@ function applyPendingQueue(){Object.values(queue).forEach(o=>{applying=true;try{
 
 // ---------- realtime ----------
 let chan=null;
-function subscribe(){const ch=sb.channel('records-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6));chan=ch;return ch.on('postgres_changes',{event:'*',schema:'public',table:'records'},p=>{const r=p.new&&p.new.coll?p.new:null;if(!r)return;
+function subscribe(){const ch=sb.channel('records-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6));chan=ch;return ch.on('postgres_changes',{event:'*',schema:'public',table:'records'},p=>{const r=p.new&&p.new.coll?p.new:null;if(!r)return;if(oldHist(r)&&!liveRecord(r.coll,r.id))return;   // 11/9: old history stays on the server
     const key=r.coll;const j=r.deleted?null:canon(r.coll==='_'?r.data.v:upStrip(r.coll,r.data));
     // stock count belongs to the server: always take it (plus this phone's unsent moves), even when other fields are mid-edit
     if(r.coll==='stock'&&!r.deleted&&r.data&&window.EX_stockFromServer&&window.EX_stockFromServer(r.id,r.data.qty,null,r.data.qv)){localSave();bump();}
@@ -404,7 +417,7 @@ function subscribe(){const ch=sb.channel('records-'+Date.now().toString(36)+Math
     if(!r.deleted&&snap[key]&&snap[key][r.id]===j)return;          // already have it
     if(r.deleted&&!(snap[key]&&r.id in snap[key]))return;
     applyRows([r],{replace:false});if(r.deleted){if(snap[key])delete snap[key][r.id];}else{(snap[key]=snap[key]||{})[r.id]=j;}
-    localSave();bump();}).subscribe(s=>{log('realtime',s);if(chan===ch){st.live=s==='SUBSCRIBED';paint();}ch._ok=s==='SUBSCRIBED';});}
+    saveSoon();bump();}).subscribe(s=>{log('realtime',s);if(chan===ch){st.live=s==='SUBSCRIBED';paint();}ch._ok=s==='SUBSCRIBED';});}
 function bump(){clearTimeout(renderT);renderT=setTimeout(()=>{const a=document.activeElement;if(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)&&a.value){renderT=setTimeout(bump,1500);return;}try{renderAll();}catch(e){log(e);}try{if(typeof renderBell==='function')renderBell();}catch(e){}},250);}
 
 // ---------- status pill ----------
@@ -622,7 +635,7 @@ async function quickStart(){let sv=null;try{sv=JSON.parse(localStorage.getItem('
   catch(e){try{if(ch&&sb.removeChannel)await withTO(sb.removeChannel(ch),3000,'reconnect');}catch(x){}throw e;}
   lastPull=rows.length?srvTime(rows,t0):sv.t;fullAt=+sv.full||0;try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}
   rows.forEach(r=>{if(r.coll==='stock'&&!r.deleted&&r.data&&queue[r.coll+'\u0001'+r.id]&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,r.data.qty,null,r.data.qv);});
-  const fresh=rows.filter(r=>!queue[r.coll+'\u0001'+r.id]&&!((liveAt[r.coll+'\u0001'+r.id]||0)>=t0));
+  const fresh=dropOld(rows).filter(r=>!queue[r.coll+'\u0001'+r.id]&&!((liveAt[r.coll+'\u0001'+r.id]||0)>=t0));
   const meChanged=fresh.some(r=>r.coll==='emps'&&r.id===window.EX_ME);
   if(fresh.length){applyRows(fresh,{replace:false});fresh.forEach(r=>{const k=r.coll;if(r.deleted){if(snap[k])delete snap[k][r.id];}else{(snap[k]=snap[k]||{})[r.id]=canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));}});}
   try{if(typeof pruneOld==='function')pruneOld();}catch(e){log('prune',e);}
