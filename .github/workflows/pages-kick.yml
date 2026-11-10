@@ -1,0 +1,22 @@
+# Makes sure every push to main gets published to the website (GitHub Pages).
+# Added 11/10 because GitHub stopped starting the Pages build by itself for some pushes.
+# It only asks GitHub to rebuild the site from main — it does not change any files.
+name: pages-kick
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  pages: write
+  contents: read
+jobs:
+  kick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask GitHub Pages to build main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -sS -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pages/builds" | tee out.json
+          grep -q '"status"' out.json
