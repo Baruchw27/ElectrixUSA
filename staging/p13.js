@@ -321,7 +321,8 @@ P13.info=()=>{const s=site();if(!s)return;const m=M();const ed=can(canEditFolder
 const TRELLO_RX=/^https:\/\/(?:api\.)?trello\.com\/1\/cards\/[0-9a-f]{24}\/attachments\/([0-9a-f]{24})/;
 function isTrelloFile(f){return !!f&&!f.d&&TRELLO_RX.test(String(f.url||''));}
 async function srvHeaders(){const C=window.EX_CFG||{};let s=null;try{s=window.EX_sb?(await EX_sb.auth.getSession()).data.session:null;}catch(e){}return Object.assign({apikey:C.anonKey||''},s?{Authorization:'Bearer '+s.access_token}:{});}
-async function openTrello(f,siteId){const C=window.EX_CFG||{};if(!C.url){try{window.open(f.url,'_blank','noopener');}catch(e){}return;}
+async function openTrello(f,siteId){if(window.EX_PLANS&&EX_PLANS.handles(f)&&window.EX_REAL){try{return await EX_PLANS.open(f,siteId);}catch(e){}}   // p16: fast plans
+  const C=window.EX_CFG||{};if(!C.url){try{window.open(f.url,'_blank','noopener');}catch(e){}return;}
   try{toast('⏳ '+T('Opening')+' '+f.name);}catch(e){}
   try{const r=await fetch(C.url.replace(/\/$/,'')+'/functions/v1/trello-files?file='+encodeURIComponent(f.url)+'&site='+encodeURIComponent(siteId||''),{headers:await srvHeaders()});
     if(!r.ok)throw new Error(r.status===403?T('You can\'t open this file'):'HTTP '+r.status);
@@ -526,7 +527,7 @@ if(typeof window.renderMore==='function'){const _rm=window.renderMore;window.ren
 const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',WORKER='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 const e=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const tt=s=>{try{return t(s)||s;}catch(_){return s;}};
-const ES={'Page':'Página','of':'de','Could not open this PDF':'No se pudo abrir este PDF','Loading…':'Cargando…'};
+const ES={'Page':'Página','of':'de','Could not open this PDF':'No se pudo abrir este PDF','Loading…':'Cargando…','Preview — loading the sharp plan…':'Vista previa — cargando el plano nítido…'};
 const T=s=>{let es=false;try{es=lang()==='es';}catch(_){}return es&&ES[s]?ES[s]:tt(s);};
 let lib=null;function load(){if(window.pdfjsLib){lib=window.pdfjsLib;try{lib.GlobalWorkerOptions.workerSrc=WORKER;}catch(_){}return Promise.resolve(lib);}
   return new Promise((ok,bad)=>{const sc=document.createElement('script');sc.src=PDFJS;sc.crossOrigin='anonymous';sc.onload=()=>{lib=window.pdfjsLib;try{lib.GlobalWorkerOptions.workerSrc=WORKER;}catch(_){}ok(lib);};sc.onerror=bad;document.head.appendChild(sc);});}
@@ -534,18 +535,25 @@ const V={doc:null,zoom:1,tok:0};
 function isPdf(src,name,kind){return /pdf/i.test(kind||'')||/\.pdf(\?|$)/i.test(name||'')||/^data:application\/pdf/.test(src||'');}
 async function render(){const box=document.getElementById('p13pdf');if(!box||!V.doc)return;const tok=++V.tok;
   const W=Math.max(280,box.clientWidth-16);const dpr=Math.min(2.5,window.devicePixelRatio||1);box.innerHTML='';
-  const pages=[];for(let i=1;i<=V.doc.numPages;i++){const d=document.createElement('div');d.className='p13pg';d.dataset.n=i;d.style.cssText='margin:8px auto;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.4);position:relative;width:'+Math.round(W*V.zoom)+'px;min-height:'+Math.round(W*V.zoom*1.29)+'px';box.appendChild(d);pages.push(d);}
-  const draw=async d=>{if(d._done||tok!==V.tok)return;d._done=1;try{const pg=await V.doc.getPage(+d.dataset.n);const vp0=pg.getViewport({scale:1});const sc=W*V.zoom/vp0.width;const vp=pg.getViewport({scale:sc*dpr});
-      const c=document.createElement('canvas');c.width=Math.floor(vp.width);c.height=Math.floor(vp.height);c.style.cssText='display:block;width:'+Math.round(vp.width/dpr)+'px;height:'+Math.round(vp.height/dpr)+'px';
-      await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;if(tok!==V.tok)return;d.style.minHeight='';d.style.width=c.style.width;d.innerHTML='';d.appendChild(c);}catch(_){d._done=0;}};
+  const pages=[];for(let i=1;i<=V.doc.numPages;i++){const d=document.createElement('div');d.className='p13pg';d.dataset.n=i;d.style.cssText='margin:8px auto;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.4);position:relative;width:'+Math.round(W*V.zoom)+'px;min-height:'+Math.round(W*V.zoom*1.29)+'px';
+    if(i===1&&V.pv){d.style.minHeight='';d.innerHTML='<img src="'+e(V.pv)+'" style="display:block;width:100%" alt="">';}   // p16: preview stays until the sharp page is drawn
+    box.appendChild(d);pages.push(d);}
+  const draw=async d=>{if(d._done||tok!==V.tok)return;d._done=1;try{const pg=await V.doc.getPage(+d.dataset.n);const vp0=pg.getViewport({scale:1});const sc=W*V.zoom/vp0.width;let px=dpr;const area=vp0.width*vp0.height*sc*sc;if(area*px*px>16e6)px=Math.max(1,Math.sqrt(16e6/area));const vp=pg.getViewport({scale:sc*px});
+      const c=document.createElement('canvas');c.width=Math.floor(vp.width);c.height=Math.floor(vp.height);c.style.cssText='display:block;width:'+Math.round(vp.width/px)+'px;height:'+Math.round(vp.height/px)+'px';
+      await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;if(tok!==V.tok)return;d.style.minHeight='';d.style.width=c.style.width;d.innerHTML='';d.appendChild(c);if(+d.dataset.n===1&&V.onFirst){const f=V.onFirst;V.onFirst=null;try{f();}catch(_){}}}catch(_){d._done=0;}};
   if('IntersectionObserver' in window){const io=new IntersectionObserver(es=>es.forEach(x=>{if(x.isIntersecting){draw(x.target);}}),{root:box,rootMargin:'600px 0px'});pages.forEach(p=>io.observe(p));V.io&&V.io.disconnect();V.io=io;}
   else pages.forEach(draw);
   const pn=document.getElementById('p13pn');if(pn)pn.textContent=V.doc.numPages+' '+(V.doc.numPages===1?T('Page').toLowerCase():T('Page').toLowerCase()+'s');}
-function zoom(d){V.zoom=Math.max(.6,Math.min(3,+(V.zoom*(d>0?1.35:1/1.35)).toFixed(2)));const box=document.getElementById('p13pdf');const f=box?box.scrollTop/(box.scrollHeight||1):0;render().then(()=>{if(box)box.scrollTop=f*box.scrollHeight;});}
-window.P13PDF={zoom};
+function zoom(d){V.zoom=Math.max(.6,Math.min(6,+(V.zoom*(d>0?1.35:1/1.35)).toFixed(2)));const box=document.getElementById('p13pdf');const f=box?box.scrollTop/(box.scrollHeight||1):0;render().then(()=>{if(box)box.scrollTop=f*box.scrollHeight;});}
+// p16: a preview that arrives after the viewer opened — shown only while the sharp page 1 is not drawn yet
+function setPreview(u){if(!u||!/^blob:/.test(u))return false;const box=document.getElementById('p13pdf');if(!box)return false;if(box.querySelector('.p13pg[data-n="1"] canvas'))return false;V.pv=u;
+  const w=Math.max(280,box.clientWidth-16);const d=box.querySelector('.p13pg[data-n="1"]');const img='<img src="'+e(u)+'" style="display:block;width:100%;background:#fff" alt="">';
+  if(d){d.style.minHeight='';d.innerHTML=img;}else box.innerHTML='<div class="p13pv" style="margin:8px auto;width:'+w+'px;position:relative">'+img+'</div>';
+  const pn=document.getElementById('p13pn');if(pn&&!V.doc)pn.textContent=T('Preview — loading the sharp plan…');return true;}
+window.P13PDF={zoom,setPreview};
 if(typeof window.EX_view==='function'){const _v=window.EX_view;
-  window.EX_view=function(src,name,kind){src=String(src||'');
-    if(!isPdf(src,name,kind)||!/^(blob:|https:|data:application\/pdf)/.test(src)||/["'<>\s]/.test(src))return _v.apply(this,arguments);
+  window.EX_view=function(src,name,kind,opts){src=String(src||'');opts=opts||{};const lazy=typeof opts.load==='function';
+    if(!lazy&&(!isPdf(src,name,kind)||!/^(blob:|https:|data:application\/pdf)/.test(src)||/["'<>\s]/.test(src)))return _v.apply(this,arguments);
     let o=document.getElementById('exViewer');if(!o){o=document.createElement('div');o.id='exViewer';document.body.appendChild(o);}
     o.style.cssText='position:fixed;inset:0;z-index:700;background:#2b2b2e;display:flex;flex-direction:column';
     const fname=String(name||'file.pdf').replace(/[\\/:*?"<>|]/g,'_');
@@ -554,14 +562,17 @@ if(typeof window.EX_view==='function'){const _v=window.EX_view;
       +'<div style="flex:1;min-width:0"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px">'+e(name||'')+'</div><div id="p13pn" style="font-size:11.5px;color:#aaa">'+e(T('Loading…'))+'</div></div>'
       +'<button onclick="P13PDF.zoom(-1)" aria-label="−" style="border:0;background:#333;color:#fff;border-radius:10px;width:38px;height:38px;font-size:20px">−</button>'
       +'<button onclick="P13PDF.zoom(1)" aria-label="+" style="border:0;background:#333;color:#fff;border-radius:10px;width:38px;height:38px;font-size:20px">+</button>'
-      +'<a href="'+e(src)+'" download="'+e(fname)+'" aria-label="Download" style="color:#fff;text-decoration:none;background:#333;border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:17px">⬇</a></div>'
+      +'<a id="p13dl" href="'+e(src||'#')+'" download="'+e(fname)+'" aria-label="Download" style="color:#fff;text-decoration:none;background:#333;border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:17px">⬇</a></div>'
       +'<div id="p13pdf" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:0 8px 30px;touch-action:pan-x pan-y"></div>';
     try{history.pushState({exv:1},'');}catch(_){}
-    V.zoom=1;V.doc=null;const my=++V.tok;
-    load().then(L=>L.getDocument({url:src,isEvalSupported:false}).promise).then(doc=>{if(my!==V.tok)return;V.doc=doc;render();})
+    V.zoom=1;V.doc=null;const my=++V.tok;V.onFirst=opts.onFirst||null;V.pv=opts.preview&&/^blob:/.test(String(opts.preview))?String(opts.preview):null;
+    // p16: the first-page preview shows at once while the sharp plan loads
+    if(opts.preview&&/^blob:/.test(String(opts.preview))){const b=document.getElementById('p13pdf');if(b){const w=Math.max(280,b.clientWidth-16);b.innerHTML='<div class="p13pv" style="margin:8px auto;width:'+w+'px;position:relative"><img src="'+e(opts.preview)+'" style="display:block;width:100%;background:#fff" alt=""></div>';}const pn=document.getElementById('p13pn');if(pn)pn.textContent=T('Preview — loading the sharp plan…');}
+    const srcP=lazy?Promise.resolve().then(()=>opts.load()).then(u=>{src=String(u||'');const a=document.getElementById('p13dl');if(a)a.href=src;return src;}):Promise.resolve(src);
+    Promise.all([load(),srcP]).then(([L,u])=>L.getDocument({url:u,isEvalSupported:false}).promise).then(doc=>{if(my!==V.tok)return;V.doc=doc;render();try{if(opts.onDoc)opts.onDoc(doc);}catch(_){}})
       .catch(()=>{const b=document.getElementById('p13pdf');if(b&&my===V.tok)b.innerHTML='<div style="color:#ddd;padding:24px 14px;font-size:15px">'+e(T('Could not open this PDF'))+' — '+e(tt('Tap ⬇ to download and open this file.'))+'</div>';const pn=document.getElementById('p13pn');if(pn)pn.textContent='';});};
   try{EX_view=window.EX_view;}catch(_){}
-  if(typeof window.EX_closeView==='function'){const _c=window.EX_closeView;window.EX_closeView=function(){V.tok++;try{if(V.io)V.io.disconnect();if(V.doc)V.doc.destroy();}catch(_){}V.doc=null;return _c.apply(this,arguments);};}
+  if(typeof window.EX_closeView==='function'){const _c=window.EX_closeView;window.EX_closeView=function(){V.tok++;try{if(V.io)V.io.disconnect();if(V.doc)V.doc.destroy();}catch(_){}V.doc=null;V.pv=null;V.onFirst=null;return _c.apply(this,arguments);};}
 }
 })();
 

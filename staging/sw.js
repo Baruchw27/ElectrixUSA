@@ -1,8 +1,8 @@
 // Offline support: the app opens even with no signal; data waits on the phone and syncs later.
-const C='electrix-staging-v112'; // STAGING: own cache name
+const C='electrix-staging-v113'; // STAGING: own cache name
 // Baruch 11/5: libraries and opened files stay on the phone across app updates (they used to be downloaded again after every update)
 const BASEC=C.indexOf('electrix-staging')===0?'electrix-staging':'electrix';const LIBC=BASEC+'-libs',FILEC=BASEC+'-files',OPENC=BASEC+'-open',KEEP=[LIBC,FILEC,OPENC];
-const SHELL=['./','index.html','sync.js','extras.js','config.js','manifest.json','icon-192.png','icon-512.png','apple-touch-icon.png','logo-light.svg','logo-dark.svg','scanner-v2.js','scanner-v2-ui.js','catalog-real.json','sched-v21.js','p2.js','p4.js','p5.js','p6.js','p7.js','p8.js','p9.js','p10.js','p11.js','p12.js','p13.js','p14.js','p15.js','mat-es.js'];
+const SHELL=['./','index.html','sync.js','extras.js','config.js','manifest.json','icon-192.png','icon-512.png','apple-touch-icon.png','logo-light.svg','logo-dark.svg','scanner-v2.js','scanner-v2-ui.js','catalog-real.json','sched-v21.js','p2.js','p4.js','p5.js','p6.js','p7.js','p8.js','p9.js','p10.js','p11.js','p12.js','p13.js','p14.js','p15.js','p16.js','mat-es.js'];
 // H49: the scanner's barcode reader (ZXing) and label reader (Tesseract: script, worker, engine, English data) are saved
 // when the app is installed/updated while online — so a phone that never scanned before still scans with no signal.
 // Best effort: a file that can't be fetched never blocks the app update (it is saved the first time it is used instead).
@@ -16,7 +16,8 @@ self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.
 self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET')return;
   // photos, receipts, voice notes, videos are private: open them with the signed-in person's pass
   if(u.pathname.includes('/storage/v1/object/public/files/')){e.respondWith(e.request.headers.get('range')?privateFile(e,u):keptFirst(e.request.url,()=>privateFile(e,u)));return;}
-  if(u.pathname.includes('/functions/v1/trello-files')&&u.searchParams.get('file')){e.respondWith(keptFirst(e.request.url,()=>fetch(e.request)));return;}
+  if(u.pathname.includes('/functions/v1/trello-files')&&u.searchParams.get('file')&&!u.searchParams.get('pc')){   // pc=1: p16 keeps plans on its own shelf
+  e.respondWith(keptFirst(e.request.url,()=>fetch(e.request)));return;}
   if(/supabase\.co$/.test(u.hostname)||u.pathname.includes('/realtime')||u.pathname.includes('/rest/')||u.pathname.includes('/auth/'))return; // live data never cached
   const sameOrigin=u.origin===location.origin;const isLib=/cdn\.jsdelivr\.net|fonts\.(googleapis|gstatic)\.com|unpkg\.com|cdnjs\.cloudflare\.com|tile\.openstreetmap|arcgisonline|tessdata\.projectnaptha\.com/.test(u.hostname);
   if(!sameOrigin&&!isLib)return;
