@@ -10,10 +10,10 @@
 html.exboot .top,html.exboot .pg,html.exboot .tabs,html.exboot #p2fab,html.exboot #p7fm,html.exboot #p8pin{visibility:hidden!important}
 html.exboot body{background:#f2f2f7 url(logo-light.svg) center 42%/min(62%,300px) no-repeat!important}
 @media (prefers-color-scheme:dark){html.exboot body{background:#000 url(logo-dark.svg) center 42%/min(62%,300px) no-repeat!important}}</style>
-<script>window.EX_VER='vs63c1109';</script><script src="config.js"></script>
+<script>window.EX_VER='vs64c1109';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vs63c1109"></script>
-<script src="extras.js?vs63c1109"></script>
+<script src="sync.js?vs64c1109"></script>
+<script src="extras.js?vs64c1109"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -1097,7 +1097,7 @@ body.exro #pg-jobs .acts button,body.exro #pg-jobs .bsel,body.exro #addJobTop,bo
   <label data-i18n="Job site">Job site</label><select id="peSite"></select>
   <label data-i18n="Date">Date</label><input id="peDate" type="date">
   <div style="display:flex;gap:8px"><div style="flex:1"><label data-i18n="Punch in">Punch in</label><input id="peIn" type="time"></div><div style="flex:1"><label data-i18n="Punch out">Punch out</label><input id="peOut" type="time"></div></div>
-  <label data-i18n="Reason for change">Reason for change</label><input id="peWhy" placeholder="Required — e.g. forgot to punch out">
+  <label data-i18n="Note (optional)">Note (optional)</label><input id="peWhy" placeholder="e.g. forgot to punch out">
   <div class="note" id="peLog" style="margin-top:10px;display:none"></div>
   <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" onclick="savePunchEdit()" data-i18n="Save">Save</button><button class="btn rd" id="peDel" style="width:auto;padding:12px 14px" onclick="delPunch()" data-i18n="Delete">Delete</button><button class="btn sec2" style="width:auto;padding:12px 14px" onclick="hide('m-pe')" data-i18n="Cancel">Cancel</button></div>
 </div></div>
@@ -3606,7 +3606,7 @@ function tcDayRow(e,ws,di){const dp=tcPunches(e.id,ws).filter(p=>dayIndex(p.in,w
   const miss=dp.some(tcMissing);const first=dp[0],last=dp[dp.length-1];const h=dp.reduce((q,p)=>q+((p.out||p.away)?punchDur(p):0),0);
   const by=new Map();dp.forEach(p=>{const k=p.site||'';const o=by.get(k)||{h:0,miss:false};if(p.out||p.away)o.h+=punchDur(p);else o.miss=true;by.set(k,o);});
   const nm=k=>(siteName(k)||t('No site')).replace(/, NY \d{5}/g,'');
-  const sub=by.size>1?[...by].map(([k,o])=>'<div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--g4)"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(nm(k))+'</span><b style="color:var(--g5);white-space:nowrap">'+(o.miss?'<span style="color:#c0392b">?</span> ':'')+o.h.toFixed(1)+' h</b></div>').join('')
+  const sub=by.size>1?dp.slice().sort((x,y)=>x.in-y.in).map(p=>{const end=p.out||p.away;const mi=tcMissing(p);return '<div style="font-size:12.5px;color:var(--g4);padding:2px 0"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(nm(p.site||''))+'</div><div style="display:flex;justify-content:space-between;gap:8px"><span style="color:var(--g5)">'+fmtT(p.in)+' – '+(mi||!end?'<b style="color:#c0392b">?</b>':fmtT(end))+'</span><b style="color:var(--g5);white-space:nowrap">'+(mi||!end?'':punchDur(p).toFixed(1)+' h')+'</b></div></div>';}).join('')
     :'<div style="font-size:12px;color:var(--g4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(dp.length?esc(nm([...by.keys()][0])):t('did not punch'))+(dp.length>1?' · '+dp.length+' '+t('punches'):'')+'</div>';
   const open=tcOpenRow===e.id+'|'+di;
   const multi=by.size>1;
@@ -3625,17 +3625,17 @@ function tcDayEdit(e,ws,di,dp){const tm=x=>x?new Date(x).toTimeString().slice(0,
     +dp.map(p=>line(p.id,p.site,tm(p.in),tm(p.out||p.away),0,'<button class="bs" style="white-space:nowrap" onclick="tcSaveP(\''+jsq(p.id)+'\',\''+jsq(e.id)+'\')">'+esc(t('Save'))+'</button><button class="bs" style="white-space:nowrap;color:#c0392b" onclick="tcDelP(\''+jsq(p.id)+'\',\''+jsq(e.id)+'\')">'+esc(t(p.voided?'Restore':'Remove'))+'</button>')).join('')
     +'<div style="font-size:12.5px;font-weight:600;color:var(--g4);margin:8px 2px 4px">+ '+esc(t('Add hours'))+'</div>'
     +line('new_'+e.id,'','','',0,'<button class="bs" style="white-space:nowrap" onclick="tcAddP(\''+jsq(e.id)+'\',\''+day+'\')">'+esc(t('Add'))+'</button>')
-    +'<input id="tce_why_'+e.id+'" placeholder="'+esc(t('Reason for the change (required)'))+'" style="font-size:15px;margin-top:4px">'
+    +'<input id="tce_why_'+e.id+'" placeholder="'+esc(t('Note (optional)'))+'" style="font-size:15px;margin-top:4px">'
     +'<div style="text-align:right;margin-top:6px"><span style="font-size:12.5px;color:var(--blue-mid);cursor:pointer" onclick="openTimeCard(\''+jsq(e.id)+'\')">'+esc(t('Whole week'))+' ›</span></div></div>';}
-function tcWhy(who){const el=document.getElementById('tce_why_'+who);const w=(el&&el.value||'').trim();if(w.length<3){toast(t('Write a reason for the change'));if(el)el.focus();return null;}return w;}
+function tcWhy(who){const el=document.getElementById('tce_why_'+who);return (el&&el.value||'').trim();}   // note is optional
 function tcV(k,id){const el=document.getElementById('tce_'+k+'_'+id);return el?el.value:'';}
 function tcSaveP(id,who){const p=D.punches.find(x=>x.id===id);if(!p){toast(t('That punch was changed or removed meanwhile — open it again.'));renderHours();return;}
-  const ti=tcV('i',id),to=tcV('o',id),site=tcV('s',id);if(!ti){toast(t('Date and punch-in are required'));return;}const why=tcWhy(who);if(!why)return;
+  const ti=tcV('i',id),to=tcV('o',id),site=tcV('s',id);if(!ti){toast(t('Date and punch-in are required'));return;}const why=tcWhy(who);
   applyPunchEdit({id,who:p.who,site:site||p.site,d:dkey(new Date(p.in)),ti,to,why});}
-function tcAddP(who,day){const k='new_'+who;const ti=tcV('i',k),to=tcV('o',k),site=tcV('s',k);if(!site){toast(t('Pick the job'));return;}if(!ti){toast(t('Date and punch-in are required'));return;}const why=tcWhy(who);if(!why)return;
+function tcAddP(who,day){const k='new_'+who;const ti=tcV('i',k),to=tcV('o',k),site=tcV('s',k);if(!site){toast(t('Pick the job'));return;}if(!ti){toast(t('Date and punch-in are required'));return;}const why=tcWhy(who);
   applyPunchEdit({id:null,who,site,d:day,ti,to,why});}
-function tcDelP(id,who){const p=D.punches.find(x=>x.id===id);if(!p){renderHours();return;}const why=tcWhy(who);if(!why)return;voidPunch(p,why);}
-try{Object.assign(ES,{"Add hours":"Agregar horas","Add":"Agregar","Reason for the change (required)":"Motivo del cambio (obligatorio)","Whole week":"Semana completa","Job":"Trabajo","No site":"Sin trabajo","Restore":"Restaurar","jobs":"trabajos"});}catch(e){}
+function tcDelP(id,who){const p=D.punches.find(x=>x.id===id);if(!p){renderHours();return;}const why=tcWhy(who);voidPunch(p,why);}
+try{Object.assign(ES,{"Add hours":"Agregar horas","Add":"Agregar","Reason for the change (required)":"Motivo del cambio (obligatorio)","Whole week":"Semana completa","Job":"Trabajo","No site":"Sin trabajo","Restore":"Restaurar","jobs":"trabajos","Note (optional)":"Nota (opcional)"});}catch(e){}
 function renderTimeCards(){const box=document.getElementById('tcBox');if(!box)return;const m=me();if(!canEditHours(m)){box.innerHTML='';return;}
   const ws=tcStart(),we=ws+7*864e5;const G=tcGroups(ws);const sel=!!tcSel&&tcMode==='week';
   if(tcDay==null){const td=dayIndex(Date.now(),ws);tcDay=td>=0&&td<7?Math.max(1,td-1):1;}
@@ -3681,12 +3681,12 @@ function openBulkFix(){if(!tcSel||!tcSel.size)return;const ws=tcStart();const DL
     +'<div style="display:flex;gap:8px;margin-top:10px"><label id="bfInW" style="flex:1;font-size:13px">'+t('In')+'<input type="time" id="bfIn" value="08:00" style="font-size:15px"></label><label id="bfOutW" style="flex:1;font-size:13px">'+t('Out')+'<input type="time" id="bfOut" value="17:00" style="font-size:15px"></label></div>'
     +'<label id="bfOnlyW" style="display:flex;gap:8px;align-items:center;font-size:13.5px;margin-top:10px"><input type="checkbox" id="bfOnly" checked style="width:20px;height:20px">'+t('Only the ones missing a punch-out')+'</label>'
     +'<label id="bfSiteW" style="display:block;font-size:13px;margin-top:10px">'+t('Job')+'<select id="bfSite" style="font-size:15px"><option value="">— '+t('pick')+' —</option>'+liveSites().map(x=>'<option value="'+x.id+'">'+esc(x.name)+'</option>').join('')+'</select></label>'
-    +'<label style="display:block;font-size:13px;margin-top:10px">'+t('Reason')+'<input id="bfWhy" placeholder="'+t('e.g. crew forgot to punch out')+'" style="font-size:15px"></label>'
+    +'<label style="display:block;font-size:13px;margin-top:10px">'+t('Note (optional)')+'<input id="bfWhy" placeholder="'+t('e.g. crew forgot to punch out')+'" style="font-size:15px"></label>'
     +'<button class="btn" style="margin-top:12px" onclick="applyBulkFix()">'+t('Apply to')+' '+tcSel.size+'</button>');
   try{const ids=[...tcSel];const mi=[1,2,3,4,5,6,0].find(i=>ids.some(w=>tcPunches(w,ws).some(p=>tcMissing(p)&&dayIndex(p.in,ws)===i)));const di=mi!=null?mi:Math.min(6,Math.max(1,new Date().getDay()-1));document.getElementById('bfDay').selectedIndex=di;}catch(e){}bfShow();}
 function bfShow(){const w=(document.getElementById('bfWhat')||{}).value;const sh=(id,v)=>{const el=document.getElementById(id);if(el)el.style.display=v?'':'none';};sh('bfInW',w!=='out');sh('bfOutW',w!=='in');sh('bfSiteW',w==='add');sh('bfOnlyW',w==='out');}
 function applyBulkFix(){const day=document.getElementById('bfDay').value,what=document.getElementById('bfWhat').value,ti=document.getElementById('bfIn').value,to=document.getElementById('bfOut').value,site=document.getElementById('bfSite').value,why=document.getElementById('bfWhy').value.trim();
-  if(why.length<3){toast(t('Write a reason for the change'));return;}if(what==='add'&&!site){toast(t('Pick the job'));return;}
+  if(what==='add'&&!site){toast(t('Pick the job'));return;}
   const at=hm=>new Date(day+'T'+hm).getTime();const done=[],skipped=[];const me_=me().id;
   [...tcSel].forEach(who=>{const dp=D.punches.filter(p=>p&&p.who===who&&!p.voided&&!p.rejected&&dkey(new Date(p.in))===day).sort((a,b)=>a.in-b.in);
     const log=(p,nin,nout)=>{(p.edits=p.edits||[]).push({by:me_,at:Date.now(),why,from:{in:p.in,out:p.out||p.away||null},to:{in:nin,out:nout}});p.in=nin;p.out=nout;delete p.away;delete p.breakStart;};
@@ -3745,7 +3745,6 @@ function openPunchEdit(i){const p0=i===null?null:(typeof i==='string'?D.punches.
 function savePunchEdit(){if(!peIdx){if(!document.getElementById('peWho').value){toast(t('Pick the person'));return;}if(!document.getElementById('peSite').value){toast(t('Pick the job'));return;}}const d=document.getElementById('peDate').value,ti=document.getElementById('peIn').value,to=document.getElementById('peOut').value,why=document.getElementById('peWhy').value.trim();
   if(!d||!ti){toast(t('Date and punch-in are required'));return;}
   const who=document.getElementById('peWho').value,site=document.getElementById('peSite').value;
-  if(why.length<3){toast(t('Write a reason for the change'));return;}
   applyPunchEdit({id:peIdx,who,site,d,ti,to,why});}
 function applyPunchEdit({id,who,site,d,ti,to,why}){
   const inT=new Date(d+'T'+ti).getTime();let outT=to?new Date(d+'T'+to).getTime():null;if(outT&&outT<inT)outT+=86400000;
@@ -3754,17 +3753,17 @@ function applyPunchEdit({id,who,site,d,ti,to,why}){
   if(ov){if(!confirm(t('This overlaps another clock entry of this person')+' ('+new Date(ov.in).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' '+fmtT(ov.in)+' – '+(ov.out?fmtT(ov.out):t('still open'))+').\n'+t('The same hours would be paid twice. Save it anyway (the reason is kept)?')))return;overlapOk=true;}
   if(id===null){D.punches.push({id:nid('p'),who,site,in:inT,out:outT,...(overlapOk?{overlapOk:true}:{}),edits:[{by:me().id,at:Date.now(),why,from:{in:inT,out:outT},to:{in:inT,out:outT}}]});pushTo([who],()=>('🕒 '+t('Hours added by')+' '+nameOf(me().id)+': '+new Date(inT).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' '+fmtT(inT)+'–'+(outT?fmtT(outT):'—')));}
   else{const p=D.punches.find(x=>x.id===id);if(!p){toast(t('That punch was changed or removed meanwhile — open it again.'));hide('m-pe');renderHours();return;}(p.edits=p.edits||[]).push({by:me().id,at:Date.now(),why,from:{in:p.in,out:p.out||p.away||null},to:{in:inT,out:outT}});p.who=who;p.site=site;p.in=inT;p.out=outT;if(overlapOk)p.overlapOk=true;delete p.away;delete p.breakStart;const inR=(a,b)=>a>=inT&&(outT==null||b<=outT);if(p.breaks)p.breaks=p.breaks.filter(b=>inR(b.s,b.e));if(p.trips)p.trips=p.trips.filter(tr=>tr.back&&inR(tr.left,tr.back));
-    pushTo([who],()=>('🕒 '+t('Your hours were changed by')+' '+nameOf(me().id)+': '+new Date(inT).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' '+fmtT(inT)+'–'+(outT?fmtT(outT):'—')+' — '+why));}
+    pushTo([who],()=>('🕒 '+t('Your hours were changed by')+' '+nameOf(me().id)+': '+new Date(inT).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' '+fmtT(inT)+'–'+(outT?fmtT(outT):'—')+(why?' — '+why:'')));}
   const pid=peIdx||D.punches[D.punches.length-1].id;save();hide('m-pe');renderHours();renderPunch();
   // say "Saved" only when the server took it (it refuses an overlap Payroll did not allow, or a change by someone not allowed)
   (async()=>{let res=null;try{if(window.EX_saveNow)res=await window.EX_saveNow({keys:[['punches',pid]]});}catch(e){}
     if(res&&res.rejected&&res.rejected.length){toast(t('Not saved — the server refused this change. Check the hours and try again.'),'red');try{renderHours();}catch(e){}return;}
     toast(res&&res.queued?'📵 '+t('Saved on this phone — it is sent when you are back online.'):'✓ '+t('Saved'),'green');})();}
 function delPunch(){const p=D.punches.find(x=>x.id===peIdx);if(!p){hide('m-pe');renderHours();return;}const undo=!!p.voided;
-  askPrompt(undo?t('Restore this clock entry'):t('Remove this clock entry'),[{label:t('Reason (required)'),value:''}],([why])=>{why=(why||'').trim();if(why.length<3){toast(t('Write a reason for the change'));return;}voidPunch(p,why);});}
+  askPrompt(undo?t('Restore this clock entry'):t('Remove this clock entry'),[{label:t('Note (optional)'),value:''}],([why])=>{why=(why||'').trim();voidPunch(p,why);});}
 function voidPunch(p,why){const undo=!!p.voided;{
     const at=Date.now(),span={in:p.in,out:p.out||p.away||null};(p.edits=p.edits||[]).push({by:me().id,at,why,void:!undo,restore:undo,from:span,to:span});
-    if(undo)delete p.voided;else{p.voided={by:me().id,at,why};if(!p.out){p.out=at;delete p.away;delete p.breakStart;pushTo([p.who],()=>('🕒 '+t('Your open clock entry was removed by the office — clock in again if you are working')+' ('+why+')'),'warn',{tab:'punch'});}}
+    if(undo)delete p.voided;else{p.voided={by:me().id,at,why};if(!p.out){p.out=at;delete p.away;delete p.breakStart;pushTo([p.who],()=>('🕒 '+t('Your open clock entry was removed by the office — clock in again if you are working')+(why?' ('+why+')':'')),'warn',{tab:'punch'});}}
     save();hide('m-pe');renderHours();renderPunch();toast('✓ '+(undo?t('Restored'):t('Removed — kept in the history')),'green');}}
 
 // ───────────── JOB HOURS DASHBOARD — owner + Payroll only (gated by canEditHours; data is RLS-limited) ─────────────
@@ -5536,7 +5535,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vs63c1109"></script><script src="scanner-v2-ui.js?vs63c1109"></script><script src="sched-v21.js?vs63c1109"></script><script src="p2.js?vs63c1109"></script><script src="p4.js?vs63c1109"></script><script src="p5.js?vs63c1109"></script><script src="p6.js?vs63c1109"></script><script src="p7.js?vs63c1109"></script><script src="p8.js?vs63c1109"></script><script src="p9.js?vs63c1109"></script><script src="p10.js?vs63c1109"></script><script src="p11.js?vs63c1109"></script><script src="p12.js?vs63c1109"></script><script src="p13.js?vs63c1109"></script><script src="p14.js?vs63c1109"></script><script src="p15.js?vs63c1109"></script><script src="p16.js?vs63c1109"></script><script src="selftest.js?vs63c1109"></script>
+<script src="scanner-v2.js?vs64c1109"></script><script src="scanner-v2-ui.js?vs64c1109"></script><script src="sched-v21.js?vs64c1109"></script><script src="p2.js?vs64c1109"></script><script src="p4.js?vs64c1109"></script><script src="p5.js?vs64c1109"></script><script src="p6.js?vs64c1109"></script><script src="p7.js?vs64c1109"></script><script src="p8.js?vs64c1109"></script><script src="p9.js?vs64c1109"></script><script src="p10.js?vs64c1109"></script><script src="p11.js?vs64c1109"></script><script src="p12.js?vs64c1109"></script><script src="p13.js?vs64c1109"></script><script src="p14.js?vs64c1109"></script><script src="p15.js?vs64c1109"></script><script src="p16.js?vs64c1109"></script><script src="selftest.js?vs64c1109"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
