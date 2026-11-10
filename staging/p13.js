@@ -165,7 +165,8 @@ function files(s){const m=M();const F=(s.files||[]).filter(f=>{try{return fileVi
   const Lk=(s.links||[]).filter(f=>{try{return fileVisible(f,m)}catch(e){return true}}).map(l=>({id:l.id,name:l.title||l.url,url:l.url,ts:l.ts||0,kind:'LINK'}));
   return F.concat(Lk).sort((a,b)=>(b.ts||0)-(a.ts||0));}
 const FCOL={PDF:'#d63a2b',XLS:'#1e8e4e',DOC:'#2459d6',DWG:'#7a4fd0',FILE:'#5d6470',LINK:'#5d6470'};
-function hereNow(s){const ps=(D.punches||[]).filter(p=>p.site===s.id&&!p.out&&!p.away);if(!ps.length)return null;
+function hereNow(s){const ps=(D.punches||[]).filter(p=>p.site===s.id&&!p.out&&!p.away&&!p.voided&&Date.now()-p.in<14*36e5);   // an old punch with no punch-out is "missing", not "here now"
+if(!ps.length)return null;
   const ids=[...new Set(ps.map(p=>p.who))];const emps=ids.map(id=>(D.emps||[]).find(e=>e.id===id)).filter(Boolean);
   const crews=[...new Set(emps.map(e=>e.crew).filter(Boolean))];const since=Math.min(...ps.map(p=>p.in||Date.now()));
   let label;if(crews.length===1&&emps.every(e=>e.crew===crews[0])){const c=(D.crews||[]).find(c=>c.id===crews[0]);label=(c?c.name:'')+' '+T('here');}
