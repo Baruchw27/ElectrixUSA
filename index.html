@@ -10,10 +10,10 @@
 html.exboot .top,html.exboot .pg,html.exboot .tabs,html.exboot #p2fab,html.exboot #p7fm,html.exboot #p8pin{visibility:hidden!important}
 html.exboot body{background:#f2f2f7 url(logo-light.svg) center 42%/min(62%,300px) no-repeat!important}
 @media (prefers-color-scheme:dark){html.exboot body{background:#000 url(logo-dark.svg) center 42%/min(62%,300px) no-repeat!important}}</style>
-<script>window.EX_VER='vh37c1109';</script><script src="config.js"></script>
+<script>window.EX_VER='vh38c1109';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vh37c1109"></script>
-<script src="extras.js?vh37c1109"></script>
+<script src="sync.js?vh38c1109"></script>
+<script src="extras.js?vh38c1109"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -2510,7 +2510,7 @@ function stSec(k,n){const open=stOpen.has(k);
   if(open)return '<div class="sec" style="margin-top:14px;cursor:pointer;display:flex;justify-content:space-between;color:var(--blue-mid)" onclick="stToggle(\''+jsq(k)+'\')"><span><i class="stdot" style="background:'+(STAGE_TINT[k]||'#8e8e93')+'"></i>'+t(STAGE[k][0])+' · '+n+'</span><span>'+(t('close')+' ▾')+'</span></div>';
   return '<div class="card fold" style="margin:0 0 8px;cursor:pointer" onclick="stToggle(\''+jsq(k)+'\')"><span class="fic" style="color:'+(STAGE_TINT[k]||'#8e8e93')+';background:'+(STAGE_TINT[k]||'#8e8e93')+'22">'+FOLDER_SVG+'</span><div style="flex:1"><b style="font-size:16px">'+t(STAGE[k][0])+'</b><div style="font-size:12px;color:var(--g4)">'+n+' '+t(n===1?'job':'jobs')+'</div></div><span style="color:var(--g3);font-size:20px">›</span></div>';}
 function addr2(n){n=String(n||'');const i=n.indexOf(',');return '<span class="addr2">'+esc(i>0?n.slice(0,i):n)+(i>0?'<small>'+esc(n.slice(i+1).trim())+'</small>':'')+'</span>';}
-function stageBadge(s){const st=STAGE[s.stage||'active']||STAGE.active;const ed=canEditFolder(me());return '<span class="badge '+st[1]+'" style="font-weight:600;'+(ed?'cursor:pointer':'')+'"'+(ed?' onclick="event.stopPropagation();pickStage(\''+jsq(s.id)+'\')"':'')+'>'+t(st[0])+(ed?' ▾':'')+'</span>'+trelloMoveTag(s);}
+function stageBadge(s){const st=STAGE[s.stage||'active']||STAGE.active;const ed=canMoveStage(me());return '<span class="badge '+st[1]+'" style="font-weight:600;'+(ed?'cursor:pointer':'')+'"'+(ed?' onclick="event.stopPropagation();pickStage(\''+jsq(s.id)+'\')"':'')+'>'+t(st[0])+(ed?' ▾':'')+'</span>'+trelloMoveTag(s);}
 function trelloMoveTag(s){if(!s)return '';if(s.tmoveErr)return ' <span class="tmv" title="'+esc(s.tmoveErr)+'" style="font-size:11px;color:#c0392b">⚠ '+t('not moved in Trello')+(s.tmove?' — '+t('will try again'):'')+'</span>';
   if(s.tmove)return ' <span class="tmv" style="font-size:11px;color:var(--amber,#b7791f)">⏳ '+t('moving in Trello')+' → '+esc(s.tmove.name||'')+'</span>';
   return s.trelloList&&s.trello?' <span class="tmv" style="font-size:11px;color:var(--g4)">'+esc(s.trelloList)+'</span>':'';}
@@ -3895,7 +3895,8 @@ function repExport(){const rows=[['date','who','type','source','store','site','a
 
 // ───────────── PROJECT FOLDERS — per job site: files, links, assigned crew, phase ─────────────
 let fdSite=null;
-const canEditFolder=m=>isBoss(m);
+const canEditFolder=m=>isBoss(m)||(!!m&&m.role==='office'&&!!m.jobEdit);   // Baruch 11/9: office people with 'jobEdit' (Matty) add/replace files + edit job info
+const canMoveStage=m=>isBoss(m);   // moving a job's stage (Trello list) stays with the bosses
 const mySites=m=>m.role==='worker'?D.sites.filter(s=>s.crew===m.crew||(m.crew&&(schedDay(m.crew+'|'+dkey(new Date()))||{}).site===s.id)):D.sites;
 const fileIcon=f=>f.kind==='img'?'🖼':f.kind==='pdf'?'📕':f.kind==='doc'?'📘':f.kind==='sheet'?'📗':'📎';
 function fdJump(id){const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
@@ -5245,7 +5246,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vh37c1109"></script><script src="scanner-v2-ui.js?vh37c1109"></script><script src="sched-v21.js?vh37c1109"></script><script src="p2.js?vh37c1109"></script><script src="p4.js?vh37c1109"></script><script src="p5.js?vh37c1109"></script><script src="p6.js?vh37c1109"></script><script src="p7.js?vh37c1109"></script><script src="p8.js?vh37c1109"></script><script src="p9.js?vh37c1109"></script><script src="p10.js?vh37c1109"></script><script src="p11.js?vh37c1109"></script><script src="p12.js?vh37c1109"></script><script src="p13.js?vh37c1109"></script><script src="p14.js?vh37c1109"></script><script src="p15.js?vh37c1109"></script><script src="p16.js?vh37c1109"></script>
+<script src="scanner-v2.js?vh38c1109"></script><script src="scanner-v2-ui.js?vh38c1109"></script><script src="sched-v21.js?vh38c1109"></script><script src="p2.js?vh38c1109"></script><script src="p4.js?vh38c1109"></script><script src="p5.js?vh38c1109"></script><script src="p6.js?vh38c1109"></script><script src="p7.js?vh38c1109"></script><script src="p8.js?vh38c1109"></script><script src="p9.js?vh38c1109"></script><script src="p10.js?vh38c1109"></script><script src="p11.js?vh38c1109"></script><script src="p12.js?vh38c1109"></script><script src="p13.js?vh38c1109"></script><script src="p14.js?vh38c1109"></script><script src="p15.js?vh38c1109"></script><script src="p16.js?vh38c1109"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,

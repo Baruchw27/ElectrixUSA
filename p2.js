@@ -189,7 +189,7 @@ document.addEventListener('touchend',()=>{if(!sw)return;const s=sw;sw=null;if(!s
   else{s.el.style.transform='';setTimeout(()=>{s.el.style.transition='';if(s.bg)s.bg.style.opacity=0;},200);}},{passive:true});
 
 // ───────── 5. stage colors everywhere ─────────
-if(typeof window.stageBadge==='function'){window.stageBadge=function(s){const k=(s&&s.stage)||'active';const st=STAGE[k]||STAGE.active;let ed=false;try{ed=canEditFolder(me());}catch(e){}const c=tint(k);
+if(typeof window.stageBadge==='function'){window.stageBadge=function(s){const k=(s&&s.stage)||'active';const st=STAGE[k]||STAGE.active;let ed=false;try{ed=(typeof canMoveStage==='function'?canMoveStage:canEditFolder)(me());}catch(e){}const c=tint(k);
   return '<span class="badge" style="font-weight:600;background:'+c+'26;color:'+c+';'+(ed?'cursor:pointer':'')+'"'+(ed?' onclick="event.stopPropagation();pickStage(\''+jsq(s.id)+'\')"':'')+'>'+t(st[0])+(ed?' ▾':'')+'</span>'+(typeof trelloMoveTag==='function'?trelloMoveTag(s):'');};}
 if(typeof window.bCard==='function'){const _bc=window.bCard;window.bCard=function(j){let h=_bc.apply(this,arguments);try{const s=j.site&&D.sites.find(x=>x.id===j.site);if(s)h=h.replace('📍 ','<i class="stdot" style="background:'+tint(s.stage||'active')+'"></i>');
     if(P2.selMode){h=h.replace('class="card kbcard','class="card kbcard'+(P2.sel.has(j.id)?' p2on':'')).replace(/(<div class="card kbcard[^>]*>)/,'$1<i class="p2chk"></i>');}}catch(e){}return h;};}
