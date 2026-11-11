@@ -9,8 +9,56 @@
 <style>/* Baruch 10/27: no flash of the old screens while the app's newer parts load — the Electrix logo shows until they're ready */
 html.exboot .top,html.exboot .pg,html.exboot .tabs,html.exboot #p2fab,html.exboot #p7fm,html.exboot #p8pin{visibility:hidden!important}
 html.exboot body{background:#f2f2f7 url(logo-light.svg) center 42%/min(62%,300px) no-repeat!important}
-@media (prefers-color-scheme:dark){html.exboot body{background:#000 url(logo-dark.svg) center 42%/min(62%,300px) no-repeat!important}}</style>
-<script>window.EX_VER='vs75c1111';</script><script src="config.js"></script>
+@media (prefers-color-scheme:dark){html.exboot body{background:#000 url(logo-dark.svg) center 42%/min(62%,300px) no-repeat!important}}
+/* Baruch 11/11: new punch page */
+:root{--pnbg:#fff;--pnbg0:rgba(255,255,255,0);--pn-track:#eef0f3}
+html[data-theme=dark]{--pnbg:#1c1c1e;--pnbg0:rgba(28,28,30,0);--pn-track:#2c2c2e}
+#pnWrap{margin:-14px -14px 0}
+.pn-red{background:#c81e1e;color:#fff;padding:18px 20px 66px}
+.pn-hi{font-size:21px;font-weight:800;letter-spacing:-.3px}
+.pn-clk{font-size:50px;font-weight:250;letter-spacing:-2px;line-height:1.05;margin-top:2px;font-variant-numeric:tabular-nums}
+.pn-dt{font-size:14px;opacity:.88;margin-top:4px}
+.pn-tabs{display:flex;gap:24px;margin-top:14px}
+.pn-tabs button{background:none;border:0;padding:4px 0 7px;font:inherit;font-weight:700;font-size:15px;color:rgba(255,255,255,.66);border-bottom:3px solid transparent;cursor:pointer;border-radius:0}
+.pn-tabs button.on{color:#fff;border-bottom-color:#7a0e0e}
+.pn-card{margin:-48px 14px 0;background:var(--pnbg);border-radius:22px;box-shadow:0 10px 28px rgba(0,0,0,.16);overflow:hidden;position:relative;z-index:1;color:var(--g5)}
+.pn-ph{height:170px;position:relative;overflow:hidden;background:var(--g1)}
+.pn-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.pn-ph:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,var(--pnbg0) 35%,var(--pnbg) 100%)}
+.pn-ph+.pn-b{margin-top:-38px;position:relative;z-index:1}
+.pn-b{padding:16px 16px 10px}
+.pn-k{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--g4);text-transform:uppercase}
+.pn-n{font-size:19px;font-weight:800;margin-top:3px;color:var(--g5);line-height:1.2}
+.pn-mut{font-size:13px;color:var(--g4);margin-top:2px}
+.pn-row{display:flex;align-items:center;gap:14px}
+.pn-ring{position:relative;width:124px;height:124px;flex:none}
+.pn-ring>div{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.pn-ring b{font-size:30px;font-weight:700;letter-spacing:-1px;color:var(--g5)}.pn-ring span{font-size:12px;color:var(--g4)}
+.pn-on{font-size:13px;font-weight:700;color:var(--g5)}.pn-on i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#16a34a;margin-right:6px;vertical-align:1px}
+.pn-pill{display:inline-block;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:700;background:var(--g1);color:var(--g5)}
+.pn-sl{position:relative;margin:6px 14px 16px;height:64px;border-radius:40px;background:var(--g1);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:var(--g5);user-select:none;-webkit-user-select:none;overflow:hidden;touch-action:pan-y}
+.pn-sl i{position:absolute;left:5px;top:5px;width:54px;height:54px;border-radius:50%;background:#111;color:#fff;font-style:normal;display:flex;align-items:center;justify-content:center;font-size:22px;touch-action:none;cursor:grab;z-index:1}
+html[data-theme=dark] .pn-sl i{background:#f2f2f7;color:#111}
+.pn-sl span{padding-left:46px;opacity:calc(1 - var(--p,0))}
+.pn-btn{display:block;width:100%;margin-top:10px;min-height:52px;border-radius:14px;border:1.5px solid var(--g5);background:transparent;color:var(--g5);font:inherit;font-weight:800;font-size:15px;cursor:pointer;padding:8px}
+.pn-btn.ghost{border-color:var(--g2);font-weight:700}
+.pn-link{display:block;text-align:center;margin:16px 0 0;font-size:14px;font-weight:700;color:var(--g5);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.pn-hdr{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--g4);margin:22px 18px 2px;text-transform:uppercase}
+.pn-list{padding:0 18px}
+.pn-r{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-top:1px solid var(--g1);font-size:14px;color:var(--g5)}
+.pn-r:first-child{border-top:0}.pn-r b{white-space:nowrap;font-weight:700}
+.pn-day{cursor:pointer}.pn-dd{font-size:13px;color:var(--g4);line-height:1.8;padding:0 0 10px}
+.pn-big{font-size:44px;font-weight:250;letter-spacing:-2px;color:var(--g5);line-height:1.1}
+#pnWrap .pn-below{padding:0 18px}
+#pg-punch.pnwk .pn-td{display:none!important}
+#pg-punch:not(.pnwk) .pn-wk{display:none!important}
+#pg-punch .punch-big:not(.pn-open){display:none!important}
+#pg-punch .punch-big{margin-top:14px}
+#pg-punch .punch-big #clock,#pg-punch .punch-big #clockDate,#pg-punch .punch-big>label,#autoAt,#breakBtn,#lunchNote{display:none!important}
+#pg-punch.pnopen #punchBtn{display:none!important}
+#pg-punch:not(.pnopen) #punchExtra{display:none!important}
+</style>
+<script>window.EX_VER='vs76c1111';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="sync.js?vs68c1110"></script>
 <script src="extras.js?vs68c1110"></script>
@@ -540,8 +588,11 @@ body.exro #pg-jobs .acts button,body.exro #pg-jobs .bsel,body.exro #addJobTop,bo
 
 <!-- PUNCH -->
 <div class="pg" id="pg-punch">
-  <div id="punchSched"></div>
-  <div class="card" id="payMNote" hidden style="text-align:center;padding:18px 14px"><div style="font-size:30px">📅</div><b data-i18n="No time clock for you">No time clock for you</b><div style="font-size:13px;color:var(--g4);margin-top:4px" data-i18n="You don't need to clock in or out.">You don't need to clock in or out.</div></div>
+  <div id="pnWrap"><div class="pn-red"><div class="pn-hi" id="pnHi"></div><div class="pn-clk" id="pnClock"></div><div class="pn-dt" id="pnDate"></div>
+    <div class="pn-tabs"><button id="pnT0" class="on" onclick="pnTab(0)" data-i18n="Today">Today</button><button id="pnT1" onclick="pnTab(1)" data-i18n="Week">Week</button></div></div>
+    <div class="pn-card" id="pnCard"></div><div class="pn-below pn-td" id="pnBelow"></div><div class="pn-td" id="pnToday"></div><div class="pn-wk" id="pnWeek"></div></div>
+  <div id="punchSched" class="pn-td"></div>
+  <div class="card pn-td" id="payMNote" hidden style="text-align:center;padding:18px 14px"><div style="font-size:30px">📅</div><b data-i18n="No time clock for you">No time clock for you</b><div style="font-size:13px;color:var(--g4);margin-top:4px" data-i18n="You don't need to clock in or out.">You don't need to clock in or out.</div></div>
   <div class="card punch-big">
     <div class="clock" id="clock">--:--</div>
     <div style="font-size:13px;color:var(--g4)" id="clockDate"></div>
@@ -555,6 +606,8 @@ body.exro #pg-jobs .acts button,body.exro #pg-jobs .bsel,body.exro #addJobTop,bo
     <input type="file" accept="image/*" capture="user" id="punchSelfie" data-noupload="1" style="display:none" onchange="selfiePicked(this)" oncancel="finishPunchIn(null,true)">
     <div id="punchExtra" style="display:none;gap:8px;margin-top:8px"><button class="btn sec2" style="flex:1" id="breakBtn" onclick="toggleBreak()">🍽 <span data-i18n="Lunch">Lunch</span></button><button class="btn sec2" style="flex:1" onclick="switchSite()">↔ <span data-i18n="Switch job site">Switch job site</span></button></div>
     <div class="note" id="fenceNote" style="margin-top:10px;text-align:left"></div>
+    <button class="btn sec2" style="margin-top:8px" onclick="punchNewJob()">➕ <span data-i18n="Job not in the app">Job not in the app</span></button>
+    <a class="pn-link" style="margin-top:12px" onclick="pnPick(false)" data-i18n="Close">Close</a>
   </div>
   <div class="tog exdemo"><span data-i18n="Demo mode (skip GPS fence)">Demo mode (skip GPS fence)</span><div class="sw" id="demoSw" onclick="toggleDemo()"></div></div>
   <div class="card exdemo">
@@ -562,22 +615,22 @@ body.exro #pg-jobs .acts button,body.exro #pg-jobs .bsel,body.exro #addJobTop,bo
     <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sec2" style="flex:1" onclick="simArrive()" data-i18n="📍 Arrive, not punched">📍 Arrive, not punched</button><button class="btn rd" style="flex:1" onclick="simLeave()" data-i18n="🚗 Leave site">🚗 Leave site</button><button class="btn gr" style="flex:1" onclick="simReturn()" data-i18n="↩ Come back">↩ Come back</button></div>
   </div>
   <div id="simBox" style="display:none"></div>
-  <div id="goHomeBox"></div>
-  <div class="sec" data-i18n="Today's punches">Today's punches</div>
-  <div class="card" id="punchLog"></div>
-  <div id="myListPunch"></div>
-  <div id="travelBox"></div>
-  <div class="sec" data-i18n="My hours this week">My hours this week</div>
-  <div id="weekBox"></div>
-  <button class="btn sec2" style="margin-top:8px" onclick="reqTimeOff()">🏖 <span data-i18n="Request time off">Request time off</span></button>
-  <div id="timeOffMine"></div>
-  <div class="note" style="margin-top:6px" data-i18n="Pay week runs Sunday to Saturday. Over 40 hours is overtime. Paid one week behind — the office checks last week and sends it to payroll.">Pay week runs Sunday to Saturday. Over 40 hours is overtime. Paid one week behind — the office checks last week and sends it to payroll.</div>
-  <div id="mySites"></div>
-  <div id="quickExp" style="display:none"><div class="sec" data-i18n="Money">Money</div><div style="display:flex;gap:8px"><button class="btn" style="flex:1;background:var(--amber)" onclick="openExp('gas')">⛽ <span data-i18n="Gas">Gas</span></button><button class="btn" style="flex:1" onclick="openExp('material')">🧰 <span data-i18n="Material">Material</span></button><button class="btn" style="flex:1;background:var(--green)" onclick="goTab('hours')">🚗 <span data-i18n="Travel">Travel</span></button></div><button class="btn sec2" style="margin-top:8px" onclick="openExp('material','personal')">👤 <span data-i18n="I paid with my own card">I paid with my own card</span></button></div>
-  <div class="sec" data-i18n="Forgot to punch?">Forgot to punch?</div>
-  <div class="note" data-i18n="You can't change the clock yourself. Send a request — Shia or Miriam will fix it.">You can't change the clock yourself. Send a request — Shia or Miriam will fix it.</div>
-  <button class="btn sec2" onclick="openFix()" data-i18n="Request a punch fix">Request a punch fix</button>
-  <div id="fixMine" style="margin-top:10px"></div>
+  <div id="goHomeBox" class="pn-td"></div>
+  <div class="sec pn-td" id="pnAllSec" data-i18n="Everyone's punches today">Everyone's punches today</div>
+  <div class="card pn-td" id="punchLog"></div>
+  <div id="myListPunch" class="pn-td"></div>
+  <div id="travelBox" style="display:none"></div>
+  <div class="sec pn-wk" data-i18n="Last week">Last week</div>
+  <div id="weekBox" class="pn-wk"></div>
+  <button class="btn sec2 pn-wk" style="margin-top:8px" onclick="reqTimeOff()">🏖 <span data-i18n="Request time off">Request time off</span></button>
+  <div id="timeOffMine" class="pn-wk"></div>
+  <div class="note pn-wk" style="margin-top:6px" data-i18n="Pay week runs Sunday to Saturday. Over 40 hours is overtime. Paid one week behind — the office checks last week and sends it to payroll.">Pay week runs Sunday to Saturday. Over 40 hours is overtime. Paid one week behind — the office checks last week and sends it to payroll.</div>
+  <div id="mySites" class="pn-td"></div>
+  <div id="quickExp" class="pn-td" style="display:none"><div class="sec" data-i18n="Money">Money</div><div style="display:flex;gap:8px"><button class="btn" style="flex:1;background:var(--amber)" onclick="openExp('gas')">⛽ <span data-i18n="Gas">Gas</span></button><button class="btn" style="flex:1" onclick="openExp('material')">🧰 <span data-i18n="Material">Material</span></button><button class="btn" style="flex:1;background:var(--green)" onclick="goTab('hours')">🚗 <span data-i18n="Travel">Travel</span></button></div><button class="btn sec2" style="margin-top:8px" onclick="openExp('material','personal')">👤 <span data-i18n="I paid with my own card">I paid with my own card</span></button></div>
+  <div class="sec pn-wk" data-i18n="Forgot to punch?">Forgot to punch?</div>
+  <div class="note pn-wk" data-i18n="You can't change the clock yourself. Send a request — Shia or Miriam will fix it.">You can't change the clock yourself. Send a request — Shia or Miriam will fix it.</div>
+  <button class="btn sec2 pn-wk" onclick="openFix()" data-i18n="Request a punch fix">Request a punch fix</button>
+  <div id="fixMine" class="pn-wk" style="margin-top:10px"></div>
 </div>
 
 <!-- SITES / SETTINGS -->
@@ -2305,7 +2358,7 @@ function saveSite(){const n=document.getElementById('sName').value.trim();if(!n)
 
 // ───────────── PUNCH ─────────────
 let gpsOk=false,lastPos=null;
-function tickClock(){const n=new Date();document.getElementById('clock').textContent=n.toLocaleTimeString(LOC(), {hour:'numeric',minute:'2-digit'});document.getElementById('clockDate').textContent=n.toLocaleDateString(LOC(), {weekday:'long',month:'long',day:'numeric'});}
+function tickClock(){try{pnTick();}catch(e){}const n=new Date();document.getElementById('clock').textContent=n.toLocaleTimeString(LOC(), {hour:'numeric',minute:'2-digit'});document.getElementById('clockDate').textContent=n.toLocaleDateString(LOC(), {weekday:'long',month:'long',day:'numeric'});}
 setInterval(tickClock,1000);tickClock();
 function distFt(a,b,c,d){const R=20902231,p=Math.PI/180,x=(c-a)*p,y=(d-b)*p,h=Math.sin(x/2)**2+Math.cos(a*p)*Math.cos(c*p)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
 const fmtT=t=>new Date(t).toLocaleTimeString(LOC(),{hour:'numeric',minute:'2-digit'});
@@ -2353,7 +2406,7 @@ function renderPunch(){
   const logs=D.punches.filter(p=>new Date(p.in).toDateString()===today&&(m.role!=='worker'||p.who===m.id));
   renderGoHome();
   const tb=document.getElementById('travelBox');if(tb){const td=travelToday(m.id);const tw=travelWeek(m.id);const wmi=tw.reduce((q,t)=>q+t.miles,0);tb.innerHTML=(td.length||tw.length)?'<div class="card" style="padding:10px 13px"><div class="row"><span>🚗 <b>'+t('Travel today')+'</b> '+(td.length?td.map(x=>legName(x)+' · '+x.minutes+' min'+(travelPayOf(x)?' · <b style="color:var(--green)">'+money(travelPayOf(x))+'</b>':'')).join(' + '):'<span style="color:var(--g4)">'+t('none yet')+'</span>')+'</span><span style="font-size:12px;color:var(--g4)">'+t('week')+' '+money(tw.reduce((q,x)=>q+travelPayOf(x),0))+'</span></div><div style="font-size:11px;color:var(--g4);margin-top:3px">'+t('normal drive time from the office · paid as an expense, not hours')+'</div></div>':'';}
-  const wb=document.getElementById('weekBox');if(wb){const lw=new Date();lw.setDate(lw.getDate()-7);wb.innerHTML=weekCard(m.id)+weekCard(m.id,false,lw,'Last week · paid this week');}
+  const wb=document.getElementById('weekBox');if(wb){const lw=new Date();lw.setDate(lw.getDate()-7);wb.innerHTML=weekCard(m.id,false,lw,'Last week · paid this week');}
   document.getElementById('punchLog').innerHTML=logs.length?logs.map(p=>{
     const status=p.away?`<span style="color:#c0392b">${t('off site')} ${fmtT(p.away)}</span>`:p.out?fmtT(p.out):`<span style="color:var(--green)">${t('on site')}</span>`;
     const trips=(p.trips||[]).map(t=>`<div style="font-size:11px;color:var(--g4);padding-left:10px">↳ ${t('material run')} ${fmtT(t.left)}–${fmtT(t.back)} (${Math.round((t.back-t.left)/60000)} min, ${t('paid')})</div>`).join('');
@@ -2361,15 +2414,93 @@ function renderPunch(){
     const ghBtn=((m.role==='manager'||m.role==='owner'||m.all)&&!p.out&&!p.goHome)?`<button class="bs r" style="margin-top:6px;align-self:flex-end" onclick="goHome('${jsq(p.who)}')">🏠 ${t('Go home')}</button>`:'';
     return `<div class="plog" style="flex-direction:column;align-items:stretch"><div style="display:flex;justify-content:space-between"><span><b>${esc(nameOf(p.who))}</b> · ${esc(p.site?siteName(p.site):('📍 '+((p.newJob&&p.newJob.text)||'')))}</span><span>${fmtT(p.in)} – ${status}</span></div>${trips}${gh}${punchFlags(p)}${ghBtn}</div>`;}).join('')
     :`<div style="font-size:13px;color:var(--g4)">${t('No punches yet today.')}</div>`;
-  if(document.getElementById('pg-punch').classList.contains('on'))checkGPS();
+  if(document.getElementById('pg-punch').classList.contains('on')&&pnPickOn)checkGPS();
+  try{pnRender();}catch(e){console.error(e);}
 }
 // ---- geofence watcher: auto punch-out on exit, auto punch-in on return within 60 min ----
 // Baruch 11/11: the GPS check only ever touches the signed-in man's OWN punch from today — never a punch from an earlier
 // day (a missing punch-out) and never someone else's punch while the office is looking at the app as him
+
+// ===== Baruch 11/11: new punch page — red top (hello, clock, Today / Week), the job card with its photo moving up
+// into the red, slide to punch in / switch / punch out inside the card, the hours circle, his punches for today.
+// A job that isn't in the app: when he leaves his job the card asks — switch to a job not in the app, pick one, or
+// "just driving". No lunch button on this page.
+let pnWk=0,pnPickOn=false,pnDrag=false,pnDayOpen=-1,pnLastMin=-1;
+function pnSN(n){return String(n||'').replace(/,?\s*(NY|New York)\s*\d{5}(-\d{4})?\s*$/i,'');}
+function pnName(p){return p&&p.site?pnSN(siteName(p.site)):((p&&p.newJob&&p.newJob.text)||t('New job'));}
+function pnHello(){const h=new Date().getHours();return t(h<12?'Good morning':h<17?'Good afternoon':'Good evening');}
+function pnTime(n){return (n.getHours()%12||12)+':'+String(n.getMinutes()).padStart(2,'0');}
+function pnDur(ms){ms=Math.max(0,ms);const h=Math.floor(ms/36e5),mi=Math.floor(ms%36e5/6e4);return (h?h+' h ':'')+mi+' m';}
+function pnDayEdge(d){const x=new Date(d);const fri=x.getDay()===5;const a=new Date(x);a.setHours(8,0,0,0);const b=new Date(x);b.setHours(fri?13:19,fri?15:0,0,0);return [a.getTime(),b.getTime()];}
+function pnTodayMs(m){const a=new Date();a.setHours(0,0,0,0);return (D.punches||[]).filter(p=>p&&p.who===m.id&&p.in>=a.getTime()&&!p.voided&&!p.rejected).reduce((q,p)=>q+Math.max(0,((p.out||p.away||Date.now())-p.in)),0);}
+function pnPhoto(s){if(!s)return '';const m=me();let src='';
+  const fs=(s.files||[]).filter(f=>f&&f.kind==='img'&&f.d&&fileVisible(f,m));if(fs.length)src=safeSrc(fs[fs.length-1].d);
+  if(!src){const ph=[];(D.jobs||[]).forEach(j=>{if(j&&j.site===s.id)(j.photos||[]).forEach(x=>{if(x&&x.d)ph.push(x);});});ph.sort((a,b)=>(a.ts||0)-(b.ts||0));if(ph.length)src=safeSrc(ph[ph.length-1].d);}
+  return src?'<div class="pn-ph"><img src="'+src+'" alt=""></div>':'';}
+function pnRing(ms,day){const h=Math.floor(ms/36e5),mi=Math.floor(ms%36e5/6e4);const frac=Math.max(0,Math.min(1,ms/Math.max(1,day[1]-day[0])));const C=2*Math.PI*52;
+  return '<div class="pn-ring"><svg width="124" height="124" viewBox="0 0 124 124"><circle cx="62" cy="62" r="52" fill="none" stroke="var(--pn-track)" stroke-width="11"/><circle cx="62" cy="62" r="52" fill="none" stroke="#16a34a" stroke-width="11" stroke-linecap="round" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+(C*(1-frac)).toFixed(1)+'" transform="rotate(-90 62 62)"/></svg><div><b>'+h+':'+String(mi).padStart(2,'0')+'</b><span>'+t('hours today')+'</span></div></div>';}
+function pnSlide(act,label,ic){return '<div class="pn-sl" data-act="'+esc(act)+'"><i>'+ic+'</i><span>'+esc(label)+'</span></div>';}
+function pnBind(){document.querySelectorAll('#pnCard .pn-sl').forEach(el=>{if(el._b)return;el._b=1;const k=el.querySelector('i');let x0=null,dx=0,max=0;
+  const mv=e=>{if(x0==null)return;dx=Math.max(0,Math.min(max,e.clientX-x0));k.style.transform='translateX('+dx+'px)';el.style.setProperty('--p',(dx/max).toFixed(2));};
+  const up=()=>{if(x0==null)return;x0=null;pnDrag=false;window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);
+    if(max>0&&dx>=max*0.85){k.style.transform='translateX('+max+'px)';try{navigator.vibrate&&navigator.vibrate(30);}catch(e){}const a=el.dataset.act;setTimeout(()=>pnDo(a),60);}
+    else{k.style.transition='transform .2s';k.style.transform='';el.style.setProperty('--p',0);setTimeout(()=>{k.style.transition='';},220);}dx=0;};
+  k.addEventListener('pointerdown',e=>{e.preventDefault();max=el.clientWidth-k.offsetWidth-10;x0=e.clientX;dx=0;pnDrag=true;window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up);});
+  el.addEventListener('click',e=>{if(e.target!==k)toast(t('Slide the button to the right'));});});}
+function pnDo(a){if(a==='out'){doPunch();return;}const i=a.indexOf(':');const k=a.slice(0,i),id=a.slice(i+1);if(k==='in')oneTap(id);else if(k==='sw')oneTap(id,true);}
+function pnTab(w){pnWk=w?1:0;pnDayOpen=-1;pnRender();try{window.scrollTo(0,0);}catch(e){}}
+function pnPick(on){pnPickOn=!!on;const pb=document.querySelector('#pg-punch .punch-big');if(pb)pb.classList.toggle('pn-open',pnPickOn);if(pnPickOn){try{renderPunchSites();checkGPS();}catch(e){}setTimeout(()=>{try{pb.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},50);}pnRender();}
+function pnDriving(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out);if(!p)return;delete p.away;p.driveUntil=Date.now()+60*60000;save();renderPunch();toast('✓ '+t('You stay on the clock'),'green');}
+function pnDay(i){pnDayOpen=pnDayOpen===i?-1:i;pnRender();}
+function pnTick(){const n=new Date();const c=document.getElementById('pnClock');if(!c)return;c.textContent=pnTime(n);
+  if(n.getMinutes()!==pnLastMin){pnLastMin=n.getMinutes();const pg=document.getElementById('pg-punch');if(pg&&pg.classList.contains('on')&&!pnDrag){try{pnRender();}catch(e){}}}}
+function pnTodayHtml(m){const a=new Date();a.setHours(0,0,0,0);const L=(D.punches||[]).filter(p=>p&&p.who===m.id&&p.in>=a.getTime()&&!p.voided&&!p.rejected).sort((x,y)=>x.in-y.in);
+  const td=TRAVEL_ON?travelToday(m.id):[];if(!L.length&&!td.length)return '';const tp=td.reduce((q,x)=>q+travelPayOf(x),0);
+  return '<div class="pn-hdr">'+t("Today's punches")+'</div><div class="pn-list">'+L.map(p=>'<div class="pn-r"><span>'+esc(pnName(p))+(p.site?'':' · '+t('new'))+'</span><b>'+fmtT(p.in)+' – '+(p.out?fmtT(p.out):p.away?t('left')+' '+fmtT(p.away):t('now'))+'</b></div>').join('')
+    +(td.length?'<div class="pn-r"><span class="pn-mut" style="margin:0">🚗 '+td.length+' '+t(td.length===1?'trip':'trips')+'</span><span class="pn-mut" style="margin:0">'+(tp?money(tp):'')+'</span></div>':'')+'</div>';}
+function pnWeekCard(m){const s=weekStats(m.id);const tw=TRAVEL_ON?travelWeek(m.id):[];const pay=tw.reduce((q,x)=>q+travelPayOf(x),0);const f=d=>new Date(d).toLocaleDateString(LOC(),{month:'short',day:'numeric'});
+  return '<div class="pn-b" style="padding-bottom:16px"><div class="pn-k">'+f(s.ws)+' – '+f(s.ws+6*864e5)+'</div><div class="pn-big">'+s.total.toFixed(1)+' h</div><div class="pn-mut">'
+    +[s.ot?t('Overtime')+' '+s.ot.toFixed(1)+' h':'',tw.length?tw.length+' '+t(tw.length===1?'trip':'trips')+(pay?' · '+money(pay)+' '+t('travel'):''):'',t('payday Friday')].filter(Boolean).join(' · ')+'</div></div>';}
+function pnWeekHtml(m){const s=weekStats(m.id);const today=dayIndex(Date.now(),s.ws);let h='';
+  for(let i=0;i<=Math.min(6,today);i++){const a=addDaysMs(s.ws,i),b=addDaysMs(s.ws,i+1);const L=(D.punches||[]).filter(p=>p&&p.who===m.id&&p.in>=a&&p.in<b&&!p.voided&&!p.rejected).sort((x,y)=>x.in-y.in);
+    const k=dkey(new Date(a));const tv=TRAVEL_ON?(D.travel||[]).filter(x=>x&&travelCounts(x)&&x.who===m.id&&x.date===k):[];const tp=tv.reduce((q,x)=>q+travelPayOf(x),0);
+    const lab=new Date(a).toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'})+(i===today?' · '+t('today'):'');const op=pnDayOpen===i;
+    h+='<div class="pn-r pn-day" onclick="pnDay('+i+')"><span>'+(op?'<b>'+esc(lab)+'</b>':esc(lab))+'</span><b>'+(s.days[i]?s.days[i].toFixed(1)+' h':'–')+' '+(op?'⌄':'›')+'</b></div>';
+    if(op)h+='<div class="pn-dd">'+(L.length?L.map(p=>esc(pnName(p))+' · '+fmtT(p.in)+' – '+(p.out?fmtT(p.out):t('now'))).join('<br>'):t('No punches'))+(tv.length?'<br>🚗 '+tv.length+' '+t(tv.length===1?'trip':'trips')+(tp?' · '+money(tp):''):'')+'</div>';}
+  return '<div class="pn-hdr">'+t('Days — tap to see the punches')+'</div><div class="pn-list">'+h+'</div><a class="pn-link" style="margin-bottom:6px" onclick="openFix()">'+t('My time is wrong — tell the office')+'</a>';}
+function pnRender(){const wrap=document.getElementById('pnWrap');if(!wrap)return;const m=me();if(!m)return;const pg=document.getElementById('pg-punch');
+  const n=new Date();{const fn=String(m.name||'').trim().split(' ')[0];document.getElementById('pnHi').textContent=pnHello()+(fn?', '+fn:'');}document.getElementById('pnClock').textContent=pnTime(n);
+  document.getElementById('pnDate').textContent=n.toLocaleDateString(LOC(),{weekday:'long',month:'long',day:'numeric'});
+  document.getElementById('pnT0').textContent=t('Today');document.getElementById('pnT1').textContent=t('Week');
+  document.getElementById('pnT0').className=pnWk?'':'on';document.getElementById('pnT1').className=pnWk?'on':'';pg.classList.toggle('pnwk',!!pnWk);
+  const open=D.punches.find(p=>p.who===m.id&&!p.out);pg.classList.toggle('pnopen',!!open);
+  const as=document.getElementById('pnAllSec'),pl=document.getElementById('punchLog');const all=m.role!=='worker';if(as)as.style.display=all?'':'none';if(pl)pl.style.display=all?'':'none';
+  const card=document.getElementById('pnCard'),below=document.getElementById('pnBelow');
+  if(pnWk){card.innerHTML=pnWeekCard(m);document.getElementById('pnWeek').innerHTML=pnWeekHtml(m);return;}
+  let best=autoSite._best?D.sites.find(s=>s.id===autoSite._best):null;if(!best&&D.demo){const v=(document.getElementById('punchSite')||{}).value;best=D.sites.find(s=>s.id===v)||null;}
+  let h='',b='';
+  if(noClock(m)&&!open){h='<div class="pn-b" style="text-align:center;padding:22px 16px"><div style="font-size:30px">📅</div><b>'+t('No time clock for you')+'</b><div class="pn-mut">'+t("You don't need to clock in or out.")+'</div></div>';}
+  else if(open&&best&&best.id!==open.site){
+    h=pnPhoto(best)+'<div class="pn-b"><div class="pn-k">📍 '+t('You arrived at')+'</div><div class="pn-n">'+esc(pnSN(best.name))+'</div><div class="pn-mut">'+t('On the clock at')+' '+esc(pnName(open))+' '+t('since')+' '+fmtT(open.in)+'</div></div>'+pnSlide('sw:'+best.id,t('Slide to switch here'),'⇄');}
+  else if(open&&open.away){
+    h='<div class="pn-b" style="padding-bottom:16px"><div class="pn-k">'+t('You left')+'</div><div class="pn-n">'+esc(pnName(open))+'</div><div class="pn-mut">'+t("You're not at any job in the app. At a new job? Switch so your hours go to the right place.")+'</div>'
+      +'<button class="pn-btn" onclick="punchNewJob()">⇄ '+t('Switch to a job not in the app')+'</button><button class="pn-btn ghost" onclick="pnPick(true)">'+t('Pick a job from the list')+'</button><button class="pn-btn ghost" onclick="pnDriving()">🚗 '+t('Just driving — keep me on the clock')+'</button>'
+      +'<div class="pn-mut" style="margin-top:10px;font-size:12px">'+t('Not back within 1 hour: your clock closes at')+' '+fmtT(open.away)+'</div></div>';}
+  else if(open){const day=pnDayEdge(open.in);const left=day[1]-Date.now();const s=open.site?D.sites.find(x=>x.id===open.site):null;
+    h=pnPhoto(s)+'<div class="pn-b pn-row">'+pnRing(pnTodayMs(m),day)+'<div style="min-width:0"><div class="pn-on"><i></i>'+t('On the clock')+'</div><div class="pn-n">'+esc(pnName(open))+'</div><div class="pn-mut">'+t('since')+' '+fmtT(open.in)+(open.site?'':' · <span class="pn-pill">'+t('new job')+'</span>')+'</div>'+(left>0?'<div class="pn-mut" style="font-size:12px;margin-top:6px">'+pnDur(left)+' '+t('left of the day')+'</div>':'')+'</div></div>'
+      +(pastDayEnd(open)?'<div style="padding:0 16px 6px">'+(open.keepOpen&&open.keepOpen>Date.now()?'<div class="pn-mut">✓ '+t('Kept on the clock until')+' '+fmtT(open.keepOpen)+'</div>':'<button class="pn-btn ghost" onclick="stillWorking()">⏳ '+t('Still working — keep me on the clock')+'</button>')+'</div>':'')
+      +pnSlide('out',t('Slide to punch out'),'■');
+    b='<a class="pn-link" onclick="pnPick(!pnPickOn)">'+t(pnPickOn?'Close':'Different job?')+'</a>';}
+  else if(best){const sl=m.crew?schedDay(m.crew+'|'+dkey(new Date())):null;const cr=m.crew?(D.crews||[]).find(c=>c.id===m.crew):null;
+    h=pnPhoto(best)+'<div class="pn-b"><div class="pn-k">📍 '+t("You're at")+'</div><div class="pn-n">'+esc(pnSN(best.name))+'</div>'+(sl&&sl.site===best.id&&cr?'<div class="pn-mut">'+t('Scheduled for')+' '+esc(cr.name)+'</div>':'')+'</div>'+pnSlide('in:'+best.id,t('Slide to punch in'),'›');
+    b='<a class="pn-link" onclick="pnPick(!pnPickOn)">'+t(pnPickOn?'Close':'Different job?')+'</a>';}
+  else{h='<div class="pn-b" style="padding-bottom:16px"><div class="pn-k">📍 '+t(autoSite._done||!navigator.geolocation?'Not at a job':'Finding your location…')+'</div><div class="pn-n">'+t('You are not at any job right now.')+'</div><button class="pn-btn" onclick="pnPick(true)">'+t('Pick a job from the list')+'</button><button class="pn-btn ghost" onclick="punchNewJob()">➕ '+t('Job not in the app')+'</button></div>';}
+  if(card._h!==h){card.innerHTML=h;card._h=h;}below.innerHTML=b;document.getElementById('pnToday').innerHTML=pnTodayHtml(m);pnBind();}
+
 function geoOk(x){if(!x||!x.in||Date.now()-x.in>14*36e5)return false;if(window.EX_REAL&&window.EX_ME&&me()&&me().id!==window.EX_ME)return false;return true;}
-function onLeave(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out&&!x.away&&geoOk(x));if(!p)return;
+function onLeave(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out&&!x.away&&geoOk(x));if(!p)return;if(p.driveUntil&&p.driveUntil>Date.now())return;
   p.away=Date.now();save();renderPunch();
-  notify('You left '+siteName(p.site)+' — punched out at '+fmtT(p.away)+'. Come back within 1 hour and you\'re punched back in automatically.');
+  {const msg=()=>('🚗 '+t('You left')+' '+pnName(p)+'. '+t('At another job? Open the app and switch.')+' '+t('Not back within 1 hour: your clock closes at')+' '+fmtT(p.away));notify(msg());try{pushTo([m.id],msg,'warn',{tab:'punch'},null,true);}catch(e){}}
   setTimeout(()=>{const q=D.punches.find(x=>x===p);if(q&&q.away&&!q.out){q.out=q.away;delete q.away;save();renderPunch();notify('1 hour passed — punch-out at '+fmtT(q.out)+' is now final.');}},60*60*1000);
 }
 function onReturn(){const m=me();if(!geoOk({in:Date.now()}))return;finalizeAway(m.id);const p=D.punches.find(x=>x.who===m.id&&x.away&&!x.out&&geoOk(x));if(!p)return;
@@ -2669,29 +2800,29 @@ function semiApprove(pid,ok){if(!canEditHours(me()))return;const p=D.punches.fin
     else{p.rejected=true;p.rejectWhy=why;p.out=p.in;p.pending=false;pushTo([p.who],()=>('✗ '+t('The office did not approve your clock-in at')+' '+siteName(site)+'. '+t('Call them.')),'warn',{tab:'punch'});}
     const s=D.sites.find(x=>x.id===site);if(s&&s.fenceReq&&s.fenceReq.who===p.who)delete s.fenceReq;save();try{openFence(site);}catch(e){}refreshAfterFence();};
   if(ok)done();else askPrompt(t('Reject this clock entry'),[{label:t('Reason (required)'),value:''}],([why])=>{why=(why||'').trim();if(why.length<3){toast(t('Write a reason for the change'));return;}done(why);});}
-function autoSite(){if(D.demo||!navigator.geolocation)return;const now=Date.now();if(autoSite._t&&now-autoSite._t<5000){const el=document.getElementById('autoAt');const m=me();if(el&&autoSite._done)el.innerHTML=oneTapHtml(autoSite._best?D.sites.find(x=>x.id===autoSite._best):null,m?D.punches.find(x=>x.who===m.id&&!x.out):null);return;}autoSite._t=now;
+function autoSite(){if(D.demo||!navigator.geolocation)return;const now=Date.now();if(autoSite._t&&now-autoSite._t<5000){const el=document.getElementById('autoAt');const m=me();if(el&&autoSite._done)el.innerHTML=oneTapHtml(autoSite._best?D.sites.find(x=>x.id===autoSite._best):null,m?D.punches.find(x=>x.who===m.id&&!x.out):null);try{pnRender();}catch(e){}return;}autoSite._t=now;
   gpsOnce(p=>{lastPos=p.coords;let best=null,bd=1e12;visSites().forEach(s=>{if(!s.lat)return;const d=distFt(p.coords.latitude,p.coords.longitude,s.lat,s.lng);if(d<=(s.rad||300)&&d<bd){bd=d;best=s;}});
     const el=document.getElementById('autoAt');const m=me();const open=m?D.punches.find(x=>x.who===m.id&&!x.out):null;
-    if(best&&!open){const sel=document.getElementById('punchSite');const pf=document.getElementById('punchFind');if(pf)pf.value='';renderPunchSites();sel.value=best.id;checkGPS();}
-    autoSite._best=best?best.id:null;autoSite._done=true;if(el)el.innerHTML=oneTapHtml(best,open);},()=>{},{enableHighAccuracy:true,timeout:10000,maximumAge:30000});}
+    if(best&&!open&&!pnPickOn){const sel=document.getElementById('punchSite');const pf=document.getElementById('punchFind');if(pf)pf.value='';renderPunchSites();sel.value=best.id;checkGPS();}
+    autoSite._best=best?best.id:null;autoSite._done=true;if(el)el.innerHTML=oneTapHtml(best,open);try{pnRender();}catch(e){}},()=>{},{enableHighAccuracy:true,timeout:10000,maximumAge:30000});}
 // Baruch 11/11 (1) one tap: the app already knows where he stands — one big button to punch in or switch jobs.
 // (5) a job that is not in the app: punch in right away, the office matches it. (7) the schedule is a guide: any job he
 // stands at is fine; if it's not his scheduled job the site managers get a heads-up. Remembers the last time he was seen
 // on site so the server can close a forgotten punch at that time.
 function oneTapHtml(best,open){const big=(cls,on,txt)=>'<button class="btn '+cls+'" style="font-size:18px;padding:16px;margin-bottom:8px" onclick="'+on+'">'+txt+'</button>';
   if(open&&best&&best.id===open.site){if(!open.seen||Date.now()-open.seen>5*60000){open.seen=Date.now();try{save();}catch(e){}}
-    return '<div class="gps ok" style="margin-bottom:6px">✓ '+t('On the clock at')+' <b>'+esc(best.name)+'</b> '+t('since')+' '+fmtT(open.in)+'</div>';}
-  if(open&&best)return '<div class="gps ok" style="margin-bottom:6px">📍 '+t('You are at')+' <b>'+esc(best.name)+'</b></div>'+big('gr',"oneTap('"+jsq(best.id)+"',true)",'↔ '+t('Switch to')+' '+esc(best.name));
-  if(best)return big('gr',"oneTap('"+jsq(best.id)+"')",'▶ '+t('Punch in at')+' '+esc(best.name));
+    return '<div class="gps ok" style="margin-bottom:6px">✓ '+t('On the clock at')+' <b>'+esc(pnSN(best.name))+'</b> '+t('since')+' '+fmtT(open.in)+'</div>';}
+  if(open&&best)return '<div class="gps ok" style="margin-bottom:6px">📍 '+t('You are at')+' <b>'+esc(pnSN(best.name))+'</b></div>'+big('gr',"oneTap('"+jsq(best.id)+"',true)",'↔ '+t('Switch to')+' '+esc(pnSN(best.name)));
+  if(best)return big('gr',"oneTap('"+jsq(best.id)+"')",'▶ '+t('Punch in at')+' '+esc(pnSN(best.name)));
   return '<div class="gps no" style="margin-bottom:6px">'+t('You are not at any job right now.')+'</div>'+(open&&!open.site?'':'<button class="btn sec2" style="margin-bottom:8px" onclick="punchNewJob()">➕ '+t('Job not on the list')+'</button>');}
 function oneTap(id,sw){const sel=document.getElementById('punchSite');const pf=document.getElementById('punchFind');if(pf)pf.value='';renderPunchSites();if(![...sel.options].some(o=>o.value===id)){const o=document.createElement('option');o.value=id;o.textContent=siteName(id);sel.appendChild(o);}sel.value=id;gpsOk=true;if(sw)switchSite();else doPunch();}
 function schedHeadsUp(m,site){try{const sl=m&&m.crew?schedDay(m.crew+'|'+dkey(new Date())):null;if(!sl||!sl.site||!site||sl.site===site)return;
   const mg=x=>{const s=D.sites.find(q=>q.id===x)||{};return Array.isArray(s.managers)?s.managers:(s.manager?[s.manager]:[]);};const ids=[...new Set(mg(site).concat(mg(sl.site)))].filter(id=>id&&id!==m.id);
   if(ids.length)pushTo(ids,()=>('📍 '+nameOf(m.id)+' '+t('punched in at')+' '+siteName(site)+' — '+t('scheduled for')+' '+siteName(sl.site)),'info',{site:site});}catch(e){}}
 function punchNewJob(){const m=me();askPrompt(t('Job not on the list'),[{label:t('Address, or what job it is'),value:''}],([txt])=>{txt=String(txt||'').trim();if(txt.length<3){toast(t('Write the address or what job it is'));return;}
-  const go=pos=>{const now=Date.now();const open=D.punches.find(x=>x.who===m.id&&!x.out);if(open){if(open.breakStart)endBreak(open);open.out=now;}
+  const go=pos=>{let now=Date.now();const open=D.punches.find(x=>x.who===m.id&&!x.out);if(open){if(open.away&&now-open.away<=3600000)now=open.away;if(open.breakStart)endBreak(open);open.out=now;delete open.away;}
     const nj={id:nid('nj'),text:txt.slice(0,140),lat:pos?pos.latitude:null,lng:pos?pos.longitude:null,by:m.id,ts:now};
-    D.punches.push({who:m.id,site:null,in:now,out:null,lat:nj.lat,lng:nj.lng,selfie:'',newJob:nj,transfer:!!open});save();renderPunch();toast('✓ '+t('Punched in')+' '+fmtT(now)+' · '+nj.text,'green');tone('in');
+    D.punches.push({id:nid('p'),who:m.id,site:null,in:now,out:null,lat:nj.lat,lng:nj.lng,selfie:'',newJob:nj,transfer:!!open});save();renderPunch();toast('✓ '+t('Punched in')+' '+fmtT(now)+' · '+nj.text,'green');tone('in');
     const to=D.emps.filter(e=>!e.inactive&&(canEditHours(e)||e.role==='manager')).map(e=>e.id);pushTo(to,()=>('📍 '+nameOf(m.id)+' '+t('punched in at a job that is not in the app')+': "'+nj.text+'" — '+t('match it in Jobs')),'warn',{tab:'sites'});};
   if(lastPos&&lastPos.latitude)go(lastPos);else gpsOnce(p=>{lastPos=p.coords;go(p.coords);},()=>go(null),{enableHighAccuracy:true,timeout:10000,maximumAge:60000});});}
 function fieldJobsHtml(){const m=me();if(!m||!canEditHours(m))return '';const L=(D.punches||[]).filter(p=>p&&p.newJob&&!p.site&&!p.voided&&!p.deleted);if(!L.length)return '';
@@ -3757,7 +3888,7 @@ async function tvSendGo(){if(!tvPrev||!tvPick.size){toast(t('Pick who to send'))
   el.innerHTML='<div style="color:var(--green);font-weight:700">✓ '+esc(t('Travel sent for'))+' '+okN.length+' · '+money(okN.reduce((q,x)=>q+x.total,0))+'</div>'+(okN.length?'<div style="color:var(--g4)">'+esc(t('Check it in Fingercheck before processing payroll.'))+'</div>':'')
     +R.filter(x=>!x.ok).map(x=>'<div style="color:#c0392b;padding-top:6px">'+esc(x.name)+': '+esc(fcTr(x.err||''))+'</div>').join('');
   try{if(typeof window.EX_refreshAll==='function')window.EX_refreshAll();}catch(e){}setTimeout(()=>{try{renderHours();}catch(e){}},1500);}
-try{Object.assign(ES,{"On the clock at":"Marcando en","since":"desde","Switch to":"Cambiar a","Punch in at":"Marcar entrada en","Job not on the list":"Trabajo que no está en la lista","Address, or what job it is":"Dirección, o qué trabajo es","Write the address or what job it is":"Escriba la dirección o qué trabajo es","punched in at a job that is not in the app":"marcó entrada en un trabajo que no está en la app","match it in Jobs":"emparéjelo en Trabajos","punched in at":"marcó entrada en","scheduled for":"programado para","Jobs from the field — not in the app":"Trabajos del campo — no están en la app","map":"mapa","pick the job":"escoja el trabajo","Match":"Emparejar","Create job":"Crear trabajo","Pick the job first":"Escoja el trabajo primero","clock entries moved to":"marcas movidas a","You stay on the clock":"Sigue marcando","Kept on the clock until":"Sigue marcando hasta","Still working — keep me on the clock":"Sigo trabajando — mantenerme marcando","If you forget to punch out, the clock closes by itself at the last time you were seen on site.":"Si se olvida de marcar salida, el reloj se cierra solo a la última hora que lo vimos en el trabajo.","min each way":"min de ida","trip":"viaje","trips":"viajes","punch":"marca","punches":"marcas","punch this week":"marca esta semana","punches this week":"marcas esta semana","Send travel to Fingercheck":"Enviar viaje a Fingercheck","man":"hombre","men":"hombres","not sent yet":"sin enviar","All travel for this week was sent":"Todo el viaje de esta semana fue enviado","sent":"enviados","no job":"sin trabajo","already sent to Fingercheck":"ya enviados a Fingercheck","Goes into the payroll of":"Entra en la nómina de","No coming payroll found in Fingercheck.":"No se encontró la próxima nómina en Fingercheck.","Pick who to send. The first time, send one man and check his paycheck in Fingercheck before processing payroll.":"Escoja a quién enviar. La primera vez, envíe un solo hombre y revise su cheque en Fingercheck antes de procesar la nómina.","Send travel":"Enviar viaje","Do not approve the guys' own travel requests for days that were sent from here.":"No apruebe las solicitudes de viaje de los muchachos para los días que se enviaron desde aquí.","Pick who to send":"Escoja a quién enviar","Travel sent for":"Viaje enviado para","Check it in Fingercheck before processing payroll.":"Revíselo en Fingercheck antes de procesar la nómina.","no pay rate in the app — add his rate first":"no tiene tarifa en la app — agregue su tarifa primero","travel for this week was already paid in Fingercheck":"el viaje de esta semana ya se pagó en Fingercheck","no coming payroll found in Fingercheck":"no se encontró la próxima nómina en Fingercheck","a job has no Fingercheck job code yet — that line goes without a job":"un trabajo aún no tiene código en Fingercheck — esa línea va sin trabajo"});}catch(e){}
+try{Object.assign(ES,{"On the clock at":"Marcando en","since":"desde","Switch to":"Cambiar a","Punch in at":"Marcar entrada en","Job not on the list":"Trabajo que no está en la lista","Address, or what job it is":"Dirección, o qué trabajo es","Write the address or what job it is":"Escriba la dirección o qué trabajo es","punched in at a job that is not in the app":"marcó entrada en un trabajo que no está en la app","match it in Jobs":"emparéjelo en Trabajos","punched in at":"marcó entrada en","scheduled for":"programado para","Jobs from the field — not in the app":"Trabajos del campo — no están en la app","map":"mapa","pick the job":"escoja el trabajo","Match":"Emparejar","Create job":"Crear trabajo","Pick the job first":"Escoja el trabajo primero","clock entries moved to":"marcas movidas a","You stay on the clock":"Sigue marcando","Kept on the clock until":"Sigue marcando hasta","Still working — keep me on the clock":"Sigo trabajando — mantenerme marcando","If you forget to punch out, the clock closes by itself at the last time you were seen on site.":"Si se olvida de marcar salida, el reloj se cierra solo a la última hora que lo vimos en el trabajo.","You arrived at":"Llegó a","Slide to switch here":"Deslice para cambiar aquí","You left":"Salió de","You're not at any job in the app. At a new job? Switch so your hours go to the right place.":"No está en ningún trabajo de la app. ¿En un trabajo nuevo? Cambie para que sus horas vayan al lugar correcto.","Switch to a job not in the app":"Cambiar a un trabajo que no está en la app","Pick a job from the list":"Elegir un trabajo de la lista","Just driving — keep me on the clock":"Solo manejando — seguir marcando","Not back within 1 hour: your clock closes at":"Si no vuelve en 1 hora, su reloj se cierra a las","At another job? Open the app and switch.":"¿En otro trabajo? Abra la app y cambie.","On the clock":"Marcando","new job":"trabajo nuevo","left of the day":"quedan del día","hours today":"horas hoy","Slide to punch out":"Deslice para marcar salida","Slide to punch in":"Deslice para marcar entrada","Slide the button to the right":"Deslice el botón a la derecha","You're at":"Está en","Scheduled for":"Programado para","Different job?":"¿Otro trabajo?","Not at a job":"No está en un trabajo","Finding your location…":"Buscando su ubicación…","Job not in the app":"Trabajo que no está en la app","left":"salió","payday Friday":"día de pago viernes","Days — tap to see the punches":"Días — toque para ver las marcas","No punches":"Sin marcas","My time is wrong — tell the office":"Mi tiempo está mal — avisar a la oficina","Everyone's punches today":"Marcas de todos hoy","min each way":"min de ida","trip":"viaje","trips":"viajes","punch":"marca","punches":"marcas","punch this week":"marca esta semana","punches this week":"marcas esta semana","Send travel to Fingercheck":"Enviar viaje a Fingercheck","man":"hombre","men":"hombres","not sent yet":"sin enviar","All travel for this week was sent":"Todo el viaje de esta semana fue enviado","sent":"enviados","no job":"sin trabajo","already sent to Fingercheck":"ya enviados a Fingercheck","Goes into the payroll of":"Entra en la nómina de","No coming payroll found in Fingercheck.":"No se encontró la próxima nómina en Fingercheck.","Pick who to send. The first time, send one man and check his paycheck in Fingercheck before processing payroll.":"Escoja a quién enviar. La primera vez, envíe un solo hombre y revise su cheque en Fingercheck antes de procesar la nómina.","Send travel":"Enviar viaje","Do not approve the guys' own travel requests for days that were sent from here.":"No apruebe las solicitudes de viaje de los muchachos para los días que se enviaron desde aquí.","Pick who to send":"Escoja a quién enviar","Travel sent for":"Viaje enviado para","Check it in Fingercheck before processing payroll.":"Revíselo en Fingercheck antes de procesar la nómina.","no pay rate in the app — add his rate first":"no tiene tarifa en la app — agregue su tarifa primero","travel for this week was already paid in Fingercheck":"el viaje de esta semana ya se pagó en Fingercheck","no coming payroll found in Fingercheck":"no se encontró la próxima nómina en Fingercheck","a job has no Fingercheck job code yet — that line goes without a job":"un trabajo aún no tiene código en Fingercheck — esa línea va sin trabajo"});}catch(e){}
 
 async function fcSendOpen(){const ws=tcStart(),we=ws+7*864e5;const L=fcWeekPending(ws,we);if(!L.length)return;
   rateSheet('<div style="font-weight:700;font-size:17px">'+esc(t('Send to Fingercheck'))+'</div><div id="fcsBody" style="font-size:13px;color:var(--g4);margin-top:8px">'+esc(t('Checking Fingercheck…'))+'</div>');
