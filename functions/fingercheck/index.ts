@@ -332,7 +332,79 @@ Deno.serve(async (req) => {
     return json(summary);
   }
   if (action === "push") return await push();
+  if (action === "travel") return await travelPush();
   return json({ error: "unknown action" }, 400);
+
+  // ───────── travel: the travel the app counted → "Travel" (TR) lines in the coming Fingercheck payroll (Baruch 11/10) ─────────
+  // {week: Sunday YYYY-MM-DD, who?: [emp ids], send?}. Without send=true it only previews. Sending needs fc_write='on' and a list
+  // of people (the first run is one man; Shia checks his paycheck in Fingercheck before processing). One line per man per job,
+  // the same kind of line an approved travel request makes. Weeks already paid with travel in Fingercheck are never sent again.
+  async function travelPush() {
+    const okD = (x: string) => /^\d{4}-\d{2}-\d{2}$/.test(x || "");
+    if (!okD(a.week)) return json({ error: "week (Sunday) needed" }, 400);
+    const send = String(a.send) === "true"; const pick: string[] = Array.isArray(a.who) ? a.who.map(String) : [];
+    const { data: cfg } = await adm.from("server_config").select("v").eq("k", "fc_write").maybeSingle(); const writeOn = cfg?.v === "on";
+    if (send && !writeOn) return json({ error: "Sending to Fingercheck is switched off", writeOn }, 403);
+    if (send && !pick.length && a.all !== true) return json({ error: "pick who to send" }, 400);
+    const days: string[] = []; for (let i = 0; i < 7; i++) days.push(new Date(Date.parse(a.week + "T12:00:00Z") + i * 86400000).toISOString().slice(0, 10));
+    const { data: trows } = await adm.from("records").select("id,data").eq("coll", "travel").eq("deleted", false).in("data->>date", days);
+    const { data: rr } = await adm.from("records").select("id,data").eq("coll", "rates").eq("deleted", false);
+    const numOf: Record<string, { fc: string; co: string }> = {};
+    for (const r of rr || []) if (r.data?.fc) numOf[r.id] = { fc: String(r.data.fc), co: COS.includes(r.data.co) ? r.data.co : "inc" };
+    const nameOf: Record<string, string> = {}; for (const e of emps || []) nameOf[e.id] = e.data?.name || e.id;
+    const { data: paid } = await adm.from("records").select("data").eq("coll", "fcpay").eq("deleted", false).eq("data->>periodBegin", a.week);
+    const paidWho = new Set((paid || []).filter((r: any) => Number(r.data?.travel) > 0).map((r: any) => r.data.who));
+    const { data: srows } = await adm.from("records").select("id,data").eq("coll", "sites").eq("deleted", false);
+    const sname: Record<string, string> = {}; for (const s of srows || []) sname[s.id] = s.data?.name || "";
+    // Fingercheck job code of each job: from the hours brought in from Fingercheck (last 60 days)
+    const codeOf: Record<string, string> = {};
+    const { data: jp } = await adm.from("records").select("data").eq("coll", "punches").eq("deleted", false).gte("data->>in", String(Date.parse(a.week + "T12:00:00Z") - 60 * 86400000));
+    for (const r of jp || []) { const d: any = r.data || {}; if (d.site && d.fcJobCode && !codeOf[d.site]) codeOf[d.site] = String(d.fcJobCode); }
+    const T = (trows || []).map((r: any) => ({ ...(r.data || {}), id: r.id })).filter((x: any) => x.srv && x.status !== "ignored");
+    const by: Record<string, any> = {};
+    for (const x of T) {
+      const it = (by[x.who] ||= { who: x.who, name: nameOf[x.who] || x.who, lines: {} as Record<string, any>, total: 0, sent: [] as any[], problem: null as string | null, notes: [] as string[] });
+      if (x.fcSent) { it.sent.push({ id: x.id, date: x.date, amt: x.fcSent.amt, checkDate: x.fcSent.checkDate }); continue; }
+      if (x.pay == null || x.status === "norate") { it.problem = "no pay rate in the app — add his rate first"; continue; }
+      const k = x.site || "none"; const l = (it.lines[k] ||= { site: x.site, job: sname[x.site] || null, code: x.site ? (codeOf[x.site] || null) : null, amt: 0, legs: 0, days: [] as string[], ids: [] as string[] });
+      l.amt += Number(x.pay) || 0; l.legs++; if (!l.days.includes(x.date)) l.days.push(x.date); l.ids.push(x.id); it.total += Number(x.pay) || 0;
+    }
+    const items = Object.values(by).map((it: any) => { const n = numOf[it.who]; it.co = n ? n.co : null;
+      it.lines = Object.values(it.lines).map((l: any) => ({ ...l, amt: Math.round(l.amt * 100) / 100, days: l.days.sort() })); it.total = Math.round(it.total * 100) / 100;
+      if (!n) it.problem = it.problem || "no Fingercheck number for this person";
+      if (paidWho.has(it.who) && it.lines.length) it.problem = "travel for this week was already paid in Fingercheck";
+      if (it.lines.some((l: any) => !l.code)) it.notes.push("a job has no Fingercheck job code yet — that line goes without a job");
+      return it; }).filter((it: any) => it.lines.length || it.sent.length || it.problem).sort((x: any, y: any) => String(x.name).localeCompare(String(y.name)));
+    // the coming payroll of each company (check date + run number)
+    const payroll: Record<string, any> = {};
+    for (const c of [...new Set(items.map((it: any) => it.co).filter(Boolean))] as string[]) {
+      const r = await fc(c, "v1/payroll/GetUpcomingPayrolls"); const L = asList(r.body);
+      const today = dkey(Date.now()); const pr = L.map((x: any) => ({ checkDate: String(x.CheckDate ?? x.checkDate ?? "").slice(0, 10), run: Number(x.RunNumber ?? x.runNumber ?? x.PayrollRunNumber ?? x.Run ?? 1) || 1,
+        begin: String(x.PeriodBegin ?? x.periodBegin ?? "").slice(0, 10), end: String(x.PeriodEnd ?? x.periodEnd ?? "").slice(0, 10), keys: Object.keys(x || {}).slice(0, 40) }))
+        .filter((x: any) => x.checkDate && x.checkDate >= today).sort((x: any, y: any) => x.checkDate.localeCompare(y.checkDate));
+      payroll[c] = pr[0] || null; if (!pr[0]) for (const it of items as any[]) if (it.co === c && it.lines.length) it.problem = it.problem || "no coming payroll found in Fingercheck";
+    }
+    if (!send) return json({ preview: true, writeOn, week: a.week, payroll, items });
+    const go = (items as any[]).filter((it) => it.lines.length && !it.problem && (a.all === true || pick.includes(it.who)));
+    const res: any[] = [];
+    for (const c of [...new Set(go.map((it) => it.co))] as string[]) {
+      const pr = payroll[c]; const mine = go.filter((it) => it.co === c);
+      const body = mine.flatMap((it) => it.lines.map((l: any) => ({ EmployeeNumber: numOf[it.who].fc, PayNumber: 1, PayCode: "TR", RecordType: "D", Amount: -l.amt, Job: l.code,
+        DateWorked: l.days[l.days.length - 1], StubMessage: "Travel " + (l.job || "") + " (Electrix app)" })));
+      const r = await fcWrite(c, "POST", `v1/payroll/InsertPayroll?checkDate=${pr.checkDate}&runNumber=${pr.run}`, body);
+      for (const it of mine) {
+        res.push({ who: it.who, name: it.name, ok: r.ok, total: it.total, checkDate: pr.checkDate, err: r.ok ? null : "Fingercheck answered " + r.status + (typeof r.body === "string" ? ": " + r.body.slice(0, 160) : "") });
+        if (r.ok) for (const l of it.lines) for (const id of l.ids) {
+          const { data: cur } = await adm.from("records").select("data").eq("coll", "travel").eq("id", id).maybeSingle();
+          await adm.from("records").update({ data: { ...(cur?.data || {}), fcSent: { checkDate: pr.checkDate, run: pr.run, at: Date.now(), by: me.id, amt: Number(cur?.data?.pay) || 0, job: l.code } }, updated_at: new Date().toISOString(), updated_by: "fingercheck-send" }).eq("coll", "travel").eq("id", id);
+        }
+      }
+    }
+    const bad = res.filter((x) => !x.ok);
+    if (bad.length) await notifyFc("🚗 Fingercheck: travel did not go in for " + bad.map((x) => x.name).join(", ") + ". Open Time cards to see why.",
+      "🚗 Fingercheck: el viaje no entró para " + bad.map((x) => x.name).join(", ") + ". Abra Tarjetas de tiempo para ver por qué.", { tab: "hours" });
+    return json({ sent: true, payroll, results: res });
+  }
 
   // ───────── push: hours fixed in the app → Fingercheck (preview unless send=true and the server switch is on) ─────────
   async function push() {
