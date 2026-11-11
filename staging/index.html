@@ -59,7 +59,7 @@ html[data-theme=dark] .pn-sl i{background:#f2f2f7;color:#111}
 #pg-punch:not(.pnopen) #punchExtra{display:none!important}
 #pg-punch #punchSched,#pg-punch #myListPunch,#pg-punch #quickExp,#pg-punch #mySites{display:none!important}
 </style>
-<script>window.EX_VER='vs79c1111';</script><script src="config.js"></script>
+<script>window.EX_VER='vs80c1111';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="sync.js?vs68c1110"></script>
 <script src="extras.js?vs68c1110"></script>
@@ -2497,7 +2497,7 @@ function pnRender(){const wrap=document.getElementById('pnWrap');if(!wrap)return
     b='<a class="pn-link" onclick="pnPick(!pnPickOn)">'+t(pnPickOn?'Close':'Different job?')+'</a>';}
   else{h='<div class="pn-b" style="padding-bottom:16px"><div class="pn-k">📍 '+t(autoSite._done||!navigator.geolocation?'Not at a job':'Finding your location…')+'</div><div class="pn-n">'+t('You are not at any job right now.')+'</div><button class="pn-btn" onclick="pnPick(true)">'+t('Pick a job from the list')+'</button><button class="pn-btn ghost" onclick="punchNewJob()">➕ '+t('Job not in the app')+'</button></div>';}
   {const fid=(open&&open.site)||(best&&best.id)||(()=>{const sl=m.crew?schedDay(m.crew+'|'+dkey(new Date())):null;return sl&&sl.site;})();const fs=fid?D.sites.find(x=>x.id===fid):null;
-   if(fs&&(m.role!=='worker'||mySites(m).some(x=>x.id===fs.id)))b='<a class="pn-link" style="text-decoration:none" onclick="openFolder(\''+jsq(fs.id)+'\')">📁 '+t('Plans & files')+' · '+esc(pnSN(fs.name))+' ›</a>'+b;}
+   if(false&&fs&&(m.role!=='worker'||mySites(m).some(x=>x.id===fs.id)))b='<a class="pn-link" style="text-decoration:none" onclick="openFolder(\''+jsq(fs.id)+'\')">📁 '+t('Plans & files')+' · '+esc(pnSN(fs.name))+' ›</a>'+b;}
   if(card._h!==h){card.innerHTML=h;card._h=h;}below.innerHTML=b;document.getElementById('pnToday').innerHTML=pnTodayHtml(m);pnBind();}
 
 function geoOk(x){if(!x||!x.in||Date.now()-x.in>14*36e5)return false;if(window.EX_REAL&&window.EX_ME&&me()&&me().id!==window.EX_ME)return false;return true;}
