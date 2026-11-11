@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
       if (!has(c)) { out[c] = { name: CO_NAME[c], connected: false, why: "keys not saved" }; continue; }
       const [emp, up] = await Promise.all([fc(c, "v1/Employees/GetAllActiveEmployees"), fc(c, "v1/payroll/GetUpcomingPayrolls")]);
       const list = asList(emp.body); const ups = asList(up.body);
-      const next = ups[0] ? (ups[0].CheckDate ?? ups[0].checkDate ?? null) : null;
+      const next = ups[0] ? (ups[0].CheckDate ?? ups[0].checkDate ?? ups[0].Code ?? null) : null;
       out[c] = { name: CO_NAME[c], connected: emp.status === 200, status: emp.status, employees: emp.status === 200 ? list.length : null,
                  nextCheck: next, why: emp.status === 200 ? null : (emp.status === 401 || emp.status === 403 ? "Fingercheck refused the keys" : "Fingercheck answered " + emp.status) };
     }
@@ -379,10 +379,16 @@ Deno.serve(async (req) => {
     const payroll: Record<string, any> = {};
     for (const c of [...new Set(items.map((it: any) => it.co).filter(Boolean))] as string[]) {
       const r = await fc(c, "v1/payroll/GetUpcomingPayrolls"); const L = asList(r.body);
-      const today = dkey(Date.now()); const pr = L.map((x: any) => ({ checkDate: String(x.CheckDate ?? x.checkDate ?? "").slice(0, 10), run: Number(x.RunNumber ?? x.runNumber ?? x.PayrollRunNumber ?? x.Run ?? 1) || 1,
-        begin: String(x.PeriodBegin ?? x.periodBegin ?? "").slice(0, 10), end: String(x.PeriodEnd ?? x.periodEnd ?? "").slice(0, 10), keys: Object.keys(x || {}).slice(0, 40) }))
-        .filter((x: any) => x.checkDate && x.checkDate >= today).sort((x: any, y: any) => x.checkDate.localeCompare(y.checkDate));
-      payroll[c] = pr[0] || null; if (!pr[0]) for (const it of items as any[]) if (it.co === c && it.lines.length) it.problem = it.problem || "no coming payroll found in Fingercheck";
+      // Baruch 11/11: Fingercheck lists coming payrolls as {Code:"11/16/2026" (check date), Description:"1" (run), StartDate, EndDate (pay period)}.
+      // Travel goes into the payroll whose pay period is THIS week — never into another week's payroll.
+      const mdy = (v: any) => { const m = String(v ?? "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); return m ? `${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}` : ""; };
+      const today = dkey(Date.now()); const pr = L.map((x: any) => ({ checkDate: String(x.CheckDate ?? x.checkDate ?? "").slice(0, 10) || mdy(x.Code), run: Number(x.RunNumber ?? x.runNumber ?? x.PayrollRunNumber ?? x.Run ?? x.Description ?? 1) || 1,
+        begin: String(x.PeriodBegin ?? x.periodBegin ?? x.StartDate ?? "").slice(0, 10), end: String(x.PeriodEnd ?? x.periodEnd ?? x.EndDate ?? "").slice(0, 10), off: x.InActive === true }))
+        .filter((x: any) => x.checkDate && !x.off).sort((x: any, y: any) => x.checkDate.localeCompare(y.checkDate));
+      const hasPeriods = pr.some((x: any) => x.begin);
+      const mine = hasPeriods ? pr.find((x: any) => x.begin === a.week) : pr.find((x: any) => x.checkDate >= today);
+      payroll[c] = mine ? { checkDate: mine.checkDate, run: mine.run, begin: mine.begin, end: mine.end } : null;
+      if (!mine) for (const it of items as any[]) if (it.co === c && it.lines.length) it.problem = it.problem || (hasPeriods ? "no payroll for this pay week in Fingercheck yet" : "no coming payroll found in Fingercheck");
     }
     if (!send) return json({ preview: true, writeOn, week: a.week, payroll, items });
     const go = (items as any[]).filter((it) => it.lines.length && !it.problem && (a.all === true || pick.includes(it.who)));
