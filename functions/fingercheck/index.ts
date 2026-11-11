@@ -22,6 +22,8 @@ const COS = ["usa", "inc"] as const;
 const CO_NAME: Record<string, string> = { usa: "Electrix USA", inc: "Electrix US Inc" };
 const json = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info" } });
 
+function dayAfter(d: string) { return new Date(Date.parse(d + "T12:00:00Z") + 86400000).toISOString().slice(0, 10); }
+function dayBefore(d: string) { return new Date(Date.parse(d + "T12:00:00Z") - 86400000).toISOString().slice(0, 10); }
 function dkey(ms: number) { return new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms)); }
 function nyMidnight(day: string) {
   const [y, m, d] = day.split("-").map(Number); let t = Date.UTC(y, m - 1, d, 5);
@@ -104,6 +106,20 @@ Deno.serve(async (req) => {
   const action = a.action || "status";
   const co = COS.includes(a.co as any) ? a.co : "inc";
   const has = (c: string) => !!(KEY && secretOf(c));
+  // Baruch 11/10: Fingercheck problems go to the bell of Baruch + Payroll (server_config fc_alert_to, default owner u1 + Shia o1),
+  // in each person's language
+  const notifyFc = async (en: string, es: string, link: Record<string, unknown>) => {
+    try {
+      const { data: c } = await adm.from("server_config").select("v").eq("k", "fc_alert_to").maybeSingle();
+      let to: string[] = ["u1", "o1"]; try { const j = JSON.parse(c?.v || "null"); if (Array.isArray(j) && j.length) to = j.map(String); } catch (_) { /* default */ }
+      const { data: es0 } = await adm.from("records").select("id,data").eq("coll", "emps").in("id", to);
+      const now = Date.now(); const rows: any[] = [];
+      for (const e of es0 || []) { if (!e.data || e.data.inactive) continue; const nid = "n" + crypto.randomUUID().replace(/-/g, "");
+        rows.push({ coll: "inbox", id: nid, deleted: false, updated_by: "server", updated_at: new Date().toISOString(),
+          data: { id: nid, to: e.id, msg: (e.data.lang === "es" ? es : en).slice(0, 900), kind: "info", ts: now, read: false, link, auto: true } }); }
+      if (rows.length) await adm.from("records").upsert(rows, { onConflict: "coll,id" });
+    } catch (_) { /* a notice must never stop the work */ }
+  };
   if (action === "status") {
     const out: Record<string, unknown> = { keys: { api: !!KEY, usa: !!secretOf("usa"), inc: !!secretOf("inc") }, write: false };
     for (const c of COS) {
@@ -199,21 +215,42 @@ Deno.serve(async (req) => {
     for (const s of srows || []) for (const al of (Array.isArray(s.data?.fcAlias) ? s.data.fcAlias : [])) alias[String(al)] = s.id;
     const siteOf = (jd: string) => { if (alias[jd]) return alias[jd]; const k = skey(jd); const c = k ? sites[k] : null; return c && c.length === 1 ? c[0] : (jd ? "fc:" + clean(jd) : null); };
     const at = (t: string) => { const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/.exec(t || ""); return m ? nyAt(m[1], +m[2], +m[3]) : null; };
-    const tc = await fc(co, `v1/Reports/GetAllTimeCardsForDateRange?startDate=${from}&endDate=${to}`);
+    // Baruch 11/10: read one day past the end too, so a shift that ends after midnight comes in with its punch-out
+    // (Fingercheck's report only holds punches inside the dates asked for)
+    const toPlus = dayAfter(to);
+    const tc = await fc(co, `v1/Reports/GetAllTimeCardsForDateRange?startDate=${from}&endDate=${toPlus}`);
     if (tc.status !== 200) return json({ error: "Fingercheck time cards answered " + tc.status }, 502);
     const punches: any[] = [], unmapped: Record<string, number> = {}; let hours = 0, open = 0, matched = 0;
-    for (const x of asList(tc.body)) {
-      const hin = at(x.TimeIn), hout = at(x.TimeOut); const num = String(x.EmployeeNumber || "");
+    const L0 = asList(tc.body).filter((x: any) => { const h = at(x.TimeIn); const wd = String(x.DateWorked || "").slice(0, 10) || (h ? dkey(h) : "");
+      return !!h && wd <= to; });
+    // Fingercheck sometimes files an after-midnight punch-out as a NEW punch-in on the next day. Find those: an open
+    // punch-in from 12–6 AM right after the same person's open shift from the day before → put them together here
+    // and tell Payroll, because Fingercheck itself still has it wrong.
+    const overnight: any[] = [], splitIds = new Set<string>();
+    const isOpen = (x: any) => !x.TimeOut;
+    for (const b of L0) { if (!isOpen(b)) continue; const bi = at(b.TimeIn)!; const hr = Number(new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", hour12: false }).format(new Date(bi))) % 24;
+      if (hr >= 6) continue;
+      const a0 = L0.find((x: any) => x !== b && String(x.EmployeeNumber) === String(b.EmployeeNumber) && isOpen(x) && at(x.TimeIn)! < bi && bi - at(x.TimeIn)! <= 20 * 3600000 && dkey(at(x.TimeIn)!) === dayBefore(dkey(bi)));
+      if (!a0 || splitIds.has(String(a0.InPunchID))) continue;
+      splitIds.add(String(b.InPunchID)); a0._splitOut = bi; a0._splitId = b.InPunchID;
+      overnight.push({ name: clean((a0.FirstName || "") + " " + (a0.LastName || "")), day: dkey(at(a0.TimeIn)!), out: b.TimeIn }); }
+    const newJobs: Record<string, number> = {};
+    for (const x of L0) {
+      if (splitIds.has(String(x.InPunchID))) continue;
+      const hin = at(x.TimeIn), hout = x._splitOut || at(x.TimeOut); const num = String(x.EmployeeNumber || "");
       // Baruch 11/10: a punch-in with no punch-out from an earlier day comes in as "missing punch-out" (so Payroll can fix
       // that real entry); today's open punches (still working) and broken rows are skipped as before
-      const missingOut = !!hin && !x.TimeOut && dkey(hin) < dkey(Date.now());
+      const missingOut = !!hin && !x.TimeOut && !x._splitOut && dkey(hin) < dkey(Date.now());
       if (!hin || (!missingOut && (!hout || hout <= hin))) { open++; continue; }
       const who = whoOf(num, x.FirstName || "", x.LastName || "");
       if (!who) { const nm = clean((x.FirstName || "") + " " + (x.LastName || "")); unmapped[nm] = Math.round(((unmapped[nm] || 0) + Number(x.Hours || 0)) * 100) / 100; continue; }
       const jd = clean(x.JobDescriptionPunch || ""); const site = siteOf(jd); if (site && !site.startsWith("fc:")) matched++;
+      if (site && site.startsWith("fc:")) newJobs[jd] = (newJobs[jd] || 0) + 1;
       const id = "fc_" + String(x.InPunchID || (num + "_" + hin)).replace(/[^A-Za-z0-9_.:|@-]/g, "");
-      hours += Number(x.Hours || 0);
-      punches.push({ id, who, site, in: hin, out: missingOut ? null : hout, fcOpen: missingOut || undefined, src: "fingercheck", fcCo: co, fcNum: num, fcHours: Math.round(Number(x.Hours || 0) * 10000) / 10000, fcJob: jd || null, fcJobCode: x.JobPunch ? String(x.JobPunch) : undefined, fcInId: x.InPunchID || undefined, fcOutId: x.OutPunchID || undefined, fcEdited: !!(x.IsInPunchEdit || x.IsOutPunchEdit) || undefined });
+      const fh = x._splitOut ? (hout! - hin) / 3600000 : Number(x.Hours || 0);
+      hours += fh;
+      punches.push({ id, who, site, in: hin, out: missingOut ? null : hout, fcOpen: missingOut || undefined, src: "fingercheck", fcCo: co, fcNum: num, fcHours: Math.round(fh * 10000) / 10000, fcJob: jd || null, fcJobCode: x.JobPunch ? String(x.JobPunch) : undefined, fcInId: x.InPunchID || undefined, fcOutId: x.OutPunchID || undefined, fcSplitId: x._splitId || undefined, fcEdited: !!(x.IsInPunchEdit || x.IsOutPunchEdit) || undefined,
+        fcSync: x._splitOut ? { state: "problem", at: Date.now(), by: "auto", err: "overnight shift: Fingercheck put the punch-out after midnight on the next day as a new punch-in — fix this one in Fingercheck" } : undefined });
     }
     const pd = await fc(co, `v1/Reports/GetAllPayrollCheckDetailsForDateRange?startDate=${from}&endDate=${to}`);
     if (pd.status !== 200) return json({ error: "Fingercheck paychecks answered " + pd.status }, 502);
@@ -233,7 +270,11 @@ Deno.serve(async (req) => {
     const pays = Object.values(checks).map((c: any) => { for (const f of ["regH", "reg", "otH", "ot", "salary", "otherPay", "travel", "otherDed", "taxes", "net"]) c[f] = Math.round(c[f] * 100) / 100;
       c.gross = Math.round((c.reg + c.ot + c.salary + c.otherPay) * 100) / 100; return c; });
     const summary = { company: CO_NAME[co], from, to, punches: punches.length, hours: Math.round(hours * 100) / 100, jobsMatched: matched, openSkipped: open,
-      unmapped, paychecks: pays.length, gross: Math.round(pays.reduce((q, c) => q + c.gross, 0) * 100) / 100, travel: Math.round(travel * 100) / 100, written: false };
+      unmapped, paychecks: pays.length, gross: Math.round(pays.reduce((q, c) => q + c.gross, 0) * 100) / 100, travel: Math.round(travel * 100) / 100, written: false,
+      newJobs: Object.keys(newJobs), overnight, noMap: [] as string[] };
+    // Baruch 11/10: jobs the crews worked that have no map point in the app — no GPS fence and no travel pay for them
+    { const used = new Set(punches.map((p) => p.site).filter((x) => x && !String(x).startsWith("fc:")));
+      for (const s of srows || []) if (used.has(s.id) && (s.data?.lat == null || s.data?.lng == null)) summary.noMap.push(clean(s.data?.name || s.id)); }
     if (write) {
       const now = new Date().toISOString();
       // Baruch 11/10: never overwrite hours fixed in the app that were not sent to Fingercheck yet; keep the change log of
@@ -252,7 +293,7 @@ Deno.serve(async (req) => {
         for (const o of opens) if ((appP || []).some((r: any) => !String(r.id).startsWith("fc_") && r.data?.who === o.who && !r.data?.voided && Math.abs(Number(r.data?.in) - o.in) <= 1200000)) skipIds.add(o.id); }
       const pend = (d: any) => d && ((d.fcSync && d.fcSync.state !== "sent") || (!d.fcSync && Array.isArray(d.edits) && d.edits.length) || (!d.fcSync && d.voided));
       const kept = punches.filter((p) => { if (skipIds.has(p.id)) return false; if (pend(keep[p.id])) { protectedN++; return false; } return true; })
-        .map((p) => { const o = keep[p.id]; return o && o.fcSync ? { ...p, edits: o.edits, fcSync: o.fcSync } : p; });
+        .map((p) => { const o = keep[p.id]; return o && o.fcSync ? { ...p, edits: o.edits, fcSync: p.fcSync || o.fcSync } : p; });
       (summary as any).protectedEdits = protectedN; (summary as any).linkedToApp = skipIds.size;
       punches.length = 0; punches.push(...kept);
       const rows = punches.map((p) => ({ coll: "punches", id: p.id, data: JSON.parse(JSON.stringify(p)), deleted: false, updated_by: "fingercheck", updated_at: now }))
@@ -262,6 +303,20 @@ Deno.serve(async (req) => {
         if (error) return json({ ...summary, error: error.message, savedUpTo: i }, 500);
       }
       summary.written = true;
+      // tell Baruch + Payroll — once per job / per shift, not on every import
+      const { data: toldRow } = await adm.from("server_config").select("v").eq("k", "fc_told").maybeSingle();
+      let told: string[] = []; try { told = JSON.parse(toldRow?.v || "[]"); } catch (_) { told = []; }
+      const fresh = (k: string) => !told.includes(k) && (told.push(k), true);
+      const jobsNew = summary.newJobs.filter((j) => fresh("job:" + co + ":" + j));
+      if (jobsNew.length) await notifyFc("🏗 Fingercheck has hours for a job that is not in the app: " + jobsNew.join(", ") + " — add it in Jobs",
+        "🏗 Fingercheck tiene horas de un trabajo que no está en la app: " + jobsNew.join(", ") + " — agréguelo en Trabajos", { tab: "sites" });
+      const noMapNew = summary.noMap.filter((j) => fresh("map:" + j));
+      if (noMapNew.length) await notifyFc("📍 No map point for " + noMapNew.join(", ") + " — GPS and travel pay can't be figured for it. Set the job's location.",
+        "📍 Sin ubicación en el mapa para " + noMapNew.join(", ") + " — no se puede calcular GPS ni pago de viaje. Ponga la ubicación del trabajo.", { tab: "sites" });
+      const onNew = overnight.filter((o) => fresh("night:" + co + ":" + o.name + ":" + o.day));
+      if (onNew.length) await notifyFc("🕒 Fingercheck put a punch-out after midnight on the next day as a new punch-in: " + onNew.map((o) => o.name + " (" + o.day.slice(5) + ")").join(", ") + " — fix it in Fingercheck",
+        "🕒 Fingercheck puso una salida después de medianoche en el día siguiente como nueva entrada: " + onNew.map((o) => o.name + " (" + o.day.slice(5) + ")").join(", ") + " — corríjalo en Fingercheck", { tab: "hours" });
+      if (jobsNew.length || noMapNew.length || onNew.length) await adm.from("server_config").upsert({ k: "fc_told", v: JSON.stringify(told.slice(-400)) }, { onConflict: "k" });
     }
     return json(summary);
   }
@@ -292,7 +347,7 @@ Deno.serve(async (req) => {
     const cos = [...new Set(P.map((p: any) => (numOf[p.who] || { co: "inc" }).co))];
     const rows: Record<string, any[]> = {};
     for (const c of cos) { if (!has(c)) return json({ error: "Fingercheck keys are not saved for " + CO_NAME[c] }, 400);
-      const r = await fc(c, `v1/Reports/GetAllTimeCardsForDateRange?startDate=${from}&endDate=${last}`);
+      const r = await fc(c, `v1/Reports/GetAllTimeCardsForDateRange?startDate=${from}&endDate=${dayAfter(last)}`);
       if (r.status !== 200) return json({ error: "Fingercheck time cards answered " + r.status }, 502); rows[c] = asList(r.body); }
     const at = (t: string) => { const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/.exec(t || ""); return m ? nyAt(m[1], +m[2], +m[3]) : null; };
     const { data: srows } = await adm.from("records").select("id,data").eq("coll", "sites").eq("deleted", false);
@@ -313,6 +368,7 @@ Deno.serve(async (req) => {
     for (const p of P) {
       const it: any = { id: p.id, who: p.who, name: nameOf[p.who] || p.who, day: dkey(p.in), ops: [] as any[], problem: null as string | null };
       items.push(it);
+      if (p.fcSync && (p.fcSync.state === "problem" || p.fcSync.state === "error") && p.fcSync.err) it.lastErr = String(p.fcSync.err).slice(0, 300);
       const n = numOf[p.who]; if (!n) { it.problem = "no Fingercheck number for this person"; continue; }
       it.co = n.co; const base = (type: number, t: number, job: string | null, pid: string | null) => ({ EmployeeNumber: n.fc, PunchType: type, TimePunch: nyIso(t), Job: job, PunchID: pid, Note: "Fixed in Electrix app" });
       const fcIn = p.src === "fingercheck" ? (p.fcInId || String(p.id).replace(/^fc_/, "")) : (p.fcInId || null);
@@ -329,19 +385,36 @@ Deno.serve(async (req) => {
         if (orig && !(same(fin, orig.in) && same(fout, orig.out ?? null)) && !(same(fin, p.in) && same(fout, p.out || null)))
           { it.problem = "it was also changed in Fingercheck meanwhile — fix this one in Fingercheck"; continue; } }
       if (p.site && !job && !p.voided && !adopt) it.note = "this job has no Fingercheck job code yet — sent without a job";
+      // Baruch 11/10: before sending, look for OTHER Fingercheck punches of this person inside these hours (or a stray
+      // punch-in right at the punch-out, which is how Fingercheck files a bad overnight punch-out) — stop and say so
+      if (!p.voided) { const lo = p.in, hi = p.out || p.in; const mine = new Set(P.map((q: any) => String(q.fcInId || (q.src === "fingercheck" ? String(q.id).replace(/^fc_/, "") : ""))).filter(Boolean));
+        const clash = (rows[n.co] || []).find((x: any) => { if (String(x.EmployeeNumber) !== n.fc || (row && x.InPunchID === row.InPunchID) || mine.has(String(x.InPunchID))) return false;
+          const xi = at(x.TimeIn), xo = at(x.TimeOut); if (xi == null) return false;
+          if (xo == null) return (xi > lo + 60000 && xi < hi - 60000) || (p.out != null && Math.abs(xi - p.out) <= 1200000) || Math.abs(xi - p.in) <= 1200000;
+          return Math.min(xo, hi) - Math.max(xi, lo) > 60000; });
+        if (clash) { const hm = (ms: number) => new Intl.DateTimeFormat("en-US", { timeZone: TZ, month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(ms));
+          it.problem = "Fingercheck has another punch for this person at " + hm(at(clash.TimeIn)!) + (clash.TimeOut ? "–" + hm(at(clash.TimeOut)!) : " (no punch-out)") + " — remove or fix that one in Fingercheck first";
+          it.clash = { in: at(clash.TimeIn), out: at(clash.TimeOut) }; continue; } }
+      const overnightOut = !!p.out && dkey(p.out) !== dkey(p.in);
       if (p.voided) { if (row) { it.ops.push({ kind: "delete", what: "in", body: base(0, at(row.TimeIn)!, row.JobPunch || null, String(row.InPunchID)) });
           if (row.OutPunchID) it.ops.push({ kind: "delete", what: "out", body: base(1, at(row.TimeOut)!, row.JobPunch || null, String(row.OutPunchID)) }); }
         continue; }
-      if (!row) { it.ops.push({ kind: "add", what: "in", body: base(0, p.in, job, null) }); if (p.out) it.ops.push({ kind: "add", what: "out", body: base(1, p.out, job, null) }); continue; }
+      if (!row) { it.ops.push({ kind: "add", what: "in", body: base(0, p.in, job, null) }); if (p.out) it.ops.push({ kind: "add", what: "out", body: dkey(p.out) !== dkey(p.in) ? { ...base(1, p.out, job, null), ISExplicit: true } : base(1, p.out, job, null) }); continue; }
       const jobNow = job || (row.JobPunch ? String(row.JobPunch) : null); const jobChanged = !!job && String(row.JobPunch || "") !== job;
       const fin = at(row.TimeIn), fout = at(row.TimeOut);
       // (an adopted open punch keeps Fingercheck's own punch-in unless it is more than 5 minutes off)
       if (jobChanged || fin == null || Math.abs(fin - p.in) >= (adopt ? 300000 : 60000)) it.ops.push({ kind: "edit", what: "in", body: base(0, p.in, jobNow, String(row.InPunchID)) });
-      if (p.out) { if (row.OutPunchID) { if (jobChanged || fout == null || Math.abs(fout - p.out) >= 60000) it.ops.push({ kind: "edit", what: "out", body: base(1, p.out, jobNow, String(row.OutPunchID)) }); }
-        else it.ops.push({ kind: "add", what: "out", body: base(1, p.out, jobNow, null) }); }
+      if (p.out) { if (row.OutPunchID) { if (jobChanged || fout == null || Math.abs(fout - p.out) >= 60000) {
+            // an edit never moves a punch to another day in Fingercheck, so an after-midnight punch-out is taken out and put in fresh
+            if (overnightOut || (fout != null && dkey(fout) !== dkey(p.out))) { it.ops.push({ kind: "delete", what: "out", body: base(1, fout ?? p.out, row.JobPunch ? String(row.JobPunch) : null, String(row.OutPunchID)) });
+              it.ops.push({ kind: "add", what: "out", body: { ...base(1, p.out, jobNow, null), ISExplicit: true } }); }
+            else it.ops.push({ kind: "edit", what: "out", body: base(1, p.out, jobNow, String(row.OutPunchID)) }); } }
+        else it.ops.push({ kind: "add", what: "out", body: overnightOut ? { ...base(1, p.out, jobNow, null), ISExplicit: true } : base(1, p.out, jobNow, null) }); }
       else if (row.OutPunchID) { it.problem = "a punch-out can't be taken away here — fix this one in Fingercheck"; it.ops = []; continue; }
       if (!it.ops.length) it.done = "already the same in Fingercheck";
     }
+    for (const it of items) { const p = P.find((x: any) => x.id === it.id); if (p && p.out && !p.voided && dkey(p.out) !== dkey(p.in) && !it.problem)
+      it.note = (it.note ? it.note + " · " : "") + "ends after midnight — it goes on " + dkey(p.in) + " in Fingercheck"; }
     if (!send) return json({ preview: true, writeOn, items: items.map((x) => ({ ...x, ops: x.ops.map((o: any) => ({ kind: o.kind, what: o.what, time: o.body.TimePunch, job: o.body.Job })) })) });
     // send, one punch at a time; stop that punch at its first refusal
     const nowIso = new Date().toISOString(); const res: any[] = [];
@@ -360,13 +433,47 @@ Deno.serve(async (req) => {
     const added = items.filter((it) => res.find((r) => r.id === it.id && r.ok) && (it.adopt || it.ops.some((o: any) => o.kind === "add" && o.what === "in")));
     if (added.length) for (const c of [...new Set(added.map((x) => x.co))]) {
       const ds = added.filter((x) => x.co === c).map((x) => x.day).sort();
-      const r = await fc(c, `v1/Reports/GetAllTimeCardsForDateRange?startDate=${ds[0]}&endDate=${ds[ds.length - 1]}`); const L = asList(r.body);
+      const r = await fc(c, `v1/Reports/GetAllTimeCardsForDateRange?startDate=${ds[0]}&endDate=${dayAfter(ds[ds.length - 1])}`); const L = asList(r.body);
       for (const it of added.filter((x) => x.co === c)) { const p = P.find((x: any) => x.id === it.id); const n = numOf[p.who];
         const m = L.find((x: any) => String(x.EmployeeNumber) === n.fc && Math.abs((at(x.TimeIn) || 0) - p.in) < (it.adopt ? 1200000 : 60000));
         if (m) { const { data: cur } = await adm.from("records").select("data").eq("coll", "punches").eq("id", it.id).maybeSingle();
           const keepIn = it.adopt && at(m.TimeIn) ? { in: at(m.TimeIn) } : {};
           await adm.from("records").update({ data: { ...(cur?.data || {}), ...keepIn, fcInId: m.InPunchID || undefined, fcOutId: m.OutPunchID || undefined, fcNum: n.fc, fcCo: c }, updated_at: new Date().toISOString(), updated_by: "fingercheck-send" }).eq("coll", "punches").eq("id", it.id); } }
     }
-    return json({ sent: true, results: res });
+    // Baruch 11/10: read Fingercheck back and compare every sent punch with the app — day, times and hours.
+    // Anything that doesn't match is marked as a problem on that punch and Baruch + Payroll get a notice.
+    const bad: any[] = [];
+    const sentOk = items.filter((it) => res.find((r) => r.id === it.id && r.ok) && it.ops.length);
+    if (sentOk.length) for (const c of [...new Set(sentOk.map((x) => x.co))]) {
+      const mine = sentOk.filter((x) => x.co === c); const ds = mine.map((x) => x.day).sort();
+      let tries = 0, left = mine;
+      while (left.length && tries < 3) {
+        await new Promise((z) => setTimeout(z, tries ? 5000 : 2500)); tries++;   // Fingercheck's report takes a few seconds to show new punches
+        const r = await fc(c, `v1/Reports/GetAllTimeCardsForDateRange?startDate=${ds[0]}&endDate=${dayAfter(ds[ds.length - 1])}`); if (r.status !== 200) break;
+        const L = asList(r.body); const next: any[] = [];
+        for (const it of left) { const p = P.find((x: any) => x.id === it.id); const n = numOf[p.who];
+          const { data: cur } = await adm.from("records").select("data").eq("coll", "punches").eq("id", it.id).maybeSingle(); const q = { ...p, ...(cur?.data || {}) };
+          const m = L.filter((x: any) => String(x.EmployeeNumber) === n.fc && Math.abs((at(x.TimeIn) || 0) - q.in) < 60000);
+          let why: string | null = null;
+          if (q.voided) { if (m.length) why = "it is still in Fingercheck"; }
+          else if (!m.length) why = "Fingercheck doesn't show this punch-in";
+          else { const x = m[0]; const fout = at(x.TimeOut); const wd = String(x.DateWorked || "").slice(0, 10);
+            if (wd && wd !== dkey(q.in)) why = "Fingercheck put it on " + wd + " instead of " + dkey(q.in);
+            else if (q.out && (fout == null || Math.abs(fout - q.out) >= 60000)) why = "the punch-out in Fingercheck is " + (fout ? String(x.TimeOut).slice(0, 16).replace("T", " ") : "missing");
+            else if (!q.out && fout != null) why = "Fingercheck has a punch-out the app doesn't";
+            else if (q.out && Math.abs(Number(x.Hours || 0) - (q.out - q.in) / 3600000) > 0.05) why = "Fingercheck counts " + Number(x.Hours || 0).toFixed(2) + " h, the app " + ((q.out - q.in) / 3600000).toFixed(2) + " h";
+            if (!why && m.length > 1) why = "Fingercheck has this punch twice"; }
+          if (why) next.push({ it, why }); }
+        left = next.map((z) => z.it); if (!left.length || tries >= 3) for (const z of next) bad.push(z);
+      }
+    }
+    for (const z of bad) { const r0 = res.find((r) => r.id === z.it.id); if (r0) { r0.ok = false; r0.err = "checked after sending: " + z.why; }
+      const { data: cur } = await adm.from("records").select("data").eq("coll", "punches").eq("id", z.it.id).maybeSingle();
+      await adm.from("records").update({ data: { ...(cur?.data || {}), fcSync: { state: "problem", at: Date.now(), by: me.id, err: "checked after sending: " + z.why + " — fix this one in Fingercheck" } }, updated_at: new Date().toISOString(), updated_by: "fingercheck-send" }).eq("coll", "punches").eq("id", z.it.id); }
+    const failed = res.filter((r) => !r.ok);
+    if (failed.length) { const ls = failed.slice(0, 6).map((r) => r.name + " " + String(r.day).slice(5)).join(", ") + (failed.length > 6 ? " +" + (failed.length - 6) : "");
+      await notifyFc("🕒 Fingercheck: " + failed.length + " punch" + (failed.length > 1 ? "es" : "") + " did not go in right — " + ls + ". Open Time cards to see why.",
+        "🕒 Fingercheck: " + failed.length + " marcaje" + (failed.length > 1 ? "s" : "") + " no entró bien — " + ls + ". Abra Tarjetas de tiempo para ver por qué.", { tab: "hours" }); }
+    return json({ sent: true, checked: sentOk.length, results: res });
   }
 });
