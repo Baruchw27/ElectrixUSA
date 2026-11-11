@@ -10,10 +10,10 @@
 html.exboot .top,html.exboot .pg,html.exboot .tabs,html.exboot #p2fab,html.exboot #p7fm,html.exboot #p8pin{visibility:hidden!important}
 html.exboot body{background:#f2f2f7 url(logo-light.svg) center 42%/min(62%,300px) no-repeat!important}
 @media (prefers-color-scheme:dark){html.exboot body{background:#000 url(logo-dark.svg) center 42%/min(62%,300px) no-repeat!important}}</style>
-<script>window.EX_VER='vh48c1110';</script><script src="config.js"></script>
+<script>window.EX_VER='vh49c1111';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vh48c1110"></script>
-<script src="extras.js?vh48c1110"></script>
+<script src="sync.js?vh49c1111"></script>
+<script src="extras.js?vh49c1111"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -2323,12 +2323,15 @@ function renderPunch(){
   if(document.getElementById('pg-punch').classList.contains('on'))checkGPS();
 }
 // ---- geofence watcher: auto punch-out on exit, auto punch-in on return within 60 min ----
-function onLeave(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out&&!x.away);if(!p)return;
+// Baruch 11/11: the GPS check only ever touches the signed-in man's OWN punch from today — never a punch from an earlier
+// day (a missing punch-out) and never someone else's punch while the office is looking at the app as him
+function geoOk(x){if(!x||!x.in||Date.now()-x.in>14*36e5)return false;if(window.EX_REAL&&window.EX_ME&&me()&&me().id!==window.EX_ME)return false;return true;}
+function onLeave(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out&&!x.away&&geoOk(x));if(!p)return;
   p.away=Date.now();save();renderPunch();
   notify('You left '+siteName(p.site)+' — punched out at '+fmtT(p.away)+'. Come back within 1 hour and you\'re punched back in automatically.');
   setTimeout(()=>{const q=D.punches.find(x=>x===p);if(q&&q.away&&!q.out){q.out=q.away;delete q.away;save();renderPunch();notify('1 hour passed — punch-out at '+fmtT(q.out)+' is now final.');}},60*60*1000);
 }
-function onReturn(){const m=me();finalizeAway(m.id);const p=D.punches.find(x=>x.who===m.id&&x.away&&!x.out);if(!p)return;
+function onReturn(){const m=me();if(!geoOk({in:Date.now()}))return;finalizeAway(m.id);const p=D.punches.find(x=>x.who===m.id&&x.away&&!x.out&&geoOk(x));if(!p)return;
   const gap=Date.now()-p.away;
   if(gap<=60*60*1000){p.trips=p.trips||[];p.trips.push({left:p.away,back:Date.now()});delete p.away;save();renderPunch();notify('Back on site — punched back in. The '+Math.round(gap/60000)+' min away was kept on your clock (material run).');}
 }
@@ -2368,8 +2371,8 @@ function simLeave(){onLeave();}
 function simReturn(){onReturn();}
 let watchId=null,lastNag=0;
 function startWatch(){if(watchId||!navigator.geolocation)return;
-  watchId=gpsListen(pos=>{const m=me();if(m.role==='owner')return;
-    const p=D.punches.find(x=>x.who===m.id&&!x.out);
+  watchId=gpsListen(pos=>{const m=me();if(m.role==='owner')return;if(!geoOk({in:Date.now()}))return;
+    const p=D.punches.find(x=>x.who===m.id&&!x.out&&geoOk(x));
     if(p){const s=D.sites.find(x=>x.id===p.site);if(!s||!s.lat)return;
       const d=distFt(pos.coords.latitude,pos.coords.longitude,s.lat,s.lng);const acc=(pos.coords.accuracy||0)*3.281;
       if(acc>330)return; // too rough to judge
@@ -3323,7 +3326,7 @@ function staleOpen(p){return !p.out&&!p.away&&Date.now()-p.in>STALE_OPEN_MS;}
 function addDaysMs(ms,n){const d=new Date(ms);d.setDate(d.getDate()+n);return d.getTime();}
 function dayIndex(ms,ws){const d=new Date(ms);d.setHours(0,0,0,0);return Math.round((d.getTime()-ws)/86400000);}
 // an automatic punch-out (left the site) becomes final after 60 minutes even if the phone was asleep or the app closed
-function finalizeAway(who){let ch=false;(D.punches||[]).forEach(p=>{if((!who||p.who===who)&&p.away&&!p.out&&Date.now()-p.away>3600000){p.out=p.away;delete p.away;p.autoOut=true;ch=true;}});if(ch){try{save();}catch(e){}}return ch;}
+function finalizeAway(who){let ch=false;(D.punches||[]).forEach(p=>{if((!who||p.who===who)&&p.away&&!p.out&&Date.now()-p.away>3600000&&p.away-p.in<14*36e5){p.out=p.away;delete p.away;p.autoOut=true;ch=true;}});if(ch){try{save();}catch(e){}}return ch;}
 const OT_AFTER=40;
 // L1 paid lunch: up to PAID_LUNCH_MIN minutes of lunch per person per workday (the day of the clock-in, so an overnight
 // shift belongs to the day it started) are paid; the rest is unpaid. All of that person's counted clock entries that
@@ -5388,7 +5391,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vh48c1110"></script><script src="scanner-v2-ui.js?vh48c1110"></script><script src="sched-v21.js?vh48c1110"></script><script src="p2.js?vh48c1110"></script><script src="p4.js?vh48c1110"></script><script src="p5.js?vh48c1110"></script><script src="p6.js?vh48c1110"></script><script src="p7.js?vh48c1110"></script><script src="p8.js?vh48c1110"></script><script src="p9.js?vh48c1110"></script><script src="p10.js?vh48c1110"></script><script src="p11.js?vh48c1110"></script><script src="p12.js?vh48c1110"></script><script src="p13.js?vh48c1110"></script><script src="p14.js?vh48c1110"></script><script src="p15.js?vh48c1110"></script><script src="p16.js?vh48c1110"></script>
+<script src="scanner-v2.js?vh49c1111"></script><script src="scanner-v2-ui.js?vh49c1111"></script><script src="sched-v21.js?vh49c1111"></script><script src="p2.js?vh49c1111"></script><script src="p4.js?vh49c1111"></script><script src="p5.js?vh49c1111"></script><script src="p6.js?vh49c1111"></script><script src="p7.js?vh49c1111"></script><script src="p8.js?vh49c1111"></script><script src="p9.js?vh49c1111"></script><script src="p10.js?vh49c1111"></script><script src="p11.js?vh49c1111"></script><script src="p12.js?vh49c1111"></script><script src="p13.js?vh49c1111"></script><script src="p14.js?vh49c1111"></script><script src="p15.js?vh49c1111"></script><script src="p16.js?vh49c1111"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
