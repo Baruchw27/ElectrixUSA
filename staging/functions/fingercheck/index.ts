@@ -75,14 +75,21 @@ function weekHours(punches: Punch[], ws: number, we: number, now: number) {
 const norm = (s: string) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
 const asList = (b: unknown): any[] => Array.isArray(b) ? b : (b && typeof b === "object" && Array.isArray((b as any).Data)) ? (b as any).Data : [];
 
-Deno.serve(async (req) => {
+const handle = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return json({ ok: true });
-  const auth = req.headers.get("authorization") || "";
-  const user = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: auth } }, auth: { persistSession: false } });
-  const { data: me } = await user.rpc("my_emp_data");
-  const allowed = me && (me.role === "owner" || (me.role === "office" && me.title === "Payroll"));
-  if (!allowed) return json({ error: "only the owner or Payroll" }, 403);
   const adm = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+  // Baruch 11/11: the server itself (the hourly timer) may run the automatic import — it proves itself with the server
+  // secret; it can only bring hours IN from Fingercheck (import / auto), never send anything there
+  const pushSecret = req.headers.get("x-push-secret") || "";
+  let server = false; let me: any = { id: "server" };
+  if (pushSecret) { const { data: sc } = await adm.from("server_config").select("v").eq("k", "secret").maybeSingle(); server = !!sc?.v && sc.v.length >= 16 && sc.v === pushSecret; }
+  if (!server) {
+    const auth = req.headers.get("authorization") || "";
+    const user = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: auth } }, auth: { persistSession: false } });
+    const { data: m0 } = await user.rpc("my_emp_data"); me = m0;
+    const allowed = me && (me.role === "owner" || (me.role === "office" && me.title === "Payroll"));
+    if (!allowed) return json({ error: "only the owner or Payroll" }, 403);
+  }
   const { data: saved } = await adm.rpc("fc_keys_server");
   const ks = (saved || {}) as Record<string, string>;
   const KEY = ks.api || Deno.env.get("FINGERCHECK_APIKEY") || "";
@@ -104,6 +111,8 @@ Deno.serve(async (req) => {
   };
   let a: Record<string, any> = {}; try { a = await req.json(); } catch (_) { /* empty */ }
   const action = a.action || "status";
+  if (server && action !== "auto" && action !== "import") return json({ error: "the server may only bring hours in" }, 403);
+  if (server && action === "import") { a.write = "true"; a.only = undefined; }
   const co = COS.includes(a.co as any) ? a.co : "inc";
   const has = (c: string) => !!(KEY && secretOf(c));
   // Baruch 11/10: Fingercheck problems go to the bell of Baruch + Payroll (server_config fc_alert_to, default owner u1 + Shia o1),
@@ -131,6 +140,44 @@ Deno.serve(async (req) => {
                  nextCheck: next, why: emp.status === 200 ? null : (emp.status === 401 || emp.status === 403 ? "Fingercheck refused the keys" : "Fingercheck answered " + emp.status) };
     }
     return json(out);
+  }
+  // Baruch 11/11 (approved): automatic import, run by the hourly timer. 8 AM–9 PM New York: today's punches, both companies.
+  // 6 AM: the last 7 days again (late fixes Payroll made in Fingercheck). Read-only toward Fingercheck; hours fixed in the
+  // app and not sent yet are kept (same rules as the import button); the travel recount runs by itself on every change.
+  // Switch: server_config fc_auto = 'on'. Never reaches back before fc_auto_from (paid weeks stay as they are).
+  if (action === "auto") {
+    const { data: cf } = await adm.from("server_config").select("k,v").in("k", ["fc_auto", "fc_auto_from"]);
+    const cv = Object.fromEntries((cf || []).map((r: any) => [r.k, r.v]));
+    if (cv.fc_auto !== "on" && !a.force) return json({ skipped: "fc_auto is off" });
+    const hr = Number(new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", hour12: false }).format(new Date(a.now ? Number(a.now) : Date.now()))) % 24;
+    const today = dkey(a.now ? Number(a.now) : Date.now());
+    let from = "", to = "";
+    const mode = a.mode || (hr === 6 ? "week" : hr >= 8 && hr <= 21 ? "today" : "");
+    if (mode === "today") { from = today; to = today; }
+    else if (mode === "week") { from = today; for (let i = 0; i < 7; i++) from = dayBefore(from); to = dayBefore(today); }
+    else return json({ skipped: "outside 6 AM and 8 AM–9 PM", hour: hr });
+    const floor = /^\d{4}-\d{2}-\d{2}$/.test(cv.fc_auto_from || "") ? cv.fc_auto_from : "2026-11-01";
+    if (from < floor) from = floor;
+    if (to < from) return json({ skipped: "nothing after " + floor });
+    const res: Record<string, unknown> = { mode, from, to };
+    for (const c of COS) {
+      if (!has(c)) { res[c] = "keys not saved"; continue; }
+      const r = await handle(new Request(req.url, { method: "POST", headers: { "Content-Type": "application/json", "x-push-secret": pushSecret },
+        body: JSON.stringify({ action: "import", co: c, from, to, write: "true", auto: true }) }));
+      let b: any = null; try { b = await r.json(); } catch (_) { b = { error: "no answer" }; }
+      res[c] = b;
+      if (r.status !== 200) {   // tell once a day, not every hour
+        const { data: tr } = await adm.from("server_config").select("v").eq("k", "fc_told").maybeSingle();
+        let told: string[] = []; try { told = JSON.parse(tr?.v || "[]"); } catch (_) { told = []; }
+        const k = "autofail:" + c + ":" + today;
+        if (!told.includes(k)) { told.push(k); await adm.from("server_config").upsert({ k: "fc_told", v: JSON.stringify(told.slice(-400)) }, { onConflict: "k" });
+          await notifyFc("⚠️ The automatic Fingercheck import for " + CO_NAME[c] + " did not work (" + String(b?.error || r.status).slice(0, 120) + "). It tries again every hour.",
+            "⚠️ La importación automática de Fingercheck para " + CO_NAME[c] + " no funcionó (" + String(b?.error || r.status).slice(0, 120) + "). Se intenta de nuevo cada hora.", { tab: "hours" }); }
+      }
+    }
+    await adm.from("server_config").upsert({ k: "fc_auto_last", v: JSON.stringify({ at: new Date().toISOString(), mode, from, to,
+      inc: (res.inc as any)?.punches ?? res.inc, usa: (res.usa as any)?.punches ?? res.usa }) }, { onConflict: "k" });
+    return json(res);
   }
   if (!has(co) && action !== "hours") return json({ error: "Fingercheck keys are not saved for " + CO_NAME[co] }, 400);
   // read-only: the raw punches behind the time cards (to see exactly how Fingercheck stores them); private fields removed
@@ -307,8 +354,26 @@ Deno.serve(async (req) => {
         .map((p) => { const o = keep[p.id]; return o && o.fcSync ? { ...p, edits: o.edits, fcSync: p.fcSync || o.fcSync } : p; });
       (summary as any).protectedEdits = protectedN; (summary as any).linkedToApp = skipIds.size;
       punches.length = 0; punches.push(...kept);
+      // automatic runs: write only what changed, so the hourly run doesn't rewrite (and re-log) every punch
+      let pays2: any[] = pays;
+      if (a.auto) {
+        const same = (o: any, p: any) => o && ["who", "site", "in", "out", "fcOpen", "fcHours", "fcJob", "fcJobCode", "fcOutId", "fcEdited"].every((f) => JSON.stringify(o[f] ?? null) === JSON.stringify(p[f] ?? null)) && JSON.stringify(o.fcSync ?? null) === JSON.stringify(p.fcSync ?? null);
+        const changed = punches.filter((p) => !same(keep[p.id], p)); (summary as any).unchanged = punches.length - changed.length;
+        punches.length = 0; punches.push(...changed);
+        const pids = pays.map((c: any) => c.id), old: Record<string, string> = {};
+        for (let i = 0; i < pids.length; i += 300) { const { data: ex } = await adm.from("records").select("id,data").eq("coll", "fcpay").in("id", pids.slice(i, i + 300)); for (const r of ex || []) old[r.id] = JSON.stringify(r.data); }
+        pays2 = pays.filter((c: any) => old[c.id] !== JSON.stringify(c));
+        // a punch-in with no punch-out from an earlier day — tell once per shift
+        const { data: toldRow0 } = await adm.from("server_config").select("v").eq("k", "fc_told").maybeSingle();
+        let told0: string[] = []; try { told0 = JSON.parse(toldRow0?.v || "[]"); } catch (_) { told0 = []; }
+        const miss = kept.filter((p) => p.fcOpen && !told0.includes("open:" + p.id));
+        if (miss.length) { const nm: Record<string, string> = {}; for (const e of all || []) nm[e.id] = String(e.data?.name || e.id);
+          const ls = miss.map((p) => (nm[p.who] || p.who) + " (" + dkey(p.in).slice(5) + ")").join(", ");
+          await notifyFc("🕒 Missing punch-out in Fingercheck: " + ls + " — fix it in Fingercheck or in Time cards", "🕒 Falta la salida en Fingercheck: " + ls + " — corríjalo en Fingercheck o en Tarjetas de tiempo", { tab: "hours" });
+          told0.push(...miss.map((p) => "open:" + p.id)); await adm.from("server_config").upsert({ k: "fc_told", v: JSON.stringify(told0.slice(-400)) }, { onConflict: "k" }); }
+      }
       const rows = punches.map((p) => ({ coll: "punches", id: p.id, data: JSON.parse(JSON.stringify(p)), deleted: false, updated_by: "fingercheck", updated_at: now }))
-        .concat(pays.map((c: any) => ({ coll: "fcpay", id: c.id, data: c, deleted: false, updated_by: "fingercheck", updated_at: now })));
+        .concat(pays2.map((c: any) => ({ coll: "fcpay", id: c.id, data: c, deleted: false, updated_by: "fingercheck", updated_at: now })));
       for (let i = 0; i < rows.length; i += 400) {
         const { error } = await adm.from("records").upsert(rows.slice(i, i + 400), { onConflict: "coll,id" });
         if (error) return json({ ...summary, error: error.message, savedUpTo: i }, 500);
@@ -345,7 +410,7 @@ Deno.serve(async (req) => {
     const send = String(a.send) === "true"; const pick: string[] = Array.isArray(a.who) ? a.who.map(String) : [];
     const { data: cfg } = await adm.from("server_config").select("v").eq("k", "fc_write").maybeSingle(); const writeOn = cfg?.v === "on";
     if (send && !writeOn) return json({ error: "Sending to Fingercheck is switched off", writeOn }, 403);
-    if (send && !pick.length && a.all !== true) return json({ error: "pick who to send" }, 400);
+    if (send && !pick.length && a.all !== true && a.remove !== true) return json({ error: "pick who to send" }, 400);
     const days: string[] = []; for (let i = 0; i < 7; i++) days.push(new Date(Date.parse(a.week + "T12:00:00Z") + i * 86400000).toISOString().slice(0, 10));
     const { data: trows } = await adm.from("records").select("id,data").eq("coll", "travel").eq("deleted", false).in("data->>date", days);
     const { data: rr } = await adm.from("records").select("id,data").eq("coll", "rates").eq("deleted", false);
@@ -390,7 +455,49 @@ Deno.serve(async (req) => {
       payroll[c] = mine ? { checkDate: mine.checkDate, run: mine.run, begin: mine.begin, end: mine.end } : null;
       if (!mine) for (const it of items as any[]) if (it.co === c && it.lines.length) it.problem = it.problem || (hasPeriods ? "no payroll for this pay week in Fingercheck yet" : "no coming payroll found in Fingercheck");
     }
-    if (!send) return json({ preview: true, writeOn, week: a.week, payroll, items });
+    // Baruch 11/11 (plan approved): travel as a one-paycheck "TR - Travel" line on each man's Fingercheck profile
+    // (Employees → Deductions), dated for that paycheck only, marked "EXAPP <week>" so the app finds and removes only its own lines
+    const prof = a.how === "profile";
+    const ref = "EXAPP " + a.week;
+    const okD2 = (x: string) => /^\d{4}-\d{2}-\d{2}$/.test(x || "");
+    const datesOf = (c: string) => { const pr = payroll[c]; if (!pr) return null;
+      return { start: okD2(a.start) ? a.start : pr.checkDate, end: okD2(a.end) ? a.end : pr.checkDate }; };
+    if (prof) {
+      for (const it of items as any[]) {
+        if (!it.co || !numOf[it.who]) continue;
+        const d = await fc(it.co, "v1/Employees/GetEmployeeDeductionsByEmployeeNumber/" + encodeURIComponent(numOf[it.who].fc));
+        const L = asList(d.body); it.profile = L.filter((x: any) => String(x.DeductionType || "").trim() === "TR").map((x: any) => ({ id: x.EmployeeDeductionID, amt: x.Amount, start: String(x.StartDate || "").slice(0, 10), end: String(x.EndDate || "").slice(0, 10), ref: x.PayeeReferenceNumber || "" }));
+        if (d.status !== 200) it.problem = it.problem || "could not read his Fingercheck deductions (" + d.status + ")";
+        else if (it.lines.length && it.profile.length) it.problem = it.problem || (it.profile.some((x: any) => x.ref === ref) ? "already on his profile for this week" : "he already has a Travel line on his profile — check it in Fingercheck first");
+      }
+      if (a.remove === true) return await trRemove(items as any[], numOf, ref, writeOn);
+      for (const c in payroll) if (payroll[c]) payroll[c].dates = datesOf(c);
+    }
+    if (!send) return json({ preview: true, writeOn, week: a.week, payroll, items, how: prof ? "profile" : "payroll" });
+    if (prof) {
+      const go = (items as any[]).filter((it) => it.lines.length && !it.problem && (a.all === true || pick.includes(it.who)));
+      const res: any[] = [];
+      for (const it of go) {
+        const dt = datesOf(it.co)!; const total = Math.round(it.lines.reduce((q: number, l: any) => q + l.amt, 0) * 100) / 100;
+        const body = { EmployeeNumber: numOf[it.who].fc, DeductionType: "TR", DeductionDescription: "Travel", Rate: 0, Amount: -total,
+          StartDate: dt.start + "T00:00:00", EndDate: dt.end + "T00:00:00", PayeeReferenceNumber: ref, CatchUpAllowed: false };
+        const r = await fcWrite(it.co, "POST", "v1/Employees/AddEmployeeDeduction", body);
+        // read it back — "saved" is only believed when the line is really on his profile
+        const back = asList((await fc(it.co, "v1/Employees/GetEmployeeDeductionsByEmployeeNumber/" + encodeURIComponent(numOf[it.who].fc))).body)
+          .find((x: any) => String(x.DeductionType || "").trim() === "TR" && (x.PayeeReferenceNumber || "") === ref);
+        const ok = r.ok && !!back;
+        res.push({ who: it.who, name: it.name, ok, total, dates: dt, dedId: back?.EmployeeDeductionID ?? null,
+          err: ok ? null : r.ok ? "Fingercheck said saved, but the line is not on his profile" : "Fingercheck answered " + r.status + (typeof r.body === "string" ? ": " + r.body.slice(0, 160) : "") });
+        if (ok) for (const l of it.lines) for (const id of l.ids) {
+          const { data: cur } = await adm.from("records").select("data").eq("coll", "travel").eq("id", id).maybeSingle();
+          await adm.from("records").update({ data: { ...(cur?.data || {}), fcSent: { checkDate: payroll[it.co].checkDate, run: payroll[it.co].run, at: Date.now(), by: me.id, amt: Number(cur?.data?.pay) || 0, job: l.code, how: "profile", dedId: back.EmployeeDeductionID, co: it.co } }, updated_at: new Date().toISOString(), updated_by: "fingercheck-send" }).eq("coll", "travel").eq("id", id);
+        }
+      }
+      const bad = res.filter((x) => !x.ok);
+      if (bad.length) await notifyFc("🚗 Fingercheck: travel did not go on the profile of " + bad.map((x) => x.name).join(", ") + ". Open Time cards to see why.",
+        "🚗 Fingercheck: el viaje no entró en el perfil de " + bad.map((x) => x.name).join(", ") + ". Abra Tarjetas de tiempo para ver por qué.", { tab: "hours" });
+      return json({ sent: true, how: "profile", payroll, results: res });
+    }
     const go = (items as any[]).filter((it) => it.lines.length && !it.problem && (a.all === true || pick.includes(it.who)));
     const res: any[] = [];
     for (const c of [...new Set(go.map((it) => it.co))] as string[]) {
@@ -410,6 +517,36 @@ Deno.serve(async (req) => {
     if (bad.length) await notifyFc("🚗 Fingercheck: travel did not go in for " + bad.map((x) => x.name).join(", ") + ". Open Time cards to see why.",
       "🚗 Fingercheck: el viaje no entró para " + bad.map((x) => x.name).join(", ") + ". Abra Tarjetas de tiempo para ver por qué.", { tab: "hours" });
     return json({ sent: true, payroll, results: res });
+  }
+
+  // after the paycheck is processed: take the app's own Travel lines off the profiles again (only lines marked "EXAPP <week>")
+  // and compare what Fingercheck paid with what the app counted. Preview unless send=true.
+  async function trRemove(items: any[], numOf: Record<string, { fc: string; co: string }>, ref: string, writeOn: boolean) {
+    const send = String(a.send) === "true";
+    if (send && !writeOn) return json({ error: "Sending to Fingercheck is switched off", writeOn }, 403);
+    const { data: paid } = await adm.from("records").select("data").eq("coll", "fcpay").eq("deleted", false).eq("data->>periodBegin", a.week);
+    const paidBy: Record<string, number> = {}; for (const r of paid || []) paidBy[r.data.who] = Math.round(((paidBy[r.data.who] || 0) + Number(r.data.travel || 0)) * 100) / 100;
+    const out: any[] = [];
+    const pick: string[] = Array.isArray(a.who) ? a.who.map(String) : [];
+    for (const it of items) {
+      if (pick.length && !pick.includes(it.who)) continue;
+      const mine = (it.profile || []).filter((x: any) => x.ref === ref); if (!mine.length && !it.sent.length) continue;
+      const app = Math.round(it.sent.reduce((q: number, x: any) => q + (Number(x.amt) || 0), 0) * 100) / 100;
+      const row: any = { who: it.who, name: it.name, lines: mine, appTravel: app, fcPaid: paid?.length ? (paidBy[it.who] ?? 0) : null, removed: [] as any[] };
+      row.match = row.fcPaid == null ? null : Math.abs(row.fcPaid - app) < 0.01;
+      if (send && mine.length) {
+        if (row.fcPaid == null && a.force !== true) row.err = "the paycheck is not processed yet (bring in the paychecks first) — not removed";
+        else for (const x of mine) {
+          const r = await fcWrite(it.co, "DELETE", "v1/Employees/DeleteEmployeeDeductions", { EmployeeNumber: numOf[it.who].fc, EmployeeDeductionID: x.id, DeductionType: "TR", DeductionDescription: "Travel", Rate: 0, Amount: x.amt, StartDate: x.start + "T00:00:00", EndDate: x.end + "T00:00:00", PayeeReferenceNumber: ref, CatchUpAllowed: false });
+          row.removed.push({ id: x.id, ok: r.ok, status: r.status });
+        }
+      }
+      out.push(row);
+    }
+    const off = out.filter((r) => r.match === false);
+    if (send && off.length) await notifyFc("🚗 Travel paid in Fingercheck is different from the app for " + off.map((r) => r.name + " ($" + r.fcPaid + " vs $" + r.appTravel + ")").join(", "),
+      "🚗 El viaje pagado en Fingercheck es diferente de la app para " + off.map((r) => r.name + " ($" + r.fcPaid + " vs $" + r.appTravel + ")").join(", "), { tab: "hours" });
+    return json({ remove: true, preview: !send, week: a.week, ref, people: out });
   }
 
   // ───────── push: hours fixed in the app → Fingercheck (preview unless send=true and the server switch is on) ─────────
@@ -565,4 +702,5 @@ Deno.serve(async (req) => {
         "🕒 Fingercheck: " + failed.length + " marcaje" + (failed.length > 1 ? "s" : "") + " no entró bien — " + ls + ". Abra Tarjetas de tiempo para ver por qué.", { tab: "hours" }); }
     return json({ sent: true, checked: sentOk.length, results: res });
   }
-});
+};
+Deno.serve(handle);
