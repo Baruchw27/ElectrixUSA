@@ -138,7 +138,11 @@ Deno.serve(async (req) => {
     const okD = (x: string) => /^\d{4}-\d{2}-\d{2}$/.test(x || "");
     if (!okD(a.from) || !okD(a.to)) return json({ error: "from/to" }, 400);
     const emp = String(a.emp || "").replace(/[^0-9A-Za-z]/g, "");
-    const r = await fc(co, emp ? `v1/Reports/GetAllTimeCardRawDataForDateRangeByEmployeeNumber?startDate=${a.from}&endDate=${a.to}&employeeNumber=${emp}`
+    // Baruch 11/10 (approved): read-only look at paid hours (approved travel/expense amounts) and pay stubs too
+    const what = ({ paidhours: "GetAllPaidHoursForDateRange", stubs: "GetEmployeePayStubsByDateRange", jobs: "" } as Record<string, string>)[String(a.what || "")];
+    if (a.what === "jobs") { const r = await fc(co, "v1/Sync/GetJobList"); return json({ status: r.status, body: r.body }); }
+    const r = what ? await fc(co, `v1/Reports/${what}${emp ? "ByEmployeeNumber" : ""}?startDate=${a.from}&endDate=${a.to}${emp ? "&employeeNumber=" + emp : ""}`)
+      : await fc(co, emp ? `v1/Reports/GetAllTimeCardRawDataForDateRangeByEmployeeNumber?startDate=${a.from}&endDate=${a.to}&employeeNumber=${emp}`
       : `v1/Reports/GetAllTimeCardRawDataForDateRange?startDate=${a.from}&endDate=${a.to}`);
     const strip = (x: any): any => { if (Array.isArray(x)) return x.map(strip); if (x && typeof x === "object") { const o: any = {};
       for (const k of Object.keys(x)) if (!/ssn|social|tax|birth|dob|bank|account|routing|address|phone|email|salary|rate|wage/i.test(k)) o[k] = strip(x[k]); return o; } return x; };

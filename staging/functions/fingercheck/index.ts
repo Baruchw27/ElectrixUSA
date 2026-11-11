@@ -138,7 +138,11 @@ Deno.serve(async (req) => {
     const okD = (x: string) => /^\d{4}-\d{2}-\d{2}$/.test(x || "");
     if (!okD(a.from) || !okD(a.to)) return json({ error: "from/to" }, 400);
     const emp = String(a.emp || "").replace(/[^0-9A-Za-z]/g, "");
-    const r = await fc(co, emp ? `v1/Reports/GetAllTimeCardRawDataForDateRangeByEmployeeNumber?startDate=${a.from}&endDate=${a.to}&employeeNumber=${emp}`
+    // Baruch 11/10 (approved): read-only look at paid hours (approved travel/expense amounts) and pay stubs too
+    const what = ({ paidhours: "GetAllPaidHoursForDateRange", stubs: "GetEmployeePayStubsByDateRange", jobs: "" } as Record<string, string>)[String(a.what || "")];
+    if (a.what === "jobs") { const r = await fc(co, "v1/Sync/GetJobList"); return json({ status: r.status, body: r.body }); }
+    const r = what ? await fc(co, `v1/Reports/${what}${emp ? "ByEmployeeNumber" : ""}?startDate=${a.from}&endDate=${a.to}${emp ? "&employeeNumber=" + emp : ""}`)
+      : await fc(co, emp ? `v1/Reports/GetAllTimeCardRawDataForDateRangeByEmployeeNumber?startDate=${a.from}&endDate=${a.to}&employeeNumber=${emp}`
       : `v1/Reports/GetAllTimeCardRawDataForDateRange?startDate=${a.from}&endDate=${a.to}`);
     const strip = (x: any): any => { if (Array.isArray(x)) return x.map(strip); if (x && typeof x === "object") { const o: any = {};
       for (const k of Object.keys(x)) if (!/ssn|social|tax|birth|dob|bank|account|routing|address|phone|email|salary|rate|wage/i.test(k)) o[k] = strip(x[k]); return o; } return x; };
@@ -195,6 +199,7 @@ Deno.serve(async (req) => {
     const from = a.from, to = a.to;
     if (!okD(from) || !okD(to) || to < from || (Date.parse(to) - Date.parse(from)) > 31 * 86400000) return json({ error: "from/to: up to 31 days" }, 400);
     const write = String(a.write) === "true";
+    const payOnly = a.only === "pay";   // Baruch 11/10: bring in paycheck travel by job only — never touches hours
     const { data: all } = await adm.from("records").select("id,data").eq("coll", "emps").eq("deleted", false);
     const { data: rr } = await adm.from("records").select("id,data").eq("coll", "rates").eq("deleted", false);
     const byNum: Record<string, string> = {};
@@ -263,11 +268,16 @@ Deno.serve(async (req) => {
         periodBegin: String(d.PeriodBegin || "").slice(0, 10), periodEnd: String(d.PeriodEnd || "").slice(0, 10), regH: 0, reg: 0, otH: 0, ot: 0, salary: 0, otherPay: 0, travel: 0, otherDed: 0, net: 0, taxes: 0 });
       const amt = Number(d.Amount || 0), h = Number(d.Hours || 0), code = String(d.Code || "").trim();
       if (d.RecordType === "E") { if (code === "RG") { c.regH += h; c.reg += amt; } else if (code === "OT") { c.otH += h; c.ot += amt; } else if (code === "SA") c.salary += amt; else c.otherPay += amt; }
-      else if (d.RecordType === "D") { if (code === "TR") { c.travel += -amt; travel += -amt; } else c.otherDed += amt; }
+      else if (d.RecordType === "D") { if (code === "TR") { c.travel += -amt; travel += -amt;
+          // Baruch 11/10: keep which job each travel line was paid for (Reports → Job cost)
+          const tjd = clean(d.JobDescription || ""), tk = String(d.JobCode || "") + "|" + tjd; const tl = (c.trJobs ||= []).find((z: any) => z.k === tk);
+          if (tl) tl.amt += -amt; else c.trJobs.push({ k: tk, code: d.JobCode ? String(d.JobCode) : null, job: tjd || null, site: tjd ? siteOf(tjd) : null, amt: -amt }); }
+        else c.otherDed += amt; }
       else if (d.RecordType === "T") { if (!/ER$/.test(code)) c.taxes += amt; }
       if (d.NetCheckAmount != null) c.net = Number(d.NetCheckAmount);
     }
     const pays = Object.values(checks).map((c: any) => { for (const f of ["regH", "reg", "otH", "ot", "salary", "otherPay", "travel", "otherDed", "taxes", "net"]) c[f] = Math.round(c[f] * 100) / 100;
+      if (c.trJobs) c.trJobs = c.trJobs.map((z: any) => ({ code: z.code, job: z.job, site: z.site, amt: Math.round(z.amt * 100) / 100 }));
       c.gross = Math.round((c.reg + c.ot + c.salary + c.otherPay) * 100) / 100; return c; });
     const summary = { company: CO_NAME[co], from, to, punches: punches.length, hours: Math.round(hours * 100) / 100, jobsMatched: matched, openSkipped: open,
       unmapped, paychecks: pays.length, gross: Math.round(pays.reduce((q, c) => q + c.gross, 0) * 100) / 100, travel: Math.round(travel * 100) / 100, written: false,
@@ -277,6 +287,7 @@ Deno.serve(async (req) => {
       for (const s of srows || []) if (used.has(s.id) && (s.data?.lat == null || s.data?.lng == null)) summary.noMap.push(clean(s.data?.name || s.id)); }
     if (write) {
       const now = new Date().toISOString();
+      if (payOnly) punches.length = 0;
       // Baruch 11/10: never overwrite hours fixed in the app that were not sent to Fingercheck yet; keep the change log of
       // ones that were sent; and don't bring back a copy of a punch the app itself added to Fingercheck.
       const ids = punches.map((p) => p.id), keep: Record<string, any> = {}, skipIds = new Set<string>(); let protectedN = 0;
@@ -307,13 +318,13 @@ Deno.serve(async (req) => {
       const { data: toldRow } = await adm.from("server_config").select("v").eq("k", "fc_told").maybeSingle();
       let told: string[] = []; try { told = JSON.parse(toldRow?.v || "[]"); } catch (_) { told = []; }
       const fresh = (k: string) => !told.includes(k) && (told.push(k), true);
-      const jobsNew = summary.newJobs.filter((j) => fresh("job:" + co + ":" + j));
+      const jobsNew = payOnly ? [] : summary.newJobs.filter((j) => fresh("job:" + co + ":" + j));
       if (jobsNew.length) await notifyFc("🏗 Fingercheck has hours for a job that is not in the app: " + jobsNew.join(", ") + " — add it in Jobs",
         "🏗 Fingercheck tiene horas de un trabajo que no está en la app: " + jobsNew.join(", ") + " — agréguelo en Trabajos", { tab: "sites" });
-      const noMapNew = summary.noMap.filter((j) => fresh("map:" + j));
+      const noMapNew = payOnly ? [] : summary.noMap.filter((j) => fresh("map:" + j));
       if (noMapNew.length) await notifyFc("📍 No map point for " + noMapNew.join(", ") + " — GPS and travel pay can't be figured for it. Set the job's location.",
         "📍 Sin ubicación en el mapa para " + noMapNew.join(", ") + " — no se puede calcular GPS ni pago de viaje. Ponga la ubicación del trabajo.", { tab: "sites" });
-      const onNew = overnight.filter((o) => fresh("night:" + co + ":" + o.name + ":" + o.day));
+      const onNew = payOnly ? [] : overnight.filter((o) => fresh("night:" + co + ":" + o.name + ":" + o.day));
       if (onNew.length) await notifyFc("🕒 Fingercheck put a punch-out after midnight on the next day as a new punch-in: " + onNew.map((o) => o.name + " (" + o.day.slice(5) + ")").join(", ") + " — fix it in Fingercheck",
         "🕒 Fingercheck puso una salida después de medianoche en el día siguiente como nueva entrada: " + onNew.map((o) => o.name + " (" + o.day.slice(5) + ")").join(", ") + " — corríjalo en Fingercheck", { tab: "hours" });
       if (jobsNew.length || noMapNew.length || onNew.length) await adm.from("server_config").upsert({ k: "fc_told", v: JSON.stringify(told.slice(-400)) }, { onConflict: "k" });
