@@ -10,10 +10,10 @@
 html.exboot .top,html.exboot .pg,html.exboot .tabs,html.exboot #p2fab,html.exboot #p7fm,html.exboot #p8pin{visibility:hidden!important}
 html.exboot body{background:#f2f2f7 url(logo-light.svg) center 42%/min(62%,300px) no-repeat!important}
 @media (prefers-color-scheme:dark){html.exboot body{background:#000 url(logo-dark.svg) center 42%/min(62%,300px) no-repeat!important}}</style>
-<script>window.EX_VER='vh46c1110';</script><script src="config.js"></script>
+<script>window.EX_VER='vh47c1110';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vh46c1110"></script>
-<script src="extras.js?vh46c1110"></script>
+<script src="sync.js?vh47c1110"></script>
+<script src="extras.js?vh47c1110"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -3499,9 +3499,9 @@ function fcSendBar(ws,we){if(!canSendFC())return '';const L=fcWeekPending(ws,we)
   return '<div class="card" style="padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="fcSendOpen()"><div style="flex:1;min-width:0"><b style="font-size:14px">'+esc(t('Send to Fingercheck'))+'</b><div style="font-size:12px;color:var(--g4)">'+L.length+' '+esc(t(L.length===1?'change not sent yet':'changes not sent yet'))+(bad?' · <span style="color:#c0392b">'+bad+' '+esc(t('need a look'))+'</span>':'')+'</div></div><span style="color:var(--blue-mid);font-weight:700">›</span></div>';}
 let fcPrev=null;
 // Baruch 11/10: travel the app counted → "Travel" lines in the coming Fingercheck payroll (one man per job per week).
-// Travel for hours from Fingercheck counts from Nov 8 2026; weeks already paid with travel are never sent again.
+// Travel for hours from Fingercheck counts from Nov 1 2026; weeks already paid with travel are never sent again.
 function tvWeek(ws,we){const a=dkey(new Date(ws+12*36e5));return (D.travel||[]).filter(x=>x&&!x.deleted&&x.srv&&x.status!=='ignored'&&x.date>=a&&x.date<dkey(new Date(we-12*36e5+864e5)));}
-function tvSendBar(ws,we){if(!canSendFC())return '';if(dkey(new Date(ws+12*36e5))<'2026-11-08')return '';const L=tvWeek(ws,we);const un=L.filter(x=>!x.fcSent&&x.pay!=null);const sent=L.filter(x=>x.fcSent);if(!un.length&&!sent.length)return '';
+function tvSendBar(ws,we){if(!canSendFC())return '';if(dkey(new Date(ws+12*36e5))<'2026-11-01')return '';const L=tvWeek(ws,we);const un=L.filter(x=>!x.fcSent&&x.pay!=null);const sent=L.filter(x=>x.fcSent);if(!un.length&&!sent.length)return '';
   const men=new Set(un.map(x=>x.who)).size;const amt=un.reduce((q,x)=>q+(+x.pay||0),0);
   return '<div class="card" style="padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="tvSendOpen()"><div style="flex:1;min-width:0"><b style="font-size:14px">🚗 '+esc(t('Send travel to Fingercheck'))+'</b><div style="font-size:12px;color:var(--g4)">'+(un.length?men+' '+esc(t(men===1?'man':'men'))+' · '+money(amt)+' '+esc(t('not sent yet')):esc(t('All travel for this week was sent')))+(sent.length?' · '+sent.length+' '+esc(t('sent')):'')+'</div></div><span style="color:var(--blue-mid);font-weight:700">›</span></div>';}
 let tvPrev=null,tvPick=new Set();
@@ -5382,7 +5382,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vh46c1110"></script><script src="scanner-v2-ui.js?vh46c1110"></script><script src="sched-v21.js?vh46c1110"></script><script src="p2.js?vh46c1110"></script><script src="p4.js?vh46c1110"></script><script src="p5.js?vh46c1110"></script><script src="p6.js?vh46c1110"></script><script src="p7.js?vh46c1110"></script><script src="p8.js?vh46c1110"></script><script src="p9.js?vh46c1110"></script><script src="p10.js?vh46c1110"></script><script src="p11.js?vh46c1110"></script><script src="p12.js?vh46c1110"></script><script src="p13.js?vh46c1110"></script><script src="p14.js?vh46c1110"></script><script src="p15.js?vh46c1110"></script><script src="p16.js?vh46c1110"></script>
+<script src="scanner-v2.js?vh47c1110"></script><script src="scanner-v2-ui.js?vh47c1110"></script><script src="sched-v21.js?vh47c1110"></script><script src="p2.js?vh47c1110"></script><script src="p4.js?vh47c1110"></script><script src="p5.js?vh47c1110"></script><script src="p6.js?vh47c1110"></script><script src="p7.js?vh47c1110"></script><script src="p8.js?vh47c1110"></script><script src="p9.js?vh47c1110"></script><script src="p10.js?vh47c1110"></script><script src="p11.js?vh47c1110"></script><script src="p12.js?vh47c1110"></script><script src="p13.js?vh47c1110"></script><script src="p14.js?vh47c1110"></script><script src="p15.js?vh47c1110"></script><script src="p16.js?vh47c1110"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
