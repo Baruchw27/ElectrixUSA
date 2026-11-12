@@ -9,6 +9,8 @@
 //                                          on the clock → switch (the old job ends when he left it, so the drive goes to the new
 //                                          job); not on the clock (6 AM–7 PM) → one "punch in" reminder
 //   a "job not in the app" he punched in at is watched right away (its GPS point, 150 m)
+//   (11/12) every location the phone sends is also checked against ALL jobs in the app (the phone itself can watch only 20):
+//   standing inside any job's fence for 5 minutes counts as arriving there, the same as above
 //   phone far outside the job he is clocked in at, and no "left" came (a job the phone wasn't watching yet) → away from then
 // The answer to every message tells the phone which jobs to watch (up to 20: the job he's on, today's schedule, his jobs
 // of the last 3 weeks). A timer (cron, x-push-secret) calls {"tick":true} every minute to act on 5-minute arrivals.
@@ -120,10 +122,22 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
         await adm.rpc("ot_pend", { p_who: user, p_site: sid, p_at: at, p_lat: msg.lat ?? null, p_lng: msg.lon ?? null }); note = "waiting 5 min";
       }
     }
-  } else if (msg._type === "location" && open && placeOf(open.d, site) && msg.lat != null && Number(msg.acc || 0) <= 150) {
-    // only used to know whether he is still at the job he is clocked in at; the position itself is not kept
-    const S = placeOf(open.d, site)!;
-    if (S.lat != null) {
+  } else if (msg._type === "location" && msg.lat != null && Number(msg.acc || 0) <= 150) {
+    // used only to know whether he is still at the job he is clocked in at, and (11/12) whether he is standing at ANY job
+    // in the app — the phone can watch only 20 places, there are ~200 jobs. The position itself is not kept.
+    const S = open ? placeOf(open.d, site) : null;
+    const slack = Math.min(Number(msg.acc) || 0, 150);
+    const atOpen = !!(S && S.lat != null && distM(+msg.lat, +msg.lon, +S.lat, +S.lng) <= S.rad + slack);
+    if (!atOpen) {
+      let best: string | null = null, bestD = Infinity;
+      for (const id in site) { const J = site[id]; if (J.lat == null || J.lng == null || J.stage === "done") continue;
+        const dm = distM(+msg.lat, +msg.lon, +J.lat, +J.lng); if (dm <= radM(J) + slack && dm < bestD) { best = id; bestD = dm; } }
+      if (best && !(open && open.d.site === best)) {
+        await adm.rpc("ot_pend", { p_who: user, p_site: best, p_at: at, p_lat: msg.lat, p_lng: msg.lon, p_src: "loc" });   // switches after 5 minutes there, once a 2nd report confirms it
+        if (!note) note = "at " + best + ", waiting 5 min";
+      } else if (!best) await adm.rpc("ot_pend", { p_who: user, p_site: "*", p_at: null, p_lat: null, p_lng: null });   // drove past: no switch
+    }
+    if (S && S.lat != null) {
       const dm = distM(+msg.lat, +msg.lon, +S.lat, +S.lng);
       if (dm <= S.rad + Math.min(Number(msg.acc) || 0, 150) && at > (Number(open.d.seen) || 0)) {
         const d = { ...open.d, seen: at };
@@ -131,7 +145,7 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
         await save(open.id, d);
       } else if (dm > Math.max(400, 3 * S.rad) && !open.d.away && Number(open.d.in) < at) {
         // far from his job and no "left" came (the phone wasn't watching this job yet) → away from now
-        await save(open.id, { ...open.d, away: Math.max(at, Number(open.d.seen) || 0), awayBy: "phone-far" }); kind = "leave"; kSite = open.d.site || "nj_" + open.id; note = "far from the job";
+        await save(open.id, { ...open.d, away: Math.max(at, Number(open.d.seen) || 0), awayBy: "phone-far" }); kind = "leave"; kSite = open.d.site || "nj_" + open.id; note = "far from the job" + (note ? "; " + note : "");
       }
     }
   }
