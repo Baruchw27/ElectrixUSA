@@ -64,7 +64,7 @@ async function durRestore(){for(const k of durKeys()){const rec=await idbOp('rea
     const lsSeq=+(localStorage.getItem('ex_dseq__'+k)||0);
     if(rec.seq>lsSeq){
       durMem[k]=rec.v;durInIDB[k]=true;const ok=lsSet(k,rec.v);durInLS[k]=ok;if(ok)lsSet('ex_dseq__'+k,String(rec.seq));}}
-  try{const q=JSON.parse(durRead('ex_queue')||'{}');if(q&&typeof q==='object'){Object.keys(q).forEach(k=>{const o=q[k];if(o&&(SKIP.has(o.coll)||(o.coll==='_'&&SKIP.has(o.id))))delete q[k];});queue=q;}}catch(e){}st.pending=Object.keys(queue).length;durState();}
+  try{const q=JSON.parse(durRead('ex_queue')||'{}');if(q&&typeof q==='object'){let gone=0;Object.keys(q).forEach(k=>{const o=q[k];if(o&&(SKIP.has(o.coll)||(o.coll==='_'&&SKIP.has(o.id)))){delete q[k];gone++;}});queue=q;if(gone)try{saveQ();}catch(e){}}}catch(e){}st.pending=Object.keys(queue).length;durState();}
 // st.qStored / st.qLost: is every piece of unsent work safe on the phone?
 function durState(){const ks=durKeys();let lost=false,pend=false;ks.forEach(k=>{if(!(k in durMem))return;if(durInLS[k])return;if(durInIDB[k]==='pending')pend=true;else if(!durInIDB[k])lost=true;});
   const n=Object.keys(queue).length;st.qStored=!lost;st.qLost=lost&&(n>0||ks.some(k=>k!=='ex_queue'&&(k in durMem)&&!durInLS[k]&&!durInIDB[k]));st.qPend=pend;try{paint();}catch(e){}}
