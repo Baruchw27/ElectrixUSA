@@ -15,8 +15,8 @@ const tt=x=>{try{return typeof t==='function'?t(x):x;}catch(e){return x;}};
 const M=()=>{try{return me();}catch(e){return null;}};
 /* Baruch 11/4 22:49: "Change Shia tasks layout for now away from Trello to the kind of task the guys have" —
    these office people get the crews' task page too (by first name; add more here). They keep + New task and the filters. */
-const LIST_OFFICE=['shia','menachem','shauly','yossi'];   // Baruch 11/6: Shia's task page also for Menachem, Shauly and Yossi
-const officeList=m=>!!m&&m.role!=='worker'&&LIST_OFFICE.includes(String(m.name||'').trim().split(/\s+/)[0].toLowerCase());
+const LIST_OFFICE=['shia','menachem','shauly','yossi','baruch','matty'];   // Baruch 11/6: Shia's task page also for Menachem, Shauly and Yossi; 11/12: and for Baruch and Matty
+const officeList=m=>!!m&&m.role!=='worker'&&(m.role==='owner'||LIST_OFFICE.includes(String(m.name||'').trim().split(/\s+/)[0].toLowerCase()));
 const listView=m=>!!m&&(m.role==='worker'||officeList(m));
 window.P10_listView=listView;window.P10_officeList=officeList;
 /* Baruch 11/4 23:01: "Show by: Job | Type" — Type = kind of work. Every task gets a type: the one picked on it (j.kind),
