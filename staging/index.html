@@ -59,7 +59,7 @@ html[data-theme=dark] .pn-sl i{background:#f2f2f7;color:#111}
 #pg-punch:not(.pnopen) #punchExtra{display:none!important}
 #pg-punch #punchSched,#pg-punch #myListPunch,#pg-punch #quickExp,#pg-punch #mySites{display:none!important}
 </style>
-<script>window.EX_VER='vs87c1112';</script><script src="config.js"></script>
+<script>window.EX_VER='vs88c1112';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="sync.js?vs68c1110"></script>
 <script src="extras.js?vs68c1110"></script>
@@ -2507,9 +2507,16 @@ function pnRender(){const wrap=document.getElementById('pnWrap');if(!wrap)return
 // even with every app closed — and tells the server when he arrives at or leaves a job. Only arrive/leave at Electrix jobs
 // while on the clock is kept. He accepts the notice once (saved with the time), installs, taps Connect, allows "Always".
 let otSt=null,otBusy=false,otOpen=false;
+// Baruch 11/12: the database client sometimes hangs in an open tab (auth lock), so these two calls go straight to the
+// server with the saved sign-in; if that sign-in is old, the normal client is used
+async function otRpc(name,args){try{const c=window.EX_CFG||{};const tk=JSON.parse(localStorage.getItem('ex_auth')||'null');
+    if(c.url&&c.anonKey&&tk&&tk.access_token&&(!tk.expires_at||tk.expires_at*1000>Date.now()+60000)){
+      const r=await fetch(c.url+'/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:c.anonKey,Authorization:'Bearer '+tk.access_token,'Content-Type':'application/json'},body:JSON.stringify(args||{})});
+      if(r.ok)return {data:await r.json()};}}catch(e){}
+  return await Promise.race([window.EX_sb.rpc(name,args||{}),new Promise(z=>setTimeout(()=>z({error:{message:'timeout'}}),15000))]);}
 function otWho(m){return !!m&&(m.appClock===true||m.role==='owner');}
-function otLoad(accept){if(otBusy||!window.EX_sb||!window.EX_sb.rpc)return;otBusy=true;
-  window.EX_sb.rpc('ot_setup',{accept:!!accept}).then(r=>{otBusy=false;if(r&&r.data){otSt=r.data;try{pnRender();}catch(e){}}}).catch(()=>{otBusy=false;});}
+function otLoad(accept){if(otBusy)return;otBusy=true;
+  otRpc('ot_setup',{accept:!!accept}).then(r=>{otBusy=false;if(r&&r.data){otSt=r.data;try{pnRender();}catch(e){}}}).catch(()=>{otBusy=false;});}
 function otIOS(){return /iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);}
 function otLink(){const m=me();if(!otSt||!otSt.token)return '#';const nm=String(m.name||'').trim().split(/\s+/);
   const cfg={_type:'configuration',mode:3,url:otSt.url,auth:true,username:otSt.who,password:otSt.token,deviceId:'phone',tid:((nm[0]||'X')[0]+((nm[1]||nm[0]||'X')[0])).toUpperCase(),
@@ -2530,7 +2537,7 @@ function otCard(m){if(!otWho(m))return '';if(!otSt){otLoad(false);return '';}
 // owner + Payroll: who has the automatic time clock and when each phone last checked in (Hours → Time cards)
 let otRep=null,otRepAt=0;
 function otPayHtml(){const m=me();if(!m||!(m.role==='owner'||canEditHours(m)))return '';
-  if(!otRep||Date.now()-otRepAt>5*60000){otRepAt=Date.now();try{window.EX_sb.rpc('ot_report',{p_day:dkey(new Date())}).then(r=>{if(r&&r.data){otRep=r.data;try{renderTimeCards();}catch(e){}}}).catch(()=>{});}catch(e){}}
+  if(!otRep||Date.now()-otRepAt>5*60000){otRepAt=Date.now();try{otRpc('ot_report',{p_day:dkey(new Date())}).then(r=>{if(r&&r.data){otRep=r.data;try{renderTimeCards();}catch(e){}}}).catch(()=>{});}catch(e){}}
   const ppl=D.emps.filter(e=>!e.inactive&&e.appClock===true);if(!ppl.length&&!(otRep&&otRep.people.length))return '';
   const by={};((otRep&&otRep.people)||[]).forEach(x=>by[x.who]=x);
   const row=e=>{const x=by[e.id];const last=x&&x.last?new Date(x.last).getTime():0;const ok=last&&Date.now()-last<12*36e5;
