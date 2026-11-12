@@ -59,7 +59,7 @@ html[data-theme=dark] .pn-sl i{background:#f2f2f7;color:#111}
 #pg-punch:not(.pnopen) #punchExtra{display:none!important}
 #pg-punch #punchSched,#pg-punch #myListPunch,#pg-punch #quickExp,#pg-punch #mySites{display:none!important}
 </style>
-<script>window.EX_VER='vs81c1111';</script><script src="config.js"></script>
+<script>window.EX_VER='vs82c1111';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="sync.js?vs68c1110"></script>
 <script src="extras.js?vs68c1110"></script>
@@ -2632,10 +2632,17 @@ function finishPunchIn(selfie,missing){const m=me();if(D.punches.find(p=>p.who==
 function toggleBreak(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out);if(!p)return;buzz(25);if(p.breakStart){endBreak(p);toast('▶ '+t('Back on the clock'),'green');}else{p.breakStart=Date.now();toast('🍽 '+t('On lunch — up to 40 min paid'));}save();renderPunch();}
 function endBreak(p){(p.breaks=p.breaks||[]).push({s:p.breakStart,e:Date.now()});delete p.breakStart;}
 // switch job site without punching out (one tap: closes this punch, opens the next one at the selected site)
+// Baruch 11/11: the drive goes to the job he drives TO. When the phone was asleep it only notices he left once he arrives, so
+// the old job then ends one drive earlier (distance between the two jobs, ~40 km/h on the road, at least 3 min) — never before
+// the last time the app saw him at the old job, and never more than 1 hour back
+function swLeave(p,site){const now=Date.now();let lv=p.away&&now-p.away<=3600000?p.away:now;
+  const a=D.sites.find(x=>x.id===p.site),b=D.sites.find(x=>x.id===site);const bl=b&&b.lat!=null?[+b.lat,+b.lng]:(lastPos?[lastPos.latitude,lastPos.longitude]:null);
+  if(a&&a.lat!=null&&bl){const km=distFt(+a.lat,+a.lng,bl[0],bl[1])/3280.84;const min=Math.max(3,Math.round(km*1.3/40*60));lv=Math.min(lv,now-min*60000);}
+  lv=Math.max(lv,now-3600000,+p.seen||0,+p.in+60000);return Math.min(lv,now);}
 function switchSite(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out);if(!p)return;const site=document.getElementById('punchSite').value;if(site===p.site){toast(t('Pick the other job site in the list first, then tap Switch.'));return;}
   // C10: the drive between jobs is regular paid time charged to the job he goes to — no travel bonus. If the phone saw him
   // leave the last job, that job ends when he left and the new one starts then.
-  if(!gpsOk){toast(t('You need to be at the new job site to switch.'));return;}const at=p.away&&Date.now()-p.away<=3600000?p.away:Date.now();if(p.breakStart)endBreak(p);p.out=at;delete p.away;D.punches.push({id:nid('p'),who:m.id,site,in:at,out:null,lat:lastPos?lastPos.latitude:null,lng:lastPos?lastPos.longitude:null,acc:lastPos&&lastPos.accuracy!=null?Math.round(lastPos.accuracy):null,selfie:p.selfie||'',transfer:true});save();renderPunch();toast('↔ '+t('Switched to')+' '+siteName(site),'green');schedHeadsUp(m,site);}
+  if(!gpsOk){toast(t('You need to be at the new job site to switch.'));return;}const at=swLeave(p,site);if(p.breakStart)endBreak(p);p.out=at;delete p.away;D.punches.push({id:nid('p'),who:m.id,site,in:at,out:null,lat:lastPos?lastPos.latitude:null,lng:lastPos?lastPos.longitude:null,acc:lastPos&&lastPos.accuracy!=null?Math.round(lastPos.accuracy):null,selfie:p.selfie||'',transfer:true});save();renderPunch();toast('↔ '+t('Switched to')+' '+siteName(site),'green');schedHeadsUp(m,site);}
 // time off requests → payroll approves in Hours
 function reqTimeOff(){const m=me();const d=dkey(new Date());askPrompt(t('Request time off'),[{label:t('From'),value:d,type:'date'},{label:t('To'),value:d,type:'date'},{label:t('Reason'),value:''}],([a,b,why])=>{if(!a||!b)return;const r={id:nid('to'),who:m.id,from:a,to:b<a?a:b,why:(why||'').trim(),status:'pending',ts:Date.now()};D.timeoff.push(r);save();renderPunch();try{renderHours();}catch(e){}toast('🏖 '+t('Sent to Baruch and Yossi'),'green');
   pushTo(toApprovers(),()=>('🏖 '+t('Time off request')+': '+nameOf(m.id)+' '+a+(b!==a?' → '+b:'')+(why?' — '+why:'')),'info',{tab:'hours'});});}

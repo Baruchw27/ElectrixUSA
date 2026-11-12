@@ -1,7 +1,8 @@
 -- Baruch 11/11: app punch clock helpers, run every 5 minutes (cron 'clock-tick'). Only people with emps.data.appClock=true
 -- get reminders (the crews still clock in on Fingercheck); the automatic close applies to any open APP punch of the last 2 days.
 --  (3) 8:05 AM "time to punch in" (workdays; to people scheduled today, or with no crew); end of day +5 min "still punched in"
---  (6) a forgotten app punch closes by itself 2 h after the day's end (7 PM, Fri 1:15 PM) at the last time the app saw him on site
+--  (6) a punch whose owner LEFT the job (data.away) closes at the time he left once 1 h passed without coming back (11/11);
+--      a forgotten app punch closes by itself 2 h after the day's end (7 PM, Fri 1:15 PM) at the last time the app saw him on site
 --      (data.seen), else at the day's end; "Still working" (data.keepOpen) holds it; marked data.autoClosed for Payroll
 --  (8) Payroll list (server_config clock_check_to, default Shia o1): 8:30 AM not punched in · 8:55 PM still punched in ·
 --      7 AM closed automatically yesterday
@@ -16,7 +17,7 @@ language plpgsql security definer set search_path = public as $f$
 declare loc timestamp := p_now at time zone 'America/New_York'; d text := to_char(p_now at time zone 'America/New_York','YYYY-MM-DD');
   dow int := extract(dow from (p_now at time zone 'America/New_York'))::int; hm int; endm int; nowms bigint := (extract(epoch from p_now)*1000)::bigint;
   st jsonb; done jsonb; e record; p record; site text; sn text; to_ids jsonb; lst text; n int := 0; closed int := 0;
-  pin timestamp; pend timestamp; due timestamptz; endms bigint; seen bigint; cl bigint; how text; x text;
+  pin timestamp; pend timestamp; due timestamptz; endms bigint; seen bigint; cl bigint; how text; x text; aw bigint;
 begin
   hm := extract(hour from loc)::int * 60 + extract(minute from loc)::int; endm := case when dow = 5 then 13*60+15 else 19*60 end;
   select v::jsonb into st from server_config where k = 'clock_state';
@@ -31,17 +32,30 @@ begin
     pin := to_timestamp(public._num(p.data->>'in')/1000.0) at time zone 'America/New_York';
     pend := date_trunc('day', pin) + case when extract(dow from pin) = 5 then interval '13 hours 15 minutes' else interval '19 hours' end;
     due := (pend + interval '2 hours') at time zone 'America/New_York'; endms := (extract(epoch from (pend at time zone 'America/New_York'))*1000)::bigint;
-    if p_now < due or coalesce(public._num(p.data->>'keepOpen'), 0) > nowms then continue; end if;
+    -- Baruch 11/11: the app saw him LEAVE (data.away) and he didn't come back or switch within 1 hour → close at the time
+    -- he left, right then (the phone's own 1-hour close only works while the app is open); a "Just driving" hold waits
+    aw := public._num(p.data->>'away');
+    if coalesce(public._num(p.data->>'keepOpen'), 0) > nowms then continue; end if;
+    if aw is not null and aw > public._num(p.data->>'in') and nowms >= aw + 3600000 and coalesce(public._num(p.data->>'driveUntil'), 0) <= nowms then
+      cl := aw; how := 'left';
+    elsif p_now < due then continue;
+    else
     seen := public._num(p.data->>'seen');
-    if seen is not null and seen > public._num(p.data->>'in') then cl := least(seen, nowms); how := 'seen';
+    if aw is not null and aw > public._num(p.data->>'in') then cl := least(aw, nowms); how := 'left';
+    elsif seen is not null and seen > public._num(p.data->>'in') then cl := least(seen, nowms); how := 'seen';
     elsif endms > public._num(p.data->>'in') then cl := endms; how := 'end';
     else cl := public._num(p.data->>'in'); how := 'start'; end if;
+    end if;
     update records set data = (data - 'away') || jsonb_build_object('out', cl, 'autoClosed', jsonb_build_object('at', nowms, 'how', how)),
       updated_at = now(), updated_by = 'server' where coll = 'punches' and id = p.id;
-    perform private.notify_now(p.data->>'who',
+    if how = 'left' then perform private.notify_now(p.data->>'who',
+      '🕒 You left the job and did not come back within 1 hour — your clock was closed at ' || to_char(to_timestamp(cl/1000.0) at time zone 'America/New_York','HH12:MI AM') || '. Tell the office if that is wrong.',
+      '🕒 Salió del trabajo y no volvió en 1 hora — su reloj se cerró a las ' || to_char(to_timestamp(cl/1000.0) at time zone 'America/New_York','HH12:MI AM') || '. Avise a la oficina si está mal.',
+      'warn', jsonb_build_object('tab','punch'), null);
+    else perform private.notify_now(p.data->>'who',
       '🕒 You forgot to punch out — your clock was closed at ' || to_char(to_timestamp(cl/1000.0) at time zone 'America/New_York','HH12:MI AM') || '. Tell the office if that is wrong.',
       '🕒 Se olvidó de marcar salida — su reloj se cerró a las ' || to_char(to_timestamp(cl/1000.0) at time zone 'America/New_York','HH12:MI AM') || '. Avise a la oficina si está mal.',
-      'warn', jsonb_build_object('tab','punch'), null);
+      'warn', jsonb_build_object('tab','punch'), null); end if;
     closed := closed + 1;
   end loop;
 
@@ -87,7 +101,7 @@ begin
     done := done || '"chk_pm"'::jsonb; end if;
   if hm >= 7*60 and hm < 11*60 and not done ? 'chk_morning' then
     select string_agg((select data->>'name' from records where coll='emps' and id = r.data->>'who') || ' ' || to_char(to_timestamp(public._num(r.data->>'out')/1000.0) at time zone 'America/New_York','Dy HH12:MI AM')
-        || case r.data->'autoClosed'->>'how' when 'seen' then ' (last seen on site)' when 'end' then ' (end of day)' else ' (at punch-in — no time seen)' end, ', ') into lst
+        || case r.data->'autoClosed'->>'how' when 'seen' then ' (last seen on site)' when 'left' then ' (left the job)' when 'end' then ' (end of day)' else ' (at punch-in — no time seen)' end, ', ') into lst
       from records r where r.coll='punches' and not r.deleted and r.data ? 'autoClosed' and public._num(r.data->'autoClosed'->>'at') >= nowms - (case when dow = 0 then 48 else 24 end)*3600000;
     if lst is not null then for x in select jsonb_array_elements_text(to_ids) loop
       perform private.notify_now(x, '☀️ Closed automatically (forgot to punch out) — please check: ' || lst, '☀️ Cerrados automáticamente (olvidaron marcar salida) — revise: ' || lst, 'warn', jsonb_build_object('tab','hours'), null); end loop; end if;
