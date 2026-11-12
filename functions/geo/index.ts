@@ -31,11 +31,21 @@ function candidates(name: string): string[] {
   return out;
 }
 
+// Baruch 11/12: an address lookup may only land near the office (8 Canterbury Ln, Suffern was matched to Rockland, MA).
+// A match farther than 60 miles is thrown away — unless the job's own name has that ZIP code (a real job far away).
+const distMi = (a: number, b: number, c: number, d: number) => { const R = 3958.8, p = Math.PI / 180, x = (c - a) * p, y = (d - b) * p;
+  const h = Math.sin(x / 2) ** 2 + Math.cos(a * p) * Math.cos(c * p) * Math.sin(y / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); };
+let HOME = { lat: 41.1192, lng: -74.0961 }, JOBNAME = "";
+const nearOK = (g: { lat: number; lng: number; label?: string }) => {
+  if (distMi(HOME.lat, HOME.lng, g.lat, g.lng) <= 60) return true;
+  const zip = (JOBNAME.match(/\b(\d{5})\b/) || [])[1];
+  return !!zip && String(g.label || "").includes(zip);
+};
 async function census(q: string) {
   try {
     const r = await fetch("https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?benchmark=Public_AR_Current&format=json&address=" + encodeURIComponent(q), { headers: UA });
     const j = await r.json();
-    const m = j?.result?.addressMatches?.[0];
+    const m = (j?.result?.addressMatches || []).find((x: any) => nearOK({ lat: +x.coordinates.y, lng: +x.coordinates.x, label: x.matchedAddress }));
     if (m) return { lat: +m.coordinates.y, lng: +m.coordinates.x, label: m.matchedAddress, src: "census", level: "house" };
   } catch (_) { /* next */ }
   return null;
@@ -47,7 +57,7 @@ async function nominatim(q: string) {
     const r = await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=us&viewbox=-75.0,41.8,-73.3,40.5&q=" + encodeURIComponent(q), { headers: UA });
     const j = await r.json();
     const h = j?.[0];
-    if (h && +h.place_rank >= 26) return { lat: +h.lat, lng: +h.lon, label: h.display_name, src: "osm", level: +h.place_rank >= 28 ? "house" : "street" };
+    if (h && +h.place_rank >= 26 && nearOK({ lat: +h.lat, lng: +h.lon, label: h.display_name })) return { lat: +h.lat, lng: +h.lon, label: h.display_name, src: "osm", level: +h.place_rank >= 28 ? "house" : "street" };
   } catch (_) { /* next */ }
   return null;
 }
@@ -60,11 +70,12 @@ async function nominatimArea(q: string) {
   try {
     const r = await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=us&viewbox=-75.0,41.8,-73.3,40.5&bounded=1&q=" + encodeURIComponent(q), { headers: UA });
     const h = (await r.json())?.[0];
-    if (h && +h.place_rank >= 16) return { lat: +h.lat, lng: +h.lon, label: h.display_name, src: "osm", level: +h.place_rank >= 26 ? "street" : "area" };
+    if (h && +h.place_rank >= 16 && nearOK({ lat: +h.lat, lng: +h.lon, label: h.display_name })) return { lat: +h.lat, lng: +h.lon, label: h.display_name, src: "osm", level: +h.place_rank >= 26 ? "street" : "area" };
   } catch (_) { /* none */ }
   return null;
 }
 async function locate(name: string) {
+  JOBNAME = name;
   const cs = candidates(name);
   for (const q of cs) { const g = await census(q); if (g) return g; }
   for (const q of cs) { const g = await nominatim(q); if (g) return g; }
@@ -95,6 +106,7 @@ Deno.serve(async (req) => {
   const retry = !!body.retry;
   const { data: baseRows } = await sb.from("records").select("id,data").eq("coll", "base").in("id", ["lat", "lng"]);
   const base: Record<string, number> = {}; for (const r of baseRows ?? []) base[r.id] = +r.data;
+  if (base.lat && base.lng) HOME = { lat: base.lat, lng: base.lng };
   const { data: sites } = await sb.from("records").select("id,data").eq("coll", "sites").eq("deleted", false);
   const todo = (sites ?? []).filter((s) => {
     const d = s.data || {};
@@ -113,7 +125,7 @@ Deno.serve(async (req) => {
       patch.geoServer = true; patch.geoTried = true;
       if (g) { patch.lat = g.lat; patch.lng = g.lng; patch.rad = d.rad && d.rad !== 300 ? d.rad : (g.level === "house" ? 300 : g.level === "street" ? 600 : 1200); patch.geoLabel = g.label; patch.geoSrc = g.src; patch.geoLevel = g.level; if (!/\b(NY|NJ|CT|New York|New Jersey)\b|\b\d{5}\b/i.test(String(d.name || "")) || g.level !== "house") patch.geoCheck = true; d.lat = g.lat; d.lng = g.lng; }
     }
-    if (d.lat != null && base.lat) { const tr = await drive(base.lat, base.lng, +d.lat, +d.lng); if (tr) patch.trip = tr; }
+    if (d.lat != null && base.lat) { const tr = await drive(base.lat, base.lng, +d.lat, +d.lng); if (tr) { patch.trip = tr; if (tr.mi > 100) patch.geoCheck = true; } }   // over 100 miles: the office checks it
     if (Object.keys(patch).length) {
       const { data: cur } = await sb.from("records").select("data").eq("coll", "sites").eq("id", s.id).single();
       const merged = { ...(cur?.data || {}), ...patch };
