@@ -1,6 +1,7 @@
 -- Baruch 11/11: app punch clock helpers, run every 5 minutes (cron 'clock-tick'). Only people with emps.data.appClock=true
 -- get reminders (the crews still clock in on Fingercheck); the automatic close applies to any open APP punch of the last 2 days.
 --  (3) 8:05 AM "time to punch in" (workdays; to people scheduled today, or with no crew); end of day +5 min "still punched in"
+--  (6b) 30 min after leaving, not at a job in the app: one question "working at a job not in the app?" (11/11)
 --  (6) a punch whose owner LEFT the job (data.away) closes at the time he left once 1 h passed without coming back (11/11);
 --      a forgotten app punch closes by itself 2 h after the day's end (7 PM, Fri 1:15 PM) at the last time the app saw him on site
 --      (data.seen), else at the day's end; "Still working" (data.keepOpen) holds it; marked data.autoClosed for Payroll
@@ -36,6 +37,17 @@ begin
     -- he left, right then (the phone's own 1-hour close only works while the app is open); a "Just driving" hold waits
     aw := public._num(p.data->>'away');
     if coalesce(public._num(p.data->>'keepOpen'), 0) > nowms then continue; end if;
+    -- Baruch 11/11: 30 min after he left and he is not at a job in the app → ask once if he is working at a job not in the app
+    if aw is not null and aw > public._num(p.data->>'in') and nowms >= aw + 1800000 and nowms < aw + 3600000
+       and coalesce(public._num(p.data->>'awayAsked'), 0) <> aw and coalesce(public._num(p.data->>'driveUntil'), 0) <= nowms then
+      sn := regexp_replace(coalesce((select data->>'name' from records where coll = 'sites' and id = p.data->>'site'), p.data->'newJob'->>'text', 'the job'), ',?\s*N[YJ]\s*\d{5}.*$', '');
+      perform private.notify_now(p.data->>'who',
+        '🚗 You left ' || sn || ' at ' || to_char(to_timestamp(aw/1000.0) at time zone 'America/New_York','HH12:MI AM') || ' and you are not at a job in the app. Working at a job that is not in the app? Open the app and tap "Switch to a job not in the app" — your hours count from ' || to_char(to_timestamp(aw/1000.0) at time zone 'America/New_York','HH12:MI AM') || '. Not working? Your clock closes at ' || to_char(to_timestamp(aw/1000.0) at time zone 'America/New_York','HH12:MI AM') || '.',
+        '🚗 Salió de ' || sn || ' a las ' || to_char(to_timestamp(aw/1000.0) at time zone 'America/New_York','HH12:MI AM') || ' y no está en un trabajo de la app. ¿Trabajando en un trabajo que no está en la app? Abra la app y toque "Cambiar a un trabajo que no está en la app" — sus horas cuentan desde las ' || to_char(to_timestamp(aw/1000.0) at time zone 'America/New_York','HH12:MI AM') || '. ¿No está trabajando? Su reloj se cierra a las ' || to_char(to_timestamp(aw/1000.0) at time zone 'America/New_York','HH12:MI AM') || '.',
+        'warn', jsonb_build_object('tab','punch'), null);
+      update records set data = data || jsonb_build_object('awayAsked', aw), updated_at = now(), updated_by = 'server' where coll = 'punches' and id = p.id;
+      n := n + 1; continue;
+    end if;
     if aw is not null and aw > public._num(p.data->>'in') and nowms >= aw + 3600000 and coalesce(public._num(p.data->>'driveUntil'), 0) <= nowms then
       cl := aw; how := 'left';
     elsif p_now < due then continue;
