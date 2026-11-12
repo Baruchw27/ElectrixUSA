@@ -59,7 +59,7 @@ html[data-theme=dark] .pn-sl i{background:#f2f2f7;color:#111}
 #pg-punch:not(.pnopen) #punchExtra{display:none!important}
 #pg-punch #punchSched,#pg-punch #myListPunch,#pg-punch #quickExp,#pg-punch #mySites{display:none!important}
 </style>
-<script>window.EX_VER='vs82c1111';</script><script src="config.js"></script>
+<script>window.EX_VER='vs83c1111';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="sync.js?vs68c1110"></script>
 <script src="extras.js?vs68c1110"></script>
@@ -2498,8 +2498,36 @@ function pnRender(){const wrap=document.getElementById('pnWrap');if(!wrap)return
   else{h='<div class="pn-b" style="padding-bottom:16px"><div class="pn-k">📍 '+t(autoSite._done||!navigator.geolocation?'Not at a job':'Finding your location…')+'</div><div class="pn-n">'+t('You are not at any job right now.')+'</div><button class="pn-btn" onclick="pnPick(true)">'+t('Pick a job from the list')+'</button><button class="pn-btn ghost" onclick="punchNewJob()">➕ '+t('Job not in the app')+'</button></div>';}
   {const fid=(open&&open.site)||(best&&best.id)||(()=>{const sl=m.crew?schedDay(m.crew+'|'+dkey(new Date())):null;return sl&&sl.site;})();const fs=fid?D.sites.find(x=>x.id===fid):null;
    if(false&&fs&&(m.role!=='worker'||mySites(m).some(x=>x.id===fs.id)))b='<a class="pn-link" style="text-decoration:none" onclick="openFolder(\''+jsq(fs.id)+'\')">📁 '+t('Plans & files')+' · '+esc(pnSN(fs.name))+' ›</a>'+b;}
-  if(card._h!==h){card.innerHTML=h;card._h=h;}below.innerHTML=b;document.getElementById('pnToday').innerHTML=pnTodayHtml(m);pnBind();}
+  if(card._h!==h){card.innerHTML=h;card._h=h;}below.innerHTML=b;document.getElementById('pnToday').innerHTML=pnTodayHtml(m)+otCard(m);pnBind();}
 
+
+// ───────── Baruch 11/11: automatic time clock (OwnTracks). The free OwnTracks app watches his Electrix jobs by itself —
+// even with every app closed — and tells the server when he arrives at or leaves a job. Only arrive/leave at Electrix jobs
+// while on the clock is kept. He accepts the notice once (saved with the time), installs, taps Connect, allows "Always".
+let otSt=null,otBusy=false,otOpen=false;
+function otWho(m){return !!m&&(m.appClock===true||m.role==='owner');}
+function otLoad(accept){if(otBusy||!window.EX_sb||!window.EX_sb.rpc)return;otBusy=true;
+  window.EX_sb.rpc('ot_setup',{accept:!!accept}).then(r=>{otBusy=false;if(r&&r.data){otSt=r.data;try{pnRender();}catch(e){}}}).catch(()=>{otBusy=false;});}
+function otIOS(){return /iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);}
+function otLink(){const m=me();if(!otSt||!otSt.token)return '#';const nm=String(m.name||'').trim().split(/\s+/);
+  const cfg={_type:'configuration',mode:3,url:otSt.url,auth:true,username:otSt.who,password:otSt.token,deviceId:'phone',tid:((nm[0]||'X')[0]+((nm[1]||nm[0]||'X')[0])).toUpperCase(),
+    monitoring:1,cmd:true,allowRemoteLocation:false,remoteConfiguration:false,locatorDisplacement:200,locatorInterval:300,ignoreInaccurateLocations:150,ranging:false,sub:false,pubRetain:false,extendedData:false};
+  return 'owntracks:///config?inline='+encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(cfg)))));}
+function otCard(m){if(!otWho(m))return '';if(!otSt){otLoad(false);return '';}
+  const box=(inner,col)=>'<div class="card" style="margin-top:10px;padding:12px 14px'+(col?';border:2px solid '+col:'')+'">'+inner+'</div>';
+  const hd='<div style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="otOpen=!otOpen;pnRender()"><b style="flex:1;font-size:15px">🛰 '+esc(t('Automatic time clock'))+'</b>';
+  if(!otSt.accepted)return box(hd+'<span style="color:var(--blue-mid);font-weight:700">'+esc(t('Turn on'))+' ›</span></div>'
+    +(otOpen?'<div style="font-size:13px;color:var(--g5);margin-top:8px">'+esc(t('Your phone tells the app when you arrive at and leave Electrix jobs — even when the app is closed — so your hours are right and the drive counts for the job you go to. Only arriving and leaving at Electrix jobs while you are on the clock is kept. Nothing else.'))+'</div>'
+      +'<button class="btn" style="margin-top:10px" onclick="otLoad(true)">'+esc(t('I understand — turn it on'))+'</button>':''));
+  const last=otSt.last?new Date(otSt.last).getTime():0;const fresh=last&&Date.now()-last<6*36e5;
+  const st=fresh?'<span style="color:var(--green);font-weight:700">● '+esc(t('On'))+'</span>':'<span style="color:var(--amber);font-weight:700">● '+esc(t(last?'Not checking in':'Not connected yet'))+'</span>';
+  const steps='<div style="font-size:13px;color:var(--g5);margin-top:8px;line-height:1.5">'
+    +'<div><b>1.</b> '+esc(t('Install the free OwnTracks app'))+'</div><a class="btn" style="display:block;text-align:center;margin:6px 0 10px;text-decoration:none" href="'+(otIOS()?'https://apps.apple.com/app/id692424691':'https://play.google.com/store/apps/details?id=org.owntracks.android')+'" target="_blank" rel="noopener">⬇ '+esc(t('Install OwnTracks'))+'</a>'
+    +'<div><b>2.</b> '+esc(t('Connect it to Electrix (no typing)'))+'</div><a class="btn" style="display:block;text-align:center;margin:6px 0 10px;text-decoration:none" href="'+otLink()+'">🔗 '+esc(t('Connect'))+'</a>'
+    +'<div><b>3.</b> '+esc(t('When the phone asks about location, choose "Always" (iPhone: "Change to Always Allow"). If you missed it: Settings → OwnTracks → Location → Always.'))+'</div>'
+    +'<div style="margin-top:6px">'+esc(t('That\'s it — you never need to open OwnTracks again.'))+'</div></div>';
+  return box(hd+st+'</div><div style="font-size:12px;color:var(--g4);margin-top:2px">'+(last?esc(t('Last check-in'))+' '+new Date(last).toLocaleString(LOC(),{weekday:'short',hour:'numeric',minute:'2-digit'}):esc(t('Set it up once — 3 steps')))+'</div>'+((otOpen||!last)?steps:''),fresh?null:'var(--amber)');}
+setTimeout(()=>{try{Object.assign(ES,{"Automatic time clock":"Reloj automático","Turn on":"Activar","Your phone tells the app when you arrive at and leave Electrix jobs — even when the app is closed — so your hours are right and the drive counts for the job you go to. Only arriving and leaving at Electrix jobs while you are on the clock is kept. Nothing else.":"Su teléfono le avisa a la app cuando llega y sale de los trabajos de Electrix — aunque la app esté cerrada — para que sus horas estén bien y el manejo cuente para el trabajo al que va. Solo se guarda cuando llega y sale de trabajos de Electrix mientras está marcando. Nada más.","I understand — turn it on":"Entiendo — activarlo","On":"Activado","Not checking in":"No se reporta","Not connected yet":"Aún no conectado","Install the free OwnTracks app":"Instale la app gratis OwnTracks","Install OwnTracks":"Instalar OwnTracks","Connect it to Electrix (no typing)":"Conéctela a Electrix (sin escribir nada)","Connect":"Conectar","When the phone asks about location, choose \"Always\" (iPhone: \"Change to Always Allow\"). If you missed it: Settings → OwnTracks → Location → Always.":"Cuando el teléfono pregunte por la ubicación, escoja \"Siempre\" (iPhone: \"Cambiar a Permitir siempre\"). Si se lo saltó: Ajustes → OwnTracks → Ubicación → Siempre.","That's it — you never need to open OwnTracks again.":"Listo — no necesita abrir OwnTracks nunca más.","Last check-in":"Último reporte","Set it up once — 3 steps":"Configúrelo una vez — 3 pasos"});}catch(e){}},0);
 function geoOk(x){if(!x||!x.in||Date.now()-x.in>14*36e5)return false;if(window.EX_REAL&&window.EX_ME&&me()&&me().id!==window.EX_ME)return false;return true;}
 function onLeave(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out&&!x.away&&geoOk(x));if(!p)return;if(p.driveUntil&&p.driveUntil>Date.now())return;
   p.away=Date.now();save();renderPunch();
