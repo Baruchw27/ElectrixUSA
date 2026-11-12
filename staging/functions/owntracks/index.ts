@@ -97,7 +97,7 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
     const sid = (/#([A-Za-z0-9_.:-]+)\s*$/.exec(String(msg.desc || "")) || [])[1] || null;
     if (sid && sid.startsWith("nj_") && open && "nj_" + open.id === sid) {
       kind = msg.event === "enter" ? "arrive" : "leave"; kSite = sid; const nm = String(open.d.newJob?.text || "the job").slice(0, 60);
-      if (kind === "leave" && !open.d.away && Number(open.d.in) < at && !(Number(open.d.driveUntil) > at)) {
+      if (kind === "leave" && !open.d.away && Number(open.d.in) < at) {
         await save(open.id, { ...open.d, away: at, awayBy: "phone" }); note = "clock: away (job not in the app)";
         await tell("🚗 You left " + nm + " at " + hm(at) + ". Not back within 1 hour: your clock closes at " + hm(at) + ".", "🚗 Salió de " + nm + " a las " + hm(at) + ". Si no vuelve en 1 hora, su reloj se cierra a las " + hm(at) + ".");
       } else if (kind === "arrive" && open.d.away) { const gap = at - Number(open.d.away); const d = { ...open.d, seen: at };
@@ -107,7 +107,7 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
       const S = site[sid];
       if (kind === "leave") {
         await adm.rpc("ot_pend", { p_who: user, p_site: sid, p_at: null, p_lat: null, p_lng: null });   // drove past: no switch
-        if (open && open.d.site === sid && !open.d.away && Number(open.d.in) < at && !(Number(open.d.driveUntil) > at)) {
+        if (open && open.d.site === sid && !open.d.away && Number(open.d.in) < at) {
           await save(open.id, { ...open.d, away: at, awayBy: "phone" }); note = "clock: away";
           await tell("🚗 You left " + short(S.name) + " at " + hm(at) + ". At another job in the app? The clock switches by itself after 5 minutes there. Not back within 1 hour: your clock closes at " + hm(at) + ".",
             "🚗 Salió de " + short(S.name) + " a las " + hm(at) + ". ¿En otro trabajo de la app? El reloj cambia solo después de 5 minutos allí. Si no vuelve en 1 hora, su reloj se cierra a las " + hm(at) + ".");
@@ -129,7 +129,7 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
         const d = { ...open.d, seen: at };
         if (open.d.away && at > Number(open.d.away)) { const gap = at - Number(open.d.away); if (gap <= 3600000) d.trips = [...(open.d.trips || []), { left: Number(open.d.away), back: at }]; delete d.away; delete d.awayBy; }
         await save(open.id, d);
-      } else if (dm > Math.max(400, 3 * S.rad) && !open.d.away && Number(open.d.in) < at && !(Number(open.d.driveUntil) > at)) {
+      } else if (dm > Math.max(400, 3 * S.rad) && !open.d.away && Number(open.d.in) < at) {
         // far from his job and no "left" came (the phone wasn't watching this job yet) → away from now
         await save(open.id, { ...open.d, away: Math.max(at, Number(open.d.seen) || 0), awayBy: "phone-far" }); kind = "leave"; kSite = open.d.site || "nj_" + open.id; note = "far from the job";
       }

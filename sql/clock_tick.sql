@@ -39,7 +39,7 @@ begin
     if coalesce(public._num(p.data->>'keepOpen'), 0) > nowms then continue; end if;
     -- Baruch 11/11: 30 min after he left and he is not at a job in the app → ask once if he is working at a job not in the app
     if aw is not null and aw > public._num(p.data->>'in') and nowms >= aw + 1800000 and nowms < aw + 3600000
-       and coalesce(public._num(p.data->>'awayAsked'), 0) <> aw and coalesce(public._num(p.data->>'driveUntil'), 0) <= nowms then
+       and coalesce(public._num(p.data->>'awayAsked'), 0) <> aw then
       sn := regexp_replace(coalesce((select data->>'name' from records where coll = 'sites' and id = p.data->>'site'), p.data->'newJob'->>'text', 'the job'), ',?\s*N[YJ]\s*\d{5}.*$', '');
       perform private.notify_now(p.data->>'who',
         '🚗 You left ' || sn || ' at ' || to_char(to_timestamp(aw/1000.0) at time zone 'America/New_York','HH12:MI AM') || ' and you are not at a job in the app. Working at a job that is not in the app? Open the app and tap "Switch to a job not in the app" — your hours count from ' || to_char(to_timestamp(aw/1000.0) at time zone 'America/New_York','HH12:MI AM') || '. Not working? Your clock closes at ' || to_char(to_timestamp(aw/1000.0) at time zone 'America/New_York','HH12:MI AM') || '.',
@@ -48,7 +48,7 @@ begin
       update records set data = data || jsonb_build_object('awayAsked', aw), updated_at = now(), updated_by = 'server' where coll = 'punches' and id = p.id;
       n := n + 1; continue;
     end if;
-    if aw is not null and aw > public._num(p.data->>'in') and nowms >= aw + 3600000 and coalesce(public._num(p.data->>'driveUntil'), 0) <= nowms then
+    if aw is not null and aw > public._num(p.data->>'in') and nowms >= aw + 3600000 then
       cl := aw; how := 'left';
     elsif p_now < due then continue;
     else
