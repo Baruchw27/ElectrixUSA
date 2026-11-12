@@ -59,3 +59,27 @@ begin
 end $f$;
 revoke all on function public.ot_check(text,text), public.ot_note(text,text,text,bigint,text,text) from public, anon, authenticated;
 grant execute on function public.ot_check(text,text), public.ot_note(text,text,text,bigint,text,text) to service_role;
+
+-- 11/11 (Baruch): a switch only after 5 minutes at the new job — arrivals wait here; leaving that job before clears it
+create table if not exists private.ot_pending (who text primary key, site text not null, at bigint not null, lat double precision, lng double precision);
+create or replace function public.ot_pend(p_who text, p_site text, p_at bigint, p_lat double precision, p_lng double precision) returns void
+language plpgsql security definer set search_path = public, private as $f$
+begin
+  if p_at is null then delete from private.ot_pending where who = p_who and site = p_site;
+  else insert into private.ot_pending(who, site, at, lat, lng) values (p_who, p_site, p_at, p_lat, p_lng)
+       on conflict (who) do update set site = excluded.site, at = case when private.ot_pending.site = excluded.site then least(private.ot_pending.at, excluded.at) else excluded.at end,
+         lat = excluded.lat, lng = excluded.lng; end if;
+end $f$;
+create or replace function public.ot_due(p_before bigint) returns jsonb
+language plpgsql security definer set search_path = public, private as $f$
+declare r jsonb;
+begin
+  with d as (delete from private.ot_pending where at <= p_before returning who, site, at, lat, lng)
+  select coalesce(jsonb_agg(to_jsonb(d)), '[]'::jsonb) into r from d;
+  return r;
+end $f$;
+revoke all on function public.ot_pend(text,text,bigint,double precision,double precision), public.ot_due(bigint) from public, anon, authenticated;
+grant execute on function public.ot_pend(text,text,bigint,double precision,double precision), public.ot_due(bigint) to service_role;
+-- the 1-minute timer (live only after Baruch approves):
+-- select cron.schedule('ot-tick', '* * * * *', $$ select net.http_post(url := (select v from server_config where k='functions_url')||'/owntracks',
+--   body := '{"tick":true}'::jsonb, headers := jsonb_build_object('Content-Type','application/json','x-push-secret',(select v from server_config where k='secret'))) $$);
