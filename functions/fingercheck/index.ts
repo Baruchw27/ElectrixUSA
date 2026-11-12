@@ -349,6 +349,18 @@ const handle = async (req: Request): Promise<Response> => {
       if (opens.length) { const lo = Math.min(...opens.map((p) => p.in)) - 1200000, hi = Math.max(...opens.map((p) => p.in)) + 1200000;
         const { data: appP } = await adm.from("records").select("id,data").eq("coll", "punches").eq("deleted", false).gte("data->>in", String(lo)).lte("data->>in", String(hi));
         for (const o of opens) if ((appP || []).some((r: any) => !String(r.id).startsWith("fc_") && r.data?.who === o.who && !r.data?.voided && Math.abs(Number(r.data?.in) - o.in) <= 1200000)) skipIds.add(o.id); }
+      // 11/12: a punch the office added in the app and sent to Fingercheck, whose Fingercheck id was never written back
+      // (Fingercheck's list didn't show it yet right after sending) — same person, same in and out within a minute → it is
+      // that punch: link it and don't bring a second copy (Gabriel, Angel and Christian were counted twice the week of 11/1)
+      { const fresh = punches.filter((p) => !keep[p.id] && !skipIds.has(p.id) && p.out != null);
+        if (fresh.length) { const lo = Math.min(...fresh.map((p) => p.in)) - 60000, hi = Math.max(...fresh.map((p) => p.in)) + 60000;
+          const { data: appQ } = await adm.from("records").select("id,data").eq("coll", "punches").eq("deleted", false).gte("data->>in", String(lo)).lte("data->>in", String(hi));
+          const cand = (appQ || []).filter((r: any) => !String(r.id).startsWith("fc_") && !r.data?.voided && r.data?.out != null);
+          for (const p of fresh) { const m = cand.find((r: any) => r.data.who === p.who && Math.abs(Number(r.data.in) - p.in) < 60000 && Math.abs(Number(r.data.out) - Number(p.out)) < 60000
+              && (!r.data.fcInId || String(r.data.fcInId) === String(p.fcInId)));
+            if (!m) continue; skipIds.add(p.id);
+            if (!m.data.fcInId && p.fcInId) { m.data.fcInId = p.fcInId;
+              await adm.from("records").update({ data: { ...m.data, fcInId: p.fcInId, fcOutId: p.fcOutId, fcNum: p.fcNum, fcCo: p.fcCo }, updated_at: new Date().toISOString(), updated_by: "fingercheck" }).eq("coll", "punches").eq("id", m.id); } } } }
       const pend = (d: any) => d && ((d.fcSync && d.fcSync.state !== "sent") || (!d.fcSync && Array.isArray(d.edits) && d.edits.length) || (!d.fcSync && d.voided));
       const kept = punches.filter((p) => { if (skipIds.has(p.id)) return false; if (pend(keep[p.id])) { protectedN++; return false; } return true; })
         .map((p) => { const o = keep[p.id]; return o && o.fcSync ? { ...p, edits: o.edits, fcSync: p.fcSync || o.fcSync } : p; });
