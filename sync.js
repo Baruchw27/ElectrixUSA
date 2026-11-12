@@ -26,7 +26,7 @@ window.EX_SYNC=st;
 // stable text form (the database re-orders fields, so compare with sorted keys)
 function canon(v){if(v===null||typeof v!=='object')return v===undefined?'null':JSON.stringify(v);if(Array.isArray(v))return '['+v.map(x=>x===undefined||typeof x==='function'?'null':canon(x)).join(',')+']';
   const ks=Object.keys(v).filter(k=>v[k]!==undefined&&typeof v[k]!=='function').sort();return '{'+ks.map(k=>JSON.stringify(k)+':'+canon(v[k])).join(',')+'}';}
-function loadQ(){try{return JSON.parse(localStorage.getItem('ex_queue')||'{}');}catch(e){return {};}}
+function loadQ(){try{const q=JSON.parse(localStorage.getItem('ex_queue')||'{}');Object.keys(q).forEach(k=>{const o=q[k];if(o&&(SKIP.has(o.coll)||(o.coll==='_'&&SKIP.has(o.id))))delete q[k];});return q;}catch(e){return {};}}
 // Unsent changes are the one thing on the phone that cannot be downloaded again, so they must be kept on disk.
 // If the phone's storage is full (it is shared with other copies of the app on the same web address), drop the
 // re-downloadable cached copy of the company data to make room — never the unsent work. If even that fails,
@@ -64,7 +64,7 @@ async function durRestore(){for(const k of durKeys()){const rec=await idbOp('rea
     const lsSeq=+(localStorage.getItem('ex_dseq__'+k)||0);
     if(rec.seq>lsSeq){
       durMem[k]=rec.v;durInIDB[k]=true;const ok=lsSet(k,rec.v);durInLS[k]=ok;if(ok)lsSet('ex_dseq__'+k,String(rec.seq));}}
-  try{const q=JSON.parse(durRead('ex_queue')||'{}');if(q&&typeof q==='object')queue=q;}catch(e){}st.pending=Object.keys(queue).length;durState();}
+  try{const q=JSON.parse(durRead('ex_queue')||'{}');if(q&&typeof q==='object'){let gone=0;Object.keys(q).forEach(k=>{const o=q[k];if(o&&(SKIP.has(o.coll)||(o.coll==='_'&&SKIP.has(o.id)))){delete q[k];gone++;}});queue=q;if(gone)try{saveQ();}catch(e){}}}catch(e){}st.pending=Object.keys(queue).length;durState();}
 // st.qStored / st.qLost: is every piece of unsent work safe on the phone?
 function durState(){const ks=durKeys();let lost=false,pend=false;ks.forEach(k=>{if(!(k in durMem))return;if(durInLS[k])return;if(durInIDB[k]==='pending')pend=true;else if(!durInIDB[k])lost=true;});
   const n=Object.keys(queue).length;st.qStored=!lost;st.qLost=lost&&(n>0||ks.some(k=>k!=='ex_queue'&&(k in durMem)&&!durInLS[k]&&!durInIDB[k]));st.qPend=pend;try{paint();}catch(e){}}
@@ -98,6 +98,9 @@ function colls(){return Object.keys(D).filter(k=>!SKIP.has(k)&&D[k]!==null&&type
 // Stock quantity is owned by the server RPC apply_stock_txn (atomic deltas), never by the normal patch sync —
 // otherwise a device's absolute qty write would clobber another device's concurrent change. Strip qty from the
 // sync view everywhere snap is set; the live value still comes down from the server on pull/catch-up for display.
+// 11/12: what the phone remembers for a record the server sent — the same shape diff() compares (employees get the sign-in name added),
+// or employees without it looked changed forever and every office phone re-saved them every few minutes
+function snapJ(coll,data){return canon(coll==='_'?(data||{}).v:coll==='emps'&&data&&typeof data==='object'&&!Array.isArray(data)?stripEmp(data):upStrip(coll,data));}
 function upStrip(coll,data){if(coll==='stock'&&data&&typeof data==='object'){const d=Object.assign({},data);delete d.qty;delete d.qv;return d;}return data;}
 function recordsOf(k){const v=D[k];const out={};
   if(Array.isArray(v)){v.forEach(x=>{if(!x||typeof x!=='object')return;if(!x.id)x.id=nid(k.slice(0,2));let r=x;if(k==='emps'){r=Object.assign({},x);EMP_STRIP.forEach(f=>delete r[f]);r.authEmail=emailFor(x);}else if(k==='stock'){r=Object.assign({},x);delete r.qty;delete r.qv;}out[x.id]=r;});}
@@ -121,7 +124,7 @@ function diff(){const ops=[];
   // (Menachem's and Matty's computers tried 252 times a week and were refused each time)
   const canSc=canScalar();
   Object.keys(sc).forEach(id=>{const j=canon(sc[id]);nowS[id]=j;if(wasS[id]!==j&&canSc)ops.push({coll:'_',id,data:{v:sc[id]},j,base:null});});
-  Object.keys(wasS).forEach(id=>{if(!(id in sc)&&canSc)ops.push({coll:'_',id,del:true});});
+  Object.keys(wasS).forEach(id=>{if(!(id in sc)&&canSc&&!SKIP.has(id))ops.push({coll:'_',id,del:true});});   // 11/12: server-only settings (trelloLists) are never 'deleted' by a phone
   snap._=nowS;return ops;}
 function canScalar(){try{const m=typeof me==='function'?me():null;if(!m)return true;return m.role==='owner'||m.role==='manager'||!!m.all||(m.role==='office'&&m.title==='Payroll');}catch(e){return true;}}
 function takeSnap(){snap={};colls().forEach(k=>{const cur=recordsOf(k);const now={};Object.keys(cur).forEach(id=>now[id]=canon(cur[id]));snap[k]=now;});const sc=scalars();const nowS={};Object.keys(sc).forEach(id=>nowS[id]=canon(sc[id]));snap._=nowS;}
@@ -296,7 +299,7 @@ window.EX_saveNow=async function(opts){opts=opts||{};if(!REAL)return {v:21,ok:tr
 // take the server's merged version of what we just saved (it may include another phone's changes)
 // L2: a live update for a list that this phone is still saving is held, then merged (newest item wins) once the save is done
 const heldList={};
-function adopt(rows){if(!Array.isArray(rows))return;let changed=false;rows.forEach(r=>{const key=r.coll;liveAt[r.coll+'\u0001'+r.id]=Date.now();if(queue[r.coll+'\u0001'+r.id]){if((r.coll==='keep'||r.coll==='mats')&&!r.deleted)heldList[r.coll+'\u0001'+r.id]=r;return;}const j=r.deleted?null:canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));
+function adopt(rows){if(!Array.isArray(rows))return;let changed=false;rows.forEach(r=>{const key=r.coll;liveAt[r.coll+'\u0001'+r.id]=Date.now();if(queue[r.coll+'\u0001'+r.id]){if((r.coll==='keep'||r.coll==='mats')&&!r.deleted)heldList[r.coll+'\u0001'+r.id]=r;return;}const j=r.deleted?null:snapJ(r.coll,r.data);
     if(r.deleted){if(snap[key]&&r.id in snap[key]){applyRows([r],{replace:false});delete snap[key][r.id];changed=true;}return;}
     const mine=r.coll==='emps'?(snap[key]||{})[r.id]:null;if(snap[key]&&snap[key][r.id]===j)return;
     if(r.coll==='emps'){const live=liveRecord('emps',r.id);if(live&&canon(stripEmp(live))===j)return;}
@@ -367,7 +370,7 @@ async function catchUp1(){if(!REAL||!ready||catching||!st.online)return;catching
     lastPull=rows.length?srvTime(rows,t0):(lastPull||t0);try{localStorage.setItem('ex_lastseen',String(t0));}catch(e){}rows.forEach(r=>{if(r.coll==='stock'&&!r.deleted&&r.data&&queue[r.coll+'\u0001'+r.id]&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,r.data.qty,null,r.data.qv);});
     // a record that arrived live while this catch-up was in flight is newer than what the catch-up fetched: keep it
     const fresh=dropOld(rows).filter(r=>!queue[r.coll+'\u0001'+r.id]&&!((liveAt[r.coll+'\u0001'+r.id]||0)>=t0));
-    if(fresh.length){applyRows(fresh,{replace:false});fresh.forEach(r=>{const k=r.coll;if(r.deleted){if(snap[k])delete snap[k][r.id];}else{(snap[k]=snap[k]||{})[r.id]=canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));}});seenSave(localSave());bump();}else seenSave(localSave());
+    if(fresh.length){applyRows(fresh,{replace:false});fresh.forEach(r=>{const k=r.coll;if(r.deleted){if(snap[k])delete snap[k][r.id];}else{(snap[k]=snap[k]||{})[r.id]=snapJ(r.coll,r.data);}});seenSave(localSave());bump();}else seenSave(localSave());
     if(nu){try{if(old&&old!==nu)await withTO(sb.removeChannel(old),3000,'reconnect');}catch(e){}}
     else{try{if(sb.removeAllChannels)await withTO(sb.removeAllChannels(),3000,'reconnect');}catch(e){}subscribe();}
     flush();st.err='';paint();}
@@ -637,7 +640,7 @@ async function quickStart(){let sv=null;try{sv=JSON.parse(localStorage.getItem('
   rows.forEach(r=>{if(r.coll==='stock'&&!r.deleted&&r.data&&queue[r.coll+'\u0001'+r.id]&&window.EX_stockFromServer)window.EX_stockFromServer(r.id,r.data.qty,null,r.data.qv);});
   const fresh=dropOld(rows).filter(r=>!queue[r.coll+'\u0001'+r.id]&&!((liveAt[r.coll+'\u0001'+r.id]||0)>=t0));
   const meChanged=fresh.some(r=>r.coll==='emps'&&r.id===window.EX_ME);
-  if(fresh.length){applyRows(fresh,{replace:false});fresh.forEach(r=>{const k=r.coll;if(r.deleted){if(snap[k])delete snap[k][r.id];}else{(snap[k]=snap[k]||{})[r.id]=canon(r.coll==='_'?(r.data||{}).v:upStrip(r.coll,r.data));}});}
+  if(fresh.length){applyRows(fresh,{replace:false});fresh.forEach(r=>{const k=r.coll;if(r.deleted){if(snap[k])delete snap[k][r.id];}else{(snap[k]=snap[k]||{})[r.id]=snapJ(r.coll,r.data);}});}
   try{if(typeof pruneOld==='function')pruneOld();}catch(e){log('prune',e);}
   seenSave(localSave());ready=true;flush();paint();bump();log('quick start',rows.length+' changed');
   if(meChanged||Date.now()-fullAt>12*3600000)setTimeout(()=>{refreshAll();},meChanged?500:20000);
@@ -677,7 +680,7 @@ window.EX_loadRange=async function(coll,from,to,opts){opts=opts||{};if(!REAL||!s
   try{const r=await withTO(sb.rpc('history_records',{p_coll:coll,p_from:Math.floor(from),p_to:Math.ceil(to),p_who:opts.who||null,p_site:opts.site||null,p_limit:opts.limit||3000}),20000,'history');
     if(r.error)return {ok:false,error:r.error.message||'error'};const rows=(r.data||[]).filter(x=>x&&x.coll===coll&&!queue[x.coll+'\u0001'+x.id]);
     const until=Date.now()+4*3600000;rows.forEach(x=>{holdUntil[x.coll+'\u0001'+x.id]=until;});
-    if(rows.length){applyRows(rows,{replace:false});rows.forEach(x=>{(snap[x.coll]=snap[x.coll]||{})[x.id]=canon(upStrip(x.coll,x.data));});if(!opts._noSave)localSave();}
+    if(rows.length){applyRows(rows,{replace:false});rows.forEach(x=>{(snap[x.coll]=snap[x.coll]||{})[x.id]=snapJ(x.coll,x.data);});if(!opts._noSave)localSave();}
     return {ok:true,n:rows.length,full:(r.data||[]).length>=(opts.limit||3000)};}catch(e){return {ok:false,error:(e&&e.message)||'error'};}};
 window.EX_canForget=function(coll,rec){if(!rec||!rec.id)return false;if((holdUntil[coll+'\u0001'+rec.id]||0)>Date.now())return false;if(queue[coll+'\u0001'+rec.id])return false;const s=snap[coll]&&snap[coll][rec.id];return !!s&&s===canon(upStrip(coll,rec));};
 // the phone keeps only recent history (the server keeps everything): forget old rows here without deleting them anywhere
