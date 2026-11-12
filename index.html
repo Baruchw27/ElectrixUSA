@@ -59,7 +59,7 @@ html[data-theme=dark] .pn-sl i{background:#f2f2f7;color:#111}
 #pg-punch:not(.pnopen) #punchExtra{display:none!important}
 #pg-punch #punchSched,#pg-punch #myListPunch,#pg-punch #quickExp,#pg-punch #mySites{display:none!important}
 </style>
-<script>window.EX_VER='vh55c1111';</script><script src="config.js"></script>
+<script>window.EX_VER='vh56c1112';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="sync.js?vh49c1111"></script>
 <script src="extras.js?vh49c1111"></script>
@@ -2418,7 +2418,7 @@ function pnTick(){const n=new Date();const c=document.getElementById('pnClock');
 function pnTodayHtml(m){const a=new Date();a.setHours(0,0,0,0);const L=(D.punches||[]).filter(p=>p&&p.who===m.id&&p.in>=a.getTime()&&!p.voided&&!p.rejected).sort((x,y)=>x.in-y.in);
   const td=TRAVEL_ON?travelToday(m.id):[];if(!L.length&&!td.length)return '';const tp=td.reduce((q,x)=>q+travelPayOf(x),0);
   return '<div class="pn-hdr">'+t("Today's punches")+'</div><div class="pn-list">'+L.map(p=>'<div class="pn-r"><span>'+esc(pnName(p))+(p.site?'':' · '+t('new'))+'</span><b>'+fmtT(p.in)+' – '+(p.out?fmtT(p.out):p.away?t('left')+' '+fmtT(p.away):t('now'))+'</b></div>').join('')
-    +(td.length?'<div class="pn-r"><span class="pn-mut" style="margin:0">🚗 '+td.length+' '+t(td.length===1?'trip':'trips')+'</span><span class="pn-mut" style="margin:0">'+(tp?money(tp):'')+'</span></div>':'')+'</div>';}
+    +(td.length?'<div class="pn-r"><span class="pn-mut" style="margin:0">🚗 '+td.length+' '+t(td.length===1?'trip':'trips')+'</span><span class="pn-mut" style="margin:0">'+(tp?money(tp):'')+'</span></div>':'')+'</div><a class="pn-link" style="margin-bottom:6px" onclick="openFix()">'+t('My time is wrong — tell the office')+'</a>';}
 function pnWeekCard(m){const s=weekStats(m.id);const tw=TRAVEL_ON?travelWeek(m.id):[];const pay=tw.reduce((q,x)=>q+travelPayOf(x),0);const f=d=>new Date(d).toLocaleDateString(LOC(),{month:'short',day:'numeric'});
   return '<div class="pn-b" style="padding-bottom:16px"><div class="pn-k">'+f(s.ws)+' – '+f(s.ws+6*864e5)+'</div><div class="pn-big">'+s.total.toFixed(1)+' h</div><div class="pn-mut">'
     +[s.ot?t('Overtime')+' '+s.ot.toFixed(1)+' h':'',tw.length?tw.length+' '+t(tw.length===1?'trip':'trips')+(pay?' · '+money(pay)+' '+t('travel'):''):'',t('payday Friday')].filter(Boolean).join(' · ')+'</div></div>';}
@@ -2445,8 +2445,8 @@ function pnRender(){const wrap=document.getElementById('pnWrap');if(!wrap)return
     h=pnPhoto(best)+'<div class="pn-b"><div class="pn-k">📍 '+t('You arrived at')+'</div><div class="pn-n">'+esc(pnSN(best.name))+'</div><div class="pn-mut">'+t('On the clock at')+' '+esc(pnName(open))+' '+t('since')+' '+fmtT(open.in)+'</div></div>'+pnSlide('sw:'+best.id,t('Slide to switch here'),'⇄');}
   else if(open&&open.away){
     h='<div class="pn-b" style="padding-bottom:16px"><div class="pn-k">'+t('You left')+'</div><div class="pn-n">'+esc(pnName(open))+'</div><div class="pn-mut">'+t("You're not at any job in the app. At a new job? Switch so your hours go to the right place.")+'</div>'
-      +'<button class="pn-btn" onclick="punchNewJob()">⇄ '+t('Switch to a job not in the app')+'</button><button class="pn-btn ghost" onclick="pnPick(true)">'+t('Pick a job from the list')+'</button><button class="pn-btn ghost" onclick="pnDriving()">🚗 '+t('Just driving — keep me on the clock')+'</button>'
-      +'<div class="pn-mut" style="margin-top:10px;font-size:12px">'+t('Not back within 1 hour: your clock closes at')+' '+fmtT(open.away)+'</div></div>';}
+      +'<button class="pn-btn" onclick="punchNewJob()">⇄ '+t('Switch to a job not in the app')+'</button><button class="pn-btn ghost" onclick="pnPick(true)">'+t('Pick a job from the list')+'</button>'
+      +'<div class="pn-mut" style="margin-top:10px;font-size:12px">'+t('Not back within 1 hour: your clock closes at')+' '+fmtT(open.away)+'</div><a class="pn-link" style="display:block;margin-top:8px" onclick="openFix()">'+t('My time is wrong — tell the office')+'</a></div>';}
   else if(open){const day=pnDayEdge(open.in);const left=day[1]-Date.now();const s=open.site?D.sites.find(x=>x.id===open.site):null;
     h=pnPhoto(s)+'<div class="pn-b pn-row">'+pnRing(pnTodayMs(m),day)+'<div style="min-width:0"><div class="pn-on"><i></i>'+t('On the clock')+'</div><div class="pn-n">'+esc(pnName(open))+'</div><div class="pn-mut">'+t('since')+' '+fmtT(open.in)+(open.site?'':' · <span class="pn-pill">'+t('new job')+'</span>')+'</div>'+(left>0?'<div class="pn-mut" style="font-size:12px;margin-top:6px">'+pnDur(left)+' '+t('left of the day')+'</div>':'')+'</div></div>'
       +(pastDayEnd(open)?'<div style="padding:0 16px 6px">'+(open.keepOpen&&open.keepOpen>Date.now()?'<div class="pn-mut">✓ '+t('Kept on the clock until')+' '+fmtT(open.keepOpen)+'</div>':'<button class="pn-btn ghost" onclick="stillWorking()">⏳ '+t('Still working — keep me on the clock')+'</button>')+'</div>':'')
@@ -2458,10 +2458,45 @@ function pnRender(){const wrap=document.getElementById('pnWrap');if(!wrap)return
   else{h='<div class="pn-b" style="padding-bottom:16px"><div class="pn-k">📍 '+t(autoSite._done||!navigator.geolocation?'Not at a job':'Finding your location…')+'</div><div class="pn-n">'+t('You are not at any job right now.')+'</div><button class="pn-btn" onclick="pnPick(true)">'+t('Pick a job from the list')+'</button><button class="pn-btn ghost" onclick="punchNewJob()">➕ '+t('Job not in the app')+'</button></div>';}
   {const fid=(open&&open.site)||(best&&best.id)||(()=>{const sl=m.crew?schedDay(m.crew+'|'+dkey(new Date())):null;return sl&&sl.site;})();const fs=fid?D.sites.find(x=>x.id===fid):null;
    if(false&&fs&&(m.role!=='worker'||mySites(m).some(x=>x.id===fs.id)))b='<a class="pn-link" style="text-decoration:none" onclick="openFolder(\''+jsq(fs.id)+'\')">📁 '+t('Plans & files')+' · '+esc(pnSN(fs.name))+' ›</a>'+b;}
-  if(card._h!==h){card.innerHTML=h;card._h=h;}below.innerHTML=b;document.getElementById('pnToday').innerHTML=pnTodayHtml(m);pnBind();}
+  if(card._h!==h){card.innerHTML=h;card._h=h;}below.innerHTML=b;document.getElementById('pnToday').innerHTML=pnTodayHtml(m)+otCard(m);pnBind();}
 
+// ───────── Baruch 11/11: automatic time clock (OwnTracks). The free OwnTracks app watches his Electrix jobs by itself —
+// even with every app closed — and tells the server when he arrives at or leaves a job. Only arrive/leave at Electrix jobs
+// while on the clock is kept. He accepts the notice once (saved with the time), installs, taps Connect, allows "Always".
+let otSt=null,otBusy=false,otOpen=false;
+function otWho(m){return !!m&&(m.appClock===true||m.role==='owner');}
+function otLoad(accept){if(otBusy||!window.EX_sb||!window.EX_sb.rpc)return;otBusy=true;
+  window.EX_sb.rpc('ot_setup',{accept:!!accept}).then(r=>{otBusy=false;if(r&&r.data){otSt=r.data;try{pnRender();}catch(e){}}}).catch(()=>{otBusy=false;});}
+function otIOS(){return /iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);}
+function otLink(){const m=me();if(!otSt||!otSt.token)return '#';const nm=String(m.name||'').trim().split(/\s+/);
+  const cfg={_type:'configuration',mode:3,url:otSt.url,auth:true,username:otSt.who,password:otSt.token,deviceId:'phone',tid:((nm[0]||'X')[0]+((nm[1]||nm[0]||'X')[0])).toUpperCase(),
+    monitoring:1,cmd:true,allowRemoteLocation:false,remoteConfiguration:false,locatorDisplacement:200,locatorInterval:300,ignoreInaccurateLocations:150,ranging:false,sub:false,pubRetain:false,extendedData:false};
+  return 'owntracks:///config?inline='+encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(cfg)))));}
+function otCard(m){if(!otWho(m))return '';if(!otSt){otLoad(false);return '';}
+  if(otSt.last)return '';   // Baruch 11/11: once connected it is always on — nothing on his screen
+  const box=inner=>'<div class="card" style="margin-top:10px;padding:12px 14px;border:2px solid var(--amber)">'+inner+'</div>';
+  const hd='<div style="display:flex;align-items:center;gap:8px"><b style="flex:1;font-size:15px">🛰 '+esc(t('Automatic time clock'))+'</b></div>';
+  if(!otSt.accepted)return box(hd+'<div style="font-size:13px;color:var(--g5);margin-top:8px">'+esc(t('Your phone tells the app when you arrive at and leave Electrix jobs — even when the app is closed — so your hours are right and the drive counts for the job you go to. Only arriving and leaving at Electrix jobs while you are on the clock is kept. Nothing else.'))+'</div>'
+      +'<button class="btn" style="margin-top:10px" onclick="otLoad(true)">'+esc(t('I understand — set it up'))+'</button>');
+  const alw='<div style="margin:10px 0;padding:10px 12px;border-radius:12px;background:#c0392b;color:#fff;font-weight:800;font-size:15px;line-height:1.35">⚠ '+esc(t('Location must be set to ALWAYS. "While Using" or "Once" will NOT work — your hours will be wrong.'))+'</div>';
+  return box(hd+'<div style="font-size:13px;color:var(--g5);margin-top:8px;line-height:1.5">'
+    +'<div><b>1.</b> '+esc(t('Install the free OwnTracks app'))+'</div><a class="btn" style="display:block;text-align:center;margin:6px 0 10px;text-decoration:none" href="'+(otIOS()?'https://apps.apple.com/app/id692424691':'https://play.google.com/store/apps/details?id=org.owntracks.android')+'" target="_blank" rel="noopener">⬇ '+esc(t('Install OwnTracks'))+'</a>'
+    +'<div><b>2.</b> '+esc(t('Connect it to Electrix (no typing)'))+'</div><a class="btn" style="display:block;text-align:center;margin:6px 0 10px;text-decoration:none" href="'+otLink()+'">🔗 '+esc(t('Connect'))+'</a>'
+    +'<div><b>3.</b> '+esc(t(otIOS()?'When the iPhone asks about location: tap "Allow While Using App" first, then when it asks again tap "Change to Always Allow". Or: Settings → OwnTracks → Location → Always, and turn on Precise Location.':'When the phone asks about location choose "Allow all the time". Or: Settings → Apps → OwnTracks → Permissions → Location → Allow all the time.'))+'</div>'
+    +alw+'<div>'+esc(t('When it is connected this box goes away by itself. You never need to open OwnTracks again.'))+'</div></div>');}
+// owner + Payroll: who has the automatic time clock and when each phone last checked in (Hours → Time cards)
+let otRep=null,otRepAt=0;
+function otPayHtml(){const m=me();if(!m||!(m.role==='owner'||canEditHours(m)))return '';
+  if(!otRep||Date.now()-otRepAt>5*60000){otRepAt=Date.now();try{window.EX_sb.rpc('ot_report',{p_day:dkey(new Date())}).then(r=>{if(r&&r.data){otRep=r.data;try{renderTimeCards();}catch(e){}}}).catch(()=>{});}catch(e){}}
+  const ppl=D.emps.filter(e=>!e.inactive&&e.appClock===true);if(!ppl.length&&!(otRep&&otRep.people.length))return '';
+  const by={};((otRep&&otRep.people)||[]).forEach(x=>by[x.who]=x);
+  const row=e=>{const x=by[e.id];const last=x&&x.last?new Date(x.last).getTime():0;const ok=last&&Date.now()-last<12*36e5;
+    return '<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;font-size:13px"><span>'+esc(e.name)+'</span><span style="color:'+(ok?'var(--green)':'var(--amber)')+'">'
+      +(!x?esc(t('not set up')):!x.last?esc(t('not connected yet')):(ok?'● ':'⚠ ')+esc(t('last check-in'))+' '+new Date(last).toLocaleString(LOC(),{weekday:'short',hour:'numeric',minute:'2-digit'}))+'</span></div>';};
+  return '<div class="card" style="padding:10px 14px"><b style="font-size:14px">🛰 '+esc(t('Automatic time clock'))+'</b>'+ppl.map(row).join('')+'</div>';}
+setTimeout(()=>{try{Object.assign(ES,{"Automatic time clock":"Reloj automático","Turn on":"Activar","Your phone tells the app when you arrive at and leave Electrix jobs — even when the app is closed — so your hours are right and the drive counts for the job you go to. Only arriving and leaving at Electrix jobs while you are on the clock is kept. Nothing else.":"Su teléfono le avisa a la app cuando llega y sale de los trabajos de Electrix — aunque la app esté cerrada — para que sus horas estén bien y el manejo cuente para el trabajo al que va. Solo se guarda cuando llega y sale de trabajos de Electrix mientras está marcando. Nada más.","I understand — set it up":"Entiendo — configurarlo","Location must be set to ALWAYS. \"While Using\" or \"Once\" will NOT work — your hours will be wrong.":"La ubicación tiene que estar en SIEMPRE. \"Mientras se usa\" o \"Una vez\" NO funciona — sus horas saldrán mal.","When the iPhone asks about location: tap \"Allow While Using App\" first, then when it asks again tap \"Change to Always Allow\". Or: Settings → OwnTracks → Location → Always, and turn on Precise Location.":"Cuando el iPhone pregunte por la ubicación: toque primero \"Permitir mientras se usa la app\", y cuando vuelva a preguntar toque \"Cambiar a Permitir siempre\". O: Ajustes → OwnTracks → Ubicación → Siempre, y active Ubicación exacta.","When the phone asks about location choose \"Allow all the time\". Or: Settings → Apps → OwnTracks → Permissions → Location → Allow all the time.":"Cuando el teléfono pregunte por la ubicación escoja \"Permitir todo el tiempo\". O: Ajustes → Aplicaciones → OwnTracks → Permisos → Ubicación → Permitir todo el tiempo.","When it is connected this box goes away by itself. You never need to open OwnTracks again.":"Cuando quede conectado este cuadro desaparece solo. No necesita abrir OwnTracks nunca más.","not set up":"no configurado","not connected yet":"aún no conectado","last check-in":"último reporte","On":"Activado","Not checking in":"No se reporta","Not connected yet":"Aún no conectado","Install the free OwnTracks app":"Instale la app gratis OwnTracks","Install OwnTracks":"Instalar OwnTracks","Connect it to Electrix (no typing)":"Conéctela a Electrix (sin escribir nada)","Connect":"Conectar","When the phone asks about location, choose \"Always\" (iPhone: \"Change to Always Allow\"). If you missed it: Settings → OwnTracks → Location → Always.":"Cuando el teléfono pregunte por la ubicación, escoja \"Siempre\" (iPhone: \"Cambiar a Permitir siempre\"). Si se lo saltó: Ajustes → OwnTracks → Ubicación → Siempre.","That's it — you never need to open OwnTracks again.":"Listo — no necesita abrir OwnTracks nunca más.","Last check-in":"Último reporte","Set it up once — 3 steps":"Configúrelo una vez — 3 pasos"});}catch(e){}},0);
 function geoOk(x){if(!x||!x.in||Date.now()-x.in>14*36e5)return false;if(window.EX_REAL&&window.EX_ME&&me()&&me().id!==window.EX_ME)return false;return true;}
-function onLeave(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out&&!x.away&&geoOk(x));if(!p)return;if(p.driveUntil&&p.driveUntil>Date.now())return;
+function onLeave(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out&&!x.away&&geoOk(x));if(!p)return;
   p.away=Date.now();save();renderPunch();
   {const msg=()=>('🚗 '+t('You left')+' '+pnName(p)+'. '+t('At another job? Open the app and switch.')+' '+t('Not back within 1 hour: your clock closes at')+' '+fmtT(p.away));notify(msg());try{pushTo([m.id],msg,'warn',{tab:'punch'},null,true);}catch(e){}}
   setTimeout(()=>{const q=D.punches.find(x=>x===p);if(q&&q.away&&!q.out){q.out=q.away;delete q.away;save();renderPunch();notify('1 hour passed — punch-out at '+fmtT(q.out)+' is now final.');}},60*60*1000);
@@ -3661,7 +3696,7 @@ function renderTimeCards(){const box=document.getElementById('tcBox');if(!box)re
        +'<div style="display:flex;gap:6px;margin-top:10px">'+tcBox_(tot.toFixed(1),t('hours'))+tcBox_(ot.toFixed(1),t('overtime'),ot>0)+tcBox_(miss,t('missing'),miss>0)+(TRAVEL_ON?tcBox_(money(trv).replace(/\.00$/,''),t('travel')):'')+'</div>'
      :nav('tcDayMove',dayDate.toLocaleDateString(LOC(),{weekday:'long',month:'short',day:'numeric'}),t('week')+' '+lbl)
        +'<div style="display:flex;gap:4px;margin-top:10px">'+DL.map((d,i)=>'<div onclick="tcSetDay('+i+')" style="flex:1;text-align:center;padding:6px 0;border-radius:8px;font-size:12.5px;cursor:pointer;'+(i===tcDay?'background:var(--g5);color:var(--g0,#fff)':'background:var(--g1)')+'">'+t(d).slice(0,2)+'</div>').join('')+'</div>')
-    +'</div>'+hn+fcSendBar(ws,we)+tvSendBar(ws,we);
+    +'</div>'+hn+fcSendBar(ws,we)+tvSendBar(ws,we)+otPayHtml();
   const body=G.map(g=>{const ids=g.people.map(e=>e.id);const allOn=sel&&ids.every(id=>tcSel.has(id));
       const gh=tcMode==='week'?g.people.reduce((q,e)=>q+weekStats(e.id,new Date(ws+12*36e5)).total,0):g.people.reduce((q,e)=>q+tcPunches(e.id,ws).filter(p=>dayIndex(p.in,ws)===tcDay&&(p.out||p.away)).reduce((a,p)=>a+punchDur(p),0),0);
       const right=tcMode==='day'?'<span style="font-size:12px;color:var(--blue-mid);font-weight:700;cursor:pointer;letter-spacing:.3px" onclick="tcFixCrew(\''+jsq(g.id)+'\')">'+t('FIX CREW')+'</span>':'<span style="font-size:12px;color:var(--g4)">'+gh.toFixed(1)+' h</span>';
