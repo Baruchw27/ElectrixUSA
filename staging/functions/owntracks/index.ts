@@ -143,7 +143,9 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
     const sd: any = sc?.data || {}; if (sd.site) want.push(sd.site); for (const a of Array.isArray(sd.assignments) ? sd.assignments : []) if (a && a.site) want.push(a.site); }
   const { data: rec } = await adm.from("records").select("data").eq("coll", "punches").eq("deleted", false).eq("data->>who", user).gte("data->>in", String(now - 21 * 86400000));
   for (const r of (rec || []).sort((a: any, b: any) => Number(b.data?.in) - Number(a.data?.in))) if (r.data?.site) want.push(r.data.site);
-  const wl = [...new Set(want)].filter((id) => site[id] && site[id].lat != null && site[id].lng != null && site[id].stage !== "done").slice(0, 20);
+  // the job he is clocked in at is always watched, even when it is marked done (Baruch 11/12: 11 Canterbury was skipped)
+  const onNow = open && open.d.site ? open.d.site : null;
+  const wl = [...new Set(want)].filter((id) => site[id] && site[id].lat != null && site[id].lng != null && (id === onNow || site[id].stage !== "done")).slice(0, 20);
   const wps: any[] = [];
   if (open && !open.d.site && open.d.newJob && open.d.newJob.lat != null)
     wps.push({ _type: "waypoint", desc: String(open.d.newJob.text || "New job").replace(/#/g, "").slice(0, 40) + " #nj_" + open.id, lat: +open.d.newJob.lat, lon: +open.d.newJob.lng, rad: 150,

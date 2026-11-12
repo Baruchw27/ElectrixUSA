@@ -201,6 +201,18 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){hiddenAt=D
   async function pass(){try{const s=window.EX_sb?(await EX_sb.auth.getSession()).data.session:null;return {token:s?s.access_token:null,anon:CFG.anonKey||''};}catch(e){return {token:null,anon:CFG.anonKey||''};}}
   navigator.serviceWorker.addEventListener('message',async ev=>{const d=ev.data||{};if(d.type==='ex-pass?'&&ev.ports&&ev.ports[0])ev.ports[0].postMessage(await pass());});
   async function push(){try{const p=await pass();const reg=await navigator.serviceWorker.ready;(navigator.serviceWorker.controller||reg.active)&&(navigator.serviceWorker.controller||reg.active).postMessage(Object.assign({type:'ex-pass'},p));}catch(e){}}
-  let hooked=false;const hook=()=>{if(hooked||!window.EX_sb)return;hooked=true;try{EX_sb.auth.onAuthStateChange(()=>push());}catch(e){}push();};
+  let hooked=false;const hook=()=>{if(hooked||!window.EX_sb)return;hooked=true;try{EX_sb.auth.onAuthStateChange(()=>{setTimeout(push,0);});}catch(e){}   /* Baruch 11/12: never call the sign-in from inside this callback — it locked every save on the phone ("still need to save") */push();};
   setTimeout(hook,500);setInterval(()=>{hook();push();},10*60*1000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')push();});
 })();
+
+// ---------- Baruch 11/12: each phone / computer tells the server, every few minutes, whether it has changes waiting to
+// be saved — so the office can see a stuck phone without asking for it. Goes straight to the server (never through the
+// database client, which is what got stuck).
+(function(){if(!window.EX_REAL)return;let id=null;try{id=localStorage.getItem('ex_dev');if(!id){id='d'+Math.random().toString(36).slice(2,12);localStorage.setItem('ex_dev',id);}}catch(e){id='d-nostore';}
+  async function ping(){try{const c=window.EX_CFG||{};const tk=JSON.parse(localStorage.getItem('ex_auth')||'null');if(!c.url||!tk||!tk.access_token)return;
+    if(tk.expires_at&&tk.expires_at*1000<Date.now())return;
+    const S=window.EX_SYNC||{};let rej=0;try{rej=(window.EX_rejects&&window.EX_rejects().length)||0;}catch(e){}
+    await fetch(c.url+'/rest/v1/rpc/device_ping',{method:'POST',headers:{apikey:c.anonKey,Authorization:'Bearer '+tk.access_token,'Content-Type':'application/json'},
+      body:JSON.stringify({p_dev:id,p_ver:String(window.EX_VER||''),p_pending:+(S.pending||0),p_rejects:rej,p_err:String(S.err||(S.retrying?'retrying':'')||'').slice(0,200),p_ua:navigator.userAgent.slice(0,160),p_online:navigator.onLine!==false})});}catch(e){}}
+  setTimeout(ping,20000);setInterval(()=>{if(document.visibilityState==='visible')ping();},5*60000);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(ping,3000);});})();
