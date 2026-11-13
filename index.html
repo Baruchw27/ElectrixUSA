@@ -59,7 +59,7 @@ html[data-theme=dark] .pn-sl i{background:#f2f2f7;color:#111}
 #pg-punch:not(.pnopen) #punchExtra{display:none!important}
 #pg-punch #punchSched,#pg-punch #myListPunch,#pg-punch #quickExp,#pg-punch #mySites{display:none!important}
 </style>
-<script>window.EX_VER='vh63c1112';</script><script src="config.js"></script>
+<script>window.EX_VER='vh64c1112';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="sync.js?vh60c1112"></script>
 <script src="extras.js?vh59c1112"></script>
@@ -1321,9 +1321,13 @@ function assignTargets(){
   }
   if(m.role==='manager'||m.role==='worker'){
     if(m.role==='worker')return D.emps.filter(e=>e.shared).map(e=>({id:e.id,label:e.name+' ('+t_(e.title)+')'}));
-    const crews=D.crews;
-    const t=D.emps.filter(e=>e.role==='manager'&&e.id!==m.id).map(e=>({id:e.id,label:e.name+' ('+t_('site manager')+')'}));D.emps.filter(e=>e.shared).forEach(e=>t.push({id:e.id,label:e.name+' ('+t_(e.title)+')'}));crews.forEach(c=>t.push({id:c.id,label:crewLabel(c)}));
-    crews.forEach(c=>D.emps.filter(e=>e.crew===c.id&&e.lead).forEach(e=>t.push({id:e.id,label:e.name+' ★ ('+c.name+')'})));
+    // Baruch 11/12: Shauly and Yossi (site managers) can send a task to everyone — you, the office, the other manager,
+    // every crew, and every person on a crew (crew leaders marked ★)
+    const crews=D.crews,on=e=>e&&e.id!==m.id&&!e.inactive,lbl=e=>e.name+' ('+t_(e.role==='owner'?'Owner':e.role==='manager'?'site manager':(e.title||ROLE_LABEL[e.role]||e.role))+')';
+    const t=[];D.emps.filter(e=>on(e)&&e.role==='owner').forEach(e=>t.push({id:e.id,label:lbl(e)}));D.emps.filter(e=>on(e)&&e.role==='manager').forEach(e=>t.push({id:e.id,label:lbl(e)}));
+    D.emps.filter(e=>on(e)&&e.role==='office').forEach(e=>t.push({id:e.id,label:lbl(e)}));crews.forEach(c=>t.push({id:c.id,label:crewLabel(c)}));
+    crews.forEach(c=>D.emps.filter(e=>on(e)&&e.crew===c.id&&e.role==='worker').sort((x,y)=>(y.lead?1:0)-(x.lead?1:0)).forEach(e=>t.push({id:e.id,label:e.name+(e.lead?' ★':'')+' ('+c.name+')'})));
+    D.emps.filter(e=>on(e)&&e.role==='worker'&&!crews.some(c=>c.id===e.crew)).forEach(e=>t.push({id:e.id,label:e.name}));
     return t;
   }
   return [];
