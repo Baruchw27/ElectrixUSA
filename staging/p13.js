@@ -122,6 +122,7 @@ html[data-theme=dark] .j2card{box-shadow:0 0 0 1px var(--j2line)}
 .j2hr{display:flex;align-items:center;padding:11px 16px;font-size:14.5px;gap:10px}.j2hr+.j2hr{border-top:1px solid var(--j2line)}
 .j2hr .v{margin-left:auto;font-weight:600;font-variant-numeric:tabular-nums}.j2hr small{display:block;font-size:12.5px;color:var(--j2mut)}
 .j2pill{font-size:11px;font-weight:650;border-radius:7px;padding:2px 8px;background:var(--j2okS);color:var(--j2ok)}
+.j2in.j2big{min-height:calc(100dvh - 120px);height:calc(100dvh - 120px);font-size:17px;line-height:1.5;resize:none;padding:14px 48px 14px 14px}
 .j2in{width:100%;font-size:16px;padding:11px 12px;border-radius:11px;border:1px solid var(--j2line);background:var(--j2card);color:var(--j2ink);box-sizing:border-box}
 .j2grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}.j2grid div{aspect-ratio:1;background-size:cover;background-position:center;border-radius:6px;cursor:pointer;background-color:#3a3c42}
 .j2save{display:block;width:100%;height:46px;border-radius:13px;border:0;background:var(--j2ink);color:var(--j2card);font-size:15px;font-weight:600;cursor:pointer;margin-top:14px}
@@ -237,7 +238,7 @@ function draw(){
    +'</div>';
   B.scrollTop=keep;}
 function taskRow(j){const d=j.status==='done';return '<div class="j2t'+(d?' dn':'')+'" onclick="P13.task(\''+J(j.id)+'\')"><button class="ck" aria-label="'+E(T('Done'))+'" onclick="event.stopPropagation();P13.done(\''+J(j.id)+'\')">'+(d?'<svg class="j2i s" viewBox="0 0 24 24" style="color:#fff"><path d="m5 12 5 5 9-10"/></svg>':'')+'</button><span class="nm">'+E(j.desc||j.title||'')+'</span><em>'+E(who(j))+'</em></div>';}
-function noteRow(n,s,m){const mine=!isW(m)&&(n.by===m.id||can(isBoss,m));const ed=(n.shared&&mine)||(n.mine&&n.by===m.id);return '<div class="j2n'+(ed?' j2ned':'')+'"'+(ed?' onclick="if(event.target.tagName!==\'IMG\'&&event.target.tagName!==\'BUTTON\')P13.editNote(\''+J(n.id)+'\','+(n.mine?1:0)+')"':'')+'>'+E(n.txt)+(n.photo?'<img src="'+E(n.photo)+'" onclick="viewPhotos([this.src],0)" alt="">':'')+'<small><span>'+E(nm(n.by))+' · '+E(dt(n.ts))+'</span>'+(ed?'<button onclick="event.stopPropagation();P13.editNote(\''+J(n.id)+'\','+(n.mine?1:0)+')">'+E(T('Edit'))+'</button>':'')+(n.shared&&mine?'<button onclick="event.stopPropagation();P13.delNote(\''+J(n.id)+'\')">'+E(T('Remove'))+'</button>':'')+'</small></div>';}
+function noteRow(n,s,m){const mine=!isW(m)&&(n.by===m.id||can(isBoss,m));const ed=(n.shared&&mine)||(n.mine&&n.by===m.id);return '<div class="j2n">'+E(n.txt)+(n.photo?'<img src="'+E(n.photo)+'" onclick="viewPhotos([this.src],0)" alt="">':'')+'<small><span>'+E(nm(n.by))+' · '+E(dt(n.ts))+'</span>'+(ed?'<button onclick="event.stopPropagation();P13.editNote(\''+J(n.id)+'\','+(n.mine?1:0)+')">'+E(T('Edit'))+'</button>':'')+(n.shared&&mine?'<button onclick="event.stopPropagation();P13.delNote(\''+J(n.id)+'\')">'+E(T('Remove'))+'</button>':'')+'</small></div>';}
 function fileTile(f){const k=f.kind;const sub=k==='LINK'?(String(f.url||'').replace(/^https?:\/\/(www\.)?/,'').split('/')[0]):(f.ts?dt(f.ts):k);
   return (k==='LINK'?'<a class="j2f" href="'+E((()=>{try{return safeHref(f.url)}catch(e){return '#'}})())+'" target="_blank" rel="noopener">':'<div class="j2f" onclick="P13.openFile(\''+J(f.id)+'\')">')
    +'<span class="fi" style="background:'+(FCOL[k]||'#5d6470')+'">'+k+'</span><b>'+E(f.name)+'</b><small>'+E(sub)+'</small>'+(k==='LINK'?'</a>':'</div>');}
@@ -286,8 +287,8 @@ P13.addNote=()=>{const s=site();if(!s)return;
 P13.editNote=(id,own)=>{const s=site();if(!s)return;
   if(own){try{kOpen(id,true);lift();}catch(e){}return;}
   const n=(s.notes||[]).find(x=>x.id===id);if(!n)return;
-  sheet('m-j2t',T('Edit note'),s.name,'<div class="j2body"><textarea id="j2noteE" class="j2in" rows="6"></textarea><button class="j2save" onclick="P13.saveEdit(\''+J(id)+'\')">'+E(T('Save'))+'</button></div>');
-  setTimeout(()=>{const x=$('j2noteE');if(x){x.value=n.text||'';x.focus();}},250);};
+  sheet('m-j2t',T('Edit note'),s.name,'<div class="j2body" style="padding-bottom:12px"><textarea id="j2noteE" class="j2in j2big"></textarea></div>','<button class="rt" style="font-weight:700" onclick="P13.saveEdit(\''+J(id)+'\')">'+E(T('Save'))+'</button>');
+  setTimeout(()=>{const x=$('j2noteE');if(x){x.value=n.text||'';x.focus();try{const L=x.value.length;x.setSelectionRange(L,L);x.scrollTop=x.scrollHeight;}catch(e){}}},250);};
 P13.saveEdit=id=>{const s=site();const x=$('j2noteE');const v=x?x.value.trim():'';const n=s&&(s.notes||[]).find(q=>q.id===id);if(!n)return;
   if(!v){P13.delNote(id);close('m-j2t');return;}
   if(v!==(n.text||'')){n.text=v;n.edited=Date.now();n.editedBy=M().id;try{save();}catch(e){}}close('m-j2t');refresh();if(P13._cur==='notes'||($('m-j2s')&&!$('m-j2s').classList.contains('hid')))try{P13.notes();}catch(e){}};
