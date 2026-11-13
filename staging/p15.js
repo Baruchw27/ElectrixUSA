@@ -110,8 +110,9 @@ async function goLink(l,msg){if(!l||typeof l!=='object')l={};
     if(allowed(l.tab))goTab(l.tab);else if(allowed('home'))goTab('home');else toast(tt('Not on your screens'));return true;}
   return false;}
 P15.goLink=goLink;
-// 11/12: opening the app clears the app's cards from the phone's notification shade (everything is in the bell)
-function clearShade(){try{if(document.visibilityState!=='visible'||!('serviceWorker' in navigator))return;navigator.serviceWorker.ready.then(r=>r.getNotifications?r.getNotifications():[]).then(ns=>(ns||[]).forEach(n=>{try{n.close();}catch(e){}})).catch(()=>{});}catch(e){}}
+// 11/12: for people set to "stacked" (Yossi), opening the app clears the app's cards from the phone (everything is in the bell)
+function clearShade(){try{const mm=M();if(!mm||mm.notifStack!==true)return;   // only for people set to "stacked" (Yossi)
+  if(document.visibilityState!=='visible'||!('serviceWorker' in navigator))return;navigator.serviceWorker.ready.then(r=>r.getNotifications?r.getNotifications():[]).then(ns=>(ns||[]).forEach(n=>{try{n.close();}catch(e){}})).catch(()=>{});}catch(e){}}
 document.addEventListener('visibilitychange',clearShade);setTimeout(clearShade,3000);
 // Baruch 11/12: a meeting notification opens the meeting itself — when, where, with Directions (Google Maps) to the job
 // (or to the office), the note and who is coming. Everyone invited can open it, workers too.
