@@ -58,8 +58,8 @@ html[data-theme=dark] .pn-sl i{background:#f2f2f7;color:#111}
 #pg-punch.pnopen #punchBtn{display:none!important}
 #pg-punch:not(.pnopen) #punchExtra{display:none!important}
 #pg-punch #punchSched,#pg-punch #myListPunch,#pg-punch #quickExp,#pg-punch #mySites{display:none!important}
-</style>
-<script>window.EX_VER='vs98c1112';</script><script src="config.js"></script>
+.cfimg{display:block;max-width:230px;max-height:260px;border-radius:8px;cursor:pointer;object-fit:cover}.cfile{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:rgba(0,0,0,.06);cursor:pointer;min-width:190px;max-width:260px}html[data-theme=dark] .cfile{background:rgba(255,255,255,.08)}.cfic{font-size:26px;line-height:1}.cfnm{display:flex;flex-direction:column;min-width:0}.cfnm b{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cfnm small{font-size:12px;opacity:.65}.crow .cclip{width:34px;margin-right:-6px}</style>
+<script>window.EX_VER='vs99c1113';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="sync.js?vs98c1112"></script>
 <script src="extras.js?vs98c1112"></script>
@@ -1569,7 +1569,7 @@ function mVideoPick(ctx){let i=document.getElementById('mVidIn');if(!i){i=docume
     await mAdd(ctx,f,'video',Math.round(dur));};i.click();}
 // closing the window mid-recording throws the recording away
 setInterval(()=>{if(recM){const el=document.querySelector('[data-ctx="'+recM.ctx+'"]');if(!el||el.offsetParent===null)mStop(true);}},700);
-function chatCountTxt(j){const n=chatMsgs(j).filter(x=>!x.task&&!x.kind).length;return n?' · 💬 '+n:'';}
+function chatCountTxt(j){const L=chatMsgs(j);const n=L.filter(x=>!x.task&&!x.kind).length,f=L.filter(x=>x.kind==='file').length;return (n?' · 💬 '+n:'')+(f?' · 📎 '+f:'');}
 function canReplyMedia(j,m){return j.from===m.id||taskPeople(j).includes(m.id)||m.role==='owner'||m.role==='manager'||!!m.all;}
 function mediaSummary(j){const L=j.media||[];if(!L.length)return '';const a=L.filter(x=>x.kind==='audio'),v=L.filter(x=>x.kind==='video');return (a.length?' · 🎙 '+(a.length>1?a.length+'×':fmtDur(a[0].dur)):'')+(v.length?' · 🎥'+(v.length>1?' '+v.length:''):'');}
 
@@ -1593,6 +1593,7 @@ function bubbleHtml(j,msg,group){const m=me();const mine=msg.by===m.id;const st=
   if(msg.task)body='<div class="ctask">'+(j.pri&&j.status!=='done'?'🔴 ':'')+fmtText(msg.text)+(msg.orig?'<div class="corig">'+fmtText(msg.orig)+'</div>':'')+'</div>';
   else if(msg.kind==='audio')body='<div class="cvoice"><button type="button" class="mplay" onclick="event.stopPropagation();mPlay(this)" data-src="'+esc(msg.url)+'" data-st="play" data-dur="'+(+msg.dur||0)+'">'+IC.play+'</button><div class="mtrack"><div class="mprog"></div></div><span class="mdur">'+fmtDur(msg.dur)+'</span></div>';
   else if(msg.kind==='video')body='<video src="'+esc(msg.url)+'#t=0.1" controls playsinline preload="metadata"></video>';
+  else if(msg.kind==='file')body=chatFileBody(j,msg);
   else body='<div class="ctext">'+fmtText(msg.text||'')+'</div>';
   return '<div class="cb '+(mine?'me':'them')+'" data-mid="'+esc(msg.id)+'"><span class="crep">'+IC.reply+'</span><div class="cbx">'+(!mine&&group?'<div class="cwho">'+esc(nameOf(msg.by))+'</div>':'')+(msg.re?quoteHtml(j,msg.re):'')+body+'<div class="cmeta">'+chatWhen(msg.ts)+(mine?tickSvg(st):'')+'</div></div></div>';}
 function chatListHtml(j){const group=chatPeople(j).length>2;return chatMsgs(j).map(msg=>bubbleHtml(j,msg,group)).join('');}
@@ -1630,13 +1631,48 @@ function clearReply(){jdReply=null;const bar=document.getElementById('jdQuote');
   document.addEventListener('touchend',end,{capture:true,passive:true});document.addEventListener('touchcancel',end,{capture:true,passive:true});
 })();
 function canChat(j,m){return chatPeople(j).includes(m.id)||m.role==='owner'||m.role==='manager'||!!m.all;}
-function composerHtml(j){return '<div class="cmp" data-ctx="'+j.id+'"><div class="mlive" id="mlive_'+j.id+'" hidden></div><div class="cqbar" id="jdQuote" hidden></div><div class="crow"><button type="button" class="cvid" onclick="mVideoPick(\''+jsq(j.id)+'\')" aria-label="video">'+IC.cam+'</button><textarea id="jdTxt" rows="1" placeholder="'+t('Message')+'" oninput="chatTyping(this)"></textarea><button type="button" class="csend" id="jdSend" hidden onclick="chatSend(\''+jsq(j.id)+'\')" aria-label="send">'+IC.send+'</button><button type="button" class="cmic mrec" id="jdMic" onpointerdown="mRecDown(event,\''+jsq(j.id)+'\')" aria-label="hold to talk">'+IC.mic+'</button></div></div>';}
+function composerHtml(j){return '<div class="cmp" data-ctx="'+j.id+'"><div class="mlive" id="mlive_'+j.id+'" hidden></div><div class="cqbar" id="jdQuote" hidden></div><div class="crow"><button type="button" class="cvid cclip" onclick="chatFilePick(\''+jsq(j.id)+'\')" aria-label="attach file">'+IC.clip+'</button><button type="button" class="cvid" onclick="mVideoPick(\''+jsq(j.id)+'\')" aria-label="video">'+IC.cam+'</button><textarea id="jdTxt" rows="1" placeholder="'+t('Message')+'" oninput="chatTyping(this)"></textarea><button type="button" class="csend" id="jdSend" hidden onclick="chatSend(\''+jsq(j.id)+'\')" aria-label="send">'+IC.send+'</button><button type="button" class="cmic mrec" id="jdMic" onpointerdown="mRecDown(event,\''+jsq(j.id)+'\')" aria-label="hold to talk">'+IC.mic+'</button></div></div>';}
 function chatTyping(el){el.style.height='auto';el.style.height=Math.min(120,el.scrollHeight)+'px';const has=!!el.value.trim();document.getElementById('jdSend').hidden=!has;document.getElementById('jdMic').hidden=has;}
 function chatSend(jid){const el=document.getElementById('jdTxt');const txt=(el.value||'').trim();if(!txt)return;const j=D.jobs.find(x=>x.id===jid);if(!j)return;
   const id=nid('cm');const msg={by:me().id,ts:Date.now(),text:txt};if(jdReply&&jdOpen===jid)msg.re=jdReply;j['m_'+id]=msg;save();el.value='';chatTyping(el);clearReply();
   const others=chatPeople(j).filter(p=>p!==me().id);if(!others.length&&j.from!==me().id)others.push(j.from);
   if(others.length)pushTo(others,()=>('💬 '+nameOf(me().id)+': '+txt.slice(0,80)),'info',{job:j.id});
   chatRefresh(true);try{renderJobs();}catch(e){}el.focus();}
+
+// 11/13 (Baruch): attach files to a task — e.g. Menachem gets a price and sends the quote back on the task. Sent as a chat message (📎).
+IC.clip='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.4 11.1l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9"/></svg>';
+const CF_MAX_MB=25;
+function cfKind(f){const x=(f.type||'')+' '+(f.name||'');return /^image\//.test(f.type||'')?'img':/pdf/i.test(x)?'pdf':/sheet|excel|\.xlsx?\b|\.csv\b/i.test(x)?'sheet':/word|\.docx?\b/i.test(x)?'doc':'file';}
+function cfSize(b){b=+b||0;return b>=1048576?(b/1048576).toFixed(1)+' MB':b>=1024?Math.round(b/1024)+' KB':b?b+' B':'';}
+function chatFilePick(jid){let i=document.getElementById('cfIn');if(!i){i=document.createElement('input');i.type='file';i.multiple=true;i.id='cfIn';i.style.display='none';
+    i.accept='image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,application/pdf';document.body.appendChild(i);}
+  i.value='';i.onchange=async()=>{const L=[...(i.files||[])].slice(0,6);for(const f of L)await chatFileSend(jid,f);};i.click();}
+async function cfShrink(f){if(!/^image\/(jpe?g|png|webp)/i.test(f.type||'')||f.size<600000)return f;
+  try{const url=URL.createObjectURL(f);const img=await new Promise((ok,no)=>{const im=new Image();im.onload=()=>ok(im);im.onerror=no;im.src=url;});URL.revokeObjectURL(url);
+    const max=1600;let w=img.width,h=img.height;if(w>max||h>max){const k=max/Math.max(w,h);w=Math.round(w*k);h=Math.round(h*k);}
+    const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
+    const b=await new Promise(ok=>c.toBlob(ok,'image/jpeg',0.8));return b&&b.size<f.size?b:f;}catch(e){return f;}}
+async function chatFileSend(jid,f){const j=D.jobs.find(x=>x.id===jid);if(!j||!f)return;
+  if(f.size>CF_MAX_MB*1048576){toast('⚠ '+f.name+' — '+t('File is too big')+' (max '+CF_MAX_MB+' MB)');return;}
+  const fk=cfKind(f);toast('⏳ '+t('Sending')+' '+f.name+'…');
+  try{const blob=fk==='img'?await cfShrink(f):f;const url=await storeMedia(blob,'file');
+    const el=document.getElementById('jdTxt');const cap=el&&jdOpen===jid?(el.value||'').trim():'';
+    const msg={by:me().id,ts:Date.now(),kind:'file',fk,name:String(f.name||'file').slice(0,120),size:blob.size||f.size||0,url,type:(blob.type||f.type||'').split(';')[0]};
+    if(cap){msg.text=cap;el.value='';chatTyping(el);}
+    if(jdReply&&jdOpen===jid){msg.re=jdReply;clearReply();}
+    j['m_'+nid('cm')]=msg;save();document.querySelectorAll('.toast').forEach(x=>x.remove());toast('📎 '+msg.name,'green');
+    const others=chatPeople(j).filter(p=>p!==me().id);if(!others.length&&j.from!==me().id)others.push(j.from);
+    if(others.length)pushTo(others,()=>('📎 '+nameOf(me().id)+' '+t('sent a file')+': '+msg.name+(cap?' — '+cap.slice(0,60):'')+' · '+jobText(j).slice(0,40)),'info',{job:j.id});
+    chatRefresh(true);try{renderJobs();}catch(e){}
+  }catch(e){document.querySelectorAll('.toast').forEach(x=>x.remove());toast('⚠ '+f.name+': '+(e&&e.message||t('Could not send')));}}
+function chatFileBody(j,msg){const u=String(msg.url||'');const cap=msg.text?'<div class="ctext" style="margin-top:4px">'+fmtText(msg.text)+'</div>':'';
+  if(msg.fk==='img'&&safeSrc(u))return '<img class="cfimg" src="'+safeSrc(u)+'" alt="" onclick="event.stopPropagation();viewPhotos([\''+jsq(u)+'\'],0)">'+cap;
+  const ic={pdf:'📕',sheet:'📗',doc:'📘',img:'🖼'}[msg.fk]||'📎';const ty={pdf:'PDF',sheet:'Excel',doc:'Word',img:t('Photo')}[msg.fk]||t('File');
+  return '<div class="cfile" onclick="event.stopPropagation();chatFileOpen(\''+jsq(j.id)+'\',\''+jsq(msg.id)+'\')"><span class="cfic">'+ic+'</span><span class="cfnm"><b>'+esc(msg.name||t('File'))+'</b><small>'+ty+(msg.size?' · '+cfSize(msg.size):'')+'</small></span></div>'+cap;}
+function chatFileOpen(jid,mid){const j=D.jobs.find(x=>x.id===jid);if(!j)return;const msg=j['m_'+mid];if(!msg||!msg.url)return;
+  if(typeof EX_view==='function'){EX_view(msg.url,msg.name,msg.fk==='img'?'img':msg.fk==='pdf'?'pdf':msg.fk);return;}
+  const a=document.createElement('a');a.href=safeSrc(msg.url);a.download=String(msg.name||'file').replace(/[\\/:*?"<>|]/g,'_');a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove();}
+setTimeout(()=>{try{Object.assign(ES,{"sent a file":"envió un archivo","File is too big":"El archivo es muy grande","Sending":"Enviando","File":"Archivo"});}catch(e){}},0);
 
 function canEditTask(j,m){m=m||me();return !!j&&j.status!=='done'&&(m.role==='owner'||m.role==='manager'||m.role==='office'||!!m.all||j.from===m.id);}
 function openTaskEdit(id){const j=D.jobs.find(x=>x.id===id);const m=me();if(!canEditTask(j,m))return;
