@@ -1,5 +1,5 @@
 // Offline support: the app opens even with no signal; data waits on the phone and syncs later.
-const C='electrix-v131';
+const C='electrix-v132';
 // Baruch 11/5: libraries and opened files stay on the phone across app updates (they used to be downloaded again after every update)
 const BASEC=C.indexOf('electrix-staging')===0?'electrix-staging':'electrix';const LIBC=BASEC+'-libs',FILEC=BASEC+'-files',OPENC=BASEC+'-open',PLANC=BASEC+'-plans',KEEP=[LIBC,FILEC,OPENC,PLANC];   // -plans: p16 plan shelf (cleared by p16 itself)
 const SHELL=['./','index.html','sync.js','extras.js','config.js','manifest.json','icon-192.png','icon-512.png','apple-touch-icon.png','logo-light.svg','logo-dark.svg','scanner-v2.js','scanner-v2-ui.js','catalog-real.json','sched-v21.js','p2.js','p4.js','p5.js','p6.js','p7.js','p8.js','p9.js','p10.js','p11.js','p12.js','p13.js','p14.js','p15.js','p16.js','mat-es.js'];
@@ -33,13 +33,27 @@ self.addEventListener('notificationclick',e=>{e.notification.close();const dd=e.
   const keep=act?Promise.resolve():caches.open(OPENC).then(c=>c.put('./__open',new Response(JSON.stringify({id,link,msg,ts:Date.now()}),{headers:{'Content-Type':'application/json'}}))).catch(()=>{});
   e.waitUntil(keep.then(()=>self.clients.matchAll({type:'window',includeUncontrolled:true})).then(cs=>{const c=cs[0];
     if(c){return c.focus().then(w=>{try{(w||c).postMessage(act?{type:'ex-act',id,act}:{type:'ex-open2',id,link,msg});}catch(x){}});}
-    return self.clients.openWindow('./'+(id?'?n='+encodeURIComponent(id)+(link?'&l='+encodeURIComponent(JSON.stringify(link)):'')+(act?'&act='+encodeURIComponent(act):''):''));}));});
+    return self.clients.openWindow('./'+((id||link)?'?n='+encodeURIComponent(id)+(link?'&l='+encodeURIComponent(JSON.stringify(link)):'')+(act?'&act='+encodeURIComponent(act):''):''));}));});
+// Baruch 11/12 (Yossi, Android): one new message shows as before (tap opens it); two or more are put together in ONE card
+// "Electrix · 5 new" — pulled down it lists every message, newest first; tapping it opens the bell list in the app.
+// (Chrome on Android shows each site notification on its own and can't stack them like the Gmail app does.)
 self.addEventListener('push',e=>{let d={};try{d=e.data.json();}catch(x){d={title:'Electrix',body:e.data?e.data.text():''};}
-  const o={body:d.body||'',icon:'icon-192.png',badge:'icon-192.png',tag:d.id||undefined,data:{id:d.id||'',link:d.link||null,msg:String(d.body||'').slice(0,200)}};
-  if(d.job)o.actions=[{action:'done',title:d.lang==='es'?'✓ Hecho':'✓ Mark done'},{action:'reply',title:d.lang==='es'?'Responder':'Reply'}];   // P2: task alerts get buttons (Android)
-  const jobs=[self.registration.showNotification(d.title||'Electrix',o)];
-  if(typeof d.badge==='number'&&self.navigator&&self.navigator.setAppBadge)jobs.push(self.navigator.setAppBadge(d.badge).catch(()=>{}));   // P2: unread count on the app icon
-  e.waitUntil(Promise.all(jobs));});
+  const es=d.lang==='es';const item={id:d.id||'',link:d.link||null,msg:String(d.body||'').slice(0,200),job:!!d.job};
+  e.waitUntil((async()=>{
+    let cur=[];try{cur=await self.registration.getNotifications();}catch(x){}
+    let prev=[];for(const n of cur){const dd=n.data||{};if(Array.isArray(dd.items))prev=prev.concat(dd.items);else prev.push({id:dd.id||'',link:dd.link||null,msg:dd.msg||n.body||''});}
+    const items=[item].concat(prev.filter(x=>!(item.id&&x.id===item.id))).slice(0,40);
+    let o,title;
+    if(items.length<=1){title=d.title||'Electrix';
+      o={body:d.body||'',icon:'icon-192.png',badge:'icon-192.png',tag:d.id||undefined,data:{id:item.id,link:item.link,msg:item.msg}};
+      if(d.job)o.actions=[{action:'done',title:es?'✓ Hecho':'✓ Mark done'},{action:'reply',title:es?'Responder':'Reply'}];}   // P2: task alerts get buttons (Android)
+    else{const n=items.length;title='Electrix · '+n+(es?' nuevas':' new');
+      const lines=items.slice(0,12).map(x=>'• '+String(x.msg||'').replace(/\s+/g,' ').slice(0,90));if(n>12)lines.push(es?'+ '+(n-12)+' más':'+ '+(n-12)+' more');
+      o={body:lines.join('\n'),icon:'icon-192.png',badge:'icon-192.png',tag:'ex-sum',renotify:true,data:{id:'',link:{bell:1},msg:'',items}};
+      for(const x of cur){try{x.close();}catch(y){}}}
+    const jobs=[self.registration.showNotification(title,o)];
+    if(typeof d.badge==='number'&&self.navigator&&self.navigator.setAppBadge)jobs.push(self.navigator.setAppBadge(d.badge).catch(()=>{}));   // P2: unread count on the app icon
+    await Promise.all(jobs);})());});
 
 // ---- private files: the app hands its sign-in pass to this helper; files open only for signed-in team members
 let PASS=null;
