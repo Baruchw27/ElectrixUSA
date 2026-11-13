@@ -93,6 +93,7 @@ async function fetchJob(id){if(!window.EX_REAL)return null;try{await EX_catchUp(
 // the place a message points to — its link, else the job named in the message
 function siteFromText(s){s=String(s||'').toLowerCase();if(!s)return null;let best=null,bl=0;live().forEach(x=>{const n=short(x.name).toLowerCase().trim();if(n.length>=6&&s.includes(n)&&n.length>bl){best=x;bl=n.length;}});return best;}
 async function goLink(l,msg){if(!l||typeof l!=='object')l={};
+  if(l.bell){try{openInbox();}catch(e){}return true;}   // 11/12: the stacked phone card "Electrix · 5 new" opens the bell list
   if(l.job){let j=(D.jobs||[]).find(q=>q.id===l.job);if(!j)j=await fetchJob(l.job);
     if(j){if(allowed('jobs')){try{jobFilter='all';jobView=j.status==='done'?'done':'open';}catch(e){}goTab('jobs');}openJobDetail(j.id);return true;}
     toast(tt('That task was removed'));return true;}
@@ -109,6 +110,9 @@ async function goLink(l,msg){if(!l||typeof l!=='object')l={};
     if(allowed(l.tab))goTab(l.tab);else if(allowed('home'))goTab('home');else toast(tt('Not on your screens'));return true;}
   return false;}
 P15.goLink=goLink;
+// 11/12: opening the app clears the app's cards from the phone's notification shade (everything is in the bell)
+function clearShade(){try{if(document.visibilityState!=='visible'||!('serviceWorker' in navigator))return;navigator.serviceWorker.ready.then(r=>r.getNotifications?r.getNotifications():[]).then(ns=>(ns||[]).forEach(n=>{try{n.close();}catch(e){}})).catch(()=>{});}catch(e){}}
+document.addEventListener('visibilitychange',clearShade);setTimeout(clearShade,3000);
 // Baruch 11/12: a meeting notification opens the meeting itself — when, where, with Directions (Google Maps) to the job
 // (or to the office), the note and who is coming. Everyone invited can open it, workers too.
 const MES={'Meeting':'Reunión','Directions':'Cómo llegar','Open the job':'Abrir el trabajo','At the office':'En la oficina','Who':'Quién','Note':'Nota','Close':'Cerrar','Edit':'Editar','Today':'Hoy','Tomorrow':'Mañana'};
