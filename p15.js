@@ -102,12 +102,40 @@ async function goLink(l,msg){if(!l||typeof l!=='object')l={};
   if(l.keep&&(D.keep||[]).some(n=>n.id===l.keep)){try{openList('keep',l.keep);return true;}catch(e){}}
   if(l.mat&&(D.mats||[]).some(x=>x.id===l.mat)){if(allowed('mat'))goTab('mat');try{openList('mats',l.mat);}catch(e){}return true;}
   if(l.svc){if(allowed('svc'))goTab('svc');try{openSvcDetail(l.svc);}catch(e){}return true;}
+  if(l.meet){const mt=(D.meets||[]).find(x=>x.id===l.meet);if(mt){P15.meet(mt.id);return true;}}
   // a message about one job with only a tab (or nothing): open that job
   if((!l.tab||l.tab==='sites'||l.tab==='jobs'&&!/task|tarea/i.test(msg||''))){const s=siteFromText(msg);if(s&&(!l.tab||l.tab==='sites')){if(allowed('sites'))goTab('sites');openFolder(s.id);return true;}}
   if(l.tab){try{if(l.tab==='exp'&&l.view)moneyView=l.view;if(l.tab==='est'&&l.view)estFilter=l.view;}catch(e){}
     if(allowed(l.tab))goTab(l.tab);else if(allowed('home'))goTab('home');else toast(tt('Not on your screens'));return true;}
   return false;}
 P15.goLink=goLink;
+// Baruch 11/12: a meeting notification opens the meeting itself — when, where, with Directions (Google Maps) to the job
+// (or to the office), the note and who is coming. Everyone invited can open it, workers too.
+const MES={'Meeting':'Reunión','Directions':'Cómo llegar','Open the job':'Abrir el trabajo','At the office':'En la oficina','Who':'Quién','Note':'Nota','Close':'Cerrar','Edit':'Editar','Today':'Hoy','Tomorrow':'Mañana'};
+const mt_=x=>{try{if(typeof lang==='function'&&lang()==='es'&&MES[x])return MES[x];}catch(e){}return tt(x);};
+P15.meet=id=>{const x=(D.meets||[]).find(q=>q.id===id);if(!x)return;let o=$('m-p15m');
+  if(!o){o=document.createElement('div');o.id='m-p15m';o.className='ov hid';o.style.zIndex='260';o.innerHTML='<div class="md"></div>';o.onclick=e=>{if(e.target===o)hide('m-p15m');};document.body.appendChild(o);}
+  const s=x.site&&(D.sites||[]).find(q=>q.id===x.site);let loc='';try{loc=LOC();}catch(e){}
+  const d=new Date(x.at),dk=v=>{try{return dkey(v);}catch(e){return v.toDateString();}};const today=new Date(),tmr=new Date(Date.now()+864e5);
+  const day=dk(d)===dk(today)?mt_('Today'):dk(d)===dk(tmr)?mt_('Tomorrow'):d.toLocaleDateString(loc||undefined,{weekday:'long',month:'short',day:'numeric'});
+  const tm=d.toLocaleTimeString(loc||undefined,{hour:'numeric',minute:'2-digit'});
+  let place='',dir='';
+  if(s){place='<div style="font-weight:600">'+E(s.name)+'</div>';try{dir=gmapsDir(s);}catch(e){dir='https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(s.name)+'&travelmode=driving';}}
+  else if(x.type==='office'){place='<div style="font-weight:600">'+E(mt_('At the office'))+'</div>';const b=D.base||{};dir='https://www.google.com/maps/dir/?api=1&destination='+(b.lat?b.lat+','+b.lng:encodeURIComponent('73 N Airmont Rd, Suffern, NY 10901'))+'&travelmode=driving';}
+  let ppl=[];try{ppl=(typeof meetPeople==='function'?meetPeople(x):[x.by].concat(x.with||[])).map(w=>nameOf(w)).filter(Boolean);}catch(e){}
+  const m=M();let canEd=false;try{canEd=typeof canEditMeet==='function'&&canEditMeet(x,m);}catch(e){}
+  const btn='display:block;width:100%;text-align:center;padding:13px;border-radius:12px;font-weight:600;font-size:15px;text-decoration:none;margin-top:10px;border:0;cursor:pointer';
+  o.querySelector('.md').innerHTML='<div style="padding:30px 4px 4px"><div style="font-size:12px;color:var(--g4);text-transform:uppercase;letter-spacing:.04em">📅 '+E(mt_('Meeting'))+'</div>'
+    +'<div style="font-size:20px;font-weight:700;margin:4px 0 2px">'+E(x.title||mt_('Meeting'))+'</div>'
+    +'<div style="font-size:15px;color:var(--g5)">'+E(day)+' · '+E(tm)+'</div>'
+    +(place?'<div style="margin-top:14px;font-size:15px">'+place+'</div>':'')
+    +(x.note?'<div style="margin-top:12px;font-size:14px;white-space:pre-wrap"><span style="color:var(--g4)">'+E(mt_('Note'))+':</span> '+E(x.note)+'</div>':'')
+    +(ppl.length?'<div style="margin-top:10px;font-size:14px"><span style="color:var(--g4)">'+E(mt_('Who'))+':</span> '+E(ppl.join(', '))+'</div>':'')
+    +(dir?'<a href="'+E(dir)+'" target="_blank" rel="noopener" style="'+btn+';background:#1a73e8;color:#fff;margin-top:18px">📍 '+E(mt_('Directions'))+'</a>':'')
+    +(s?'<button style="'+btn+';background:var(--g1);color:var(--ink,inherit)" onclick="hide(\'m-p15m\');try{openFolder(\''+J(s.id)+'\')}catch(e){}">'+E(mt_('Open the job'))+'</button>':'')
+    +(canEd?'<button style="'+btn+';background:var(--g1);color:var(--ink,inherit)" onclick="hide(\'m-p15m\');try{openMeet(\''+J(x.id)+'\')}catch(e){}">'+E(mt_('Edit'))+'</button>':'')
+    +'<button style="'+btn+';background:transparent;color:var(--g5)" onclick="hide(\'m-p15m\')">'+E(mt_('Close'))+'</button></div>';
+  show('m-p15m');};
 if(typeof window.nGo==='function'){window.nGo=async function(id){const x=(D.inbox||[]).find(n=>n.id===id);if(!x)return;x.read=true;try{save();}catch(e){}try{renderBell();}catch(e){}hideAll();
     let l=null;try{l=nLinkFor(x);}catch(e){}if(!l||typeof l!=='object')l=x.link||null;
     const ok=await goLink(l||{},x.msg);if(!ok)toast(tt('Nothing to open for this one'));};try{nGo=window.nGo;}catch(e){}}
