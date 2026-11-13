@@ -40,6 +40,8 @@ Deno.serve(async (req) => {
   // Baruch 11/5: tapping the phone notification opens exactly what it is about (task / job / inspection / O&R) — even before the app has the message
   if (lk && typeof lk === "object") payload.link = lk;
   if (badge !== undefined) payload.badge = badge;
+  // Baruch 11/12: only people set to "stacked" (Yossi) get several alerts put together in one card; everyone else gets each one on its own
+  if (emp.data?.notifStack === true) payload.stack = true;
   const { data: mine } = await sb.from("records").select("id,data,updated_at").eq("coll", "push").eq("deleted", false).eq("data->>who", to);
   let sent = 0; const errs: string[] = [];
   for (const r of mine ?? []) {
