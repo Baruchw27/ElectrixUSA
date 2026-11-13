@@ -26,7 +26,7 @@ const S_ES={'Mark rough done':'Marcar rough terminado','Ready for finishing':'Li
 'Hours':'Horas','People':'Personas','Spent':'Gastado','Who was here':'Quién estuvo','Schedule':'Horario','Material':'Material','Money spent':'Dinero gastado',
 'Per person, per day':'Por persona, por día','Came and left, each day':'Llegó y salió, cada día','Ordered and from the garage':'Pedido y del garaje','Material · gas · receipts':'Material · gasolina · recibos',
 'Next 7 days':'Próximos 7 días','Nobody scheduled here this week':'Nadie agendado aquí esta semana','No hours in this period.':'No hay horas en este período.','Nothing spent in this period.':'Nada gastado en este período.',
-'On site':'En el sitio','now':'ahora','Today':'Hoy','Write a note for everyone on this job…':'Escribe una nota para todos en este trabajo…','Add note':'Agregar nota','Remove this note?':'¿Quitar esta nota?','Remove':'Quitar',
+'On site':'En el sitio','now':'ahora','Today':'Hoy','Write a note for everyone on this job…':'Escribe una nota para todos en este trabajo…','Add note':'Agregar nota','Edit note':'Editar nota','Edit':'Editar','Remove this note?':'¿Quitar esta nota?','Remove':'Quitar',
 'Add a site manager':'Agregar un encargado','Done':'Hecho','open':'abiertas','done':'hechas','Open tasks':'Tareas abiertas','Done tasks':'Tareas hechas','Photos':'Fotos','Links':'Enlaces','Add task':'Agregar tarea',
 'Call':'Llamar','Text':'Mensaje','O&R':'O&R','Step':'Paso','Everything else about this job (GPS, sharing, remove)':'Todo lo demás de este trabajo (GPS, compartir, quitar)'};
 const T=s=>{if(ES_ON()&&S_ES[s])return S_ES[s];try{const r=t(s);return r||s}catch(e){return s}};
@@ -91,6 +91,7 @@ html[data-theme=dark] .j2card{box-shadow:0 0 0 1px var(--j2line)}
 .j2n{font-size:15px;line-height:1.42;padding-top:9px;white-space:pre-wrap;word-break:break-word}
 .j2n small{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--j2mut);margin-top:2px;white-space:normal}
 .j2n small button{background:none;border:0;color:var(--j2mut);font-size:12px;padding:0;cursor:pointer;text-decoration:underline}
+.j2n.j2ned{cursor:pointer}
 .j2n img{display:block;max-width:160px;max-height:120px;border-radius:10px;margin-top:6px;cursor:pointer}
 .j2muted{font-size:13.5px;color:var(--j2mut);padding-top:8px}
 .j2files{display:flex;gap:8px;margin-top:9px}
@@ -159,7 +160,7 @@ function tasks(s){const m=M();let L=[];
   const done=L.filter(j=>j.status==='done').sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));return {open,done};}
 function who(j){const to=j.to||[];if(!to.length)return '';try{const c=(D.crews||[]).find(c=>c.id===to[0]);if(c)return c.name;}catch(e){}return nm(to[0])+(to.length>1?' +'+(to.length-1):'');}
 function notes(s){const L=(s.notes||[]).map(n=>({id:n.id,txt:n.text||'',photo:n.photo||'',by:n.by,ts:n.ts||0,shared:1}));
-  try{if(typeof kMine==='function')kMine().filter(n=>n.site===s.id&&!n.trashed).forEach(n=>L.push({id:n.id,txt:[n.title,n.text].filter(Boolean).join('\n')||(n.items||[]).map(i=>(i.done?'✓ ':'• ')+i.t).join('\n'),photo:n.img||'',by:n.owner,ts:n.edited||n.created||0,mine:1}));}catch(e){}
+  try{if(typeof kMine==='function')kMine().filter(n=>n.site===s.id&&!n.trashed).forEach(n=>L.push({id:n.id,txt:[n.title,n.body||n.text].filter(Boolean).join('\n')||(n.items||[]).map(i=>(i.done?'✓ ':'• ')+i.t).join('\n'),photo:n.img||'',by:n.owner,ts:n.edited||n.created||0,mine:1}));}catch(e){}
   return L.filter(n=>n.txt||n.photo).sort((a,b)=>b.ts-a.ts);}
 function files(s){const m=M();const F=(s.files||[]).filter(f=>{try{return fileVisible(f,m)}catch(e){return true}}).filter(f=>f.kind!=='img').map(f=>({id:f.id,name:String(f.name||'File').replace(/\.(pdf|docx?|xlsx?|csv|dwg|jpe?g|png|heic)$/i,''),ts:f.ts,kind:/\.pdf$/i.test(f.name||'')||f.kind==='pdf'||/pdf/.test(f.type||'')?'PDF':(/\.(xlsx?|csv)$/i.test(f.name||'')?'XLS':/\.(docx?)$/i.test(f.name||'')?'DOC':/\.dwg$/i.test(f.name||'')?'DWG':'FILE'),file:1}));
   const Lk=(s.links||[]).filter(f=>{try{return fileVisible(f,m)}catch(e){return true}}).map(l=>({id:l.id,name:l.title||l.url,url:l.url,ts:l.ts||0,kind:'LINK'}));
@@ -236,7 +237,7 @@ function draw(){
    +'</div>';
   B.scrollTop=keep;}
 function taskRow(j){const d=j.status==='done';return '<div class="j2t'+(d?' dn':'')+'" onclick="P13.task(\''+J(j.id)+'\')"><button class="ck" aria-label="'+E(T('Done'))+'" onclick="event.stopPropagation();P13.done(\''+J(j.id)+'\')">'+(d?'<svg class="j2i s" viewBox="0 0 24 24" style="color:#fff"><path d="m5 12 5 5 9-10"/></svg>':'')+'</button><span class="nm">'+E(j.desc||j.title||'')+'</span><em>'+E(who(j))+'</em></div>';}
-function noteRow(n,s,m){const mine=!isW(m)&&(n.by===m.id||can(isBoss,m));return '<div class="j2n">'+E(n.txt)+(n.photo?'<img src="'+E(n.photo)+'" onclick="viewPhotos([this.src],0)" alt="">':'')+'<small><span>'+E(nm(n.by))+' · '+E(dt(n.ts))+'</span>'+(n.shared&&mine?'<button onclick="P13.delNote(\''+J(n.id)+'\')">'+E(T('Remove'))+'</button>':'')+'</small></div>';}
+function noteRow(n,s,m){const mine=!isW(m)&&(n.by===m.id||can(isBoss,m));const ed=(n.shared&&mine)||(n.mine&&n.by===m.id);return '<div class="j2n'+(ed?' j2ned':'')+'"'+(ed?' onclick="if(event.target.tagName!==\'IMG\'&&event.target.tagName!==\'BUTTON\')P13.editNote(\''+J(n.id)+'\','+(n.mine?1:0)+')"':'')+'>'+E(n.txt)+(n.photo?'<img src="'+E(n.photo)+'" onclick="viewPhotos([this.src],0)" alt="">':'')+'<small><span>'+E(nm(n.by))+' · '+E(dt(n.ts))+'</span>'+(ed?'<button onclick="event.stopPropagation();P13.editNote(\''+J(n.id)+'\','+(n.mine?1:0)+')">'+E(T('Edit'))+'</button>':'')+(n.shared&&mine?'<button onclick="event.stopPropagation();P13.delNote(\''+J(n.id)+'\')">'+E(T('Remove'))+'</button>':'')+'</small></div>';}
 function fileTile(f){const k=f.kind;const sub=k==='LINK'?(String(f.url||'').replace(/^https?:\/\/(www\.)?/,'').split('/')[0]):(f.ts?dt(f.ts):k);
   return (k==='LINK'?'<a class="j2f" href="'+E((()=>{try{return safeHref(f.url)}catch(e){return '#'}})())+'" target="_blank" rel="noopener">':'<div class="j2f" onclick="P13.openFile(\''+J(f.id)+'\')">')
    +'<span class="fi" style="background:'+(FCOL[k]||'#5d6470')+'">'+k+'</span><b>'+E(f.name)+'</b><small>'+E(sub)+'</small>'+(k==='LINK'?'</a>':'</div>');}
@@ -281,6 +282,15 @@ P13.setMgr=id=>{close('m-j2t');try{fdAddMgr(id);}catch(e){}setTimeout(refresh,20
 P13.rmMgr=id=>{try{fdRemoveMgr(id);}catch(e){}setTimeout(()=>{refresh();if(!$('m-j2s').classList.contains('hid'))P13.info();},200);};
 P13.addNote=()=>{const s=site();if(!s)return;
   sheet('m-j2t',T('Add note'),s.name,'<div class="j2body"><textarea id="j2note" class="j2in" rows="5" placeholder="'+E(T('Write a note for everyone on this job…'))+'"></textarea><button class="j2save" onclick="P13.saveNote()">'+E(T('Save'))+'</button></div>');setTimeout(()=>{const x=$('j2note');if(x)x.focus();},250);};
+// Baruch 11/12 (Shauly): a note on the job can be changed, not only added — tap it (or Edit)
+P13.editNote=(id,own)=>{const s=site();if(!s)return;
+  if(own){try{kOpen(id,true);lift();}catch(e){}return;}
+  const n=(s.notes||[]).find(x=>x.id===id);if(!n)return;
+  sheet('m-j2t',T('Edit note'),s.name,'<div class="j2body"><textarea id="j2noteE" class="j2in" rows="6"></textarea><button class="j2save" onclick="P13.saveEdit(\''+J(id)+'\')">'+E(T('Save'))+'</button></div>');
+  setTimeout(()=>{const x=$('j2noteE');if(x){x.value=n.text||'';x.focus();}},250);};
+P13.saveEdit=id=>{const s=site();const x=$('j2noteE');const v=x?x.value.trim():'';const n=s&&(s.notes||[]).find(q=>q.id===id);if(!n)return;
+  if(!v){P13.delNote(id);close('m-j2t');return;}
+  if(v!==(n.text||'')){n.text=v;n.edited=Date.now();n.editedBy=M().id;try{save();}catch(e){}}close('m-j2t');refresh();if(P13._cur==='notes'||($('m-j2s')&&!$('m-j2s').classList.contains('hid')))try{P13.notes();}catch(e){}};
 P13.saveNote=()=>{const s=site();const x=$('j2note');const v=x?x.value.trim():'';if(!s||!v)return;(s.notes=s.notes||[]).push({id:nid('nt'),text:v,photo:'',by:M().id,ts:Date.now(),phase:s.phase});try{save();}catch(e){}close('m-j2t');refresh();};
 function refresh(){if(!$('m-job2')||$('m-job2').classList.contains('hid'))return;draw();}
 P13.refresh=refresh;

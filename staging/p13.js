@@ -26,7 +26,7 @@ const S_ES={'Mark rough done':'Marcar rough terminado','Ready for finishing':'Li
 'Hours':'Horas','People':'Personas','Spent':'Gastado','Who was here':'Quién estuvo','Schedule':'Horario','Material':'Material','Money spent':'Dinero gastado',
 'Per person, per day':'Por persona, por día','Came and left, each day':'Llegó y salió, cada día','Ordered and from the garage':'Pedido y del garaje','Material · gas · receipts':'Material · gasolina · recibos',
 'Next 7 days':'Próximos 7 días','Nobody scheduled here this week':'Nadie agendado aquí esta semana','No hours in this period.':'No hay horas en este período.','Nothing spent in this period.':'Nada gastado en este período.',
-'On site':'En el sitio','now':'ahora','Today':'Hoy','Write a note for everyone on this job…':'Escribe una nota para todos en este trabajo…','Add note':'Agregar nota','Edit note':'Editar nota','edited':'editado','Edit':'Editar','Remove this note?':'¿Quitar esta nota?','Remove':'Quitar',
+'On site':'En el sitio','now':'ahora','Today':'Hoy','Write a note for everyone on this job…':'Escribe una nota para todos en este trabajo…','Add note':'Agregar nota','Edit note':'Editar nota','Edit':'Editar','Remove this note?':'¿Quitar esta nota?','Remove':'Quitar',
 'Add a site manager':'Agregar un encargado','Done':'Hecho','open':'abiertas','done':'hechas','Open tasks':'Tareas abiertas','Done tasks':'Tareas hechas','Photos':'Fotos','Links':'Enlaces','Add task':'Agregar tarea',
 'Call':'Llamar','Text':'Mensaje','O&R':'O&R','Step':'Paso','Everything else about this job (GPS, sharing, remove)':'Todo lo demás de este trabajo (GPS, compartir, quitar)'};
 const T=s=>{if(ES_ON()&&S_ES[s])return S_ES[s];try{const r=t(s);return r||s}catch(e){return s}};
@@ -237,7 +237,7 @@ function draw(){
    +'</div>';
   B.scrollTop=keep;}
 function taskRow(j){const d=j.status==='done';return '<div class="j2t'+(d?' dn':'')+'" onclick="P13.task(\''+J(j.id)+'\')"><button class="ck" aria-label="'+E(T('Done'))+'" onclick="event.stopPropagation();P13.done(\''+J(j.id)+'\')">'+(d?'<svg class="j2i s" viewBox="0 0 24 24" style="color:#fff"><path d="m5 12 5 5 9-10"/></svg>':'')+'</button><span class="nm">'+E(j.desc||j.title||'')+'</span><em>'+E(who(j))+'</em></div>';}
-function noteRow(n,s,m){return '<div class="j2n j2ned" onclick="if(event.target.tagName!==\'IMG\')P13.viewNote(\''+J(n.id)+'\','+(n.mine?1:0)+')">'+E(n.txt)+(n.photo?'<img src="'+E(n.photo)+'" onclick="viewPhotos([this.src],0)" alt="">':'')+'<small><span>'+E(nm(n.by))+' · '+E(dt(n.ts))+'</span></small></div>';}
+function noteRow(n,s,m){const mine=!isW(m)&&(n.by===m.id||can(isBoss,m));const ed=(n.shared&&mine)||(n.mine&&n.by===m.id);return '<div class="j2n'+(ed?' j2ned':'')+'"'+(ed?' onclick="if(event.target.tagName!==\'IMG\'&&event.target.tagName!==\'BUTTON\')P13.editNote(\''+J(n.id)+'\','+(n.mine?1:0)+')"':'')+'>'+E(n.txt)+(n.photo?'<img src="'+E(n.photo)+'" onclick="viewPhotos([this.src],0)" alt="">':'')+'<small><span>'+E(nm(n.by))+' · '+E(dt(n.ts))+'</span>'+(ed?'<button onclick="event.stopPropagation();P13.editNote(\''+J(n.id)+'\','+(n.mine?1:0)+')">'+E(T('Edit'))+'</button>':'')+(n.shared&&mine?'<button onclick="event.stopPropagation();P13.delNote(\''+J(n.id)+'\')">'+E(T('Remove'))+'</button>':'')+'</small></div>';}
 function fileTile(f){const k=f.kind;const sub=k==='LINK'?(String(f.url||'').replace(/^https?:\/\/(www\.)?/,'').split('/')[0]):(f.ts?dt(f.ts):k);
   return (k==='LINK'?'<a class="j2f" href="'+E((()=>{try{return safeHref(f.url)}catch(e){return '#'}})())+'" target="_blank" rel="noopener">':'<div class="j2f" onclick="P13.openFile(\''+J(f.id)+'\')">')
    +'<span class="fi" style="background:'+(FCOL[k]||'#5d6470')+'">'+k+'</span><b>'+E(f.name)+'</b><small>'+E(sub)+'</small>'+(k==='LINK'?'</a>':'</div>');}
@@ -275,22 +275,16 @@ P13.openFile=id=>{try{const s=site();const f=s&&(s.files||[]).find(x=>x.id===id)
   fdOpen(id);}catch(e){}};
 P13.orr=id=>{try{ORR.open(id);}catch(e){}};
 P13.readyInsp=()=>{const s=site();if(s)try{reqInsp(s.id);}catch(e){}setTimeout(refresh,300);};
-P13.delNote=id=>{const s=site();if(!s)return;const go=()=>{s.notes=(s.notes||[]).filter(n=>n.id!==id);try{save();}catch(e){}try{close('m-j2t');}catch(e){}refresh();if($('m-j2s')&&!$('m-j2s').classList.contains('hid'))try{P13.notes();}catch(e){}};try{askConfirm(T('Remove this note?'),go,T('Remove'));}catch(e){go();}};
+P13.delNote=id=>{const s=site();if(!s)return;const go=()=>{s.notes=(s.notes||[]).filter(n=>n.id!==id);try{save();}catch(e){}refresh();};try{askConfirm(T('Remove this note?'),go,T('Remove'));}catch(e){go();}};
 P13.addMgr=()=>{const s=site();if(!s)return;let left=[];try{const ids=mgrIds(s);left=siteMgrs().filter(e=>!ids.includes(e.id));}catch(e){}
   sheet('m-j2t',T('Add a site manager'),s.name,'<div class="j2body"><div class="j2card" style="padding:0">'+(left.length?left.map(e=>'<button class="j2pick" onclick="P13.setMgr(\''+J(e.id)+'\')">'+E(e.name)+'</button>').join(''):'<div class="j2muted" style="padding:14px 16px">—</div>')+'</div></div>');};
 P13.setMgr=id=>{close('m-j2t');try{fdAddMgr(id);}catch(e){}setTimeout(refresh,200);};
 P13.rmMgr=id=>{try{fdRemoveMgr(id);}catch(e){}setTimeout(()=>{refresh();if(!$('m-j2s').classList.contains('hid'))P13.info();},200);};
 P13.addNote=()=>{const s=site();if(!s)return;
   sheet('m-j2t',T('Add note'),s.name,'<div class="j2body"><textarea id="j2note" class="j2in" rows="5" placeholder="'+E(T('Write a note for everyone on this job…'))+'"></textarea><button class="j2save" onclick="P13.saveNote()">'+E(T('Save'))+'</button></div>');setTimeout(()=>{const x=$('j2note');if(x)x.focus();},250);};
-// Baruch 11/12 (Shauly): a note on the job can be changed — tap the note to open it; Edit and Remove are inside the note
-// (not on the list, so a tap on the list never starts editing by mistake)
-P13.viewNote=(id,own)=>{const s=site();if(!s)return;const m=M();
-  if(own){try{kOpen(id,false);lift();}catch(e){}return;}
-  const n=(s.notes||[]).find(x=>x.id===id);if(!n)return;const ok=!isW(m)&&(n.by===m.id||can(isBoss,m));
-  sheet('m-j2t',T('Note'),s.name,'<div class="j2body"><div class="j2card"><div class="j2n" style="padding:12px 0">'+E(n.text||'')+(n.photo?'<img src="'+E(n.photo)+'" onclick="viewPhotos([this.src],0)" alt="">':'')
-    +'<small><span>'+E(nm(n.by))+' · '+E(dt(n.ts||0))+(n.edited?' · '+E(T('edited'))+' '+E(dt(n.edited)):'')+'</span></small></div></div>'
-    +(ok?'<div style="display:flex;gap:10px;margin-top:12px"><button class="j2save" style="flex:1;margin:0" onclick="P13.editNote(\''+J(id)+'\')">'+E(T('Edit'))+'</button><button class="j2save" style="flex:1;margin:0;background:transparent;color:#d0453b;border:1px solid #d0453b" onclick="P13.delNote(\''+J(id)+'\')">'+E(T('Remove'))+'</button></div>':'')+'</div>');};
-P13.editNote=id=>{const s=site();if(!s)return;
+// Baruch 11/12 (Shauly): a note on the job can be changed, not only added — tap it (or Edit)
+P13.editNote=(id,own)=>{const s=site();if(!s)return;
+  if(own){try{kOpen(id,true);lift();}catch(e){}return;}
   const n=(s.notes||[]).find(x=>x.id===id);if(!n)return;
   sheet('m-j2t',T('Edit note'),s.name,'<div class="j2body"><textarea id="j2noteE" class="j2in" rows="6"></textarea><button class="j2save" onclick="P13.saveEdit(\''+J(id)+'\')">'+E(T('Save'))+'</button></div>');
   setTimeout(()=>{const x=$('j2noteE');if(x){x.value=n.text||'';x.focus();}},250);};
