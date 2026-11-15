@@ -102,10 +102,15 @@ const TOOLS={
       ...(H&&H.state!=='ok'&&a<Date.now()-115*864e5?{warning:'Older months could not be loaded from the server — the numbers may be low.'}:{}),
       how:'Same as Reports → Job cost: labor = hours × what each man was actually paid that week (his Fingercheck paycheck, overtime included); weeks with no paycheck yet use his hourly rate with overtime (estimate). Plus material receipts entered on the job and travel (paid in Fingercheck for this job, plus the app\'s trips for weeks not paid yet). Not included: payroll taxes, insurance, material bought without a receipt in the app.'};},
   // 11/15 (Baruch): material — find items in the catalog, and send a material request exactly like the Material screen does
-  find_material({query}){let L=[];try{const q2=String(query||'').replace(/\b(\d{1,2})\s*(?:-|to|\s)\s*(\d)\b/gi,'$1/$2');  // spoken '12-2' / '12 to 2' → catalog '12/2'
-    L=mcSearch(q2,8);if(!L.length&&q2!==query)L=mcSearch(query,8);if(!L.length)query=q2;
-    // spoken words often include extra words ('12-2 wire' vs 'Romex 12-2 250 ft') — if nothing fits, try each word and keep the best matches
-    if(!L.length){const sc=new Map();String(query||'').split(/\s+/).filter(w=>w.length>1).forEach(w=>mcSearch(w,20).forEach((x,i)=>sc.set(x,(sc.get(x)||0)+20-i+(/\d/.test(w)?30:0))));L=[...sc.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8).map(e=>e[0]);}}catch(e){}
+  find_material({query}){let L=[];try{
+    // spoken '12-2' / '12 to' / '12 two' → catalog '12/2'; plurals → singular; filler words (wire, roll…) dropped so they don't hide the real item
+    let q=String(query||'').toLowerCase().replace(/\b(\d{1,2})\s*(?:-|to\s|two\s)\s*(\d)\b/g,'$1/$2').replace(/\b(1[024]|[68])\s+(?:to|two)\b/g,'$1/2');
+    q=q.split(/\s+/).map(w=>/^[a-z]{4,}s$/.test(w)&&!/ss$/.test(w)?w.slice(0,-1):w).join(' ');
+    const core=q.split(/\s+/).filter(w=>!/^(wire|wires|cable|roll|coil|piece|pc|pcs|box|of|a|the|some|need)$/.test(w)).join(' ');
+    const sc=new Map(),add=(arr,b)=>arr.forEach((x,i)=>sc.set(x,Math.max(sc.get(x)||0,b-i)));
+    add(mcSearch(q,10),300);if(core&&core!==q)add(mcSearch(core,10),250);
+    if(sc.size<3)q.split(/\s+/).filter(w=>w.length>1).forEach(w=>mcSearch(w,15).forEach((x,i)=>sc.set(x,(sc.get(x)||0)+20-i+(/\d/.test(w)?30:0))));
+    L=[...sc.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10).map(e=>e[0]);}catch(e){}
     return L.map(x=>({stock_id:x.id,name:x.name,unit:x.unit||'pc',in_garage:+(x.qty||0)||0,brand:x.brand||''}));},
   create_material_request({job_id,address,items,when,get,note}){const m=M();try{if(!canRequestMat(m))return {error:'You cannot request material.'};}catch(e){}
     items=(Array.isArray(items)?items:[]).filter(x=>x&&(x.name||x.stock_id));if(!items.length)return {error:'no items'};
@@ -126,7 +131,7 @@ const TOOLS={
 
 // ── the conversation (11/15 v2: looks and works like the Claude app — clean page, live status, real listening) ──
 async function call(){const s=window.EX_sb?(await EX_sb.auth.getSession()).data.session:null;const C=window.EX_CFG||{};
-  const r=await fetch(C.url.replace(/\/$/,'')+'/functions/v1/ask',{method:'POST',headers:{'Content-Type':'application/json',apikey:C.anonKey,...(s?{Authorization:'Bearer '+s.access_token}:{})},body:JSON.stringify({messages:msgs,lang:LG()})});
+  const r=await fetch(C.url.replace(/\/$/,'')+'/functions/v1/ask',{method:'POST',headers:{'Content-Type':'application/json',apikey:C.anonKey,...(s?{Authorization:'Bearer '+s.access_token}:{})},body:JSON.stringify({messages:msgs,lang:LG(),started:(msgs.length<=1||!call.t0)?(call.t0=Date.now()):call.t0})});  // 11/15: the conversation's start time keeps the AI's instructions identical for the whole talk (its saved thinking is tied to them)
   const j=await r.json().catch(()=>({}));if(!r.ok)throw {status:r.status,error:j.error||'',busy:!!j.busy,wait:+j.wait||0};return j;}
 async function callRetry(){for(let k=0;;k++){try{return await call();}catch(e){if(e&&e.busy&&k<3){status=T('The AI is busy — trying again…');render(true);await new Promise(r=>setTimeout(r,Math.min(20,Math.max(4,e.wait||6*(k+1)))*1000));continue;}throw e;}}}
 function errText(e){const k=e&&e.error;if(e&&e.status===429||k==='limit')return T("Today's limit for Ask is used up — try again tomorrow.");if(k==='off')return T('Ask is not switched on yet — the AI key is missing.');

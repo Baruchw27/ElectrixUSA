@@ -77,18 +77,28 @@ Deno.serve(async (req) => {
   if (!messages.length) return json({ error: "bad request" }, 400);
   const { data: ok } = await sb.rpc("ai_take", { p_kind: "ask" });
   if (!ok) return json({ error: "limit" }, 429);
-  const today = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date());
+  // The instructions must stay word-for-word the same for the whole conversation: the AI's saved thinking from earlier steps is tied to them,
+  // and a changed clock minute made Anthropic refuse the next step ("Could not reach Ask", 11/15). So the time is the conversation's start time.
+  const st = Number(body.started), now = Date.now();
+  const t0 = st && st <= now + 60000 && st > now - 86400000 ? st : now;
+  const today = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(t0));
   const tools = TOOLS.map((t, i) => i === TOOLS.length - 1 ? { ...t, cache_control: { type: "ephemeral" } } : t);
   // the newest part of the talk is cached too, so a long conversation is not counted again on every step (keeps us under the per-minute limit)
   const last = messages[messages.length - 1];
   const msgs2 = messages.slice(0, -1).concat([{ ...last, content: typeof last.content === "string" ? [{ type: "text", text: last.content, cache_control: { type: "ephemeral" } }]
     : (Array.isArray(last.content) ? last.content.map((c: any, i: number) => i === last.content.length - 1 ? { ...c, cache_control: { type: "ephemeral" } } : c) : last.content) }]);
-  const payload = JSON.stringify({ model: "claude-sonnet-5-5", max_tokens: 1500, system: system(me, today, body.lang === "es" ? "es" : "en"), tools, messages: msgs2 });
-  let r: Response | null = null, j: any = {};
-  for (let k = 0; k < 2; k++) {   // busy / over the per-minute limit → wait a moment and try once more
+  let payload = JSON.stringify({ model: "claude-sonnet-5-5", max_tokens: 1500, system: system(me, today, body.lang === "es" ? "es" : "en"), tools, messages: msgs2 });
+  let r: Response | null = null, j: any = {}, stripped = false;
+  for (let k = 0; k < 3; k++) {   // busy / over the per-minute limit → wait a moment and try once more
     r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" }, body: payload });
     j = await r.json().catch(() => ({}));
-    if (r.ok || ![429, 500, 503, 529].includes(r.status) || k === 1) break;
+    // safety net (e.g. a phone on the older app, or a talk left open past midnight): old thinking that no longer fits is left out and the step is asked again
+    if (r.status === 400 && !stripped && /thinking/i.test(j?.error?.message ?? "")) {
+      stripped = true; console.error("anthropic thinking mismatch — retrying without old thinking");
+      const clean = msgs2.map((m: any) => Array.isArray(m.content) && m.role === "assistant" ? { ...m, content: m.content.filter((c: any) => c.type !== "thinking" && c.type !== "redacted_thinking") } : m).filter((m: any) => !Array.isArray(m.content) || m.content.length);
+      payload = JSON.stringify({ ...JSON.parse(payload), messages: clean }); continue;
+    }
+    if (r.ok || ![429, 500, 503, 529].includes(r.status) || k === 2) break;
     const wait = Math.min(6, Math.max(2, Number(r.headers.get("retry-after")) || 3));
     await new Promise((res) => setTimeout(res, wait * 1000));
   }
