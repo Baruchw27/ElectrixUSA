@@ -26,7 +26,7 @@ const CASES=[
  ['give me a summary of today',()=>used('day_summary')],
  ['did the material for 5 Glenbrook get ordered',()=>used('material_status',i=>i.job_id===job('5 Glenbrook'))],
  ['add a note to 5 Glenbrook: inspector wants a GFCI in the garage',()=>used('add_job_note',i=>i.job_id===job('5 Glenbrook')&&/gfci/i.test(i.text))],
- ['move 5 Glenbrook to finishing',()=>used('set_job_step',i=>i.job_id===job('5 Glenbrook')&&/inspection|finish/i.test(i.step))],
+ ['move 5 Glenbrook to rough complete',()=>used('set_job_step',i=>i.job_id===job('5 Glenbrook')&&/roughdone|rough/i.test(i.step))],
  ["what are Menachem's open tasks",()=>used('open_tasks',i=>i.person_id===who('Menachem'))],
  ["what's the schedule tomorrow",()=>used('schedule')],
 ];
