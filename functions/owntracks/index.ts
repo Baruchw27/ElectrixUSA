@@ -33,8 +33,9 @@ const placeOf = (d: any, site: Record<string, any>) => d.site && site[d.site] ? 
 async function load(adm: any, user: string, now: number) {
   const { data: er } = await adm.from("records").select("id,data").eq("coll", "emps").eq("id", user).maybeSingle();
   const emp = er?.data || {};
-  const { data: srows } = await adm.from("records").select("id,data").eq("coll", "sites").eq("deleted", false);
-  const site: Record<string, any> = {}; for (const s of srows || []) site[s.id] = s.data || {};
+  // 11/14 (speed): only the five fields this function uses — not every job's notes, files and links on every report
+  const { data: srows } = await adm.from("records").select("id,name:data->name,lat:data->lat,lng:data->lng,rad:data->rad,stage:data->stage").eq("coll", "sites").eq("deleted", false);
+  const site: Record<string, any> = {}; for (const s of srows || []) site[s.id] = { name: s.name ?? undefined, lat: s.lat ?? undefined, lng: s.lng ?? undefined, rad: s.rad ?? undefined, stage: s.stage ?? undefined };
   const { data: pr } = await adm.from("records").select("id,data").eq("coll", "punches").eq("deleted", false).eq("data->>who", user).gte("data->>in", String(now - 20 * 3600000));
   const open = (pr || []).map((r: any) => ({ id: r.id, d: r.data || {} }))
     .filter((x: any) => x.d.out == null && !x.d.voided && !x.d.pending && x.d.src !== "fingercheck").sort((a: any, b: any) => Number(b.d.in) - Number(a.d.in))[0] || null;
