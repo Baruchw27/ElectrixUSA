@@ -32,6 +32,10 @@ const TOOLS = [
     input_schema: { type: "object", properties: { job_id: { type: "string" } } } },
   { name: "job_cost", description: "What a job cost — the same numbers as Reports → Job cost: labor (hours × what each man was actually paid that week per his Fingercheck paycheck, overtime included; his hourly rate when there's no paycheck yet), material receipts entered on the job, and travel. All time, or between two dates (YYYY-MM-DD). Owner and Payroll only.",
     input_schema: { type: "object", properties: { job_id: { type: "string" }, from: { type: "string" }, to: { type: "string" } }, required: ["job_id"] } },
+  { name: "find_material", description: "Search the company's material catalog (Leviton devices, wire, boxes, breakers…) by what the person said. Returns stock_id, name, unit and how many are in the garage. Use it for every item before create_material_request.",
+    input_schema: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } },
+  { name: "create_material_request", description: "Send a material request to Menachem, exactly like the Material screen. job_id from find_jobs (or address for a job not in the app). items: [{stock_id from find_material if one clearly fits, name, qty, unit}]. when: 'Now' | 'Tomorrow morning' | 'This week' (default Now). get: 'deliver' (store delivers to the job, default) | 'garage' (take from the garage) | 'pickup' (pick up at the store). note: optional.",
+    input_schema: { type: "object", properties: { job_id: { type: "string" }, address: { type: "string" }, items: { type: "array", items: { type: "object", properties: { stock_id: { type: "string" }, name: { type: "string" }, qty: { type: "number" }, unit: { type: "string" } }, required: ["name", "qty"] } }, when: { type: "string" }, get: { type: "string" }, note: { type: "string" } }, required: ["items"] } },
   { name: "open_screen", description: "Open a screen of the app: home, jobs (tasks), sites (jobs list), punch (time clock), hours, sched (schedule), cal (calendar), mat (material), team, orr, rep (reports), more.",
     input_schema: { type: "object", properties: { screen: { type: "string" } }, required: ["screen"] } },
 ];
@@ -48,6 +52,7 @@ function system(me: any, today: string, lang: string) {
     "Names and addresses are often spoken: match loosely ('haddash' may be 'Hadas', 'Nachum' is Menachem). If more than one job or person fits and it matters, ask which one (list the choices) instead of guessing; if one clearly fits, go ahead.",
     "Actions: open_job / open_screen just open the screen — do them right away when asked. create_task sends a real task with a notification: do it when the person clearly asks for a task; say exactly who it went to and what. Do nothing they did not ask for.",
     "Money: when asked what a job cost, use job_cost and give the total plus the parts (labor, material, travel) — it is the same as Reports → Job cost. Mention if some weeks are estimates (no paycheck yet), anyone with no pay info, and that payroll taxes and insurance are not included. job_cost works only for the owner and Payroll; for anyone else say costs are only for the owner and Payroll. Never give money numbers from anywhere else, and don't volunteer a person's hourly rate unless asked by the owner or Payroll.",
+    "Material: when they ask for material, look up each item with find_material and send it with create_material_request (it goes to Menachem, like the Material screen). Spoken amounts can be misheard ('$500 switches' = 500 switches; '12 to wire' / '12-2 wire' = 12/2 cable — the catalog writes it 12/2). Electrix uses Leviton. A 'roll' of 12/2 is a 250 ft coil; if it is not clear whether they mean Romex (NM-B) or MC, ask. If an item clearly matches one catalog item, use it; if several fit and the difference matters (e.g. switch type or color), ask one short question listing the choices; otherwise send it as written. Say exactly what was sent, for which job.",
     "You cannot delete, change hours or punches, send emails or messages outside the app — say so and point to the screen where they can do it.",
   ].join("\n");
 }
@@ -74,12 +79,23 @@ Deno.serve(async (req) => {
   if (!ok) return json({ error: "limit" }, 429);
   const today = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date());
   const tools = TOOLS.map((t, i) => i === TOOLS.length - 1 ? { ...t, cache_control: { type: "ephemeral" } } : t);
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: "claude-sonnet-5-5", max_tokens: 1500, system: system(me, today, body.lang === "es" ? "es" : "en"), tools, messages }),
-  });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) return json({ error: j?.error?.message ?? "ai error" }, 502);
+  // the newest part of the talk is cached too, so a long conversation is not counted again on every step (keeps us under the per-minute limit)
+  const last = messages[messages.length - 1];
+  const msgs2 = messages.slice(0, -1).concat([{ ...last, content: typeof last.content === "string" ? [{ type: "text", text: last.content, cache_control: { type: "ephemeral" } }]
+    : (Array.isArray(last.content) ? last.content.map((c: any, i: number) => i === last.content.length - 1 ? { ...c, cache_control: { type: "ephemeral" } } : c) : last.content) }]);
+  const payload = JSON.stringify({ model: "claude-sonnet-5-5", max_tokens: 1500, system: system(me, today, body.lang === "es" ? "es" : "en"), tools, messages: msgs2 });
+  let r: Response | null = null, j: any = {};
+  for (let k = 0; k < 2; k++) {   // busy / over the per-minute limit → wait a moment and try once more
+    r = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" }, body: payload });
+    j = await r.json().catch(() => ({}));
+    if (r.ok || ![429, 500, 503, 529].includes(r.status) || k === 1) break;
+    const wait = Math.min(6, Math.max(2, Number(r.headers.get("retry-after")) || 3));
+    await new Promise((res) => setTimeout(res, wait * 1000));
+  }
+  if (!r!.ok) {
+    const msg = j?.error?.message ?? "ai error"; console.error("anthropic", r!.status, j?.error?.type, msg);
+    const busy = [429, 500, 503, 529].includes(r!.status);
+    return json({ error: msg, status: r!.status, busy, wait: Number(r!.headers.get("retry-after")) || 0 }, busy ? 503 : 502);
+  }
   return json({ content: j.content ?? [], stop_reason: j.stop_reason });
 });
