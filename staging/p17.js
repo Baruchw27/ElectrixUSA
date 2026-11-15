@@ -66,11 +66,12 @@ const TOOLS={
   open_tasks({person_id,job_id}){const L=(D.jobs||[]).filter(j=>j.status!=='done'&&!j.deleted&&(!job_id||j.site===job_id)&&(!person_id||tosOf(j).includes(person_id)||j.from===person_id));
     return {count:L.length,tasks:L.slice(0,25).map(j=>({to:tosOf(j).map(x=>nm(x)||crewName(x)),what:String(j.desc||'').slice(0,100),job:j.site?sname(j.site):'',due:j.due||'',from:nm(j.from),days_old:Math.floor((Date.now()-(j.ts||0))/864e5),priority:!!j.pri}))};},
   async hours({from,to,person_id,job_id}){const a=dayStart(from),b=dayStart(to)+864e5;if(!(a<b))return {error:'bad dates'};
-    try{if(a<Date.now()-118*864e5&&window.EX_loadRange)await window.EX_loadRange('punches',a,b);}catch(e){}
+    // older months come from the server — only the person/job asked about, so nothing gets cut off
+    let part=false;try{if(a<Date.now()-118*864e5&&window.EX_loadRange){const r=await window.EX_loadRange('punches',a,Math.min(b,Date.now()),{site:job_id||null,who:person_id||null,limit:5000});part=!r||!r.ok||!!r.full;}}catch(e){part=true;}
     const m=M();const ps=hrPunches(a,b,p=>(!person_id||p.who===person_id)&&(!job_id||p.site===job_id)&&(()=>{try{const e=(D.emps||[]).find(x=>x.id===p.who);return p.who===m.id||seesHoursOf(m,e);}catch(_){return true;}})());
     const add=(o,k,v)=>{o[k]=+((o[k]||0)+v).toFixed(2);};const byP={},byJ={},byD={};let tot=0;
     ps.forEach(p=>{const h=punchDur(p);tot+=h;add(byP,nm(p.who),h);add(byJ,p.site?sname(p.site):(p.newJob&&p.newJob.text)||'(no job)',h);add(byD,dk(p.in),h);});
-    return {from,to,total:+tot.toFixed(2),by_person:byP,by_job:byJ,by_day:byD,shifts:ps.length};},
+    const out={from,to,total:+tot.toFixed(2),by_person:byP,by_job:byJ,by_day:byD,shifts:ps.length};if(part)out.warning='Some older entries could not be loaded — the numbers may be low. Ask for one job or one person, or a shorter period.';return out;},
   working_now(){const now=Date.now(),m=M();const open=(D.punches||[]).filter(p=>!p.out&&!p.voided&&p.in>now-20*36e5&&p.in<=now);
     const seen=e=>{try{return p=>p.who===m.id||seesHoursOf(m,(D.emps||[]).find(x=>x.id===p.who));}catch(_){return ()=>true;}};
     const L=open.filter(seen()).map(p=>({who:nm(p.who),job:p.site?sname(p.site):(p.newJob&&p.newJob.text)||'',since:hm(p.in),away:p.away?hm(p.away):''}));
@@ -84,13 +85,14 @@ const TOOLS={
     const s=(D.sites||[]).find(x=>x.id===job_id);if(!s)return {error:'no such job'};
     let a=from?dayStart(from):Date.UTC(2023,0,1),b=to?dayStart(to)+864e5:Date.now()+864e5;
     // this job's clock entries for the whole period (older months come from the server)
-    try{if(window.EX_loadRange)await window.EX_loadRange('punches',a,b,{site:job_id,limit:5000});}catch(e){}
+    let jpart=false;try{if(window.EX_loadRange){const r=await window.EX_loadRange('punches',a,Math.min(b,Date.now()),{site:job_id,limit:5000});jpart=!r||!r.ok||!!r.full;}}catch(e){jpart=true;}
     let mine=hrPunches(a,b,p=>p.site===job_id);if(!mine.length)return {job:s.name,note:'No clock hours on this job in that period.',labor_cost:0};
     const first=Math.min(...mine.map(p=>p.in)),last=Math.max(...mine.map(p=>p.in));
     const W=x=>{try{return weekStart(x).getTime();}catch(e){const d=new Date(x);d.setHours(0,0,0,0);d.setDate(d.getDate()-d.getDay());return d.getTime();}};
     const wa=W(first),wb=W(last)+7*864e5;
     // everyone's hours in those weeks, to know who went over 40 (overtime is shared out over the jobs of that week)
-    try{if(window.EX_loadRange&&wa<Date.now()-118*864e5)await window.EX_loadRange('punches',wa,Math.min(wb,Date.now()-110*864e5));}catch(e){}
+    let part=false;const people=[...new Set(mine.map(p=>p.who))];
+    if(window.EX_loadRange&&wa<Date.now()-118*864e5){const hi=Math.min(wb,Date.now());for(let i=0;i<people.length;i+=4)await Promise.all(people.slice(i,i+4).map(w=>window.EX_loadRange('punches',wa,hi,{who:w,limit:5000}).then(r=>{if(!r||!r.ok||r.full)part=true;}).catch(()=>{part=true;})));}
     try{if(window.EX_loadRange&&wa<Date.now()-118*864e5)await window.EX_loadRange('travel',wa,wb);}catch(e){}
     mine=hrPunches(a,b,p=>p.site===job_id);
     const wk={};hrPunches(wa,wb).forEach(p=>{const k=p.who+'|'+W(p.in);const h=punchDur(p);const o=wk[k]||(wk[k]={all:0,job:0});o.all+=h;if(p.site===job_id&&p.in>=a&&p.in<b)o.job+=h;});
@@ -103,7 +105,7 @@ const TOOLS={
     const hrs=mine.reduce((q,p)=>q+punchDur(p),0);const r2=v=>Math.round(v*100)/100;
     return {job:s.name,period:dk(first)+' to '+dk(last),hours:r2(hrs),labor_cost:r2(lab),of_which_overtime_extra:r2(ot),travel_pay:r2(trav),travel_trips:tv.length,receipts:r2(exp),receipts_count:ex.length,total:r2(lab+trav+exp),
       by_person:Object.fromEntries(Object.entries(per).sort((x,y)=>y[1].hours-x[1].hours).map(([w,P])=>[nm(w),{hours:r2(P.hours),overtime_hours:r2(P.ot_hours),cost:rateOf(w)==null?'no rate in the app':r2(P.cost)}])),
-      hours_with_no_rate:r2(noRateH),people_with_no_rate:Object.keys(noRate),
+      hours_with_no_rate:r2(noRateH),people_with_no_rate:Object.keys(noRate),...(jpart?{warning:'Some of this job\'s older entries could not be loaded — the numbers may be low.'}:part?{warning:'Some older entries could not be loaded — overtime may be a little low.'}:{}),
       how:"Labor = each person's hours on this job × their hourly rate saved in the app today (not the rate they had back then); overtime: hours over 40 in a week (Sun–Sat, all jobs) get the extra half, shared over that week's jobs. Plus travel pay for this job and receipts entered on this job. NOT included: material (the app has no material prices), payroll taxes and insurance."};},
   open_screen({screen}){const ok=['home','jobs','sites','punch','hours','sched','cal','mat','team','orr','rep','more','exp','est','code','msg','trello'];if(!ok.includes(screen))return {ok:false,error:'unknown screen'};
     closeAsk();goTab(screen);return {ok:true,_act:'↗ '+T('Opened')+' '+screen};},
