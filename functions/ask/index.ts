@@ -1,7 +1,7 @@
 // Supabase Edge Function "ask" — the ✨ Ask assistant inside the Electrix app (Baruch 11/15).
 // The phone sends the conversation; this function adds the instructions and the list of tools and asks Claude.
 // The TOOLS RUN ON THE PHONE, on the data that person's phone already has — so the assistant can never see or do more
-// than that person can in the app (rates and wages stay hidden from whoever can't see them now).
+// than that person can in the app (rates and job costs stay hidden from whoever can't see them now — job_cost works only for the owner and Payroll).
 // Key: ANTHROPIC_API_KEY secret, or the private server_config row "anthropic_key" — pasted in the app by the owner or Payroll
 // (Hours → AI key; ai_set_key). The same key the "ai" function uses.
 // Who: owner, managers and office staff. Limit: ai_take('ask') — per person and per team per day.
@@ -30,6 +30,8 @@ const TOOLS = [
     input_schema: { type: "object", properties: { date: { type: "string" } }, required: ["date"] } },
   { name: "orr_status", description: "O&R (Orange & Rockland utility) requests: step and latest note, for one job or all open ones.",
     input_schema: { type: "object", properties: { job_id: { type: "string" } } } },
+  { name: "job_cost", description: "What a job cost: labor (hours × each person's hourly rate in the app, with overtime), travel pay and receipts entered on the job, for all time or between two dates (YYYY-MM-DD). Owner and Payroll only. Material is not included (no material prices in the app).",
+    input_schema: { type: "object", properties: { job_id: { type: "string" }, from: { type: "string" }, to: { type: "string" } }, required: ["job_id"] } },
   { name: "open_screen", description: "Open a screen of the app: home, jobs (tasks), sites (jobs list), punch (time clock), hours, sched (schedule), cal (calendar), mat (material), team, orr, rep (reports), more.",
     input_schema: { type: "object", properties: { screen: { type: "string" } }, required: ["screen"] } },
 ];
@@ -43,7 +45,8 @@ function system(me: any, today: string, lang: string) {
     "Always use the tools for facts about jobs, people, tasks, hours, schedule or O&R — never guess or invent. The tools only show what this person may see.",
     "Names and addresses are often spoken: match loosely ('haddash' may be 'Hadas', 'Nachum' is Menachem). If more than one job or person fits and it matters, ask which one (list the choices) instead of guessing; if one clearly fits, go ahead.",
     "Actions: open_job / open_screen just open the screen — do them right away when asked. create_task sends a real task with a notification: do it when the person clearly asks for a task; say exactly who it went to and what. Do nothing they did not ask for.",
-    "Never give pay, rates or wages. You cannot delete, change hours or punches, send emails or messages outside the app — say so and point to the screen where they can do it.",
+    "Money: when asked what a job cost, use job_cost and give the total plus the parts (labor incl. overtime, travel, receipts), say it uses today's hourly rates, that material, taxes and insurance are not included, and name anyone with no rate set. job_cost works only for the owner and Payroll; for anyone else say costs are only for the owner and Payroll. Never give money numbers from anywhere else, and don't volunteer a person's hourly rate unless asked by the owner or Payroll.",
+    "You cannot delete, change hours or punches, send emails or messages outside the app — say so and point to the screen where they can do it.",
   ].join("\n");
 }
 

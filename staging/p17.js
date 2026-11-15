@@ -80,6 +80,31 @@ const TOOLS={
     return {date,crews:out};},
   orr_status({job_id}){const L=(D.orr||[]).filter(o=>!o.deleted&&(job_id?o.site===job_id:o.step!=='done'));
     return {count:L.length,requests:L.slice(0,30).map(o=>({job:o.site?sname(o.site):(o.addr||''),wo:o.wo||'',step:o.step||'',last_note:(((o.log||[]).slice(-1)[0]||{}).txt||'').slice(0,160)}))};},
+  async job_cost({job_id,from,to}){const m=M();if(!(m&&(m.role==='owner'||(m.role==='office'&&m.title==='Payroll'))))return {error:'Costs are only for the owner and Payroll.'};
+    const s=(D.sites||[]).find(x=>x.id===job_id);if(!s)return {error:'no such job'};
+    let a=from?dayStart(from):Date.UTC(2023,0,1),b=to?dayStart(to)+864e5:Date.now()+864e5;
+    // this job's clock entries for the whole period (older months come from the server)
+    try{if(window.EX_loadRange)await window.EX_loadRange('punches',a,b,{site:job_id,limit:5000});}catch(e){}
+    let mine=hrPunches(a,b,p=>p.site===job_id);if(!mine.length)return {job:s.name,note:'No clock hours on this job in that period.',labor_cost:0};
+    const first=Math.min(...mine.map(p=>p.in)),last=Math.max(...mine.map(p=>p.in));
+    const W=x=>{try{return weekStart(x).getTime();}catch(e){const d=new Date(x);d.setHours(0,0,0,0);d.setDate(d.getDate()-d.getDay());return d.getTime();}};
+    const wa=W(first),wb=W(last)+7*864e5;
+    // everyone's hours in those weeks, to know who went over 40 (overtime is shared out over the jobs of that week)
+    try{if(window.EX_loadRange&&wa<Date.now()-118*864e5)await window.EX_loadRange('punches',wa,Math.min(wb,Date.now()-110*864e5));}catch(e){}
+    try{if(window.EX_loadRange&&wa<Date.now()-118*864e5)await window.EX_loadRange('travel',wa,wb);}catch(e){}
+    mine=hrPunches(a,b,p=>p.site===job_id);
+    const wk={};hrPunches(wa,wb).forEach(p=>{const k=p.who+'|'+W(p.in);const h=punchDur(p);const o=wk[k]||(wk[k]={all:0,job:0});o.all+=h;if(p.site===job_id&&p.in>=a&&p.in<b)o.job+=h;});
+    const per={};let lab=0,ot=0,noRateH=0;const noRate={};
+    Object.entries(wk).forEach(([k,o])=>{if(!o.job)return;const who=k.split('|')[0];const r=rateOf(who);const otH=o.all>40?(o.all-40)*o.job/o.all:0;
+      const P=per[who]||(per[who]={hours:0,ot_hours:0,cost:0});P.hours+=o.job;P.ot_hours+=otH;
+      if(r==null){noRateH+=o.job;noRate[nm(who)]=(noRate[nm(who)]||0)+o.job;return;}const c=o.job*r+otH*r*0.5;P.cost+=c;lab+=c;ot+=otH*r*0.5;});
+    const tv=(D.travel||[]).filter(x=>x.site===job_id&&travelCounts(x)&&(()=>{const t=new Date(x.date+'T12:00').getTime();return t>=a&&t<b;})());const trav=tv.reduce((q,x)=>q+travelPayOf(x),0);
+    const ex=(D.exps||[]).filter(x=>x.site===job_id&&!x.deleted&&x.status!=='rejected');const exp=ex.reduce((q,x)=>q+(+x.amt||0),0);
+    const hrs=mine.reduce((q,p)=>q+punchDur(p),0);const r2=v=>Math.round(v*100)/100;
+    return {job:s.name,period:dk(first)+' to '+dk(last),hours:r2(hrs),labor_cost:r2(lab),of_which_overtime_extra:r2(ot),travel_pay:r2(trav),travel_trips:tv.length,receipts:r2(exp),receipts_count:ex.length,total:r2(lab+trav+exp),
+      by_person:Object.fromEntries(Object.entries(per).sort((x,y)=>y[1].hours-x[1].hours).map(([w,P])=>[nm(w),{hours:r2(P.hours),overtime_hours:r2(P.ot_hours),cost:rateOf(w)==null?'no rate in the app':r2(P.cost)}])),
+      hours_with_no_rate:r2(noRateH),people_with_no_rate:Object.keys(noRate),
+      how:"Labor = each person's hours on this job × their hourly rate saved in the app today (not the rate they had back then); overtime: hours over 40 in a week (Sun–Sat, all jobs) get the extra half, shared over that week's jobs. Plus travel pay for this job and receipts entered on this job. NOT included: material (the app has no material prices), payroll taxes and insurance."};},
   open_screen({screen}){const ok=['home','jobs','sites','punch','hours','sched','cal','mat','team','orr','rep','more','exp','est','code','msg','trello'];if(!ok.includes(screen))return {ok:false,error:'unknown screen'};
     closeAsk();goTab(screen);return {ok:true,_act:'↗ '+T('Opened')+' '+screen};},
 };
@@ -90,7 +115,7 @@ async function call(){const s=window.EX_sb?(await EX_sb.auth.getSession()).data.
   const j=await r.json().catch(()=>({}));if(!r.ok)throw {status:r.status,error:j.error||''};return j;}
 function errText(e){const k=e&&e.error;if(e&&e.status===429||k==='limit')return T("Today's limit for Ask is used up — try again tomorrow.");if(k==='off')return T('Ask is not switched on yet — the AI key is missing.');
   if(e&&(e.status===401||e.status===403))return T('Ask is for the owner, managers and office.');return T('Could not reach Ask — check the signal and try again.');}
-async function send(text){text=String(text||'').trim();if(!text||busy)return;busy=true;
+async function send(text){text=String(text||'').trim();if(!text||busy)return;busy=true;try{speechSynthesis.cancel();}catch(e){}P17._spoken=log.length;
   msgs.push({role:'user',content:text});log.push({who:'me',text});render(true);
   try{for(let round=0;round<8;round++){const j=await call();const content=j.content||[];msgs.push({role:'assistant',content});
       const said=content.filter(c=>c.type==='text').map(c=>c.text).join('\n').trim();if(said)log.push({who:'ai',text:said});
@@ -100,11 +125,12 @@ async function send(text){text=String(text||'').trim();if(!text||busy)return;bus
         results.push({type:'tool_result',tool_use_id:u.id,content:JSON.stringify(clean).slice(0,12000)});}
       msgs.push({role:'user',content:results});render(true);}
   }catch(e){log.push({who:'err',text:errText(e)});msgs.pop();}
-  busy=false;render(true);}
+  busy=false;render(true);
+  if(talk||heard){const said=log.slice(P17._spoken).filter(x=>x.who==='ai').map(x=>x.text).join('. ');if(said)speak(said);}heard=false;P17._spoken=log.length;}
 function bubble(x,i){if(x.who==='me')return '<div class="p17b me">'+E(x.text)+'</div>';
   if(x.who==='act')return '<div class="p17act">'+E(x.text)+(x.undo?' <button class="p17undo" onclick="P17.undo(\''+E(x.undo)+'\')">'+E(T('Undo'))+'</button>':'')+'</div>';
   if(x.who==='err')return '<div class="p17act p17err">⚠ '+E(x.text)+'</div>';
-  return '<div class="p17b ai">'+(typeof fmtText==='function'?fmtText(x.text):E(x.text).replace(/\n/g,'<br>'))+'</div>';}
+  return '<div class="p17b ai" onclick="P17.say('+i+')" title="tap to hear it">'+E(x.text).replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>')+'</div>';}
 function render(scroll){const b=$('p17list');if(!b)return;
   b.innerHTML=(log.length?log.map(bubble).join(''):'<div class="p17hint">'+E(T('Ask anything, or tell me what to do. For example:'))+'<div class="p17ex" onclick="P17.ex(this)">'+E(T('Pull up 6 Hadassah'))+'</div><div class="p17ex" onclick="P17.ex(this)">'+E(T('Make a task for Menachem to do billing for 5 Garfield'))+'</div><div class="p17ex" onclick="P17.ex(this)">'+E(T('Who is working now?'))+'</div><div class="p17ex" onclick="P17.ex(this)">'+E(T('How many hours on 14 Dorset this month?'))+'</div></div>')
     +(busy?'<div class="p17b ai p17dots"><span></span><span></span><span></span></div>':'');
@@ -113,15 +139,25 @@ P17.ex=el=>{const i=$('p17in');i.value=el.textContent;i.focus();};
 P17.undo=id=>{try{P14.cancel(id);}catch(e){}};
 P17.go=()=>{const i=$('p17in');const v=i.value;i.value='';i.style.height='';send(v);};
 P17.clear=()=>{if(busy)return;msgs=[];log=[];render();};
-P17.open=()=>{if(!allowed())return;build();try{$('p17t').textContent='✨ '+(LG()==='es'?'Preguntar':'Ask');$('p17nw').textContent=T('New');$('p17in').placeholder=T('Ask or tell me what to do…');}catch(e){}$('p17').classList.remove('hid');render(true);setTimeout(()=>{try{$('p17in').focus();}catch(e){}},150);};
-P17.close=closeAsk;
+P17.open=()=>{if(!allowed())return;build();try{const b=$('p17spk');b.textContent=talk?'🔊':'🔇';b.classList.toggle('on',talk);}catch(e){}try{$('p17t').textContent='✨ '+(LG()==='es'?'Preguntar':'Ask');$('p17nw').textContent=T('New');$('p17in').placeholder=T('Ask or tell me what to do…');}catch(e){}$('p17').classList.remove('hid');render(true);setTimeout(()=>{try{$('p17in').focus();}catch(e){}},150);};
+P17.close=()=>{try{speechSynthesis.cancel();}catch(e){}closeAsk();};
 P17.mic=()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast(T("Voice doesn't work on this phone — type it or use the keyboard mic."));return;}
   const r=new SR();r.lang=LG()==='es'?'es-US':'en-US';r.interimResults=true;r.continuous=false;const i=$('p17in');const base=i.value?i.value+' ':'';const mb=$('p17mic');mb.classList.add('on');
-  r.onresult=e=>{let s='';for(const x of e.results)s+=x[0].transcript;i.value=base+s;};r.onend=()=>{mb.classList.remove('on');if(i.value.trim())P17.go();};r.onerror=()=>mb.classList.remove('on');try{r.start();}catch(e){mb.classList.remove('on');}};
+  r.onresult=e=>{let s='';for(const x of e.results)s+=x[0].transcript;i.value=base+s;};r.onend=()=>{mb.classList.remove('on');if(i.value.trim()){heard=true;P17.go();}};r.onerror=()=>mb.classList.remove('on');try{r.start();}catch(e){mb.classList.remove('on');}};
+// 🔊 reads the answers out loud (the phone's own voice — free, no AI). On/off is remembered; asking with 🎤 always answers out loud.
+let talk=false,heard=false;try{talk=localStorage.getItem('p17talk')==='1';}catch(e){}
+const cleanSay=s=>String(s||'').replace(/\*\*/g,'').replace(/^[-•]\s*/gm,'').replace(/[✨📂✅↗⚠]/g,'').replace(/(\d),(\d{3})/g,'$1$2').replace(/\$(\d+(?:\.\d+)?)/g,'$1 dollars');
+function speak(text){try{const ss=window.speechSynthesis;if(!ss)return;ss.cancel();const t=cleanSay(text);if(!t.trim())return;
+  const es=/[ñáéíóú¿¡]/i.test(t)||/\b(el|la|los|las|para|con|que|está|horas)\b/i.test(t)&&!/\b(the|and|with|hours)\b/i.test(t);
+  const lang=es?'es-US':'en-US';const vs=ss.getVoices();const v=vs.find(v=>v.lang===lang&&/natural|enhanced|premium|samantha|google|neural/i.test(v.name))||vs.find(v=>v.lang===lang)||vs.find(v=>v.lang&&v.lang.slice(0,2)===lang.slice(0,2));
+  (t.match(/[^.!?\n]{1,220}[.!?]?/g)||[t]).filter(x=>x.trim().replace(/[.,!? ]/g,'')).forEach(x=>{const u=new SpeechSynthesisUtterance(x.trim());u.lang=lang;u.rate=1.02;if(v)u.voice=v;ss.speak(u);});}catch(e){}}
+P17.say=i=>{const x=log[i];if(x)speak(x.text);};
+P17.talk=()=>{talk=!talk;try{localStorage.setItem('p17talk',talk?'1':'0');}catch(e){}if(!talk)try{speechSynthesis.cancel();}catch(e){}const b=$('p17spk');if(b){b.textContent=talk?'🔊':'🔇';b.classList.toggle('on',talk);}toast(talk?T('Answers will be read out loud'):T('Answers will not be read out loud'));};
+P17._spoken=0;
 P17.tools=TOOLS;P17._score=score;
 
 function build(){if($('p17'))return;const o=document.createElement('div');o.id='p17';o.className='hid';
-  o.innerHTML='<div class="p17top"><button class="p17x" onclick="P17.close()" aria-label="close">✕</button><b id="p17t">✨ '+(LG()==='es'?'Preguntar':'Ask')+'</b><button class="p17new" id="p17nw" onclick="P17.clear()">'+E(T('New'))+'</button></div>'
+  o.innerHTML='<div class="p17top"><button class="p17x" onclick="P17.close()" aria-label="close">✕</button><b id="p17t">✨ '+(LG()==='es'?'Preguntar':'Ask')+'</b><button class="p17new" id="p17spk" onclick="P17.talk()" aria-label="read answers out loud">🔇</button><button class="p17new" id="p17nw" onclick="P17.clear()">'+E(T('New'))+'</button></div>'
     +'<div id="p17list"></div>'
     +'<div class="p17row"><button id="p17mic" class="p17mic" onclick="P17.mic()" aria-label="mic">🎤</button><textarea id="p17in" data-nomic="1" rows="1" placeholder="'+E(T('Ask or tell me what to do…'))+'" oninput="this.style.height=\'auto\';this.style.height=Math.min(120,this.scrollHeight)+\'px\'" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();P17.go();}"></textarea><button id="p17send" class="p17send" onclick="P17.go()" aria-label="send">➤</button></div>';
   document.body.appendChild(o);}
@@ -134,7 +170,7 @@ const css=document.createElement('style');css.textContent=
 +'.p17b.me{align-self:flex-end;background:var(--blue-mid,#d93a2b);color:#fff;border-bottom-right-radius:4px;white-space:pre-wrap}'
 +'.p17b.ai{align-self:flex-start;background:var(--pnbg,#fff);color:var(--g5);border:1px solid var(--g2);border-bottom-left-radius:4px}'
 +'.p17act{align-self:center;font-size:13px;color:var(--green,#1a6b3a);background:var(--green-bg,#e8f7ed);border-radius:10px;padding:6px 10px;max-width:92%;text-align:center}.p17err{color:var(--red);background:var(--red-bg)}'
-+'.p17undo{border:0;background:transparent;color:var(--blue-mid);font-weight:600;text-decoration:underline;font-size:13px;padding:0 0 0 6px}'
++'.p17new.on{background:var(--blue-mid,#d93a2b);color:#fff}.p17b.ai{cursor:pointer}'+'.p17undo{border:0;background:transparent;color:var(--blue-mid);font-weight:600;text-decoration:underline;font-size:13px;padding:0 0 0 6px}'
 +'.p17hint{color:var(--g4);font-size:14px;padding:10px 4px}.p17ex{margin-top:8px;padding:9px 12px;border-radius:12px;background:var(--pnbg,#fff);border:1px solid var(--g2);color:var(--g5);cursor:pointer}'
 +'.p17row{display:flex;align-items:flex-end;gap:8px;padding:8px 10px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--g2);background:var(--pnbg,#fff)}'
 +'.p17row textarea{flex:1;resize:none;border:1px solid var(--g2);border-radius:20px;padding:10px 14px;font-size:16px;min-height:42px;max-height:120px;background:var(--g0);color:var(--g5)}'
@@ -152,7 +188,7 @@ try{Object.assign(ES,{"Ask":"Preguntar","New":"Nuevo","Opened":"Abierto","Undo":
   "Make a task for Menachem to do billing for 5 Garfield":"Haz una tarea para Menachem: facturar 5 Garfield","Who is working now?":"¿Quién está trabajando ahora?",
   "How many hours on 14 Dorset this month?":"¿Cuántas horas en 14 Dorset este mes?","Today's limit for Ask is used up — try again tomorrow.":"Se acabó el límite de hoy — intente mañana.",
   "Ask is not switched on yet — the AI key is missing.":"Preguntar aún no está activado — falta la clave de IA.","Ask is for the owner, managers and office.":"Preguntar es para el dueño, los gerentes y la oficina.",
-  "Could not reach Ask — check the signal and try again.":"No se pudo conectar — revise la señal e intente otra vez."});}catch(e){}
+  "Could not reach Ask — check the signal and try again.":"No se pudo conectar — revise la señal e intente otra vez.","Answers will be read out loud":"Las respuestas se leerán en voz alta","Answers will not be read out loud":"Las respuestas no se leerán en voz alta"});}catch(e){}
 })();
 
 /* ── AI key (Baruch 11/15): the owner or Payroll (Shia) pastes the Anthropic key here, under Hours next to Fingercheck.
