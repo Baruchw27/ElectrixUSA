@@ -29,6 +29,7 @@ const CASES=[
  ['move 5 Glenbrook to rough complete',()=>used('set_job_step',i=>i.job_id===job('5 Glenbrook')&&/roughdone|rough/i.test(i.step))],
  ["what are Menachem's open tasks",()=>used('open_tasks',i=>i.person_id===who('Menachem'))],
  ["what's the schedule tomorrow",()=>used('schedule')],
+ ['put in my schedule that group 3 is going to work today someday at 10:30 at 5 Glenbrook and group 4 is going to work by 80 grassland',()=>{const d=draft('sched');return !!d&&d.d.rows.some(r=>r.crew==='c3'&&r.start===630)&&d.d.rows.some(r=>r.crew==='c4');}],
 ];
 window.PRAC={out:[],running:false,async run(only){if(this.running)return;this.running=true;this.out=[];P17.open();
   for(const [q,ok] of CASES){if(only&&!q.includes(only))continue;P17.clear();calls.length=0;const t0=Date.now();let pass=false,err='';
