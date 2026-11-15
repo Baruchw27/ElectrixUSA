@@ -16,7 +16,8 @@ let msgs=[],busy=false,log=[];   // msgs: what Claude sees; log: what the screen
 const ABBR={rd:'road',dr:'drive',ln:'lane',ave:'avenue',av:'avenue',ct:'court',st:'street',pl:'place',blvd:'boulevard',hwy:'highway',tpke:'turnpike',ter:'terrace',cir:'circle',pkwy:'parkway'};
 const STOP=new Set(['ny','nj','spring','valley','monsey','suffern','airmont','monroe','new','city','the','job','jobs','at','in','on','for','of','to','pull','up','open','show','me','please','a','an','unit']);
 const norm=w=>{w=String(w||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,'');w=ABBR[w]||w;return w.replace(/(.)\1+/g,'$1');};
-const words=s=>String(s||'').split(/[\s,.#\-\/]+/).map(norm).filter(Boolean);
+const NUMW={zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10};
+const words=s=>String(s||'').split(/[\s,.#\-\/]+/).map(w=>{const k=String(w).toLowerCase();return NUMW[k]!=null?String(NUMW[k]):w;}).map(norm).filter(Boolean);
 function lev(a,b){if(a===b)return 0;const m=a.length,n=b.length;if(!m||!n)return m||n;let p=Array(n+1).fill(0).map((_,i)=>i);for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=c;}return p[n];}
 const sim=(a,b)=>{if(a===b)return 1;if(/^\d/.test(a)||/^\d/.test(b))return 0;if(b.startsWith(a)&&a.length>=3)return .9;return 1-lev(a,b)/Math.max(a.length,b.length);};
 function score(q,name){const Q=words(q).filter(w=>!STOP.has(w)),N=words(name);if(!Q.length||!N.length)return 0;let s=0,need=0;
@@ -104,41 +105,87 @@ const TOOLS={
     closeAsk();goTab(screen);return {ok:true,_act:'↗ '+T('Opened')+' '+screen};},
 };
 
-// ── the conversation ──
+// ── the conversation (11/15 v2: looks and works like the Claude app — clean page, live status, real listening) ──
 async function call(){const s=window.EX_sb?(await EX_sb.auth.getSession()).data.session:null;const C=window.EX_CFG||{};
   const r=await fetch(C.url.replace(/\/$/,'')+'/functions/v1/ask',{method:'POST',headers:{'Content-Type':'application/json',apikey:C.anonKey,...(s?{Authorization:'Bearer '+s.access_token}:{})},body:JSON.stringify({messages:msgs,lang:LG()})});
   const j=await r.json().catch(()=>({}));if(!r.ok)throw {status:r.status,error:j.error||''};return j;}
 function errText(e){const k=e&&e.error;if(e&&e.status===429||k==='limit')return T("Today's limit for Ask is used up — try again tomorrow.");if(k==='off')return T('Ask is not switched on yet — the AI key is missing.');
   if(e&&(e.status===401||e.status===403))return T('Ask is for the owner, managers and office.');return T('Could not reach Ask — check the signal and try again.');}
+// what it's doing right now, in plain words
+const STEP={find_jobs:i=>T('Looking for')+' '+(i.query||'')+'…',open_job:()=>T('Opening the job…'),job_summary:()=>T('Reading the job…'),find_people:i=>T('Looking for')+' '+(i.query||'')+'…',
+  create_task:()=>T('Sending the task…'),open_tasks:()=>T('Checking open tasks…'),hours:()=>T('Adding up the hours…'),working_now:()=>T('Checking who is clocked in…'),schedule:()=>T('Checking the schedule…'),
+  orr_status:()=>T('Checking O&R…'),job_cost:()=>T('Adding up the job cost…'),open_screen:()=>T('Opening…')};
+let status='';
 async function send(text){text=String(text||'').trim();if(!text||busy)return;busy=true;try{speechSynthesis.cancel();}catch(e){}P17._spoken=log.length;
-  msgs.push({role:'user',content:text});log.push({who:'me',text});render(true);
+  msgs.push({role:'user',content:text});log.push({who:'me',text});status=T('Thinking…');render(true);
   try{for(let round=0;round<8;round++){const j=await call();const content=j.content||[];msgs.push({role:'assistant',content});
-      const said=content.filter(c=>c.type==='text').map(c=>c.text).join('\n').trim();if(said)log.push({who:'ai',text:said});
-      const uses=content.filter(c=>c.type==='tool_use');if(!uses.length||j.stop_reason!=='tool_use')break;
-      const results=[];for(const u of uses){let out;try{out=await (TOOLS[u.name]?TOOLS[u.name](u.input||{}):{error:'unknown tool'});}catch(e){out={error:String(e&&e.message||e).slice(0,200)};}
-        if(out&&out._act){log.push({who:'act',text:out._act,undo:out._undo||null});}const clean=Array.isArray(out)?out:Object.assign({},out);if(!Array.isArray(clean)){delete clean._act;delete clean._undo;}
+      const said=content.filter(c=>c.type==='text').map(c=>c.text).join('\n').trim();const uses=content.filter(c=>c.type==='tool_use');
+      if(said&&(!uses.length||j.stop_reason!=='tool_use'))log.push({who:'ai',text:said});else if(said)status=said.split('\n')[0].slice(0,90);
+      if(!uses.length||j.stop_reason!=='tool_use')break;
+      const results=[];for(const u of uses){status=(STEP[u.name]||(()=>T('Working…')))(u.input||{});render(true);let out;
+        try{out=await (TOOLS[u.name]?TOOLS[u.name](u.input||{}):{error:'unknown tool'});}catch(e){out={error:String(e&&e.message||e).slice(0,200)};}
+        if(out&&out._act){log.push({who:'act',text:out._act,undo:out._undo||null,kind:u.name});}const clean=Array.isArray(out)?out:Object.assign({},out);if(!Array.isArray(clean)){delete clean._act;delete clean._undo;}
         results.push({type:'tool_result',tool_use_id:u.id,content:JSON.stringify(clean).slice(0,12000)});}
-      msgs.push({role:'user',content:results});render(true);}
-  }catch(e){log.push({who:'err',text:errText(e)});msgs.pop();}
-  busy=false;render(true);
+      msgs.push({role:'user',content:results});status=T('Thinking…');render(true);}
+  }catch(e){log.push({who:'err',text:errText(e)});if(msgs.length&&msgs[msgs.length-1].role==='user'&&typeof msgs[msgs.length-1].content==='string')msgs.pop();}
+  busy=false;status='';render(true);
   if(talk||heard){const said=log.slice(P17._spoken).filter(x=>x.who==='ai').map(x=>x.text).join('. ');if(said)speak(said);}heard=false;P17._spoken=log.length;}
-function bubble(x,i){if(x.who==='me')return '<div class="p17b me">'+E(x.text)+'</div>';
-  if(x.who==='act')return '<div class="p17act">'+E(x.text)+(x.undo?' <button class="p17undo" onclick="P17.undo(\''+E(x.undo)+'\')">'+E(T('Undo'))+'</button>':'')+'</div>';
-  if(x.who==='err')return '<div class="p17act p17err">⚠ '+E(x.text)+'</div>';
-  return '<div class="p17b ai" onclick="P17.say('+i+')" title="tap to hear it">'+E(x.text).replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>')+'</div>';}
+// small, safe Markdown: **bold**, - bullets, 1. lists, line breaks
+function md(t){const L=E(t).split('\n');let h='',ul=false,ol=false;const close=()=>{if(ul){h+='</ul>';ul=false;}if(ol){h+='</ol>';ol=false;}};
+  const inl=x=>x.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<i>$2</i>');
+  L.forEach(l=>{let m;if((m=/^\s*[-•*]\s+(.*)$/.exec(l))){if(!ul){close();h+='<ul>';ul=true;}h+='<li>'+inl(m[1])+'</li>';}
+    else if((m=/^\s*\d+[.)]\s+(.*)$/.exec(l))){if(!ol){close();h+='<ol>';ol=true;}h+='<li>'+inl(m[1])+'</li>';}
+    else{close();if(l.trim())h+='<p>'+inl(l)+'</p>';}});close();return h;}
+const IC={spk:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>',
+  mute:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="m22 9-6 6M16 9l6 6"/></svg>',
+  copy:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>',
+  mic:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4"/></svg>',
+  up:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
+  stop:'<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>',
+  x:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  edit:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+  spark:'<svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9z"/><path d="M19 14l.9 2.6 2.6.9-2.6.9L19 21l-.9-2.6-2.6-.9 2.6-.9z" opacity=".6"/></svg>',
+  job:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>',
+  task:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  cost:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M17 6.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.8 5 3.5 5 1.6 5 3.5-2.2 3-5 3-5-1.1-5-3"/></svg>'};
+const greet=()=>{const h=+new Date().toLocaleString('en-US',{hour:'numeric',hour12:false,timeZone:'America/New_York'});const n=((M()||{}).name||'').split(' ')[0];
+  return (LG()==='es'?(h<12?'Buenos días':h<19?'Buenas tardes':'Buenas noches'):(h<12?'Good morning':h<18?'Good afternoon':'Good evening'))+(n?', '+n:'');};
+const canCost=()=>{const m=M();return !!m&&(m.role==='owner'||(m.role==='office'&&m.title==='Payroll'));};
+function item(x,i){
+  if(x.who==='me')return '<div class="p17u"><div>'+E(x.text).replace(/\n/g,'<br>')+'</div></div>';
+  if(x.who==='act'){const ic=x.kind==='create_task'?IC.task:IC.job;return '<div class="p17card"><span class="p17ci">'+ic+'</span><span class="p17ct">'+E(String(x.text).replace(/^[^\w¿¡]+/,''))+'</span>'+(x.undo?'<button class="p17lnk" onclick="P17.undo(\''+E(x.undo)+'\')">'+E(T('Undo'))+'</button>':'')+'</div>';}
+  if(x.who==='err')return '<div class="p17card p17bad"><span class="p17ct">'+E(x.text)+'</span></div>';
+  return '<div class="p17a">'+md(x.text)+'<div class="p17tools"><button onclick="P17.say('+i+')" aria-label="read it">'+IC.spk+'</button><button onclick="P17.copy('+i+')" aria-label="copy">'+IC.copy+'</button></div></div>';}
 function render(scroll){const b=$('p17list');if(!b)return;
-  b.innerHTML=(log.length?log.map(bubble).join(''):'<div class="p17hint">'+E(T('Ask anything, or tell me what to do. For example:'))+'<div class="p17ex" onclick="P17.ex(this)">'+E(T('Pull up 6 Hadassah'))+'</div><div class="p17ex" onclick="P17.ex(this)">'+E(T('Make a task for Menachem to do billing for 5 Garfield'))+'</div><div class="p17ex" onclick="P17.ex(this)">'+E(T('Who is working now?'))+'</div><div class="p17ex" onclick="P17.ex(this)">'+E(T('How many hours on 14 Dorset this month?'))+'</div></div>')
-    +(busy?'<div class="p17b ai p17dots"><span></span><span></span><span></span></div>':'');
+  if(!log.length){const sug=[[IC.job,T('Pull up a job'),T('Pull up ')],[IC.task,T('Make a task'),T('Make a task for ')],[IC.clock,T('Who is working now?'),T('Who is working now?')]].concat(canCost()?[[IC.cost,T('What did a job cost?'),T('What did  cost?')]]:[[IC.clock,T('Hours this week'),T('How many hours this week on ')]]);
+    b.innerHTML='<div class="p17home"><div class="p17mark">'+IC.spark+'</div><div class="p17hi">'+E(greet())+'</div><div class="p17sub">'+E(T('Ask about jobs, hours, tasks and costs — or tell me what to do.'))+'</div>'
+      +'<div class="p17sug">'+sug.map(s=>'<button onclick="P17.start(\''+E(s[2]).replace(/'/g,'&#39;')+'\')"><span>'+s[0]+'</span>'+E(s[1])+'</button>').join('')+'</div></div>';}
+  else b.innerHTML='<div class="p17col">'+log.map(item).join('')+(busy?'<div class="p17st"><span class="p17spin"></span>'+E(status||T('Thinking…'))+'</div>':'')+'</div>';
   const sb=$('p17send');if(sb)sb.disabled=busy;if(scroll)b.scrollTop=b.scrollHeight;}
+P17.start=t=>{const i=$('p17in');i.value=t;i.focus();try{i.setSelectionRange(t.indexOf('  ')>=0?t.indexOf('  ')+1:t.length,t.indexOf('  ')>=0?t.indexOf('  ')+1:t.length);}catch(e){}grow();};
+P17.copy=i=>{const x=log[i];if(!x)return;try{navigator.clipboard.writeText(x.text);toast('✓ '+T('Copied'),'green');}catch(e){}};
 P17.ex=el=>{const i=$('p17in');i.value=el.textContent;i.focus();};
 P17.undo=id=>{try{P14.cancel(id);}catch(e){}};
-P17.go=()=>{const i=$('p17in');const v=i.value;i.value='';i.style.height='';send(v);};
+const grow=()=>{const i=$('p17in');if(!i)return;i.style.height='auto';i.style.height=Math.min(160,i.scrollHeight)+'px';const s=$('p17send');if(s)s.classList.toggle('on',!!i.value.trim()||rec.on);};
+P17.go=()=>{if(rec.on){P17.mic();return;}const i=$('p17in');const v=i.value;i.value='';grow();send(v);};
 P17.clear=()=>{if(busy)return;msgs=[];log=[];render();};
-P17.open=()=>{if(!allowed())return;build();try{const b=$('p17spk');b.textContent=talk?'🔊':'🔇';b.classList.toggle('on',talk);}catch(e){}try{$('p17t').textContent='✨ '+(LG()==='es'?'Preguntar':'Ask');$('p17nw').textContent=T('New');$('p17in').placeholder=T('Ask or tell me what to do…');}catch(e){}$('p17').classList.remove('hid');render(true);setTimeout(()=>{try{$('p17in').focus();}catch(e){}},150);};
-P17.close=()=>{try{speechSynthesis.cancel();}catch(e){}closeAsk();};
-P17.mic=()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast(T("Voice doesn't work on this phone — type it or use the keyboard mic."));return;}
-  const r=new SR();r.lang=LG()==='es'?'es-US':'en-US';r.interimResults=true;r.continuous=false;const i=$('p17in');const base=i.value?i.value+' ':'';const mb=$('p17mic');mb.classList.add('on');
-  r.onresult=e=>{let s='';for(const x of e.results)s+=x[0].transcript;i.value=base+s;};r.onend=()=>{mb.classList.remove('on');if(i.value.trim()){heard=true;P17.go();}};r.onerror=()=>mb.classList.remove('on');try{r.start();}catch(e){mb.classList.remove('on');}};
+P17.open=()=>{if(!allowed())return;build();paintSpk();try{$('p17ttl').textContent=LG()==='es'?'Asistente Electrix':'Electrix Assistant';$('p17lis').lastChild.textContent=T('Listening… talk as long as you want, then tap ■');}catch(e){}try{$('p17in').placeholder=T('Ask anything, or tell me what to do…');}catch(e){}$('p17').classList.remove('hid');render(true);setTimeout(()=>{try{$('p17in').focus();}catch(e){}},150);};
+P17.close=()=>{try{speechSynthesis.cancel();}catch(e){}if(rec.on)stopRec(false);closeAsk();};
+
+// 🎤 listening that keeps going: it does not stop when you pause — it stops when you tap ■ (or after 40 s of silence).
+// Phones end a listening session by themselves after a pause; it is restarted at once and the words are kept.
+const rec={on:false,r:null,done:'',live:'',last:0,base:''};
+function recUI(){const c=$('p17comp');if(c)c.classList.toggle('rec',rec.on);const m=$('p17mic');if(m)m.innerHTML=rec.on?IC.stop:IC.mic;const l=$('p17lis');if(l)l.hidden=!rec.on;grow();}
+function stopRec(sendIt){rec.on=false;try{rec.r&&rec.r.stop();}catch(e){}rec.r=null;recUI();const i=$('p17in');if(sendIt&&i&&i.value.trim()){heard=true;const v=i.value;i.value='';grow();send(v);}}
+function startOne(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;const r=new SR();rec.r=r;r.lang=LG()==='es'?'es-US':'en-US';r.interimResults=true;r.continuous=true;r.maxAlternatives=1;
+  r.onresult=e=>{let fin='',tmp='';for(let k=e.resultIndex;k<e.results.length;k++){const x=e.results[k];if(x.isFinal)fin+=x[0].transcript;else tmp+=x[0].transcript;}
+    if(fin)rec.done=(rec.done+' '+fin).replace(/\s+/g,' ').trim();rec.live=tmp;rec.last=Date.now();const i=$('p17in');i.value=(rec.base+' '+rec.done+' '+rec.live).replace(/\s+/g,' ').trim();grow();};
+  r.onerror=ev=>{if(ev&&(ev.error==='not-allowed'||ev.error==='service-not-allowed')){toast(T('Allow the microphone for this app in the phone settings.'));stopRec(false);}};
+  r.onend=()=>{if(!rec.on)return;if(Date.now()-rec.last>40000){stopRec(false);return;}setTimeout(()=>{if(rec.on)try{startOne();}catch(e){stopRec(false);}},120);};
+  try{r.start();}catch(e){}}
+P17.mic=()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast(T("Voice doesn't work on this phone — use the microphone on the keyboard."));try{$('p17in').focus();}catch(e){}return;}
+  if(rec.on){stopRec(true);return;}try{speechSynthesis.cancel();}catch(e){}const i=$('p17in');rec.on=true;rec.done='';rec.live='';rec.base=i.value.trim();rec.last=Date.now();recUI();startOne();};
 // 🔊 reads the answers out loud (the phone's own voice — free, no AI). On/off is remembered; asking with 🎤 always answers out loud.
 let talk=false,heard=false;try{talk=localStorage.getItem('p17talk')==='1';}catch(e){}
 const cleanSay=s=>String(s||'').replace(/\*\*/g,'').replace(/^[-•]\s*/gm,'').replace(/[✨📂✅↗⚠]/g,'').replace(/(\d),(\d{3})/g,'$1$2').replace(/\$(\d+(?:\.\d+)?)/g,'$1 dollars');
@@ -147,30 +194,41 @@ function speak(text){try{const ss=window.speechSynthesis;if(!ss)return;ss.cancel
   const lang=es?'es-US':'en-US';const vs=ss.getVoices();const v=vs.find(v=>v.lang===lang&&/natural|enhanced|premium|samantha|google|neural/i.test(v.name))||vs.find(v=>v.lang===lang)||vs.find(v=>v.lang&&v.lang.slice(0,2)===lang.slice(0,2));
   (t.match(/[^.!?\n]{1,220}[.!?]?/g)||[t]).filter(x=>x.trim().replace(/[.,!? ]/g,'')).forEach(x=>{const u=new SpeechSynthesisUtterance(x.trim());u.lang=lang;u.rate=1.02;if(v)u.voice=v;ss.speak(u);});}catch(e){}}
 P17.say=i=>{const x=log[i];if(x)speak(x.text);};
-P17.talk=()=>{talk=!talk;try{localStorage.setItem('p17talk',talk?'1':'0');}catch(e){}if(!talk)try{speechSynthesis.cancel();}catch(e){}const b=$('p17spk');if(b){b.textContent=talk?'🔊':'🔇';b.classList.toggle('on',talk);}toast(talk?T('Answers will be read out loud'):T('Answers will not be read out loud'));};
+function paintSpk(){const b=$('p17spk');if(b){b.innerHTML=talk?IC.spk:IC.mute;b.classList.toggle('on',talk);b.setAttribute('aria-pressed',talk?'true':'false');}}
+P17.talk=()=>{talk=!talk;try{localStorage.setItem('p17talk',talk?'1':'0');}catch(e){}if(!talk)try{speechSynthesis.cancel();}catch(e){}paintSpk();toast(talk?T('Answers will be read out loud'):T('Answers will not be read out loud'));};
 P17._spoken=0;
 P17.tools=TOOLS;P17._score=score;
 
 function build(){if($('p17'))return;const o=document.createElement('div');o.id='p17';o.className='hid';
-  o.innerHTML='<div class="p17top"><button class="p17x" onclick="P17.close()" aria-label="close">✕</button><b id="p17t">✨ '+(LG()==='es'?'Preguntar':'Ask')+'</b><button class="p17new" id="p17spk" onclick="P17.talk()" aria-label="read answers out loud">🔇</button><button class="p17new" id="p17nw" onclick="P17.clear()">'+E(T('New'))+'</button></div>'
+  o.innerHTML='<div class="p17top"><button class="p17ib" onclick="P17.close()" aria-label="close">'+IC.x+'</button><div class="p17ttl" id="p17ttl"></div>'
+    +'<button class="p17ib" id="p17spk" onclick="P17.talk()" aria-label="read answers out loud"></button><button class="p17ib" onclick="P17.clear()" aria-label="new chat">'+IC.edit+'</button></div>'
     +'<div id="p17list"></div>'
-    +'<div class="p17row"><button id="p17mic" class="p17mic" onclick="P17.mic()" aria-label="mic">🎤</button><textarea id="p17in" data-nomic="1" rows="1" placeholder="'+E(T('Ask or tell me what to do…'))+'" oninput="this.style.height=\'auto\';this.style.height=Math.min(120,this.scrollHeight)+\'px\'" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();P17.go();}"></textarea><button id="p17send" class="p17send" onclick="P17.go()" aria-label="send">➤</button></div>';
+    +'<div class="p17foot"><div class="p17comp" id="p17comp"><div class="p17lis" id="p17lis" hidden><span class="p17dot"></span>'+E(T('Listening… talk as long as you want, then tap ■'))+'</div>'
+    +'<textarea id="p17in" data-nomic="1" rows="1" oninput="P17._g()" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();P17.go();}"></textarea>'
+    +'<div class="p17bar"><button class="p17ib p17mic" id="p17mic" onclick="P17.mic()" aria-label="talk">'+IC.mic+'</button><span style="flex:1"></span><button class="p17send" id="p17send" onclick="P17.go()" aria-label="send">'+IC.up+'</button></div></div></div>';
   document.body.appendChild(o);}
+P17._g=()=>grow();
 const css=document.createElement('style');css.textContent=
- '#p17{position:fixed;inset:0;z-index:260;background:var(--g0,#f8f9fb);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}#p17.hid{display:none}'
-+'.p17top{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--g2);background:var(--pnbg,#fff)}.p17top b{flex:1;font-size:17px}'
-+'.p17x,.p17new{border:0;background:var(--g1);color:var(--g5);border-radius:10px;padding:8px 12px;font-size:15px}'
-+'#p17list{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;-webkit-overflow-scrolling:touch}'
-+'.p17b{max-width:86%;padding:9px 12px;border-radius:14px;font-size:15px;line-height:1.4;word-wrap:break-word;white-space:normal}'
-+'.p17b.me{align-self:flex-end;background:var(--blue-mid,#d93a2b);color:#fff;border-bottom-right-radius:4px;white-space:pre-wrap}'
-+'.p17b.ai{align-self:flex-start;background:var(--pnbg,#fff);color:var(--g5);border:1px solid var(--g2);border-bottom-left-radius:4px}'
-+'.p17act{align-self:center;font-size:13px;color:var(--green,#1a6b3a);background:var(--green-bg,#e8f7ed);border-radius:10px;padding:6px 10px;max-width:92%;text-align:center}.p17err{color:var(--red);background:var(--red-bg)}'
-+'.p17new.on{background:var(--blue-mid,#d93a2b);color:#fff}.p17b.ai{cursor:pointer}'+'.p17undo{border:0;background:transparent;color:var(--blue-mid);font-weight:600;text-decoration:underline;font-size:13px;padding:0 0 0 6px}'
-+'.p17hint{color:var(--g4);font-size:14px;padding:10px 4px}.p17ex{margin-top:8px;padding:9px 12px;border-radius:12px;background:var(--pnbg,#fff);border:1px solid var(--g2);color:var(--g5);cursor:pointer}'
-+'.p17row{display:flex;align-items:flex-end;gap:8px;padding:8px 10px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--g2);background:var(--pnbg,#fff)}'
-+'.p17row textarea{flex:1;resize:none;border:1px solid var(--g2);border-radius:20px;padding:10px 14px;font-size:16px;min-height:42px;max-height:120px;background:var(--g0);color:var(--g5)}'
-+'.p17mic,.p17send{flex:none;width:42px;height:42px;border-radius:50%;border:0;font-size:18px;background:var(--g1);color:var(--g5)}.p17send{background:var(--blue-mid,#d93a2b);color:#fff}.p17send:disabled{opacity:.5}.p17mic.on{background:#c0392b;color:#fff}'
-+'.p17dots{display:flex;gap:4px;padding:12px 14px}.p17dots span{width:7px;height:7px;border-radius:50%;background:var(--g3);animation:p17d 1s infinite}.p17dots span:nth-child(2){animation-delay:.2s}.p17dots span:nth-child(3){animation-delay:.4s}@keyframes p17d{0%,80%,100%{opacity:.3}40%{opacity:1}}';
+ '#p17{--a-bg:#faf9f7;--a-ink:#1f1e1c;--a-mute:#77746d;--a-line:#e7e4dd;--a-user:#efece6;--a-card:#fff;--a-acc:var(--blue-mid,#d93a2b);position:fixed;inset:0;z-index:260;background:var(--a-bg);color:var(--a-ink);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}'
++'html[data-theme=dark] #p17{--a-bg:#1f1e1d;--a-ink:#eceae5;--a-mute:#9c9890;--a-line:#363431;--a-user:#2e2c2a;--a-card:#272624}#p17.hid{display:none}'
++'.p17top{display:flex;align-items:center;gap:4px;padding:8px 8px}.p17ttl{flex:1;text-align:center;font-weight:600;font-size:15.5px;letter-spacing:.1px}'
++'.p17ib{width:40px;height:40px;border:0;border-radius:10px;background:transparent;color:var(--a-ink);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}.p17ib:active{background:var(--a-user)}.p17ib.on{color:var(--a-acc)}'
++'#p17list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}.p17col{max-width:720px;margin:0 auto;padding:14px 18px 24px;display:flex;flex-direction:column;gap:18px}'
++'.p17u{display:flex;justify-content:flex-end}.p17u>div{background:var(--a-user);padding:10px 15px;border-radius:20px;max-width:85%;font-size:16px;line-height:1.45;white-space:normal;word-wrap:break-word}'
++'.p17a{font-size:16.5px;line-height:1.62}.p17a p{margin:0 0 10px}.p17a ul,.p17a ol{margin:0 0 10px;padding-left:22px}.p17a li{margin:3px 0}.p17a b{font-weight:650}'
++'.p17tools{display:flex;gap:2px;margin-top:-2px;opacity:.75}.p17tools button{border:0;background:transparent;color:var(--a-mute);width:34px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center}.p17tools button:active{background:var(--a-user)}'
++'.p17card{display:flex;align-items:center;gap:10px;background:var(--a-card);border:1px solid var(--a-line);border-radius:14px;padding:10px 12px;font-size:14.5px}.p17ci{width:32px;height:32px;border-radius:9px;background:var(--a-user);display:inline-flex;align-items:center;justify-content:center;color:var(--a-acc);flex:none}.p17ct{flex:1;min-width:0}.p17bad{color:var(--red,#b42318)}'
++'.p17lnk{border:0;background:transparent;color:var(--a-acc);font-weight:600;font-size:14px;padding:6px}'
++'.p17st{display:flex;align-items:center;gap:10px;color:var(--a-mute);font-size:14.5px}.p17spin{width:16px;height:16px;border-radius:50%;border:2px solid var(--a-line);border-top-color:var(--a-acc);animation:p17r .8s linear infinite}@keyframes p17r{to{transform:rotate(360deg)}}'
++'.p17home{max-width:560px;margin:0 auto;padding:12vh 22px 20px;text-align:center}.p17mark{color:var(--a-acc);margin-bottom:10px}.p17hi{font-size:27px;font-weight:600;letter-spacing:-.3px;margin-bottom:6px}.p17sub{color:var(--a-mute);font-size:15px;margin-bottom:24px}'
++'.p17sug{display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:left}.p17sug button{display:flex;align-items:center;gap:9px;background:var(--a-card);border:1px solid var(--a-line);border-radius:14px;padding:12px;color:var(--a-ink);font-size:14.5px;line-height:1.25;cursor:pointer}.p17sug span{color:var(--a-acc);display:inline-flex}'
++'.p17foot{padding:6px 12px calc(10px + env(safe-area-inset-bottom))}.p17comp{max-width:720px;margin:0 auto;background:var(--a-card);border:1px solid var(--a-line);border-radius:24px;padding:10px 10px 8px 16px;box-shadow:0 2px 14px rgba(0,0,0,.06)}'
++'.p17comp textarea{display:block;width:100%;border:0;outline:0;resize:none;background:transparent;color:var(--a-ink);font-size:16.5px;line-height:1.45;min-height:26px;max-height:160px;padding:4px 0}'
++'.p17bar{display:flex;align-items:center;gap:6px;margin-top:4px}.p17mic{border-radius:50%;color:var(--a-mute)}.p17comp.rec{border-color:var(--a-acc)}.p17comp.rec .p17mic{background:var(--a-acc);color:#fff}'
++'.p17send{width:38px;height:38px;border-radius:50%;border:0;background:var(--a-line);color:var(--a-mute);display:inline-flex;align-items:center;justify-content:center}.p17send.on{background:var(--a-acc);color:#fff}.p17send:disabled{opacity:.5}'
++'.p17lis{display:flex;align-items:center;gap:8px;color:var(--a-acc);font-size:13.5px;font-weight:600;margin-bottom:4px}.p17dot{width:9px;height:9px;border-radius:50%;background:var(--a-acc);animation:p17p 1s ease-in-out infinite}@keyframes p17p{50%{transform:scale(1.6);opacity:.5}}'
++'.p17lis[hidden]{display:none!important}#p17 .p17comp textarea,#p17 .p17comp textarea:focus{border:0!important;outline:0!important;box-shadow:none!important;-webkit-appearance:none;border-radius:0;margin:0}.p17sug button{text-align:left;justify-content:flex-start}'
++'@media(min-width:700px){.p17sug{grid-template-columns:1fr 1fr 1fr 1fr}}';
 document.head.appendChild(css);
 
 // ✨ button in the top bar, next to 🔍 — only for those who may use it, and only in the real app
@@ -183,7 +241,7 @@ try{Object.assign(ES,{"Ask":"Preguntar","New":"Nuevo","Opened":"Abierto","Undo":
   "Make a task for Menachem to do billing for 5 Garfield":"Haz una tarea para Menachem: facturar 5 Garfield","Who is working now?":"¿Quién está trabajando ahora?",
   "How many hours on 14 Dorset this month?":"¿Cuántas horas en 14 Dorset este mes?","Today's limit for Ask is used up — try again tomorrow.":"Se acabó el límite de hoy — intente mañana.",
   "Ask is not switched on yet — the AI key is missing.":"Preguntar aún no está activado — falta la clave de IA.","Ask is for the owner, managers and office.":"Preguntar es para el dueño, los gerentes y la oficina.",
-  "Could not reach Ask — check the signal and try again.":"No se pudo conectar — revise la señal e intente otra vez.","Answers will be read out loud":"Las respuestas se leerán en voz alta","Answers will not be read out loud":"Las respuestas no se leerán en voz alta"});}catch(e){}
+  "Could not reach Ask — check the signal and try again.":"No se pudo conectar — revise la señal e intente otra vez.","Looking for":"Buscando","Opening the job…":"Abriendo el trabajo…","Reading the job…":"Leyendo el trabajo…","Sending the task…":"Enviando la tarea…","Checking open tasks…":"Revisando tareas abiertas…","Adding up the hours…":"Sumando las horas…","Checking who is clocked in…":"Revisando quién está marcado…","Checking the schedule…":"Revisando el horario…","Checking O&R…":"Revisando O&R…","Adding up the job cost…":"Sumando el costo del trabajo…","Opening…":"Abriendo…","Working…":"Trabajando…","Thinking…":"Pensando…","Pull up a job":"Abrir un trabajo","Pull up ":"Abre ","Make a task":"Hacer una tarea","Make a task for ":"Haz una tarea para ","What did a job cost?":"¿Cuánto costó un trabajo?","What did  cost?":"¿Cuánto costó  ?","Hours this week":"Horas esta semana","How many hours this week on ":"¿Cuántas horas esta semana en ","Ask about jobs, hours, tasks and costs — or tell me what to do.":"Pregunte por trabajos, horas, tareas y costos — o dígame qué hacer.","Ask anything, or tell me what to do…":"Pregunte lo que sea, o dígame qué hacer…","Listening… talk as long as you want, then tap ■":"Escuchando… hable lo que quiera y luego toque ■","Allow the microphone for this app in the phone settings.":"Permita el micrófono para esta app en los ajustes del teléfono.","Voice doesn't work on this phone — use the microphone on the keyboard.":"La voz no funciona en este teléfono — use el micrófono del teclado.","Copied":"Copiado","Answers will be read out loud":"Las respuestas se leerán en voz alta","Answers will not be read out loud":"Las respuestas no se leerán en voz alta"});}catch(e){}
 })();
 
 /* ── AI key (Baruch 11/15): the owner or Payroll (Shia) pastes the Anthropic key here, under Hours next to Fingercheck.
