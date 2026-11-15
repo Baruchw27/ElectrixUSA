@@ -91,6 +91,7 @@ const css=document.createElement('style');css.textContent=
 +'#r18 .rh{display:flex;align-items:center;justify-content:space-between;gap:10px}#r18 .rh h2{margin:0}'
 +'#r18 .per{font:inherit;font-size:13.5px;font-weight:600;color:var(--g5);background:var(--g1);border:0;border-radius:8px;padding:7px 10px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}'
 +'#r18 .r18t{display:flex;gap:24px;margin:12px 0 0;border-bottom:1px solid var(--g2);overflow-x:auto}'
++'#r18 .r18t{scrollbar-width:none}#r18 .r18t::-webkit-scrollbar{display:none}'
 +'#r18 .r18t button{font:inherit;font-size:14.5px;background:none;border:0;padding:8px 0 10px;color:var(--g4);position:relative;white-space:nowrap}'
 +'#r18 .r18t button.on{color:var(--g5);font-weight:600}#r18 .r18t button.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;border-radius:2px;background:var(--r18m)}'
 +'#r18 .sub{font-size:12.5px;color:var(--g4);margin:10px 0 0}'
