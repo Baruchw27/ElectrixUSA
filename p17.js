@@ -8,7 +8,11 @@ const $=id=>document.getElementById(id);
 const T=s=>{try{return t(s);}catch(e){return s;}};
 const E=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const M=()=>{try{return me();}catch(e){return null;}};
-const allowed=()=>{const m=M();return !!m&&!m.inactive&&(m.role==='owner'||m.role==='manager'||m.role==='office'||!!m.all);};
+const full=()=>{const m=M();return !!m&&!m.inactive&&(m.role==='owner'||m.role==='manager'||m.role==='office'||!!m.all);};
+const isLead=()=>{const m=M();return !!m&&!m.inactive&&!!m.lead&&!full();};   // 11/15: crew leaders — material by voice, their own jobs, notes
+const allowed=()=>full()||isLead();
+const canDef=()=>{const m=M();try{return !!m&&(m.role==='owner'||canHandleMat(m));}catch(e){return false;}};
+const LEAD_TOOLS=new Set(['find_jobs','open_job','job_summary','find_material','create_material_request','material_status','add_job_note','open_screen','open_tasks']);
 const LG=()=>{try{return lang();}catch(e){return 'en';}};
 let msgs=[],busy=false,log=[];   // msgs: what Claude sees; log: what the screen shows
 
@@ -42,14 +46,16 @@ const TOOLS={
   open_job({job_id}){const s=(D.sites||[]).find(x=>x.id===job_id);if(!s||!vis(s))return {ok:false,error:'no such job'};closeAsk();openFolder(job_id);return {ok:true,opened:s.name,_act:'📂 '+T('Opened')+' '+s.name};},
   job_summary({job_id}){const s=(D.sites||[]).find(x=>x.id===job_id);if(!s||!vis(s))return {error:'no such job'};const now=Date.now();
     const tasks=(D.jobs||[]).filter(j=>j.site===job_id&&j.status!=='done'&&!j.deleted).slice(0,15).map(j=>({to:tosOf(j).map(x=>nm(x)||crewName(x)),what:String(j.desc||'').slice(0,120),due:j.due||'',from:nm(j.from)}));
-    const notes=(s.notes||[]).slice(-5).map(n=>({by:nm(n.by),text:String(n.text||n.body||'').slice(0,200),when:n.ts?dk(n.ts):''}));
+    const notes=(D.keep||[]).filter(n=>n&&!n.deleted&&n.site===s.id).sort((a,b)=>(b.edited||0)-(a.edited||0)).slice(0,6).map(n=>({by:nm(n.owner),text:String((n.title?n.title+': ':'')+(n.body||'')+(n.items&&n.items.length?' '+n.items.map(i=>(i.done?'✓':'☐')+i.t).join('; '):'')).slice(0,240),when:n.edited?dk(n.edited):''}));
     const orr=(D.orr||[]).filter(o=>o.site===job_id&&!o.deleted).map(o=>({step:o.step||'',wo:o.wo||'',last:((o.log||[]).slice(-1)[0]||{}).txt||''}));
     let hrs=null;try{const ps=hrPunches(now-14*864e5,now,p=>p.site===job_id);const by={};ps.forEach(p=>{by[nm(p.who)]=(by[nm(p.who)]||0)+punchDur(p);});hrs=Object.fromEntries(Object.entries(by).map(([k,v])=>[k,+v.toFixed(2)]));}catch(e){}
-    return {name:s.name,stage:s.stage||'',crew:crewName(s.crew),managers:(()=>{try{return mgrNames(s);}catch(e){return '';}})(),open_tasks:tasks,latest_notes:notes,orr,files:(s.files||[]).length,hours_last_14_days:hrs};},
+    return {name:s.name,stage:s.stage||'',crew:crewName(s.crew),managers:(()=>{try{return mgrNames(s);}catch(e){return '';}})(),open_tasks:tasks,latest_notes:notes,orr,files:(s.files||[]).length,...(isLead()?{}:{hours_last_14_days:hrs})};},
   find_people({query}){const P=(D.emps||[]).filter(e=>!e.inactive).map(e=>({id:e.id,name:e.name,role:e.role,title:e.title||'',crew:crewName(e.crew),aka:e.id==='o2'||/menachem/i.test(e.name)?'Nachum':''}));
     const C=(D.crews||[]).map(c=>({id:c.id,name:c.name,role:'crew',title:c.type||'',crew:'',aka:''}));
     return bestOf(P.concat(C),query,x=>x.name+' '+x.aka+' '+x.title,8).map(({x,s})=>Object.assign({},x,{match:+s.toFixed(2)}));},
-  create_task({to,text,job_id,due,priority}){const m=M();text=String(text||'').trim();if(!text)return {ok:false,error:'no text'};
+  create_task(i){return draftTask(i);},
+  create_material_request(i){return draftMat(i);},
+  _doTask({to,text,job_id,due,priority}){const m=M();text=String(text||'').trim();if(!text)return {ok:false,error:'no text'};
     let tg=[];try{tg=assignTargets().map(x=>x.id);}catch(e){}tg.push(m.id);
     to=(Array.isArray(to)?to:[to]).filter(Boolean);const bad=to.filter(x=>!tg.includes(x));if(bad.length)return {ok:false,error:'cannot send to: '+bad.join(', ')};if(!to.length)return {ok:false,error:'nobody picked'};
     if(job_id&&!(D.sites||[]).some(s=>s.id===job_id&&vis(s)))return {ok:false,error:'no such job'};
@@ -64,6 +70,7 @@ const TOOLS={
     const nj=D.jobs[0];if(!nj||nj.id===before){hide('m-job');return {ok:false,error:'not sent'};}
     hide('m-job');const who=to.map(x=>nm(x)||crewName(x)).join(' + ');
     return {ok:true,task_id:nj.id,sent_to:who,job:job_id?sname(job_id):'',_act:'✅ '+T('Task sent to')+' '+who+(job_id?' — '+sname(job_id):''),_undo:nj.id};},
+  _doMat({job_id,address,items,when,get,note}){return sendMat({job_id,address,items,when,get,note});},
   open_tasks({person_id,job_id}){const L=(D.jobs||[]).filter(j=>j.status!=='done'&&!j.deleted&&(!job_id||j.site===job_id)&&(!person_id||tosOf(j).includes(person_id)||j.from===person_id));
     return {count:L.length,tasks:L.slice(0,25).map(j=>({to:tosOf(j).map(x=>nm(x)||crewName(x)),what:String(j.desc||'').slice(0,100),job:j.site?sname(j.site):'',due:j.due||'',from:nm(j.from),days_old:Math.floor((Date.now()-(j.ts||0))/864e5),priority:!!j.pri}))};},
   async hours({from,to,person_id,job_id}){const a=dayStart(from),b=dayStart(to)+864e5;if(!(a<b))return {error:'bad dates'};
@@ -102,17 +109,21 @@ const TOOLS={
       ...(H&&H.state!=='ok'&&a<Date.now()-115*864e5?{warning:'Older months could not be loaded from the server — the numbers may be low.'}:{}),
       how:'Same as Reports → Job cost: labor = hours × what each man was actually paid that week (his Fingercheck paycheck, overtime included); weeks with no paycheck yet use his hourly rate with overtime (estimate). Plus material receipts entered on the job and travel (paid in Fingercheck for this job, plus the app\'s trips for weeks not paid yet). Not included: payroll taxes, insurance, material bought without a receipt in the app.'};},
   // 11/15 (Baruch): material — find items in the catalog, and send a material request exactly like the Material screen does
-  find_material({query}){let L=[];try{
+  find_material({query}){let L=[],dfl=[];try{
     // spoken '12-2' / '12 to' / '12 two' → catalog '12/2'; plurals → singular; filler words (wire, roll…) dropped so they don't hide the real item
     let q=String(query||'').toLowerCase().replace(/\b(\d{1,2})\s*(?:-|to\s|two\s)\s*(\d)\b/g,'$1/$2').replace(/\b(1[024]|[68])\s+(?:to|two)\b/g,'$1/2');
-    q=q.split(/\s+/).map(w=>/^[a-z]{4,}s$/.test(w)&&!/ss$/.test(w)?w.slice(0,-1):w).join(' ');
+    q=q.split(/\s+/).map(w=>/^[a-z]{3,}(ch|sh|x)es$/.test(w)?w.slice(0,-2):/^[a-z]{4,}s$/.test(w)&&!/ss$/.test(w)?w.slice(0,-1):w).join(' ');
     const core=q.split(/\s+/).filter(w=>!/^(wire|wires|cable|roll|coil|piece|pc|pcs|box|of|a|the|some|need)$/.test(w)).join(' ');
     const sc=new Map(),add=(arr,b)=>arr.forEach((x,i)=>sc.set(x,Math.max(sc.get(x)||0,b-i)));
     add(mcSearch(q,10),300);if(core&&core!==q)add(mcSearch(core,10),250);
     if(sc.size<3)q.split(/\s+/).filter(w=>w.length>1).forEach(w=>mcSearch(w,15).forEach((x,i)=>sc.set(x,(sc.get(x)||0)+20-i+(/\d/.test(w)?30:0))));
+    const fq=matFreq();sc.forEach((v,x)=>sc.set(x,v+Math.min(60,(fq[x.id]||0)*6)));
+    const isD=x=>(x.askDefault||[]).some(p=>{const w=String(p).toLowerCase().trim().replace(/s$/,'');return w&&(q===w||core===w);});dfl=mcAll().filter(x=>mcVis(x)&&isD(x));dfl.forEach(x=>sc.set(x,9999));
     L=[...sc.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10).map(e=>e[0]);}catch(e){}
-    return L.map(x=>({stock_id:x.id,name:x.name,unit:x.unit||'pc',in_garage:+(x.qty||0)||0,brand:x.brand||''}));},
-  create_material_request({job_id,address,items,when,get,note}){const m=M();try{if(!canRequestMat(m))return {error:'You cannot request material.'};}catch(e){}
+    const fq=matFreq();
+    return L.map(x=>Object.assign({stock_id:x.id,name:x.name,unit:x.unit||'pc',in_garage:+(x.qty||0)||0,brand:x.brand||''},
+      dfl.includes(x)?{company_default:true}:{},fq[x.id]?{times_requested:fq[x.id]}:{}));},
+  _matOld({job_id,address,items,when,get,note}){const m=M();try{if(!canRequestMat(m))return {error:'You cannot request material.'};}catch(e){}
     items=(Array.isArray(items)?items:[]).filter(x=>x&&(x.name||x.stock_id));if(!items.length)return {error:'no items'};
     const s=job_id?(D.sites||[]).find(x=>x.id===job_id&&vis(x)):null;if(job_id&&!s)return {error:'no such job'};if(!s&&!address)return {error:'which job?'};
     const W=['Now','Tomorrow morning','This week'].includes(when)?when:'Now',G=['deliver','garage','pickup'].includes(get)?get:'deliver';
@@ -124,10 +135,93 @@ const TOOLS={
     D.mats.unshift(r);const where=s?s.name:r.addr;
     try{pushTo(D.emps.filter(e=>canHandleMat(e)&&e.id!==m.id).map(e=>e.id),()=>('📦 '+(MC_SRC[G]?MC_SRC[G][0]+' '+t(MC_SRC[G][1]):t('Material'))+' — '+nameOf(m.id)+' @ '+where+': '+lines.length+' '+t('items')+' — '+lines.slice(0,3).join(', ').slice(0,80)+' ('+t(W)+')'+(r.note?' — '+r.note.slice(0,60):'')),'mat',{mat:r.id});}catch(e){}
     save();try{renderMat();}catch(e){}
-    return {ok:true,request_id:r.id,job:where,items:lines,when:W,get:G,_act:'📦 '+T('Material request sent')+' — '+where+': '+lines.join(', '),_kind:'mat'};},
+    return {ok:true,request_id:r.id,job:where,items:lines,when:W,get:G,_act:'📦 '+T('Material request sent')+' — '+where+': '+lines.join(', '),_undo:'@m:'+r.id};},
+  set_material_default({phrase,stock_id}){if(!canDef())return {error:'Only Menachem (Material) or the owner can set company defaults.'};const st=mcGet(stock_id);phrase=String(phrase||'').toLowerCase().trim();
+    if(!st||!phrase)return {error:'need phrase and stock_id'};const prev=setDef(phrase,st.id);return {ok:true,phrase,item:st.name,_act:'⭐ '+T('Company default')+': "'+phrase+'" → '+st.name,_undo:'@d:'+phrase+':'+(prev||'')};},
+  // 11/15 new actions
+  material_status({job_id,mine}){const m=M();let L=(D.mats||[]).filter(r=>r&&!r.deleted&&(!job_id||r.site===job_id)&&(!mine&&!isLead()||r.from===m.id||(isLead()&&job_id)));
+    if(job_id){const s=(D.sites||[]).find(x=>x.id===job_id);if(!s||!vis(s))return {error:'no such job'};}
+    L=L.slice(0,15);return L.map(r=>{let it=[];try{it=liItems(r).map(i=>i.q+' '+(i.t||''));}catch(e){it=String(r.items||'').split('\n');}
+      return {job:r.site?sname(r.site):r.addr,from:nm(r.from),status:r.status==='open'?(r.st==='requested'?'requested — not ordered yet':r.st||'open'):r.status,when_needed:r.when,get:r.src,items:it.slice(0,8),asked:r.ts?dk(r.ts):'',days_ago:r.ts?Math.floor((Date.now()-r.ts)/864e5):null};});},
+  add_job_note({job_id,text}){const m=M();const s=(D.sites||[]).find(x=>x.id===job_id);if(!s||!vis(s))return {error:'no such job'};text=String(text||'').trim();if(!text)return {error:'no text'};
+    const n={id:nid('kn'),owner:m.id,type:'text',title:'',body:text,img:'',items:[],color:'0',pinned:false,labels:[],collab:[],site:s.id,created:Date.now(),edited:Date.now()};
+    (D.keep=D.keep||[]).push(n);save();try{renderKeep&&renderKeep();}catch(e){}
+    return {ok:true,job:s.name,_act:'📝 '+T('Note added')+' — '+s.name+': '+text.slice(0,80),_undo:'@n:'+n.id};},
+  set_job_step({job_id,step}){const m=M();let ok=false;try{ok=canMoveStage(m);}catch(e){}if(!ok)return {error:'Only the owner, the site managers, Shia or Menachem can move a job.'};
+    const s=(D.sites||[]).find(x=>x.id===job_id);if(!s||!vis(s))return {error:'no such job'};const K=Object.keys(STAGE).filter(k=>k!=='priced');
+    const k=K.find(k=>k===step)||K.find(k=>String(STAGE[k][0]).toLowerCase()===String(step||'').toLowerCase());if(!k)return {error:'steps: '+K.map(k=>k+' = '+STAGE[k][0]).join(', ')};
+    const was=s.stage;s.stage=k;s.trelloList='';s.stageBy=m.id;s.stageAt=Date.now();try{sortSites();}catch(e){}save();
+    return {ok:true,job:s.name,from:was?STAGE[was]&&STAGE[was][0]:'',to:STAGE[k][0],_act:'↪ '+s.name+' → '+T(STAGE[k][0]),_undo:'@s:'+s.id+':'+(was||'')};},
+  day_summary({date}){if(isLead())return {error:'not for crew leaders'};const d=date||dk(Date.now());const a=dayStart(d),b=a+864e5,now=Date.now();
+    const P=(D.punches||[]).filter(p=>!p.voided&&p.in>=a&&p.in<b);const per={};P.forEach(p=>{const k=nm(p.emp||p.who||p.uid);const h=((p.out||Math.min(now,b))-p.in)/36e5;const j=sname(p.site)||'—';per[k]=per[k]||{hours:0,jobs:new Set()};per[k].hours+=h;per[k].jobs.add(j);});
+    const people=Object.entries(per).map(([n,v])=>({name:n,hours:+v.hours.toFixed(1),jobs:[...v.jobs]}));
+    const mats=(D.mats||[]).filter(r=>r.ts>=a&&r.ts<b).map(r=>({job:r.site?sname(r.site):r.addr,from:nm(r.from),status:r.status}));
+    const made=(D.jobs||[]).filter(j=>!j.deleted&&j.ts>=a&&j.ts<b).length,done=(D.jobs||[]).filter(j=>j.doneAt>=a&&j.doneAt<b).length;
+    const late=(D.jobs||[]).filter(j=>!j.deleted&&j.status!=='done'&&j.ts&&now-j.ts>7*864e5).slice(0,10).map(j=>({what:String(j.desc||j.text||'').slice(0,80),to:tosOf(j).map(nm).join(', '),job:sname(j.site),days_open:Math.floor((now-j.ts)/864e5)}));
+    let orr=[];try{orr=(D.orr||[]).filter(o=>!o.deleted&&o.step!=='done').length;}catch(e){}
+    return {date:d,people_clocked_in:people.length,people,material_requests:mats,tasks_made:made,tasks_done:done,tasks_open_over_a_week:late,orr_open:orr};},
   open_screen({screen}){const ok=['home','jobs','sites','punch','hours','sched','cal','mat','team','orr','rep','more','exp','est','code','msg','trello'];if(!ok.includes(screen))return {ok:false,error:'unknown screen'};
     closeAsk();goTab(screen);return {ok:true,_act:'↗ '+T('Opened')+' '+screen};},
 };
+
+// ⭐ company defaults: "when someone says <phrase>, use this item" — kept on the catalog item (askDefault), set by Menachem / the owner
+function setDef(phrase,sid){phrase=String(phrase||'').toLowerCase().trim();let prev='';mcAll().forEach(x=>{if((x.askDefault||[]).includes(phrase)){prev=x.id;x.askDefault=x.askDefault.filter(p=>p!==phrase);x.edited=Date.now();}});
+  const st=sid?mcGet(sid):null;if(st){st.askDefault=[...(st.askDefault||[]),phrase];st.edited=Date.now();}save();return prev;}
+const DEF_SUG=['switch','3-way switch','outlet','gfci','dimmer','12/2','14/2','12/3','4 square box','single gang box','plate','15 amp breaker','20 amp breaker','smoke detector'];
+P17.defs=()=>{if(!canDef())return;const b=$('p17list');const cur=[];mcAll().forEach(x=>(x.askDefault||[]).forEach(p=>cur.push([p,x])));cur.sort((a,b)=>a[0].localeCompare(b[0]));
+  const fq=matFreq();const sug=DEF_SUG.filter(w=>!cur.some(c=>c[0]===w)).map(w=>{const L=TOOLS.find_material({query:w}).filter(r=>r.times_requested);L.sort((a,b)=>b.times_requested-a.times_requested);return L[0]?[w,L[0]]:null;}).filter(Boolean);
+  b.innerHTML='<div class="p17col"><div class="p17defh"><button class="p17lnk" onclick="P17.back()">‹ '+E(T('Back'))+'</button><b>⭐ '+E(T('Company defaults'))+'</b></div>'
+   +'<div class="p17sub" style="text-align:left">'+E(T('When someone asks for one of these words, the assistant uses this item without asking.'))+'</div>'
+   +(cur.length?cur.map(([p,x])=>'<div class="p17card"><span class="p17ct"><b>"'+E(p)+'"</b> → '+E(x.name)+'</span><button class="p17lnk" onclick="P17.defRm(\''+E(p).replace(/'/g,"\\'")+'\')">'+E(T('Remove'))+'</button></div>').join(''):'<div class="p17sub">'+E(T('No defaults yet.'))+'</div>')
+   +(sug.length?'<div class="p17sec">'+E(T('Suggested — the item your team asks for most'))+'</div>'+sug.map(([w,r])=>'<div class="p17card"><span class="p17ct"><b>"'+E(w)+'"</b> → '+E(r.name)+' <span class="p17dsub">('+r.times_requested+'×)</span></span><button class="p17lnk" onclick="P17.defAdd(\''+E(w)+'\',\''+E(r.stock_id)+'\')">'+E(T('Add'))+'</button></div>').join(''):'')
+   +'<div class="p17sec">'+E(T('Add your own'))+'</div><div class="p17draft"><input class="p17dnote" id="p17dp" placeholder="'+E(T('Word people say, e.g. switch'))+'"><input class="p17dnote" id="p17ds" placeholder="'+E(T('Search the catalog…'))+'" oninput="P17.defFind(this.value)"><div id="p17dr"></div></div></div>';};
+P17.defFind=v=>{const r=$('p17dr');if(!r)return;const L=v.trim().length>1?TOOLS.find_material({query:v}).slice(0,6):[];r.innerHTML=L.map(x=>'<button class="p17dpick" onclick="P17.defAdd(null,\''+E(x.stock_id)+'\')">'+E(x.name)+'</button>').join('');};
+P17.defAdd=(w,sid)=>{w=w||($('p17dp')||{}).value||'';w=String(w).toLowerCase().trim();if(!w){toast(T('Type the word people say first'));return;}setDef(w,sid);toast('⭐ '+T('Saved'),'green');P17.defs();};
+P17.defRm=w=>{setDef(w,'');P17.defs();};
+P17.back=()=>render();
+// how often each catalog item was asked for (company-wide) — the usual item ranks first
+let _fq=null,_fqAt=0;function matFreq(){if(_fq&&Date.now()-_fqAt<60000)return _fq;_fq={};(D.mats||[]).slice(0,800).forEach(r=>{try{liItems(r).forEach(i=>{if(i.sid)_fq[i.sid]=(_fq[i.sid]||0)+1;});}catch(e){}});_fqAt=Date.now();return _fq;}
+// ── 11/15: confirm before sending — the AI fills a card, the person checks it and taps Send (or says "send it") ──
+const MATW=[['Now','Now'],['Tomorrow morning','Tomorrow'],['This week','This week']],MATG=['deliver','garage','pickup'],TDUE=['','Today','Tomorrow morning','This week','ASAP'];
+let pend=[];   // what the person did with the cards — told to the AI with the next question
+function sendMat(d){const m=M();try{if(!canRequestMat(m))return {error:'You cannot request material.'};}catch(e){}
+  return TOOLS._matOld({job_id:d.job_id,address:d.address,items:d.items.map(x=>({stock_id:x.sid,name:x.t,qty:x.q,unit:x.u})),when:d.when,get:d.get,note:d.note});}
+function draftMat({job_id,address,items,when,get,note}){const m=M();try{if(!canRequestMat(m))return {error:'You cannot request material.'};}catch(e){}
+  items=(Array.isArray(items)?items:[]).filter(x=>x&&(x.name||x.stock_id));if(!items.length)return {error:'no items'};
+  const s=job_id?(D.sites||[]).find(x=>x.id===job_id&&vis(x)):null;if(job_id&&!s)return {error:'no such job'};if(!s&&!address)return {error:'which job?'};
+  const its=items.map(x=>{let st=x.stock_id?mcGet(x.stock_id):null;if(!st)try{st=mcExact(x.name);}catch(e){}return {t:st?st.name:String(x.name),q:String(x.qty==null?1:x.qty),u:(st&&st.unit)||x.unit||'pc',sid:st?st.id:''};});
+  const d={job_id:s?s.id:'',address:s?'':String(address||''),where:s?s.name:String(address||''),items:its,when:MATW.some(w=>w[0]===when)?when:'Now',get:MATG.includes(get)?get:'deliver',note:String(note||'').trim()};
+  log.push({who:'draft',kind:'mat',d,state:'open'});
+  return {shown_to_person:true,not_sent_yet:true,job:d.where,items:its.map(x=>x.q+' '+x.u+' '+x.t+(x.sid?'':' (not in catalog)')),when:d.when,get:d.get,
+    next:'A card is on the screen with Send and Cancel. Tell them in one short line to check it and tap Send (or say "send it"). Do not say it was sent.'};}
+function draftTask({to,text,job_id,due,priority}){const m=M();text=String(text||'').trim();if(!text)return {ok:false,error:'no text'};
+  let tg=[];try{tg=assignTargets().map(x=>x.id);}catch(e){}tg.push(m.id);
+  to=(Array.isArray(to)?to:[to]).filter(Boolean);const bad=to.filter(x=>!tg.includes(x));if(bad.length)return {ok:false,error:'cannot send to: '+bad.join(', ')};if(!to.length)return {ok:false,error:'nobody picked'};
+  if(job_id&&!(D.sites||[]).some(s=>s.id===job_id&&vis(s)))return {ok:false,error:'no such job'};
+  const d={to,text,job_id:job_id||'',due:TDUE.includes(due||'')?(due||''):'',priority:!!priority,who:to.map(x=>nm(x)||crewName(x)).join(' + ')};
+  log.push({who:'draft',kind:'task',d,state:'open'});
+  return {shown_to_person:true,not_sent_yet:true,to:d.who,text,job:job_id?sname(job_id):'',due:d.due,next:'A card is on the screen with Send and Cancel. Tell them in one short line to check it and tap Send (or say "send it"). Do not say it was sent.'};}
+const openDraft=()=>{for(let i=log.length-1;i>=0;i--)if(log[i].who==='draft'&&log[i].state==='open')return i;return -1;};
+P17.dq=(i,k,v)=>{const x=log[i];if(x&&x.d.items[k])x.d.items[k].q=String(v).trim()||'1';};
+P17.drm=(i,k)=>{const x=log[i];if(!x)return;x.d.items.splice(k,1);if(!x.d.items.length)return P17.dno(i);render();};
+P17.df=(i,f,v)=>{const x=log[i];if(x)x.d[f]=f==='priority'?!!v:v;};
+P17.dsend=i=>{const x=log[i];if(!x||x.state!=='open')return;const m=x.kind==='mat';
+  const out=m?sendMat(x.d):TOOLS._doTask(x.d);if(!out||out.error||out.ok===false){toast((out&&out.error)||T('Not sent'));return;}
+  x.state='sent';x.who='act';x.kind=m?'create_material_request':'create_task';x.text=out._act;x.undo=out._undo||null;buzzOk();
+  pend.push('[The person checked the card and tapped Send: '+String(out._act).replace(/^[^\w]+/,'')+']');render(true);};
+P17.dno=i=>{const x=log[i];if(!x||x.state!=='open')return;x.state='cancelled';pend.push('[The person cancelled the '+(x.kind==='mat'?'material request':'task')+' card — nothing was sent.]');render();};
+const buzzOk=()=>{try{buzz(20);}catch(e){}};
+function draftHtml(x,i){const d=x.d,o=x.state==='open';
+  if(x.state==='cancelled')return '<div class="p17card p17off"><span class="p17ci">'+(x.kind==='mat'?IC.box:IC.task)+'</span><span class="p17ct">'+E(T('Cancelled — nothing was sent'))+'</span></div>';
+  const sel=(f,opts,v)=>'<select onchange="P17.df('+i+',\''+f+'\',this.value)">'+opts.map(([k,l])=>'<option value="'+E(k)+'"'+(k===v?' selected':'')+'>'+E(T(l))+'</option>').join('')+'</select>';
+  let h='<div class="p17draft"><div class="p17dh"><span class="p17ci">'+(x.kind==='mat'?IC.box:IC.task)+'</span><div><b>'+E(x.kind==='mat'?T('Material request'):T('Task for')+' '+d.who)+'</b><div class="p17dsub">'+E(x.kind==='mat'?d.where:(d.job_id?sname(d.job_id):''))+'</div></div></div>';
+  if(x.kind==='mat'){h+=d.items.map((it,k)=>'<div class="p17drow"><input inputmode="decimal" value="'+E(it.q)+'" onchange="P17.dq('+i+','+k+',this.value)" aria-label="'+E(T('Quantity'))+'"><span class="p17du">'+E(mcU(it.u))+'</span><span class="p17dn">'+E(it.t)+(it.sid?'':' <i>('+E(T('not in catalog'))+')</i>')+'</span><button onclick="P17.drm('+i+','+k+')" aria-label="'+E(T('Remove'))+'">'+IC.x+'</button></div>').join('');
+    h+='<div class="p17dsel">'+sel('when',MATW,d.when)+sel('get',MATG.map(g=>[g,(typeof MC_SRC!=='undefined'&&MC_SRC[g])?MC_SRC[g][1]:g]),d.get)+'</div>'
+      +'<input class="p17dnote" placeholder="'+E(T('Note (optional)'))+'" value="'+E(d.note)+'" onchange="P17.df('+i+',\'note\',this.value)">';}
+  else h+='<textarea class="p17dtxt" rows="2" onchange="P17.df('+i+',\'text\',this.value)">'+E(d.text)+'</textarea><div class="p17dsel">'+sel('due',TDUE.map(v=>[v,v||'No due date']),d.due)+'</div>';
+  return h+'<div class="p17dact"><button class="p17dno" onclick="P17.dno('+i+')">'+E(T('Cancel'))+'</button><button class="p17dgo" onclick="P17.dsend('+i+')">'+E(T('Send'))+'</button></div></div>';}
+const mcU=u=>{try{return mcUnitL(u);}catch(e){return u;}};
+P17._log=()=>log;
 
 // ── the conversation (11/15 v2: looks and works like the Claude app — clean page, live status, real listening) ──
 async function call(){const s=window.EX_sb?(await EX_sb.auth.getSession()).data.session:null;const C=window.EX_CFG||{};
@@ -138,17 +232,21 @@ function errText(e){const k=e&&e.error;if(e&&e.status===429||k==='limit')return 
   if(e&&(e.status===401||e.status===403))return T('Ask is for the owner, managers and office.');if(e&&e.busy)return T('The AI is very busy right now — wait a minute and ask again.');if(e&&e.status)return T('Something went wrong on the AI side — ask again.')+' ('+e.status+(e.error?': '+String(e.error).slice(0,80):'')+')';return T('Could not reach Ask — check the signal and try again.');}
 // what it's doing right now, in plain words
 const STEP={find_jobs:i=>T('Looking for')+' '+(i.query||'')+'…',open_job:()=>T('Opening the job…'),job_summary:()=>T('Reading the job…'),find_people:i=>T('Looking for')+' '+(i.query||'')+'…',
-  create_task:()=>T('Sending the task…'),open_tasks:()=>T('Checking open tasks…'),hours:()=>T('Adding up the hours…'),working_now:()=>T('Checking who is clocked in…'),schedule:()=>T('Checking the schedule…'),
-  orr_status:()=>T('Checking O&R…'),find_material:i=>T('Looking for')+' '+(i.query||'')+'…',create_material_request:()=>T('Sending the material request…'),job_cost:()=>T('Adding up the job cost…'),open_screen:()=>T('Opening…')};
+  create_task:()=>T('Preparing the task…'),open_tasks:()=>T('Checking open tasks…'),hours:()=>T('Adding up the hours…'),working_now:()=>T('Checking who is clocked in…'),schedule:()=>T('Checking the schedule…'),
+  orr_status:()=>T('Checking O&R…'),find_material:i=>T('Looking for')+' '+(i.query||'')+'…',create_material_request:()=>T('Preparing the material request…'),material_status:()=>T('Checking material…'),add_job_note:()=>T('Adding the note…'),set_job_step:()=>T('Moving the job…'),day_summary:()=>T('Putting the day together…'),job_cost:()=>T('Adding up the job cost…'),open_screen:()=>T('Opening…')};
 let status='';
-async function send(text){text=String(text||'').trim();if(!text||busy)return;busy=true;try{speechSynthesis.cancel();}catch(e){}P17._spoken=log.length;
-  msgs.push({role:'user',content:text});log.push({who:'me',text});status=T('Thinking…');render(true);
+async function send(text,extra){text=String(text||'').trim();if(!text||busy)return;
+  const od=openDraft();if(od>=0&&/^\s*(yes|yeah|yep|send|send it|ok|okay|go ahead|confirm|do it|s[ií]|env[ií]a(lo)?|m[aá]ndalo|dale|listo)[\s.!,]*(please|por favor)?[\s.!]*$/i.test(text)){log.push({who:'me',text});P17.dsend(od);if(talk||heard)speak(T('Sent.'));heard=false;return;}
+  busy=true;try{speechSynthesis.cancel();}catch(e){}P17._spoken=log.length;
+  const ctx=(pend.length?pend.join('\n')+'\n':'')+text+(extra?'\n'+extra:'');pend=[];
+  msgs.push({role:'user',content:ctx});log.push({who:'me',text});status=T('Thinking…');render(true);
   try{for(let round=0;round<8;round++){const j=await callRetry();const content=j.content||[];msgs.push({role:'assistant',content});
       const said=content.filter(c=>c.type==='text').map(c=>c.text).join('\n').trim();const uses=content.filter(c=>c.type==='tool_use');
       if(said&&(!uses.length||j.stop_reason!=='tool_use'))log.push({who:'ai',text:said});else if(said)status=said.split('\n')[0].slice(0,90);
       if(!uses.length||j.stop_reason!=='tool_use')break;
       const results=[];for(const u of uses){status=(STEP[u.name]||(()=>T('Working…')))(u.input||{});render(true);let out;
-        try{out=await (TOOLS[u.name]?TOOLS[u.name](u.input||{}):{error:'unknown tool'});}catch(e){out={error:String(e&&e.message||e).slice(0,200)};}
+        try{const ok=TOOLS[u.name]&&u.name[0]!=='_'&&(!isLead()||LEAD_TOOLS.has(u.name));const inp=Object.assign({},u.input||{});if(isLead()&&u.name==='open_tasks')inp.person_id=M().id;
+          out=await (ok?TOOLS[u.name](inp):{error:'not allowed for this person'});}catch(e){out={error:String(e&&e.message||e).slice(0,200)};}
         if(out&&out._act){log.push({who:'act',text:out._act,undo:out._undo||null,kind:u.name});}const clean=Array.isArray(out)?out:Object.assign({},out);if(!Array.isArray(clean)){delete clean._act;delete clean._undo;}
         results.push({type:'tool_result',tool_use_id:u.id,content:JSON.stringify(clean).slice(0,12000)});}
       msgs.push({role:'user',content:results});status=T('Thinking…');render(true);}
@@ -181,37 +279,47 @@ const canCost=()=>{const m=M();return !!m&&(m.role==='owner'||(m.role==='office'
 function item(x,i){
   if(x.who==='me')return '<div class="p17u"><div>'+E(x.text).replace(/\n/g,'<br>')+'</div></div>';
   if(x.who==='act'){const ic=x.kind==='create_task'?IC.task:x.kind==='create_material_request'?IC.box:IC.job;return '<div class="p17card"><span class="p17ci">'+ic+'</span><span class="p17ct">'+E(String(x.text).replace(/^[^\w¿¡]+/,''))+'</span>'+(x.undo?'<button class="p17lnk" onclick="P17.undo(\''+E(x.undo)+'\')">'+E(T('Undo'))+'</button>':'')+'</div>';}
+  if(x.who==='draft')return draftHtml(x,i);
   if(x.who==='err')return '<div class="p17card p17bad"><span class="p17ct">'+E(x.text)+'</span></div>';
   return '<div class="p17a">'+md(x.text)+'<div class="p17tools"><button onclick="P17.say('+i+')" aria-label="read it">'+IC.spk+'</button><button onclick="P17.copy('+i+')" aria-label="copy">'+IC.copy+'</button></div></div>';}
 function render(scroll){const b=$('p17list');if(!b)return;
-  if(!log.length){const sug=[[IC.job,T('Pull up a job'),T('Pull up ')],[IC.task,T('Make a task'),T('Make a task for ')],[IC.clock,T('Who is working now?'),T('Who is working now?')]].concat(canCost()?[[IC.cost,T('What did a job cost?'),T('What did  cost?')]]:[[IC.clock,T('Hours this week'),T('How many hours this week on ')]]);
-    b.innerHTML='<div class="p17home"><div class="p17mark">'+IC.spark+'</div><div class="p17hi">'+E(greet())+'</div><div class="p17sub">'+E(T('Ask about jobs, hours, tasks and costs — or tell me what to do.'))+'</div>'
-      +'<div class="p17sug">'+sug.map(s=>'<button onclick="P17.start(\''+E(s[2]).replace(/'/g,'&#39;')+'\')"><span>'+s[0]+'</span>'+E(s[1])+'</button>').join('')+'</div></div>';}
+  if(!log.length){const sug=isLead()?[[IC.box,T('Order material'),T('I need  for ')],[IC.box,T('Where is my material?'),T('Did my material come for ')],[IC.job,T('Pull up a job'),T('Pull up ')],[IC.task,T('Add a note to a job'),T('Add a note to : ')]]
+    :[[IC.job,T('Pull up a job'),T('Pull up ')],[IC.box,T('Order material'),T('I need  for ')],[IC.task,T('Make a task'),T('Make a task for ')],[IC.clock,T('How was today?'),T('Give me a summary of today')]].concat(canCost()?[[IC.cost,T('What did a job cost?'),T('What did  cost?')]]:[[IC.clock,T('Who is working now?'),T('Who is working now?')]]);
+    b.innerHTML='<div class="p17home"><div class="p17mark">'+IC.spark+'</div><div class="p17hi">'+E(greet())+'</div><div class="p17sub">'+E(isLead()?T('Order material, check your jobs, add notes — just talk.'):T('Ask about jobs, hours, tasks and costs — or tell me what to do.'))+'</div>'
+      +'<div class="p17sug">'+sug.map(s=>'<button onclick="P17.start(\''+E(s[2]).replace(/'/g,'&#39;')+'\')"><span>'+s[0]+'</span>'+E(s[1])+'</button>').join('')+'</div>'+(canDef()?'<button class="p17lnk p17deflnk" onclick="P17.defs()">⭐ '+E(T('Company defaults for material'))+'</button>':'')+'</div>';}
   else b.innerHTML='<div class="p17col">'+log.map(item).join('')+(busy?'<div class="p17st"><span class="p17spin"></span>'+E(status||T('Thinking…'))+'</div>':'')+'</div>';
   const sb=$('p17send');if(sb)sb.disabled=busy;if(scroll)b.scrollTop=b.scrollHeight;}
 P17.start=t=>{const i=$('p17in');i.value=t;i.focus();try{i.setSelectionRange(t.indexOf('  ')>=0?t.indexOf('  ')+1:t.length,t.indexOf('  ')>=0?t.indexOf('  ')+1:t.length);}catch(e){}grow();};
 P17.copy=i=>{const x=log[i];if(!x)return;try{navigator.clipboard.writeText(x.text);toast('✓ '+T('Copied'),'green');}catch(e){}};
 P17.ex=el=>{const i=$('p17in');i.value=el.textContent;i.focus();};
-P17.undo=id=>{try{P14.cancel(id);}catch(e){}};
+P17.undo=id=>{id=String(id||'');const L=log.find(x=>x.undo===id);const done=t=>{if(L){L.undo=null;L.text='↩ '+t;}pend.push('[The person tapped Undo: '+t+']');render();};
+  if(id.startsWith('@m:')){const r=(D.mats||[]).find(x=>x.id===id.slice(3));if(!r)return;if(r.status!=='open'||r.st&&r.st!=='requested'){toast(T('Menachem already started on it — tell him directly.'));return;}
+    D.mats=D.mats.filter(x=>x.id!==r.id);try{pushTo(D.emps.filter(e=>canHandleMat(e)&&e.id!==M().id).map(e=>e.id),()=>'❌ '+t('Material request cancelled')+' — '+nameOf(M().id)+' @ '+(r.site?siteName(r.site):r.addr),'mat',{});}catch(e){}
+    save();try{renderMat();}catch(e){}done(T('Material request cancelled'));return;}
+  if(id.startsWith('@d:')){const [,ph,prev]=id.split(':');setDef(ph,prev||'');done(T('Default put back'));return;}
+  if(id.startsWith('@n:')){D.keep=(D.keep||[]).filter(x=>x.id!==id.slice(3));save();done(T('Note removed'));return;}
+  if(id.startsWith('@s:')){const [,sid,was]=id.split(':');const s=(D.sites||[]).find(x=>x.id===sid);if(s){s.stage=was||s.stage;s.stageAt=Date.now();try{sortSites();}catch(e){}save();}done(T('Job step put back'));return;}
+  try{P14.cancel(id);}catch(e){}if(L)L.undo=null;render();};
 const grow=()=>{const i=$('p17in');if(!i)return;i.style.height='auto';i.style.height=Math.min(160,i.scrollHeight)+'px';const s=$('p17send');if(s)s.classList.toggle('on',!!i.value.trim()||rec.on);};
 P17.go=()=>{if(rec.on){P17.mic();return;}const i=$('p17in');const v=i.value;i.value='';grow();send(v);};
-P17.clear=()=>{if(busy)return;msgs=[];log=[];render();};
+P17._run=async t=>{await send(t);};   // used by the practice set
+P17.clear=()=>{if(busy)return;msgs=[];log=[];pend=[];render();};
 P17.open=()=>{if(!allowed())return;build();paintSpk();try{$('p17ttl').textContent=LG()==='es'?'Asistente Electrix':'Electrix Assistant';$('p17lis').lastChild.textContent=T('Listening… talk as long as you want, then tap ■');}catch(e){}try{$('p17in').placeholder=T('Ask anything, or tell me what to do…');}catch(e){}$('p17').classList.remove('hid');render(true);setTimeout(()=>{try{$('p17in').focus();}catch(e){}},150);};
 P17.close=()=>{try{speechSynthesis.cancel();}catch(e){}if(rec.on)stopRec(false);closeAsk();};
 
 // 🎤 listening that keeps going: it does not stop when you pause — it stops when you tap ■ (or after 40 s of silence).
 // Phones end a listening session by themselves after a pause; it is restarted at once and the words are kept.
-const rec={on:false,r:null,done:'',live:'',last:0,base:''};
+const rec={on:false,r:null,done:'',live:'',last:0,base:'',alts:[]};
 function recUI(){const c=$('p17comp');if(c)c.classList.toggle('rec',rec.on);const m=$('p17mic');if(m)m.innerHTML=rec.on?IC.stop:IC.mic;const l=$('p17lis');if(l)l.hidden=!rec.on;grow();}
-function stopRec(sendIt){rec.on=false;try{rec.r&&rec.r.stop();}catch(e){}rec.r=null;recUI();const i=$('p17in');if(sendIt&&i&&i.value.trim()){heard=true;const v=i.value;i.value='';grow();send(v);}}
-function startOne(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;const r=new SR();rec.r=r;r.lang=LG()==='es'?'es-US':'en-US';r.interimResults=true;r.continuous=true;r.maxAlternatives=1;
-  r.onresult=e=>{let fin='',tmp='';for(let k=e.resultIndex;k<e.results.length;k++){const x=e.results[k];if(x.isFinal)fin+=x[0].transcript;else tmp+=x[0].transcript;}
+function stopRec(sendIt){rec.on=false;try{rec.r&&rec.r.stop();}catch(e){}rec.r=null;recUI();const i=$('p17in');if(sendIt&&i&&i.value.trim()){heard=true;const v=i.value;i.value='';grow();const al=[...new Set(rec.alts)].slice(0,6);send(v,al.length?'(Spoken. The phone also heard parts of it as: "'+al.join('", "')+'")':'(Spoken — words may be misheard.)');}}
+function startOne(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;const r=new SR();rec.r=r;r.lang=LG()==='es'?'es-US':'en-US';r.interimResults=true;r.continuous=true;r.maxAlternatives=4;
+  r.onresult=e=>{let fin='',tmp='';for(let k=e.resultIndex;k<e.results.length;k++){const x=e.results[k];if(x.isFinal){fin+=x[0].transcript;for(let a=1;a<x.length;a++)if(x[a]&&x[a].transcript&&x[a].transcript.trim()!==x[0].transcript.trim())rec.alts.push(x[a].transcript.trim());}else tmp+=x[0].transcript;}
     if(fin)rec.done=(rec.done+' '+fin).replace(/\s+/g,' ').trim();rec.live=tmp;rec.last=Date.now();const i=$('p17in');i.value=(rec.base+' '+rec.done+' '+rec.live).replace(/\s+/g,' ').trim();grow();};
   r.onerror=ev=>{if(ev&&(ev.error==='not-allowed'||ev.error==='service-not-allowed')){toast(T('Allow the microphone for this app in the phone settings.'));stopRec(false);}};
   r.onend=()=>{if(!rec.on)return;if(Date.now()-rec.last>40000){stopRec(false);return;}setTimeout(()=>{if(rec.on)try{startOne();}catch(e){stopRec(false);}},120);};
   try{r.start();}catch(e){}}
 P17.mic=()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){toast(T("Voice doesn't work on this phone — use the microphone on the keyboard."));try{$('p17in').focus();}catch(e){}return;}
-  if(rec.on){stopRec(true);return;}try{speechSynthesis.cancel();}catch(e){}const i=$('p17in');rec.on=true;rec.done='';rec.live='';rec.base=i.value.trim();rec.last=Date.now();recUI();startOne();};
+  if(rec.on){stopRec(true);return;}try{speechSynthesis.cancel();}catch(e){}const i=$('p17in');rec.on=true;rec.done='';rec.live='';rec.alts=[];rec.base=i.value.trim();rec.last=Date.now();recUI();startOne();};
 // 🔊 reads the answers out loud (the phone's own voice — free, no AI). On/off is remembered; asking with 🎤 always answers out loud.
 let talk=false,heard=false;try{talk=localStorage.getItem('p17talk')==='1';}catch(e){}
 const cleanSay=s=>String(s||'').replace(/\*\*/g,'').replace(/^[-•]\s*/gm,'').replace(/[✨📂✅↗⚠]/g,'').replace(/(\d),(\d{3})/g,'$1$2').replace(/\$(\d+(?:\.\d+)?)/g,'$1 dollars');
@@ -243,6 +351,7 @@ const css=document.createElement('style');css.textContent=
 +'.p17u{display:flex;justify-content:flex-end}.p17u>div{background:var(--a-user);padding:10px 15px;border-radius:20px;max-width:85%;font-size:16px;line-height:1.45;white-space:normal;word-wrap:break-word}'
 +'.p17a{font-size:16.5px;line-height:1.62}.p17a p{margin:0 0 10px}.p17a ul,.p17a ol{margin:0 0 10px;padding-left:22px}.p17a li{margin:3px 0}.p17a b{font-weight:650}'
 +'.p17tools{display:flex;gap:2px;margin-top:-2px;opacity:.75}.p17tools button{border:0;background:transparent;color:var(--a-mute);width:34px;height:30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center}.p17tools button:active{background:var(--a-user)}'
++'.p17draft{background:var(--a-card);border:1px solid var(--a-line);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px;font-size:14.5px}.p17dh{display:flex;gap:10px;align-items:center}.p17dsub{color:var(--a-mute);font-size:13px;font-weight:400}.p17drow{display:flex;align-items:center;gap:8px;border-top:1px solid var(--a-line);padding-top:8px}.p17drow input{width:64px;font:inherit;font-weight:600;text-align:center;padding:7px 4px;border:1px solid var(--a-line);border-radius:9px;background:var(--a-bg);color:var(--a-ink)}.p17du{color:var(--a-mute);font-size:13px;min-width:28px}.p17dn{flex:1;min-width:0}.p17drow button{background:none;border:0;color:var(--a-mute);padding:4px;display:inline-flex}.p17dsel{display:flex;gap:8px;flex-wrap:wrap}.p17dsel select,.p17dnote,.p17dtxt{font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--a-line);border-radius:10px;background:var(--a-bg);color:var(--a-ink);box-sizing:border-box}.p17dsel select{flex:1}.p17dnote,.p17dtxt{width:100%}.p17dtxt{resize:vertical}.p17dact{display:flex;gap:8px;justify-content:flex-end;margin-top:2px}.p17dact button{font:inherit;font-weight:600;border-radius:11px;padding:10px 18px;border:1px solid var(--a-line);background:var(--a-bg);color:var(--a-ink)}.p17dact .p17dgo{background:var(--a-acc);border-color:var(--a-acc);color:#fff;min-width:96px}.p17off{opacity:.6}.p17defh{display:flex;align-items:center;gap:10px}.p17sec{font-size:13px;color:var(--a-mute);font-weight:600;margin-top:6px}.p17deflnk{display:block;margin:18px auto 0}.p17dpick{display:block;width:100%;text-align:left;font:inherit;font-size:14px;padding:9px 10px;border:0;border-top:1px solid var(--a-line);background:none;color:var(--a-ink)}'
 +'.p17card{display:flex;align-items:center;gap:10px;background:var(--a-card);border:1px solid var(--a-line);border-radius:14px;padding:10px 12px;font-size:14.5px}.p17ci{width:32px;height:32px;border-radius:9px;background:var(--a-user);display:inline-flex;align-items:center;justify-content:center;color:var(--a-acc);flex:none}.p17ct{flex:1;min-width:0}.p17bad{color:var(--red,#b42318)}'
 +'.p17lnk{border:0;background:transparent;color:var(--a-acc);font-weight:600;font-size:14px;padding:6px}'
 +'.p17st{display:flex;align-items:center;gap:10px;color:var(--a-mute);font-size:14.5px}.p17spin{width:16px;height:16px;border-radius:50%;border:2px solid var(--a-line);border-top-color:var(--a-acc);animation:p17r .8s linear infinite}@keyframes p17r{to{transform:rotate(360deg)}}'
@@ -267,7 +376,7 @@ try{Object.assign(ES,{"Ask":"Preguntar","New":"Nuevo","Opened":"Abierto","Undo":
   "Make a task for Menachem to do billing for 5 Garfield":"Haz una tarea para Menachem: facturar 5 Garfield","Who is working now?":"¿Quién está trabajando ahora?",
   "How many hours on 14 Dorset this month?":"¿Cuántas horas en 14 Dorset este mes?","Today's limit for Ask is used up — try again tomorrow.":"Se acabó el límite de hoy — intente mañana.",
   "Ask is not switched on yet — the AI key is missing.":"Preguntar aún no está activado — falta la clave de IA.","Ask is for the owner, managers and office.":"Preguntar es para el dueño, los gerentes y la oficina.",
-  "Could not reach Ask — check the signal and try again.":"No se pudo conectar — revise la señal e intente otra vez.","Looking for":"Buscando","Opening the job…":"Abriendo el trabajo…","Reading the job…":"Leyendo el trabajo…","Sending the task…":"Enviando la tarea…","Checking open tasks…":"Revisando tareas abiertas…","Adding up the hours…":"Sumando las horas…","Checking who is clocked in…":"Revisando quién está marcado…","Checking the schedule…":"Revisando el horario…","Checking O&R…":"Revisando O&R…","Adding up the job cost…":"Sumando el costo del trabajo…","Opening…":"Abriendo…","Working…":"Trabajando…","Thinking…":"Pensando…","Pull up a job":"Abrir un trabajo","Pull up ":"Abre ","Make a task":"Hacer una tarea","Make a task for ":"Haz una tarea para ","What did a job cost?":"¿Cuánto costó un trabajo?","What did  cost?":"¿Cuánto costó  ?","Hours this week":"Horas esta semana","How many hours this week on ":"¿Cuántas horas esta semana en ","Ask about jobs, hours, tasks and costs — or tell me what to do.":"Pregunte por trabajos, horas, tareas y costos — o dígame qué hacer.","Ask anything, or tell me what to do…":"Pregunte lo que sea, o dígame qué hacer…","Listening… talk as long as you want, then tap ■":"Escuchando… hable lo que quiera y luego toque ■","Allow the microphone for this app in the phone settings.":"Permita el micrófono para esta app en los ajustes del teléfono.","Voice doesn't work on this phone — use the microphone on the keyboard.":"La voz no funciona en este teléfono — use el micrófono del teclado.","Copied":"Copiado","Material request sent":"Pedido de material enviado","Sending the material request…":"Enviando el pedido de material…","The AI is busy — trying again…":"La IA está ocupada — intentando otra vez…","The AI is very busy right now — wait a minute and ask again.":"La IA está muy ocupada — espere un minuto y pregunte otra vez.","Something went wrong on the AI side — ask again.":"Algo falló del lado de la IA — pregunte otra vez.","Answers will be read out loud":"Las respuestas se leerán en voz alta","Answers will not be read out loud":"Las respuestas no se leerán en voz alta"});}catch(e){}
+  "Could not reach Ask — check the signal and try again.":"No se pudo conectar — revise la señal e intente otra vez.","Looking for":"Buscando","Opening the job…":"Abriendo el trabajo…","Reading the job…":"Leyendo el trabajo…","Sending the task…":"Enviando la tarea…","Checking open tasks…":"Revisando tareas abiertas…","Adding up the hours…":"Sumando las horas…","Checking who is clocked in…":"Revisando quién está marcado…","Checking the schedule…":"Revisando el horario…","Checking O&R…":"Revisando O&R…","Adding up the job cost…":"Sumando el costo del trabajo…","Opening…":"Abriendo…","Working…":"Trabajando…","Thinking…":"Pensando…","Pull up a job":"Abrir un trabajo","Pull up ":"Abre ","Make a task":"Hacer una tarea","Make a task for ":"Haz una tarea para ","What did a job cost?":"¿Cuánto costó un trabajo?","What did  cost?":"¿Cuánto costó  ?","Hours this week":"Horas esta semana","How many hours this week on ":"¿Cuántas horas esta semana en ","Ask about jobs, hours, tasks and costs — or tell me what to do.":"Pregunte por trabajos, horas, tareas y costos — o dígame qué hacer.","Ask anything, or tell me what to do…":"Pregunte lo que sea, o dígame qué hacer…","Listening… talk as long as you want, then tap ■":"Escuchando… hable lo que quiera y luego toque ■","Allow the microphone for this app in the phone settings.":"Permita el micrófono para esta app en los ajustes del teléfono.","Voice doesn't work on this phone — use the microphone on the keyboard.":"La voz no funciona en este teléfono — use el micrófono del teclado.","Copied":"Copiado","nightly check":"revisión nocturna","nightly check failed":"falló la revisión nocturna","Nightly self-check":"Revisión automática nocturna","Material request":"Pedido de material","Task for":"Tarea para","Quantity":"Cantidad","Remove":"Quitar","not in catalog":"no está en el catálogo","Note (optional)":"Nota (opcional)","No due date":"Sin fecha","Send":"Enviar","Cancel":"Cancelar","Cancelled — nothing was sent":"Cancelado — no se envió nada","Not sent":"No se envió","Sent.":"Enviado.","Material request cancelled":"Pedido de material cancelado","Menachem already started on it — tell him directly.":"Menachem ya empezó con eso — avísele directamente.","Note removed":"Nota quitada","Job step put back":"Paso del trabajo devuelto","Default put back":"Predeterminado devuelto","Note added":"Nota agregada","Preparing the material request…":"Preparando el pedido de material…","Preparing the task…":"Preparando la tarea…","Checking material…":"Revisando el material…","Adding the note…":"Agregando la nota…","Moving the job…":"Moviendo el trabajo…","Putting the day together…":"Resumiendo el día…","Company default":"Predeterminado de la empresa","Company defaults":"Predeterminados de la empresa","Company defaults for material":"Predeterminados de material","Back":"Atrás","When someone asks for one of these words, the assistant uses this item without asking.":"Cuando alguien pide una de estas palabras, el asistente usa este artículo sin preguntar.","No defaults yet.":"Todavía no hay predeterminados.","Suggested — the item your team asks for most":"Sugeridos — lo que su equipo pide más","Add your own":"Agregar uno propio","Add":"Agregar","Word people say, e.g. switch":"Palabra que dice la gente, ej. switch","Search the catalog…":"Buscar en el catálogo…","Type the word people say first":"Primero escriba la palabra","Saved":"Guardado","Order material":"Pedir material","Where is my material?":"¿Dónde está mi material?","Add a note to a job":"Agregar una nota a un trabajo","How was today?":"¿Cómo fue hoy?","I need  for ":"Necesito  para ","Did my material come for ":"¿Llegó mi material para ","Add a note to : ":"Agregar una nota a : ","Give me a summary of today":"Dame un resumen de hoy","Order material, check your jobs, add notes — just talk.":"Pida material, revise sus trabajos, agregue notas — solo hable.","Material request sent":"Pedido de material enviado","Sending the material request…":"Enviando el pedido de material…","The AI is busy — trying again…":"La IA está ocupada — intentando otra vez…","The AI is very busy right now — wait a minute and ask again.":"La IA está muy ocupada — espere un minuto y pregunte otra vez.","Something went wrong on the AI side — ask again.":"Algo falló del lado de la IA — pregunte otra vez.","Answers will be read out loud":"Las respuestas se leerán en voz alta","Answers will not be read out loud":"Las respuestas no se leerán en voz alta"});}catch(e){}
 })();
 
 /* ── AI key (Baruch 11/15): the owner or Payroll (Shia) pastes the Anthropic key here, under Hours next to Fingercheck.
@@ -278,13 +387,15 @@ const E=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','
 const can=()=>{try{const m=me();return !!m&&(m.role==='owner'||(m.role==='office'&&m.title==='Payroll'));}catch(e){return false;}};
 let ST;   // undefined = not asked yet · null = no key · {last4,at,by}
 async function status(){try{const r=await EX_sb.rpc('ai_key_status');if(r.error)throw r.error;ST=r.data||null;}catch(e){ST=undefined;}return ST;}
-const line=()=>ST===undefined?T('Checking…'):ST?'✓ '+T('Saved')+' · '+T('ends in')+' …'+E(ST.last4||''):T('Not set — ✨ Ask is off');
+const chk=()=>{const c=ST&&ST.check;if(!c)return '';return c.ok?' · '+T('nightly check')+' ✓':' · <b style="color:#c0392b">⚠ '+T('nightly check failed')+'</b>';};
+const line=()=>ST===undefined?T('Checking…'):ST?'✓ '+T('Saved')+' · '+T('ends in')+' …'+E(ST.last4||'')+chk():T('Not set — ✨ Ask is off');
 P17.keyCard=()=>{if(!can()||!window.EX_REAL||!window.EX_sb)return '';if(ST===undefined&&!P17._kq){P17._kq=1;status().then(()=>{const el=$('aiKeyLine');if(el)el.innerHTML=line();P17._kq=0;});}
   return '<div class="card" style="padding:11px 13px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="P17.keySheet()"><div><b>✨ '+E(T('AI key (for Ask)'))+'</b><div style="font-size:12px;color:var(--g4)" id="aiKeyLine">'+line()+'</div></div><span style="color:var(--blue-mid);font-size:18px">›</span></div>';};
 P17.keySheet=async()=>{if(!can())return;await status();
   rateSheet('<div style="font-weight:700;font-size:17px;margin-bottom:2px">✨ '+E(T('AI key (for Ask)'))+'</div>'
     +'<div style="font-size:12px;color:var(--g4);margin-bottom:8px">'+E(T('Paste the key from console.anthropic.com (Settings → API Keys). It starts with sk-ant-. After saving, nobody can see it again — not you, not Payroll, not Claude. Only the server uses it.'))+'</div>'
     +(ST?'<div style="font-size:13px;color:var(--green);margin-bottom:6px">✓ '+E(T('Saved'))+' · '+E(T('ends in'))+' …'+E(ST.last4||'')+(ST.at?' · '+E(new Date(ST.at).toLocaleDateString())+(ST.by?' · '+E(nameOf(ST.by)):''):'')+'</div>':'<div style="font-size:13px;color:var(--g4);margin-bottom:6px">'+E(T('Not saved'))+'</div>')
+    +(ST&&ST.check?'<div style="font-size:12.5px;margin-bottom:8px;color:'+(ST.check.ok?'var(--green)':'#c0392b')+'">'+(ST.check.ok?'✓ ':'⚠ ')+E(T('Nightly self-check'))+' · '+E(new Date(ST.check.at).toLocaleString())+(ST.check.ok?'':' — '+E(ST.check.err||''))+'</div>':'')
     +'<input type="password" autocomplete="off" spellcheck="false" data-nomic="1" id="aiKeyIn" placeholder="'+E(ST?T('Paste a new one to replace it'):T('Paste it here'))+'" style="font-size:15px">'
     +'<button class="btn" style="margin-top:12px" onclick="P17.keySave()">'+E(T('Save'))+'</button>'
     +'<button class="btn gr" style="margin-top:8px" onclick="P17.keyTest()">'+E(T('Test the key'))+'</button><div id="aiKeyRes" style="font-size:13px;margin-top:10px"></div>'
