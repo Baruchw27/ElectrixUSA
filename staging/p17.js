@@ -86,7 +86,7 @@ const TOOLS={
   async job_cost({job_id,from,to}){const m=M();if(!(m&&(m.role==='owner'||(m.role==='office'&&m.title==='Payroll'))))return {error:'Costs are only for the owner and Payroll.'};
     const s=(D.sites||[]).find(x=>x.id===job_id);if(!s)return {error:'no such job'};
     const a=from?dayStart(from):0,b=to?dayStart(to)+864e5:Infinity;const inR=ts=>ts>=a&&ts<b;
-    let H=null;try{H=repHist(a,()=>{});for(let n=0;H&&H.state!=='ok'&&n<80;n++){await new Promise(r=>setTimeout(r,250));H=repHist(a,()=>{});}}catch(e){H=null;}
+    let H=null;try{H=repHist(a,()=>{});for(let n=0;H&&H.state!=='ok'&&!(H.state==='fail'&&n>3)&&n<80;n++){await new Promise(r=>setTimeout(r,250));H=repHist(a,()=>{});}}catch(e){H=null;}
     const L=laborModel(a,b,H);const pun=repPun(a,b,H).filter(p=>p.site===job_id);const wkOf=p=>p.wk||L.wkey(p.in);
     let h=0,lab=0,est=false;const noRate={},per={};
     pun.forEach(p=>{const k=p.who+'|'+wkOf(p);const pr=L.perHour(k);if(pr.est)est=true;if(pr.none)noRate[p.who]=(noRate[p.who]||0)+p.h;h+=p.h;lab+=p.h*pr.r;const P=per[p.who]||(per[p.who]={hours:0,cost:0});P.hours+=p.h;P.cost+=p.h*pr.r;});
