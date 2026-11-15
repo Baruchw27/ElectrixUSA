@@ -2,7 +2,8 @@
 // The phone sends the conversation; this function adds the instructions and the list of tools and asks Claude.
 // The TOOLS RUN ON THE PHONE, on the data that person's phone already has — so the assistant can never see or do more
 // than that person can in the app (rates and wages stay hidden from whoever can't see them now).
-// Key: ANTHROPIC_API_KEY secret, or the private server_config row "anthropic_key" (the same key the "ai" function uses).
+// Key: ANTHROPIC_API_KEY secret, or the private server_config row "anthropic_key" — pasted in the app by the owner or Payroll
+// (Hours → AI key; ai_set_key). The same key the "ai" function uses.
 // Who: owner, managers and office staff. Limit: ai_take('ask') — per person and per team per day.
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
@@ -54,13 +55,16 @@ Deno.serve(async (req) => {
   if (!me || !me.id || me.inactive) return json({ error: "not allowed" }, 401);
   if (!["owner", "manager", "office"].includes(me.role) && !me.all) return json({ error: "not allowed" }, 403);
   let body: any = {}; try { body = await req.json(); } catch (_) { return json({ error: "bad request" }, 400); }
+  let key = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+  if (!key) { const adm = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!); const { data } = await adm.from("server_config").select("v").eq("k", "anthropic_key").maybeSingle(); key = data?.v ?? ""; }
+  if (!key) return json({ error: "off" }, 503);
+  // "Test the key" button: asks Anthropic whether the key works (free — no question is asked, nothing is counted)
+  if (body.ping) { const t = await fetch("https://api.anthropic.com/v1/models?limit=1", { headers: { "x-api-key": key, "anthropic-version": "2023-06-01" } });
+    return json({ ok: t.ok, status: t.status }); }
   let messages: any[] = Array.isArray(body.messages) ? body.messages : [];
   // a long talk keeps the last ~40 turns, always starting at one of the person's own questions (never mid tool-call)
   if (messages.length > 40) { let i = messages.length - 40; while (i < messages.length && !(messages[i]?.role === "user" && typeof messages[i]?.content === "string")) i++; messages = messages.slice(i); }
   if (!messages.length) return json({ error: "bad request" }, 400);
-  let key = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
-  if (!key) { const adm = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!); const { data } = await adm.from("server_config").select("v").eq("k", "anthropic_key").maybeSingle(); key = data?.v ?? ""; }
-  if (!key) return json({ error: "off" }, 503);
   const { data: ok } = await sb.rpc("ai_take", { p_kind: "ask" });
   if (!ok) return json({ error: "limit" }, 429);
   const today = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date());

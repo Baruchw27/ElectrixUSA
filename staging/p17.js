@@ -154,3 +154,42 @@ try{Object.assign(ES,{"Ask":"Preguntar","New":"Nuevo","Opened":"Abierto","Undo":
   "Ask is not switched on yet — the AI key is missing.":"Preguntar aún no está activado — falta la clave de IA.","Ask is for the owner, managers and office.":"Preguntar es para el dueño, los gerentes y la oficina.",
   "Could not reach Ask — check the signal and try again.":"No se pudo conectar — revise la señal e intente otra vez."});}catch(e){}
 })();
+
+/* ── AI key (Baruch 11/15): the owner or Payroll (Shia) pastes the Anthropic key here, under Hours next to Fingercheck.
+   It goes to the locked part of the server (ai_set_key) — after saving nobody can see it again, only the last 4 characters. ── */
+(function(){
+const $=id=>document.getElementById(id);const T=s=>{try{return t(s);}catch(e){return s;}};
+const E=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const can=()=>{try{const m=me();return !!m&&(m.role==='owner'||(m.role==='office'&&m.title==='Payroll'));}catch(e){return false;}};
+let ST;   // undefined = not asked yet · null = no key · {last4,at,by}
+async function status(){try{const r=await EX_sb.rpc('ai_key_status');if(r.error)throw r.error;ST=r.data||null;}catch(e){ST=undefined;}return ST;}
+const line=()=>ST===undefined?T('Checking…'):ST?'✓ '+T('Saved')+' · '+T('ends in')+' …'+E(ST.last4||''):T('Not set — ✨ Ask is off');
+P17.keyCard=()=>{if(!can()||!window.EX_REAL||!window.EX_sb)return '';if(ST===undefined&&!P17._kq){P17._kq=1;status().then(()=>{const el=$('aiKeyLine');if(el)el.innerHTML=line();P17._kq=0;});}
+  return '<div class="card" style="padding:11px 13px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="P17.keySheet()"><div><b>✨ '+E(T('AI key (for Ask)'))+'</b><div style="font-size:12px;color:var(--g4)" id="aiKeyLine">'+line()+'</div></div><span style="color:var(--blue-mid);font-size:18px">›</span></div>';};
+P17.keySheet=async()=>{if(!can())return;await status();
+  rateSheet('<div style="font-weight:700;font-size:17px;margin-bottom:2px">✨ '+E(T('AI key (for Ask)'))+'</div>'
+    +'<div style="font-size:12px;color:var(--g4);margin-bottom:8px">'+E(T('Paste the key from console.anthropic.com (Settings → API Keys). It starts with sk-ant-. After saving, nobody can see it again — not you, not Payroll, not Claude. Only the server uses it.'))+'</div>'
+    +(ST?'<div style="font-size:13px;color:var(--green);margin-bottom:6px">✓ '+E(T('Saved'))+' · '+E(T('ends in'))+' …'+E(ST.last4||'')+(ST.at?' · '+E(new Date(ST.at).toLocaleDateString())+(ST.by?' · '+E(nameOf(ST.by)):''):'')+'</div>':'<div style="font-size:13px;color:var(--g4);margin-bottom:6px">'+E(T('Not saved'))+'</div>')
+    +'<input type="password" autocomplete="off" spellcheck="false" data-nomic="1" id="aiKeyIn" placeholder="'+E(ST?T('Paste a new one to replace it'):T('Paste it here'))+'" style="font-size:15px">'
+    +'<button class="btn" style="margin-top:12px" onclick="P17.keySave()">'+E(T('Save'))+'</button>'
+    +'<button class="btn gr" style="margin-top:8px" onclick="P17.keyTest()">'+E(T('Test the key'))+'</button><div id="aiKeyRes" style="font-size:13px;margin-top:10px"></div>'
+    +(ST?'<div style="text-align:center;margin-top:12px"><span style="color:#c0392b;font-size:13px;cursor:pointer" onclick="P17.keyRemove()">'+E(T('Remove the key'))+'</span></div>':''));};
+P17.keySave=async()=>{const el=$('aiKeyIn');const v=el?el.value.trim():'';if(!v){toast(T('Paste a key first'));return;}
+  if(!/^sk-ant-\S+$/.test(v)){toast(T('That does not look like an Anthropic key — it starts with sk-ant-'));return;}
+  const r=await EX_sb.rpc('ai_set_key',{p_v:v});el.value='';if(r.error){toast(T('Not saved')+': '+(r.error.message||''));return;}
+  toast('✓ '+T('Saved'),'green');await P17.keySheet();P17.keyTest();try{const l=$('aiKeyLine');if(l)l.innerHTML=line();}catch(e){}};
+P17.keyTest=async()=>{const out=$('aiKeyRes');if(out)out.textContent='⏳ '+T('Testing…');
+  try{const s=(await EX_sb.auth.getSession()).data.session;const C=window.EX_CFG||{};
+    const r=await fetch(C.url.replace(/\/$/,'')+'/functions/v1/ask',{method:'POST',headers:{'Content-Type':'application/json',apikey:C.anonKey,...(s?{Authorization:'Bearer '+s.access_token}:{})},body:JSON.stringify({ping:true})});
+    const j=await r.json().catch(()=>({}));
+    const msg=r.status===503?'✗ '+T('No key saved yet.'):j.ok?'✓ '+T('The key works — ✨ Ask is on.'):j.status===401?'✗ '+T('Anthropic says this key is wrong — paste it again.'):(j.status===402||j.status===403)?'✗ '+T('The key is right, but the Anthropic account has no credit — add billing at console.anthropic.com.'):'✗ '+T('Could not check right now')+' ('+(j.status||r.status)+')';
+    if(out){out.textContent=msg;out.style.color=j.ok?'var(--green)':'#c0392b';}}catch(e){if(out){out.textContent='✗ '+T('Could not check right now');out.style.color='#c0392b';}}};
+P17.keyRemove=async()=>{if(!confirm(T('Remove the AI key? ✨ Ask stops working until a key is saved again.')))return;const r=await EX_sb.rpc('ai_set_key',{p_v:''});if(r.error){toast(T('Not saved')+': '+(r.error.message||''));return;}
+  ST=null;toast('✓ '+T('Removed'),'green');P17.keySheet();};
+try{Object.assign(ES,{"AI key (for Ask)":"Clave de IA (para Preguntar)","Not set — ✨ Ask is off":"Sin clave — ✨ Preguntar está apagado","Checking…":"Revisando…",
+  "Paste the key from console.anthropic.com (Settings → API Keys). It starts with sk-ant-. After saving, nobody can see it again — not you, not Payroll, not Claude. Only the server uses it.":"Pegue la clave de console.anthropic.com (Settings → API Keys). Empieza con sk-ant-. Después de guardarla nadie la puede ver otra vez — ni usted, ni Nómina, ni Claude. Solo la usa el servidor.",
+  "Test the key":"Probar la clave","Testing…":"Probando…","Remove the key":"Quitar la clave","No key saved yet.":"Todavía no hay clave guardada.","The key works — ✨ Ask is on.":"La clave funciona — ✨ Preguntar está activo.",
+  "Anthropic says this key is wrong — paste it again.":"Anthropic dice que la clave es incorrecta — péguela otra vez.","The key is right, but the Anthropic account has no credit — add billing at console.anthropic.com.":"La clave está bien, pero la cuenta de Anthropic no tiene crédito — agregue pago en console.anthropic.com.",
+  "Could not check right now":"No se pudo revisar ahora","That does not look like an Anthropic key — it starts with sk-ant-":"Eso no parece una clave de Anthropic — empieza con sk-ant-",
+  "Remove the AI key? ✨ Ask stops working until a key is saved again.":"¿Quitar la clave de IA? ✨ Preguntar deja de funcionar hasta que se guarde otra."});}catch(e){}
+})();
