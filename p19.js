@@ -128,9 +128,9 @@ window.tcDayRow=function(e,ws,di){const dp=tcPunches(e.id,ws).filter(p=>dayIndex
   const night=dp.some(p=>{const e2=p.out||p.away;return e2&&new Date(e2).getDate()!==new Date(p.in).getDate();});
   const jobs=dp.length?[night?'<b style="color:var(--amber)">'+E(T('past midnight'))+'</b>':'',miss?'<b style="color:#c0392b">'+E(T('no punch-out'))+'</b>':''].filter(Boolean).join(' · '):E(T('did not punch'));
   let x='<div data-p19row="'+E(e.id)+'" style="border-top:1px solid var(--g1)"><div style="cursor:pointer;padding:10px 0 '+(dp.length?'6px':'10px')+'" onclick="tcRowTap(\''+J(e.id)+'\','+di+')">'
-    +'<div style="display:flex;gap:10px;align-items:center"><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+E(e.name)+(e.lead?' <span style="color:var(--amber)">★</span>':'')+'</div>'
+    +'<div style="display:flex;gap:10px;align-items:center"><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:15.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+E(e.name)+(e.lead?' <span style="color:var(--amber)">★</span>':'')+'</div>'
     +(jobs?'<div style="font-size:12.5px;color:var(--g4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+jobs+'</div>':'')+'</div>'
-    +(dp.length?'<div style="font-size:14px;white-space:nowrap">'+fmtT(first.in)+' – '+(miss?'<b style="color:#c0392b">?</b>':fmtT(last.out||last.away))+'</div><div style="width:42px;text-align:right;font-weight:700;font-size:15px">'+(miss?'':h.toFixed(1))+'</div>':'<div style="color:var(--g3);font-size:13px">—</div>')
+    +(dp.length?'<div style="font-size:12.5px;color:var(--g4);white-space:nowrap">'+fmtT(first.in)+' – '+(miss?'<b style="color:#c0392b">?</b>':fmtT(last.out||last.away))+'</div><div style="width:46px;text-align:right;font-weight:800;font-size:17px">'+(miss?'':h.toFixed(1))+'</div>':'<div style="color:var(--g3);font-size:13px">—</div>')
     +'<div style="color:var(--g4);font-size:16px;width:14px;text-align:center">'+(open?'⌃':'›')+'</div></div>'
     +(dp.length?bar(dp):'')+'</div>';
   if(open){let ed=tcDayEdit(e,ws,di,dp);const ch=[];dp.forEach(p=>(p.edits||[]).forEach(c=>ch.push(c)));
