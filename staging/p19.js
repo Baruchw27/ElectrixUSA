@@ -96,7 +96,9 @@ const BAR_A=6,BAR_B=20;
 // Baruch 11/15 (5): a thinner, calm-colored line. Every piece has its job and hours written above it (labels that would
 // overlap move to a second row). Under the line only the times where something changes: start, each switch (2:41 — or
 // 2:42–2:53 when there was a gap), and the end. Times that fall almost together are joined into one.
-function bar(dp){const base=(()=>{const d=new Date(dp[0].in);d.setHours(0,0,0,0);return d.getTime();})();const pos=ms=>Math.max(0,Math.min(1,((ms-base)/36e5-BAR_A)/(BAR_B-BAR_A)));
+// Baruch 11/16: no hour ruler — every man's line runs the full width, from his first punch-in (left) to his last punch-out (right).
+function bar(dp){const t0=dp[0].in;const ends=dp.map(p=>p.out||p.away||0).filter(Boolean);const t1=Math.max(t0+36e5,ends.length?Math.max(...ends):0,...dp.map(p=>p.in+(p.out||p.away?0:36e5)));
+  const pos=ms=>Math.max(0,Math.min(1,(ms-t0)/(t1-t0)));
   const short=k=>(siteName(k)||T('No site')).replace(/, NY \d{5}/g,'').split(',')[0];
   const tm=ms=>fmtT(ms).replace(/\s?([AP]M)$/i,(m0,x)=>' '+x.toLowerCase());
   const seg=dp.map(p=>{const a=pos(p.in),end=p.out||p.away;const mi=tcMissing(p);const b=end?pos(end):Math.min(1,a+0.05);return {p,a,b,w:Math.max(0.8,(b-a)*100),mi,end};});
@@ -124,10 +126,10 @@ window.tcDayRow=function(e,ws,di){const dp=tcPunches(e.id,ws).filter(p=>dayIndex
   const short=k=>(siteName(k)||T('No site')).replace(/, NY \d{5}/g,'').split(',')[0];
   const sites=[...new Set(dp.map(p=>p.site||''))];const open=tcOpenRow===e.id+'|'+di;
   const night=dp.some(p=>{const e2=p.out||p.away;return e2&&new Date(e2).getDate()!==new Date(p.in).getDate();});
-  const jobs=dp.length?E(sites.map(short).join(' → '))+(night?' · <b style="color:var(--amber)">'+E(T('past midnight'))+'</b>':'')+(miss?' · <b style="color:#c0392b">'+E(T('no punch-out'))+'</b>':''):E(T('did not punch'));
+  const jobs=dp.length?[night?'<b style="color:var(--amber)">'+E(T('past midnight'))+'</b>':'',miss?'<b style="color:#c0392b">'+E(T('no punch-out'))+'</b>':''].filter(Boolean).join(' · '):E(T('did not punch'));
   let x='<div data-p19row="'+E(e.id)+'" style="border-top:1px solid var(--g1)"><div style="cursor:pointer;padding:10px 0 '+(dp.length?'6px':'10px')+'" onclick="tcRowTap(\''+J(e.id)+'\','+di+')">'
     +'<div style="display:flex;gap:10px;align-items:center"><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+E(e.name)+(e.lead?' <span style="color:var(--amber)">★</span>':'')+'</div>'
-    +'<div style="font-size:12.5px;color:var(--g4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+jobs+'</div></div>'
+    +(jobs?'<div style="font-size:12.5px;color:var(--g4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+jobs+'</div>':'')+'</div>'
     +(dp.length?'<div style="font-size:14px;white-space:nowrap">'+fmtT(first.in)+' – '+(miss?'<b style="color:#c0392b">?</b>':fmtT(last.out||last.away))+'</div><div style="width:42px;text-align:right;font-weight:700;font-size:15px">'+(miss?'':h.toFixed(1))+'</div>':'<div style="color:var(--g3);font-size:13px">—</div>')
     +'<div style="color:var(--g4);font-size:16px;width:14px;text-align:center">'+(open?'⌃':'›')+'</div></div>'
     +(dp.length?bar(dp):'')+'</div>';
@@ -176,7 +178,7 @@ window.renderTimeCards=function(){const box=$('tcBox');if(!box)return;if(tcEditi
       const right=tcMode==='day'?'<span style="font-size:12px;color:var(--blue-mid);font-weight:700;cursor:pointer;letter-spacing:.3px" onclick="tcFixCrew(\''+J(g.id)+'\')">'+T('FIX CREW')+'</span>':'<span style="font-size:12px;color:var(--g4)">'+gh.toFixed(1)+' h</span>';
       return '<div class="row" style="align-items:center;margin:14px 2px 6px">'+(sel?'<span style="display:flex;gap:8px;align-items:center;cursor:pointer" onclick="tcToggleCrew(\''+J(g.id)+'\')"><span style="width:20px;height:20px;border-radius:6px;border:2px solid var(--blue-mid);display:inline-flex;align-items:center;justify-content:center;'+(allOn?'background:var(--blue-mid);color:#fff':'')+'">'+(allOn?'✓':'')+'</span>':'<span>')+'<b style="font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--g4)">'+E(g.name)+'</b></span>'+right+'</div>'
         +'<div class="card" style="padding:'+(tcMode==='week'?'4px 12px':'0 14px')+'">'+(tcMode==='week'?tcTable(g.people,ws,sel):g.people.map(e=>tcDayRow(e,ws,tcDay)).join('').replace('<div data-p19row','<div data-p19first data-p19row').replace(/(<div data-p19first data-p19row="[^"]*") style="border-top:1px solid var\(--g1\)"/,'$1')
-          +(tcMode==='day'?'<div class="p19ax"><span>6a</span><span>9a</span><span>12p</span><span>3p</span><span>6p</span><span>8p</span></div>':''))+'</div>';}).join('');
+          )+'</div>';}).join('');
   const foot=tcMode==='week'?(sel?'<div style="position:sticky;bottom:8px;margin-top:10px"><button class="btn" '+(tcSel.size?'':'disabled ')+'onclick="openBulkFix()">'+T('Fix together')+' · '+tcSel.size+' '+T('selected')+'</button></div><button class="btn sec2" style="margin-top:8px" onclick="tcSelMode()">'+T('Cancel')+'</button>':'<button class="btn sec2" style="margin-top:12px" onclick="tcSelMode()">'+T('Select to fix together')+'</button>')
     :'<div style="font-size:12px;color:var(--g4);margin:10px 2px 0">'+E(T('Tap a man to open his day and fix it.'))+'</div>';
   box.innerHTML=top+body+foot;try{P19.lay();}catch(e){}
