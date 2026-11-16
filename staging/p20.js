@@ -97,5 +97,26 @@ function lastWeek(){const wb=$('weekBox');if(!wb)return;const m=typeof me==='fun
       +'<div class="lw-f"><span>'+E(t('Regular'))+' <b>'+s.reg.toFixed(1)+'</b></span><span>'+E(t('Overtime'))+' <b>'+s.ot.toFixed(1)+'</b></span><span>'+E(t('Total'))+' <b>'+s.total.toFixed(1)+' h</b></span></div>':'')+'</div>';
   const sec=wb.previousElementSibling;if(sec&&sec.classList.contains('sec'))sec.style.display='none';}
 try{const _rp=window.renderPunch;if(typeof _rp==='function'){window.renderPunch=function(){const r=_rp.apply(this,arguments);try{lastWeek();}catch(e){}return r;};try{renderPunch=window.renderPunch;}catch(e){}}}catch(e){}
-try{Object.assign(ES,{"Sign-in link — he picks his own password":"Enlace de entrada — él elige su contraseña","Send / copy":"Enviar / copiar","Links are only for field workers.":"Los enlaces son solo para trabajadores de campo.","Could not make the link.":"No se pudo hacer el enlace.","paid this week":"se paga esta semana","Paid this Friday":"Se paga este viernes","Last week":"Semana pasada"});}catch(e){}
+// Baruch 11/16: Payroll → Setup always shows everyone on the automatic time clock — set up or not, and when each phone last
+// checked in (like it used to). Also: the "To fix" warning never loaded the phones' check-ins after the Payroll cleanup.
+P20.otLoad=()=>{try{if(typeof otRpc!=='function')return;otRepAt=Date.now();otRpc('ot_report',{p_day:dkey(new Date())}).then(r=>{if(r&&r.data){otRep=r.data;
+  try{otBox();}catch(e){}try{if(typeof paySec!=='undefined'&&paySec==='fix')renderMissBox();renderPaySeg();}catch(e){}}}).catch(()=>{});}catch(e){}};
+const otStale=()=>{try{return !otRep||Date.now()-otRepAt>5*60000;}catch(e){return false;}};
+function otBox(){const pt=$('payTravel');if(!pt)return;const m=typeof me==='function'?me():null;if(!m||!(m.role==='owner'||(typeof canEditHours==='function'&&canEditHours(m))))return;
+  let box=$('p20ot');if(!box){box=document.createElement('div');box.id='p20ot';pt.parentNode.insertBefore(box,pt);}
+  if(otStale())P20.otLoad();
+  const ppl=(D.emps||[]).filter(e=>e&&!e.inactive&&e.appClock===true).sort((a,b)=>String(a.name).localeCompare(b.name));
+  if(!ppl.length){box.innerHTML='';return;}
+  const by={};((otRep&&otRep.people)||[]).forEach(x=>by[x.who]=x);let ok=0;
+  const when=ms=>new Date(ms).toLocaleString(LOC(),{weekday:'short',hour:'numeric',minute:'2-digit'});
+  const rows=ppl.map(e=>{const x=by[e.id];const last=x&&x.last?new Date(x.last).getTime():0;let dot,txt;
+    if(!otRep){dot='var(--g3)';txt=t('checking…');}
+    else if(!x||!x.accepted){dot='var(--g3)';txt=t('not set up yet');}
+    else if(!last){dot='var(--amber)';txt=t('started — phone not connected yet');}
+    else if(Date.now()-last<12*36e5){dot='var(--green)';ok++;txt=t('working')+' · '+t('last check-in')+' '+when(last);}
+    else{dot='var(--amber)';txt=t('phone quiet since')+' '+when(last);}
+    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--g1)"><i style="width:9px;height:9px;border-radius:50%;background:'+dot+';flex:none"></i><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">'+E(e.name)+'</div><div style="font-size:12px;color:var(--g4)">'+E(txt)+'</div></div></div>';}).join('');
+  box.innerHTML='<div class="card" style="padding:4px 14px 6px;margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:baseline;padding:10px 0 6px"><b style="font-size:14px">'+E(t('Automatic time clock'))+'</b><span style="font-size:12px;color:var(--g4)">'+ok+' / '+ppl.length+' '+E(t('working'))+'</span></div>'+rows.replace('border-top:1px solid var(--g1)','border-top:0')+'</div>';}
+try{const _ps=window.renderPaySeg;if(typeof _ps==='function'){window.renderPaySeg=function(){const r=_ps.apply(this,arguments);try{if(typeof paySec!=='undefined'&&paySec==='setup')otBox();if(otStale())P20.otLoad();}catch(e){}return r;};try{renderPaySeg=window.renderPaySeg;}catch(e){}}}catch(e){}
+try{Object.assign(ES,{"Sign-in link — he picks his own password":"Enlace de entrada — él elige su contraseña","Send / copy":"Enviar / copiar","Links are only for field workers.":"Los enlaces son solo para trabajadores de campo.","Could not make the link.":"No se pudo hacer el enlace.","paid this week":"se paga esta semana","Paid this Friday":"Se paga este viernes","checking…":"revisando…","not set up yet":"todavía no lo configuró","started — phone not connected yet":"empezó — el teléfono todavía no se conecta","working":"funcionando","phone quiet since":"el teléfono no reporta desde","Last week":"Semana pasada"});}catch(e){}
 })();
