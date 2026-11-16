@@ -47,7 +47,7 @@ P20.save=async()=>{const a=$('p20a').value,b=$('p20b').value,er=$('p20e'),g=$('p
     const u=$('lgUser'),p=$('lgPass');if(u&&p&&typeof doLogin==='function'){u.value=name;p.value=a;doLogin();}},300);};
 async function start(){code=codeOf();if(!code)return;paint(tx('wait'));const c=await sb();
   try{const r=c?await c.rpc('setup_link_info',{p_code:code}):null;info=r&&!r.error?r.data:{ok:false,why:'bad'};}catch(e){info={ok:false,why:'bad'};}
-  if(info&&info.lang==='en')lg='en';if(!c&&!info){paint(tx('net'));return;}paint();}
+  if(!c&&!info){paint(tx('net'));return;}paint();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 window.addEventListener('hashchange',()=>{if(codeOf()&&codeOf()!==code)start();});
 
