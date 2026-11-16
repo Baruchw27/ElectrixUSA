@@ -65,5 +65,11 @@ function addBtn(){const p=$('ePass');if(!p||$('p20btn'))return;const m=typeof me
   const d=document.createElement('div');d.id='p20btn';d.style.margin='6px 0 4px';d.innerHTML='<button class="btn sec2" type="button" onclick="P20.make()">🔗 '+E(t('Sign-in link — he picks his own password'))+'</button><div id="p20out"></div>';
   p.insertAdjacentElement('afterend',d);}
 try{const _o=openEmp;window.openEmp=function(){const r=_o.apply(this,arguments);try{const b=$('p20btn');if(b)b.remove();addBtn();}catch(e){}return r;};try{openEmp=window.openEmp;}catch(e){}}catch(e){}
+// Baruch 11/15 (late): Settings showed field workers the company switches (hourly reminders, 9pm push, photo to close a job,
+// selfie at punch-in) — and a worker could even flip the company-wide selfie switch. Only the owner / all-access see them now.
+function hideCompany(){const w=$('p7notif');if(!w)return;const m=typeof me==='function'?me():null;w.style.display=m&&(m.role==='owner'||m.all)?'':'none';}
+try{if(typeof window.renderMore==='function'){const _rm=window.renderMore;window.renderMore=function(){const r=_rm.apply(this,arguments);try{hideCompany();}catch(e){}return r;};try{renderMore=window.renderMore;}catch(e){}}}catch(e){}
+try{const _gt=window.goTab;if(typeof _gt==='function'){window.goTab=function(){const r=_gt.apply(this,arguments);try{hideCompany();}catch(e){}return r;};try{goTab=window.goTab;}catch(e){}}}catch(e){}
+setTimeout(()=>{try{hideCompany();}catch(e){}},500);
 try{Object.assign(ES,{"Sign-in link — he picks his own password":"Enlace de entrada — él elige su contraseña","Send / copy":"Enviar / copiar","Links are only for field workers.":"Los enlaces son solo para trabajadores de campo.","Could not make the link.":"No se pudo hacer el enlace."});}catch(e){}
 })();
