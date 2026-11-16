@@ -53,8 +53,8 @@ function punIn(a,b){const ok=H&&H.state==='ok';const inR=ts=>ts>=a&&ts<b;const o
 
 // ── one pass over everything in a period ──
 function calc(a,b){const L=laborModel(a,b,H);const inR=ts=>ts>=a&&ts<b;
-  const J={},P={},tot={h:0,lab:0,mat:0,tr:0,gas:0,gasN:0,otH:0,otPay:0,est:false,noRate:{}};
-  const job=k=>J[k]||(J[k]={h:0,lab:0,mat:0,tr:0,ppl:{},wk:{},rec:[]});
+  const J={},P={},tot={h:0,lab:0,mat:0,tr:0,sub:0,oth:0,gas:0,gasN:0,otH:0,otPay:0,est:false,noRate:{}};
+  const job=k=>J[k]||(J[k]={h:0,lab:0,mat:0,tr:0,sub:0,oth:0,ppl:{},wk:{},rec:[],qb:[]});
   const pp=k=>P[k]||(P[k]={h:0,lab:0,tr:0,gas:0,otH:0,otPay:0,jobs:{}});
   const wkH={};
   punIn(a,b).forEach(p=>{const wk=p.wk||L.wkey(p.in);const k=p.who+'|'+wk;const pr=L.perHour(k);if(pr.est)tot.est=true;if(pr.none)tot.noRate[p.who]=1;
@@ -70,6 +70,10 @@ function calc(a,b){const L=laborModel(a,b,H);const inR=ts=>ts>=a&&ts<b;
   (D.exps||[]).forEach(x=>{if(!x||x.deleted||!x.date||!inR(tsOf(x.date)))return;const v=+x.amt||0;
     if(x.type==='material'){const j=job(x.site||'none');j.mat+=v;j.rec.push(x);tot.mat+=v;const s=x.vendor||T('Other');stores[s]=(stores[s]||0)+v;mats.push(x);}
     else if(x.type==='gas'){tot.gas+=v;tot.gasN++;pp(x.who).gas+=v;gas.push(x);}});
+  // Baruch 11/16: job costs from QuickBooks (no payroll) — materials go with Material, plus Subcontractors and Tools & other.
+  // Owner + Payroll only (the server sends these records to nobody else).
+  (D.qbexp||[]).forEach(r=>{if(!r||r.deleted||!r.site||!Array.isArray(r.lines))return;r.lines.forEach(l=>{if(!l||!l.d||!inR(tsOf(l.d)))return;const v=+l.amt||0;const j=job(r.site);
+    j.qb.push(l);if(l.c==='mat'){j.mat+=v;tot.mat+=v;const st=l.v||T('Other');stores[st]=(stores[st]||0)+v;}else if(l.c==='sub'){j.sub+=v;tot.sub+=v;}else{j.oth+=v;tot.oth+=v;}});});
   const appTr=x=>travelCounts(x)&&!L.paidTr[x.who+'|'+L.wkey(tsOf(x.date))];
   (D.travel||[]).forEach(x=>{if(!x||!x.date||!inR(tsOf(x.date))||!appTr(x))return;const v=travelPayOf(x);job(x.site||'none').tr+=v;pp(x.who).tr+=v;tot.tr+=v;});
   (D.fcpay||[]).forEach(c=>{if(!c||c.deleted||!c.periodBegin||!inR(tsOf(c.periodBegin)))return;
@@ -77,7 +81,15 @@ function calc(a,b){const L=laborModel(a,b,H);const inR=ts=>ts>=a&&ts<b;
     if(+c.travel>0)pp(c.who).tr+=+c.travel;});
   return {J,P,tot,stores,mats,gas};}
 const PL=(n,one,many)=>n+' '+T(n===1?one:many);
-const cost=(x,m)=>(m?x.lab+x.tr:0)+x.mat;
+const VN={};const vkey=v=>String(v||'').toLowerCase().replace(/[^a-z0-9 ]/g,'').replace(/^the /,'').replace(/ (inc|llc|corp|co)$/,'').replace(/\s+/g,' ').trim();
+const vname=v=>{if(!v)return T('Other');const k=vkey(v);if(!k)return v;if(!VN[k]||(VN[k]===VN[k].toUpperCase()||VN[k]===VN[k].toLowerCase())&&v!==v.toUpperCase()&&v!==v.toLowerCase())VN[k]=v;return VN[k];};
+// Baruch 11/16: tap Material / Subcontractors / Tools & other on a job to see it split by vendor.
+const byV=(j,c)=>{const o={};(j.qb||[]).forEach(l=>vname(l.v||l.a));(j.rec||[]).forEach(x=>vname(x.vendor));(j.qb||[]).forEach(l=>{if(l.c!==c)return;const k=vname(l.v||l.a);o[k]=(o[k]||0)+(+l.amt||0);});
+  if(c==='mat')(j.rec||[]).forEach(x=>{const k=vname(x.vendor);o[k]=(o[k]||0)+(+x.amt||0);});return Object.keys(o).map(k=>[k,o[k]]).sort((a,b)=>b[1]-a[1]);};
+const XR=(j,c,lbl)=>{const v=c==='mat'?j.mat:c==='sub'?j.sub:j.oth;const L=byV(j,c);const op=S.jx===c&&L.length;
+  return '<tr'+(L.length?' style="cursor:pointer" onclick="R18.set(\'jx\',R18.S.jx===\''+c+'\'?null:\''+c+'\')"':'')+'><td><i class="dot mat"></i>'+E(lbl)+(L.length?' <span class="rs" style="display:inline;margin:0">'+(op?'▾':'▸')+'</span>':'')+'</td><td class="n">'+$$(v)+'</td></tr>'
+   +(op?L.map(([k,a])=>'<tr><td style="padding-left:26px;font-size:13.5px;opacity:.75">'+E(k)+'</td><td class="n" style="font-size:13.5px;opacity:.75">'+$$(a)+'</td></tr>').join(''):'');};
+const cost=(x,m)=>(m?x.lab+x.tr:0)+x.mat+(x.sub||0)+(x.oth||0);
 
 // ── look ──
 const IC={chev:'<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
@@ -126,7 +138,7 @@ const css=document.createElement('style');css.textContent=
 +'.r18menu button{display:flex;justify-content:space-between;align-items:center;width:100%;font:inherit;font-size:14.5px;background:none;border:0;padding:11px 14px;color:var(--g5);text-align:left}.r18menu button.on{font-weight:600}.r18menu hr{border:0;border-top:1px solid var(--g1);margin:4px 0}';
 document.head.appendChild(css);
 
-const SPLIT=(x,m)=>{const tt=cost(x,m)||1;return '<div class="split"><div class="lab" style="width:'+(m?x.lab/tt*100:0)+'%"></div><div class="mat" style="width:'+(x.mat/tt*100)+'%"></div><div class="trv" style="width:'+(m?x.tr/tt*100:0)+'%"></div></div>';};
+const SPLIT=(x,m)=>{const tt=cost(x,m)||1;return '<div class="split"><div class="lab" style="width:'+(m?x.lab/tt*100:0)+'%"></div><div class="mat" style="width:'+((x.mat+(x.sub||0)+(x.oth||0))/tt*100)+'%"></div><div class="trv" style="width:'+(m?x.tr/tt*100:0)+'%"></div></div>';};
 const LEG=m=>'<div class="leg">'+(m?'<span><i class="dot lab"></i>'+E(T('Labor'))+'</span>':'')+'<span><i class="dot mat"></i>'+E(T('Material'))+'</span>'+(m?'<span><i class="dot trv"></i>'+E(T('Travel'))+'</span>':'')+'</div>';
 const chg=(v,p)=>{if(!p)return '';const d=Math.round((v-p)/p*100);if(!isFinite(d))return '';return '<span class="'+(d>0?'up':'dn')+'">'+(d>0?'↑ ':'↓ ')+Math.abs(d)+'%</span> ';};
 const tile=(l,v,d)=>'<div class="card"><div class="tl">'+E(l)+'</div><div class="tv">'+v+'</div>'+(d?'<div class="td">'+d+'</div>':'')+'</div>';
@@ -141,9 +153,10 @@ function histNote(){if(!H||H.state==='ok')return '';return '<div class="note2">'
 function estNote(c,m){const n=Object.keys(c.tot.noRate);let s='';if(m&&c.tot.est)s+=E(T('Weeks not paid yet are estimated from hourly rates.'))+' ';if(m&&n.length)s+=E(T('No pay info for'))+' '+E(n.map(nm).join(', '))+'. ';return s?'<div class="note2">'+s+'</div>':'';}
 
 function pgOv(r,c,p,m){const t=c.tot,q=p.tot;
-  let h='<div class="g2">'+(m?tile(T('Total cost'),$$(t.lab+t.mat+t.tr),chg(t.lab+t.mat+t.tr,q.lab+q.mat+q.tr)+E(T('vs before')))+tile(T('Labor'),$$(t.lab),chg(t.lab,q.lab)+(t.lab+t.mat+t.tr?Math.round(t.lab/(t.lab+t.mat+t.tr)*100)+'% '+E(T('of cost')):''))
+  let h='<div class="g2">'+(m?tile(T('Total cost'),$$(cost(t,1)),chg(cost(t,1),cost(q,1))+E(T('vs before')))+tile(T('Labor'),$$(t.lab),chg(t.lab,q.lab)+(cost(t,1)?Math.round(t.lab/cost(t,1)*100)+'% '+E(T('of cost')):''))
       :tile(T('Hours worked'),H1(t.h)+' h',chg(t.h,q.h)+E(T('vs before')))+tile(T('Overtime'),H1(t.otH)+' h',''))
-    +tile(T('Material'),$$(t.mat),chg(t.mat,q.mat)+E(T('receipts')))+(m?tile(T('Travel'),$$(t.tr),chg(t.tr,q.tr)):tile(T('Gas'),$$(t.gas),t.gasN+' '+E(T('fill-ups'))))+'</div>';
+    +tile(T('Material'),$$(t.mat),chg(t.mat,q.mat)+E(T('vs before')))+(m?tile(T('Travel'),$$(t.tr),chg(t.tr,q.tr)):tile(T('Gas'),$$(t.gas),t.gasN+' '+E(T('fill-ups'))))
+    +(t.sub||t.oth?tile(T('Subcontractors'),$$(t.sub),chg(t.sub,q.sub)+E(T('vs before')))+tile(T('Tools & other'),$$(t.oth),chg(t.oth,q.oth)+E(T('vs before'))):'')+'</div>';
   if(m)h+='<div class="card" style="margin-top:8px"><div class="row" style="padding:0 0 10px;border:0"><div><div class="rs" style="margin:0">'+E(T('Hours worked'))+'</div><div class="rn" style="font-size:18px">'+H1(t.h)+' h</div></div><div style="text-align:right"><div class="rs" style="margin:0">'+E(T('Overtime'))+'</div><div class="rn" style="font-size:18px">'+H1(t.otH)+' h · <span class="up">'+$$(t.otPay)+'</span></div></div></div>'+SPLIT(t,m)+LEG(m)+'</div>';
   // last 6 months
   const ms=[];const now=new Date();for(let i=5;i>=0;i--){const a=new Date(now.getFullYear(),now.getMonth()-i,1).getTime(),b=new Date(now.getFullYear(),now.getMonth()-i+1,1).getTime();const cc=calc(a,b).tot;ms.push({l:new Date(a).toLocaleDateString(LOCX(),{month:'short'}),v:m?cc.lab+cc.mat+cc.tr:cc.h});}
@@ -187,7 +200,7 @@ function pgJob(r,m){const k=S.job;const a=S.jobAll?0:r.a,b=S.jobAll?Infinity:r.b
   const ppl=Object.keys(j.ppl).sort((x,y)=>(m?j.ppl[y].c-j.ppl[x].c:0)||j.ppl[y].h-j.ppl[x].h);
   h+='<div class="card" style="margin-top:12px"><div class="rs" style="margin:0">'+E(m?T('Total cost'):T('Hours'))+(S.jobAll?' · '+E(T('so far')):'')+'</div><div class="big">'+(m?$$(cost(j,m)):H1(j.h)+' h')+'</div><div style="margin-top:10px">'+SPLIT(j,m)+'</div>'
    +'<table style="margin-top:8px">'+(m?'<tr><td><i class="dot lab"></i>'+E(T('Labor'))+' · '+H1(j.h)+' h · '+E(PL(ppl.length,'person','people'))+'</td><td class="n">'+$$(j.lab)+'</td></tr>':'<tr><td>'+E(T('Hours'))+' · '+E(PL(ppl.length,'person','people'))+'</td><td class="n">'+H1(j.h)+' h</td></tr>')
-   +'<tr><td><i class="dot mat"></i>'+E(T('Material'))+' · '+E(PL(j.rec.length,'receipt','receipts'))+'</td><td class="n">'+$$(j.mat)+'</td></tr>'+(m?'<tr><td><i class="dot trv"></i>'+E(T('Travel'))+'</td><td class="n">'+$$(j.tr)+'</td></tr>':'')+'</table>'+estNote(c,m)+'</div>';
+   +XR(j,'mat',T('Material'))+(j.sub?XR(j,'sub',T('Subcontractors')):'')+(j.oth?XR(j,'oth',T('Tools & other')):'')+(m?'<tr><td><i class="dot trv"></i>'+E(T('Travel'))+'</td><td class="n">'+$$(j.tr)+'</td></tr>':'')+'</table>'+estNote(c,m)+'</div>';
   const wks=Object.keys(j.wk).sort().slice(-8);if(wks.length){const mx=Math.max(1,...wks.map(w=>j.wk[w]));
     const hw={};if(!m){Object.keys(j.wk).forEach(w=>hw[w]=0);}
     h+=sec(m?T('Labor by week'):T('Weeks worked'))+'<div class="card"><div class="bars">'+wks.map((w,i)=>'<div class="'+(i===wks.length-1?'cur':'')+'" title="'+E(m?$$(j.wk[w]):'')+'"><span style="height:'+Math.round(j.wk[w]/mx*72)+'px"></span>'+E(fmtD(tsOf(w)))+'</div>').join('')+'</div></div>';}
@@ -197,6 +210,9 @@ function pgJob(r,m){const k=S.job;const a=S.jobAll?0:r.a,b=S.jobAll?Infinity:r.b
   if(j.rec.length){const rec=j.rec.slice().sort((x,y)=>String(y.date).localeCompare(String(x.date)));const show=S.allRec?rec:rec.slice(0,4);
     h+=sec(T('Material receipts'))+'<div class="card"><table>'+show.map(x=>'<tr><td>'+E(x.vendor||T('Store not entered'))+'<div class="rs">'+E(fmtD(tsOf(x.date)))+' · '+E(nm(x.who))+'</div></td><td class="n">'+(x.amt?$$(x.amt):'<span class="warn">'+E(T('no amount'))+'</span>')+'</td></tr>').join('')+'</table>'
      +(rec.length>4?'<button class="more" onclick="R18.set(\'allRec\',!R18.S.allRec)">'+E(S.allRec?T('Show less'):T('All')+' '+rec.length)+'</button>':'')+'</div>';}
+  if(j.qb&&j.qb.length){const CL={mat:T('Material'),sub:T('Subcontractors'),oth:T('Tools & other')};const L=j.qb.slice().sort((x,y)=>String(y.d).localeCompare(String(x.d)));const show=S.allQb?L:L.slice(0,6);
+    h+=sec(T('From QuickBooks'),'<span class="rs" style="margin:0">'+E(PL(L.length,'line','lines'))+'</span>')+'<div class="card"><table>'+show.map(x=>'<tr><td>'+E(x.v||x.a||'—')+'<div class="rs">'+E(fmtD(tsOf(x.d)))+' · '+E(CL[x.c]||'')+(x.m?' · '+E(x.m):'')+(x.n?' · #'+E(x.n):'')+'</div></td><td class="n">'+$$(x.amt)+'</td></tr>').join('')+'</table>'
+     +(L.length>6?'<button class="more" onclick="R18.set(\'allQb\',!R18.S.allQb)">'+E(S.allQb?T('Show less'):T('All')+' '+L.length)+'</button>':'')+'</div>';}
   if(s){h+=sec(T('Step'))+'<div class="card"><div class="row" style="padding:0;border:0"><span class="rn">'+E(T((STAGE[s.stage]||['—'])[0]))+'</span><span class="rs" style="margin:0">'+(s.stageAt?E(T('since'))+' '+E(fmtD(s.stageAt))+' · '+Math.floor((Date.now()-s.stageAt)/DAY)+' '+E(T('days')):'')+'</span></div></div>';}
   h+='<button class="btn sec2 xbtn" onclick="R18.exportJob()">'+IC.dl+E(T('Export this job (Excel)'))+'</button>';
   return h;}
@@ -224,8 +240,8 @@ function pgMat(r,c,p,m){const t=c.tot;const now=Date.now();
   h+=sec(T('Requests to Menachem'))+'<div class="card"><div class="fun"><div><b>'+R.length+'</b><span>'+E(T('Asked'))+'</span></div><div><b>'+ordered+'</b><span>'+E(T('Ordered'))+'</span></div><div><b>'+deliv+'</b><span>'+E(T('Delivered'))+'</span></div></div>'
    +(avg!=null?'<div class="row" style="margin-top:8px"><span class="rn" style="font-weight:500">'+E(T('Asked → at the job'))+'</span><span class="rv">'+(Math.round(avg*10)/10)+' '+E(T('days avg'))+'</span></div>':'')
    +'<div class="row"><span class="rn" style="font-weight:500">'+E(T('Not ordered after 2 days'))+'</span><span class="'+(late?'warn':'rv')+'">'+late+'</span></div></div>';
-  const st=Object.keys(c.stores).sort((a,b)=>c.stores[b]-c.stores[a]);const smx=Math.max(1,...st.map(k=>c.stores[k]));
-  h+=sec(T('By store'))+'<div class="card">'+(st.length?st.slice(0,8).map(k=>'<div class="row" style="display:block"><div style="display:flex;justify-content:space-between"><span class="rn" style="font-weight:500">'+E(k)+'</span><span class="rv">'+$$(c.stores[k])+'</span></div><div class="hb"><i style="width:'+Math.round(c.stores[k]/smx*100)+'%;background:var(--r18m)"></i></div></div>').join(''):'<div class="rs">—</div>')+'</div>';
+  const SM={};Object.keys(c.stores).forEach(k=>vname(k));Object.keys(c.stores).forEach(k=>{const n=vname(k);SM[n]=(SM[n]||0)+c.stores[k];});const st=Object.keys(SM).sort((a,b)=>SM[b]-SM[a]);const smx=Math.max(1,...st.map(k=>SM[k]));
+  h+=sec(T('By store'))+'<div class="card">'+(st.length?(S.allSt?st:st.slice(0,8)).map(k=>'<div class="row" style="display:block"><div style="display:flex;justify-content:space-between"><span class="rn" style="font-weight:500">'+E(k)+'</span><span class="rv">'+$$(SM[k])+'</span></div><div class="hb"><i style="width:'+Math.round(SM[k]/smx*100)+'%;background:var(--r18m)"></i></div></div>').join(''):'<div class="rs">—</div>')+(st.length>8?'<button class="more" onclick="R18.set(\'allSt\',!R18.S.allSt)">'+E(S.allSt?T('Show less'):T('All')+' '+st.length)+'</button>':'')+'</div>';
   const jk=Object.keys(c.J).filter(k=>c.J[k].mat>0).sort((a,b)=>c.J[b].mat-c.J[a].mat);
   h+=sec(T('By job'),'<button onclick="R18.tab(\'jobs\')">'+E(T('All'))+' ›</button>')+'<div class="card"><table>'+(jk.length?jk.slice(0,6).map(k=>'<tr><td>'+E(short(k))+'</td><td class="n">'+$$(c.J[k].mat)+'</td></tr>').join(''):'<tr><td class="rs">—</td></tr>')+'</table></div>';
   const tk={};(D.stockLog||[]).forEach(x=>{if(!x||x.kind!=='out'||!(x.ts>=r.a&&x.ts<r.b))return;(x.items||[]).forEach(i=>{const k=i.name||i.id;tk[k]=(tk[k]||0)+(+i.qty||0);});});
@@ -268,16 +284,17 @@ function dl(name,rows){const csv='\ufeff'+rows.map(r=>r.map(v=>'"'+String(v==nul
   try{const b=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);toast('✓ '+T('Saved')+' — '+name,'green');}catch(e){toast(T('Could not export'));}}
 const r2=v=>Math.round((+v||0)*100)/100;
 R18.export=()=>{const r=per(),m=money(),c=calc(r.a,r.b);const ks=Object.keys(c.J).sort((a,b)=>cost(c.J[b],m)-cost(c.J[a],m));
-  dl('Electrix report '+dkey(new Date(r.a))+'.csv',[[T('Job'),T('Hours')].concat(m?[T('Labor')]:[]).concat([T('Material')]).concat(m?[T('Travel'),T('Total')]:[])].concat(ks.map(k=>{const j=c.J[k];return [sname(k),r2(j.h)].concat(m?[r2(j.lab)]:[]).concat([r2(j.mat)]).concat(m?[r2(j.tr),r2(cost(j,m))]:[]);})));};
+  dl('Electrix report '+dkey(new Date(r.a))+'.csv',[[T('Job'),T('Hours')].concat(m?[T('Labor')]:[]).concat([T('Material'),T('Subcontractors'),T('Tools & other')]).concat(m?[T('Travel'),T('Total')]:[])].concat(ks.map(k=>{const j=c.J[k];return [sname(k),r2(j.h)].concat(m?[r2(j.lab)]:[]).concat([r2(j.mat),r2(j.sub),r2(j.oth)]).concat(m?[r2(j.tr),r2(cost(j,m))]:[]);})));};
 R18.exportJob=()=>{const r=per(),m=money();const a=S.jobAll?0:r.a,b=S.jobAll?Date.now()+DAY:r.b;const c=calc(a,b);const j=c.J[S.job];if(!j){toast(T('Nothing to export'));return;}
   const rows=[[sname(S.job)],[],[T('Person'),T('Hours')].concat(m?[T('Pay')]:[])].concat(Object.keys(j.ppl).map(w=>[nm(w),r2(j.ppl[w].h)].concat(m?[r2(j.ppl[w].c)]:[])))
     .concat([[],[T('Date'),T('Store'),T('Who'),T('Amount')]]).concat(j.rec.map(x=>[x.date,x.vendor||'',nm(x.who),r2(x.amt)]))
-    .concat([[],[T('Labor'),m?r2(j.lab):''],[T('Material'),r2(j.mat)],[T('Travel'),m?r2(j.tr):''],[T('Total'),m?r2(cost(j,m)):r2(j.mat)]]);
+    .concat((j.qb||[]).length?[[],[T('From QuickBooks')],[T('Date'),T('Vendor'),T('Type'),T('Memo'),T('Amount')]].concat(j.qb.map(x=>[x.d,x.v||x.a||'',x.c==='mat'?T('Material'):x.c==='sub'?T('Subcontractors'):T('Tools & other'),x.m||'',r2(x.amt)])):[])
+    .concat([[],[T('Labor'),m?r2(j.lab):''],[T('Material'),r2(j.mat)],[T('Subcontractors'),r2(j.sub)],[T('Tools & other'),r2(j.oth)],[T('Travel'),m?r2(j.tr):''],[T('Total'),r2(cost(j,m))]]);
   dl(short(S.job)+' — job cost.csv',rows);};
 
 // take over the Reports page (no old page kept as a fallback — Baruch 11/15)
 window.renderRep=render;try{renderRep=render;}catch(e){}
-try{Object.assign(ES,{"Overview":"Resumen","Jobs":"Trabajos","Labor":"Mano de obra","Material":"Material","Travel":"Viaje","This week":"Esta semana","Last week":"Semana pasada","This month":"Este mes","Last month":"Mes pasado","This year":"Este año","Pick dates…":"Elegir fechas…","Pick dates":"Elegir fechas","From":"Desde","To":"Hasta",
+try{Object.assign(ES,{"Overview":"Resumen","Subcontractors":"Subcontratistas","Tools & other":"Herramientas y otros","From QuickBooks":"De QuickBooks","line":"línea","lines":"líneas","Vendor":"Proveedor","Memo":"Nota","Type":"Tipo","Jobs":"Trabajos","Labor":"Mano de obra","Material":"Material","Travel":"Viaje","This week":"Esta semana","Last week":"Semana pasada","This month":"Este mes","Last month":"Mes pasado","This year":"Este año","Pick dates…":"Elegir fechas…","Pick dates":"Elegir fechas","From":"Desde","To":"Hasta",
  "vs same days last week":"vs mismos días de la semana pasada","vs the week before":"vs la semana anterior","vs same days last month":"vs mismos días del mes pasado","vs the month before":"vs el mes anterior","vs same days last year":"vs mismos días del año pasado","vs the days before":"vs los días anteriores","vs before":"vs antes",
  "Total cost":"Costo total","of cost":"del costo","Hours worked":"Horas trabajadas","Overtime":"Horas extra","receipts":"recibos","Gas":"Gasolina","fill-ups":"cargas","Cost · last 6 months":"Costo · últimos 6 meses","Hours · last 6 months":"Horas · últimos 6 meses","Top jobs":"Trabajos principales","All jobs":"Todos los trabajos",
  "Where jobs stand":"Cómo van los trabajos","Upcoming":"Próximos","Confirmed":"Confirmados","Roughing":"Rough","Rough Complete":"Rough terminado","Finishing":"Terminación","Haven't moved in 30+ days":"Sin moverse en 30+ días","jobs":"trabajos","job":"trabajo","person":"persona","receipt":"recibo","days":"días","O&R open":"O&R abiertos","waiting on O&R":"esperando a O&R","longest":"el más largo","Inspections booked":"Inspecciones agendadas","in the next 7 days":"en los próximos 7 días","to book":"por agendar",
