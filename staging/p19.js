@@ -34,7 +34,7 @@ const css=document.createElement('style');css.textContent=
 +'.p19strip button b{font-size:16px;color:var(--g5);font-weight:600}.p19strip button.on{background:var(--g5);color:var(--g2)}.p19strip button.on b{color:var(--g0,#fff)}'
 +'.p19dh{font:inherit;background:none;border:0;padding:4px 0;cursor:pointer;display:inline-flex;flex-direction:column;align-items:center;color:var(--g4);font-size:10.5px;font-weight:600}.p19dh i{font-style:normal;font-weight:400;font-size:9.5px;color:var(--g3)}'
 +'.p19cell{cursor:pointer}.p19cell:hover{background:var(--g1)}'
-+'.p19bar{position:relative;height:16px;border-radius:5px;background:var(--g1);margin-top:8px}.p19bar i{position:absolute;top:0;bottom:0;border-radius:5px;color:#fff;font-style:normal;font-size:10.5px;font-weight:700;line-height:16px;text-align:center;overflow:hidden;white-space:nowrap}'
++'.p19bar{position:relative;height:6px;border-radius:3px;background:var(--g1);margin-top:2px}.p19bar i{position:absolute;top:0;bottom:0;border-radius:3px;background:var(--g4)}.p19lab{position:relative;height:17px;margin-top:6px}.p19lab span{position:absolute;bottom:0;font-size:11.5px;color:var(--g4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:4px;box-sizing:border-box}.p19lab b{color:var(--g5);font-weight:700}'
 +'.p19ax{display:flex;justify-content:space-between;font-size:10px;color:var(--g3);margin:4px 0 2px}'
 +'.p19chg{font-size:12px;color:var(--g4);padding:3px 2px}'
 +'.p19sec{font-size:12px;font-weight:600;color:var(--g4);text-transform:uppercase;letter-spacing:.5px;margin:16px 2px 8px}'
@@ -92,20 +92,21 @@ try{tcTable=window.tcTable;}catch(e){}
 
 // ── day rows: the 6 AM – 8 PM bar under each man (and the list of changes when his day is open) ──
 const BAR_A=6,BAR_B=20;
+// Baruch 11/15 (3): one plain line; each piece has its hours and its job written right on top of it — no colors to decode.
 function bar(dp){const pos=ms=>{const d=new Date(ms);return Math.max(0,Math.min(1,(d.getHours()+d.getMinutes()/60-BAR_A)/(BAR_B-BAR_A)));};
-  return '<div class="p19bar">'+dp.map(p=>{const a=pos(p.in),end=p.out||p.away;const mi=tcMissing(p);const b=end?pos(end):Math.min(1,a+0.05);const w=Math.max(1.5,(b-a)*100);
-    const lab=mi?'?':(end&&w>=7?punchDur(p).toFixed(1):'');
-    return '<i title="'+E((siteName(p.site)||'')+' · '+fmtT(p.in)+' – '+(end?fmtT(end):'?'))+'" style="left:'+(a*100).toFixed(1)+'%;width:'+w.toFixed(1)+'%;background:'+(mi?'#c0392b':sCol(p.site||''))+'">'+lab+'</i>';}).join('')+'</div>';}
-// Baruch 11/15 (2): no stacked list of jobs and hours — each job is a colored piece of the bar with its hours written on it,
-// so men are easy to compare. Under the name: a colored dot + the job for each job worked that day.
+  const short=k=>(siteName(k)||'').replace(/, NY \d{5}/g,'').split(',')[0];
+  const seg=dp.map(p=>{const a=pos(p.in),end=p.out||p.away;const mi=tcMissing(p);const b=end?pos(end):Math.min(1,a+0.05);return {p,a,w:Math.max(1.5,(b-a)*100),mi,end};});
+  return '<div class="p19lab">'+seg.map(x=>'<span style="left:'+(x.a*100).toFixed(1)+'%;'+(x.mi?'max-width:'+(100-x.a*100).toFixed(1)+'%':'width:'+x.w.toFixed(1)+'%')+'">'+(x.mi?'<b style="color:#c0392b">'+E(T('no punch-out'))+'</b> · ':'<b>'+punchDur(x.p).toFixed(1)+'</b> ')+E(short(x.p.site))+'</span>').join('')+'</div>'
+    +'<div class="p19bar">'+seg.map(x=>'<i title="'+E((siteName(x.p.site)||'')+' · '+fmtT(x.p.in)+' – '+(x.end?fmtT(x.end):'?'))+'" style="left:'+(x.a*100).toFixed(1)+'%;width:'+x.w.toFixed(1)+'%;'+(x.mi?'background:#c0392b':'')+'"></i>').join('')+'</div>';}
+// Baruch 11/15 (2): no stacked list of jobs and hours — the day is one line with each job's hours and address written on it.
 window.tcDayRow=function(e,ws,di){const dp=tcPunches(e.id,ws).filter(p=>dayIndex(p.in,ws)===di).sort((a,b)=>a.in-b.in);
   const miss=dp.some(tcMissing);const first=dp[0],last=dp[dp.length-1];const h=dp.reduce((q,p)=>q+((p.out||p.away)?punchDur(p):0),0);
   const short=k=>(siteName(k)||T('No site')).replace(/, NY \d{5}/g,'').split(',')[0];
   const sites=[...new Set(dp.map(p=>p.site||''))];const open=tcOpenRow===e.id+'|'+di;
-  const jobs=dp.length?sites.map(k=>'<span style="white-space:nowrap;margin-right:10px"><i style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:'+sCol(k)+'"></i>'+E(short(k))+'</span>').join(''):E(T('did not punch'));
+  const jobs=dp.length?'':E(T('did not punch'));
   let x='<div data-p19row="'+E(e.id)+'" style="border-top:1px solid var(--g1)"><div style="cursor:pointer;padding:10px 0 '+(dp.length?'6px':'10px')+'" onclick="tcRowTap(\''+J(e.id)+'\','+di+')">'
     +'<div style="display:flex;gap:10px;align-items:center"><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+E(e.name)+(e.lead?' <span style="color:var(--amber)">★</span>':'')+'</div>'
-    +'<div style="font-size:12px;color:var(--g4);line-height:1.5">'+jobs+'</div></div>'
+    +(jobs?'<div style="font-size:12px;color:var(--g4)">'+jobs+'</div>':'')+'</div>'
     +(dp.length?'<div style="font-size:14px;white-space:nowrap">'+fmtT(first.in)+' – '+(miss?'<b style="color:#c0392b">?</b>':fmtT(last.out||last.away))+'</div><div style="width:42px;text-align:right;font-weight:700;font-size:15px">'+(miss?'':h.toFixed(1))+'</div>':'<div style="color:var(--g3);font-size:13px">—</div>')
     +'<div style="color:var(--blue-mid);font-size:13px;width:14px;text-align:center">'+(open?'▴':'✎')+'</div></div>'
     +(dp.length?bar(dp):'')+'</div>';
