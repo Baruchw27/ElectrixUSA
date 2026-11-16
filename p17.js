@@ -10,7 +10,7 @@ const E=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','
 const M=()=>{try{return me();}catch(e){return null;}};
 const full=()=>{const m=M();return !!m&&!m.inactive&&(m.role==='owner'||m.role==='manager'||m.role==='office'||!!m.all);};
 const isLead=()=>{const m=M();return !!m&&!m.inactive&&!!m.lead&&!full();};   // 11/15: crew leaders — material by voice, their own jobs, notes
-const allowed=()=>full()||isLead();
+const allowed=()=>full();   // Baruch 11/15 (late): no AI button for any field worker, crew leaders included
 const canDef=()=>{const m=M();try{return !!m&&(m.role==='owner'||canHandleMat(m));}catch(e){return false;}};
 const LEAD_TOOLS=new Set(['find_jobs','open_job','job_summary','find_material','create_material_request','material_status','add_job_note','open_screen','open_tasks']);
 const LG=()=>{try{return lang();}catch(e){return 'en';}};
