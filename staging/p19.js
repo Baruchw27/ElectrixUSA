@@ -96,9 +96,9 @@ const BAR_A=6,BAR_B=20;
 // Baruch 11/15 (4, from his tablet): too busy — the job and times were repeated on every man and cut off ("1…", "6 Cameo…").
 // Now: one line with the hours inside each piece. Job and times are written on the line only when he worked more than one job
 // that day, and only on pieces wide enough to read; the jobs are listed under his name; tiny pieces show nothing.
-function bar(dp){const pos=ms=>{const d=new Date(ms);return Math.max(0,Math.min(1,(d.getHours()+d.getMinutes()/60-BAR_A)/(BAR_B-BAR_A)));};
+function bar(dp){const base=(()=>{const d=new Date(dp[0].in);d.setHours(0,0,0,0);return d.getTime();})();const pos=ms=>Math.max(0,Math.min(1,((ms-base)/36e5-BAR_A)/(BAR_B-BAR_A)));
   const short=k=>(siteName(k)||'').replace(/, NY \d{5}/g,'').split(',')[0];
-  const seg=dp.map(p=>{const a=pos(p.in),end=p.out||p.away;const mi=tcMissing(p);const b=end?pos(end):Math.min(1,a+0.05);return {p,a,w:Math.max(1.5,(b-a)*100),mi,end};});
+  const seg=dp.map(p=>{const a=pos(p.in),end=p.out||p.away;const mi=tcMissing(p);const b=end?pos(end):Math.min(1,a+0.05);return {p,a,w:Math.max(1.5,(b-a)*100),mi,end,night:end&&new Date(end).getDate()!==new Date(p.in).getDate()};});
   const multi=new Set(dp.map(p=>p.site||'')).size>1;const wide=x=>x.w>=24;
   const lab=multi&&seg.some(wide)?'<div class="p19lab">'+seg.filter(wide).map(x=>'<span style="left:'+(x.a*100).toFixed(1)+'%;width:'+x.w.toFixed(1)+'%">'+E(short(x.p.site))+'</span>').join('')+'</div>':'';
   const tim=multi&&seg.some(wide)?'<div class="p19lab p19tim">'+seg.filter(wide).map(x=>'<span style="left:'+(x.a*100).toFixed(1)+'%;width:'+x.w.toFixed(1)+'%">'+fmtT(x.p.in)+' – '+(x.end?fmtT(x.end):'?')+'</span>').join('')+'</div>':'';
@@ -108,12 +108,13 @@ window.tcDayRow=function(e,ws,di){const dp=tcPunches(e.id,ws).filter(p=>dayIndex
   const miss=dp.some(tcMissing);const first=dp[0],last=dp[dp.length-1];const h=dp.reduce((q,p)=>q+((p.out||p.away)?punchDur(p):0),0);
   const short=k=>(siteName(k)||T('No site')).replace(/, NY \d{5}/g,'').split(',')[0];
   const sites=[...new Set(dp.map(p=>p.site||''))];const open=tcOpenRow===e.id+'|'+di;
-  const jobs=dp.length?E(sites.map(short).join(' → '))+(miss?' · <b style="color:#c0392b">'+E(T('no punch-out'))+'</b>':''):E(T('did not punch'));
+  const night=dp.some(p=>{const e2=p.out||p.away;return e2&&new Date(e2).getDate()!==new Date(p.in).getDate();});
+  const jobs=dp.length?E(sites.map(short).join(' → '))+(night?' · <b style="color:var(--amber)">'+E(T('past midnight'))+'</b>':'')+(miss?' · <b style="color:#c0392b">'+E(T('no punch-out'))+'</b>':''):E(T('did not punch'));
   let x='<div data-p19row="'+E(e.id)+'" style="border-top:1px solid var(--g1)"><div style="cursor:pointer;padding:10px 0 '+(dp.length?'6px':'10px')+'" onclick="tcRowTap(\''+J(e.id)+'\','+di+')">'
     +'<div style="display:flex;gap:10px;align-items:center"><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+E(e.name)+(e.lead?' <span style="color:var(--amber)">★</span>':'')+'</div>'
     +'<div style="font-size:12.5px;color:var(--g4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+jobs+'</div></div>'
     +(dp.length?'<div style="font-size:14px;white-space:nowrap">'+fmtT(first.in)+' – '+(miss?'<b style="color:#c0392b">?</b>':fmtT(last.out||last.away))+'</div><div style="width:42px;text-align:right;font-weight:700;font-size:15px">'+(miss?'':h.toFixed(1))+'</div>':'<div style="color:var(--g3);font-size:13px">—</div>')
-    +'<div style="color:var(--blue-mid);font-size:13px;width:14px;text-align:center">'+(open?'▴':'✎')+'</div></div>'
+    +'<div style="color:var(--g4);font-size:16px;width:14px;text-align:center">'+(open?'⌃':'›')+'</div></div>'
     +(dp.length?bar(dp):'')+'</div>';
   if(open){let ed=tcDayEdit(e,ws,di,dp);const ch=[];dp.forEach(p=>(p.edits||[]).forEach(c=>ch.push(c)));
     if(ch.length){const L=ch.sort((a,b)=>(b.at||b.ts||0)-(a.at||a.ts||0)).slice(0,6).map(c=>'<div class="p19chg">'+E(nm(c.by))+' · '+E(c.at||c.ts?new Date(c.at||c.ts).toLocaleString(LOCX(),{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'')+(c.why?' — '+E(c.why):'')+'</div>').join('');
@@ -216,5 +217,5 @@ try{renderHours=window.renderHours;}catch(e){}
 
 try{Object.assign(ES,{"Week":"Semana","Day":"Día","Open this day":"Abrir este día","Back to the week":"Volver a la semana","worked":"trabajaron","Everyone":"Todos","Only problems":"Solo problemas","Send to Fingercheck":"Enviar a Fingercheck","Hours":"Horas","Travel":"Viaje","Changes":"Cambios","Tap a man to open his day and fix it.":"Toque a un hombre para abrir su día y arreglarlo.",
  "working now":"trabajando","done today":"terminaron hoy","not in yet":"aún no entran","Search a person or job…":"Buscar persona o trabajo…","Working now":"Trabajando ahora","Done today":"Terminaron hoy","Not in yet":"Aún no entran","Not on the time clock":"Sin reloj de tiempo","Nobody is clocked in right now.":"Nadie está marcado ahora.","since":"desde","jobs":"trabajos",
- "Missing punches":"Marcas faltantes","no punch-out":"sin salida","in":"entrada","Fix":"Arreglar","Phone hasn’t checked in since":"El teléfono no reporta desde","Check phone":"Revisar teléfono","How travel pay works":"Cómo funciona el pago de viaje","OT":"HE","Someone":"Alguien"});}catch(e){}
+ "Missing punches":"Marcas faltantes","no punch-out":"sin salida","in":"entrada","Fix":"Arreglar","Phone hasn’t checked in since":"El teléfono no reporta desde","Check phone":"Revisar teléfono","How travel pay works":"Cómo funciona el pago de viaje","OT":"HE","past midnight":"pasó la medianoche","Someone":"Alguien"});}catch(e){}
 })();
