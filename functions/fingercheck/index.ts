@@ -216,6 +216,23 @@ const handle = async (req: Request): Promise<Response> => {
   const { data: emps } = await adm.from("records").select("id,data").eq("coll", "emps").eq("deleted", false);
   const people = (emps || []).map((e: any) => ({ id: e.id, name: e.data?.name || "", clock: e.data?.clock !== false, inactive: !!e.data?.inactive, fc: e.data?.fcNum || null }))
     .filter((e) => !e.inactive);
+  // Baruch 11/15: crew sign-in links go to the email Fingercheck has on file — owner/Payroll only, only for the people asked
+  // for (at most 40), and only the email (nothing else from the employee record)
+  if (action === "emails") {
+    const ids: string[] = Array.isArray(a.ids) ? a.ids.map(String).slice(0, 40) : [];
+    if (!ids.length) return json({ error: "ids" }, 400);
+    const { data: rr } = await adm.from("records").select("id,data").eq("coll", "rates").eq("deleted", false).in("id", ids);
+    const want: Record<string, { fc: string; co: string }> = {};
+    for (const r of rr || []) if (r.data?.fc) want[r.id] = { fc: String(r.data.fc), co: COS.includes(r.data.co) ? r.data.co : "inc" };
+    const lists: Record<string, any[]> = {};
+    for (const c of [...new Set(Object.values(want).map((w) => w.co))]) { const r = await fc(c, "v1/Employees/GetAllActiveEmployees"); lists[c] = r.status === 200 ? asList(r.body) : []; }
+    const out = ids.map((id) => { const w = want[id]; if (!w) return { id, email: null, why: "not linked to Fingercheck" };
+      const x = (lists[w.co] || []).find((o: any) => String(o.EmployeeNumber ?? o.employeeNumber ?? "") === w.fc);
+      if (!x) return { id, email: null, why: "not found in Fingercheck" };
+      const k = Object.keys(x).filter((k) => /e-?mail/i.test(k) && typeof x[k] === "string" && /@/.test(x[k]));
+      return { id, email: k.length ? String(x[k[0]]).trim() : null, why: k.length ? undefined : "no email in Fingercheck" }; });
+    return json({ people: out });
+  }
   if (action === "employees") {
     const r = await fc(co, "v1/Employees/GetAllActiveEmployees"); if (r.status !== 200) return json({ error: "Fingercheck answered " + r.status, body: String(r.body).slice(0, 300) }, 502);
     const list = asList(r.body).map((x: any) => ({ number: String(x.EmployeeNumber ?? x.employeeNumber ?? ""), name: [x.FirstName ?? x.firstName, x.LastName ?? x.lastName].filter(Boolean).join(" ") }));
