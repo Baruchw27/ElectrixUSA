@@ -71,5 +71,23 @@ function hideCompany(){const w=$('p7notif');if(!w)return;const m=typeof me==='fu
 try{if(typeof window.renderMore==='function'){const _rm=window.renderMore;window.renderMore=function(){const r=_rm.apply(this,arguments);try{hideCompany();}catch(e){}return r;};try{renderMore=window.renderMore;}catch(e){}}}catch(e){}
 try{const _gt=window.goTab;if(typeof _gt==='function'){window.goTab=function(){const r=_gt.apply(this,arguments);try{hideCompany();}catch(e){}return r;};try{goTab=window.goTab;}catch(e){}}}catch(e){}
 setTimeout(()=>{try{hideCompany();}catch(e){}},500);
-try{Object.assign(ES,{"Sign-in link — he picks his own password":"Enlace de entrada — él elige su contraseña","Send / copy":"Enviar / copiar","Links are only for field workers.":"Los enlaces son solo para trabajadores de campo.","Could not make the link.":"No se pudo hacer el enlace."});}catch(e){}
+// Baruch 11/16: on the Punch page last week showed only a number per day — now each day opens like this week does:
+// which job, punch in – punch out, and the hours, so a worker can check his week before it is paid.
+let lwOpen=-1;
+P20.lw=i=>{lwOpen=lwOpen===i?-1:i;try{lastWeek();}catch(e){}};
+function lastWeek(){const wb=$('weekBox');if(!wb)return;const m=typeof me==='function'?me():null;if(!m)return;
+  const ref=new Date();ref.setDate(ref.getDate()-7);const s=weekStats(m.id,ref);const f=d=>new Date(d).toLocaleDateString(LOC(),{month:'short',day:'numeric'});
+  let h='';for(let i=0;i<7;i++){const a=addDaysMs(s.ws,i),b=addDaysMs(s.ws,i+1);
+    const L=(D.punches||[]).filter(p=>p&&p.who===m.id&&p.in>=a&&p.in<b&&!p.voided&&!p.rejected).sort((x,y)=>x.in-y.in);
+    if(!L.length&&!s.days[i])continue;
+    const k=dkey(new Date(a));const tv=TRAVEL_ON?(D.travel||[]).filter(x=>x&&travelCounts(x)&&x.who===m.id&&x.date===k):[];const tp=tv.reduce((q,x)=>q+travelPayOf(x),0);
+    const lab=new Date(a).toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'});const op=lwOpen===i;
+    h+='<div class="pn-r pn-day" onclick="P20.lw('+i+')"><span>'+(op?'<b>'+E(lab)+'</b>':E(lab))+'</span><b>'+(s.days[i]?s.days[i].toFixed(1)+' h':'–')+' '+(op?'⌄':'›')+'</b></div>';
+    if(op)h+='<div class="pn-dd">'+(L.length?L.map(p=>{const end=p.out||p.away;return E(pnName(p))+' · '+fmtT(p.in)+' – '+(end?fmtT(end):'<b style="color:#c0392b">'+E(t('no punch-out'))+'</b>')+(end?' · <b style="white-space:nowrap">'+punchDur(p).toFixed(1)+' h</b>':'');}).join('<br>'):E(t('No punches')))
+      +(tv.length?'<br>🚗 '+tv.length+' '+E(t(tv.length===1?'trip':'trips'))+(tp?' · '+money(tp):''):'')+'</div>';}
+  wb.innerHTML='<div class="pn-b" style="padding-bottom:12px"><div class="pn-k">'+f(s.ws)+' – '+f(s.ws+6*864e5)+' · '+E(t('paid this week'))+'</div><div class="pn-big">'+s.total.toFixed(1)+' h</div>'
+    +'<div class="pn-mut">'+E(t('Regular'))+' '+s.reg.toFixed(1)+(s.ot?' · '+E(t('Overtime'))+' '+s.ot.toFixed(1):'')+'</div></div>'
+    +(h?'<div class="pn-hdr">'+E(t('Days — tap to see the punches'))+'</div><div class="pn-list">'+h+'</div>':'<div class="pn-mut" style="padding:8px 2px">'+E(t('No punches'))+'</div>');}
+try{const _rp=window.renderPunch;if(typeof _rp==='function'){window.renderPunch=function(){const r=_rp.apply(this,arguments);try{lastWeek();}catch(e){}return r;};try{renderPunch=window.renderPunch;}catch(e){}}}catch(e){}
+try{Object.assign(ES,{"Sign-in link — he picks his own password":"Enlace de entrada — él elige su contraseña","Send / copy":"Enviar / copiar","Links are only for field workers.":"Los enlaces son solo para trabajadores de campo.","Could not make the link.":"No se pudo hacer el enlace.","paid this week":"se paga esta semana"});}catch(e){}
 })();
