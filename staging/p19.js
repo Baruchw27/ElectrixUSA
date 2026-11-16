@@ -75,7 +75,7 @@ P19.prob=v=>{onlyProb=v;renderTimeCards();};
 P19.open=(who,ms)=>{tcWs=weekStart(new Date(ms)).getTime();const di=dayIndex(ms,tcWs);setPaySec('cards');P19.day(di,who);};
 
 // ── week table: day letters and every number open the day ──
-const sCol=(()=>{const P=['#2c3347','#d93a2b','#e0a33a','#2f7d5b','#5b6fd6','#9b51e0'];const m={};let n=0;return k=>m[k]||(m[k]=P[n++%P.length]);})();
+const sCol=(()=>{const P=['#4f7cff','#e0a33a','#2f9e6b','#9b6cf0','#20a4b8','#8d96aa'];const m={};let n=0;return k=>m[k]||(m[k]=P[n++%P.length]);})();
 window.tcTable=function(people,ws,sel){const DL=lang()==='es'?['D','L','M','M','J','V','S']:['S','M','T','W','T','F','S'];
   const th='<tr>'+(sel?'<th></th>':'')+'<th style="text-align:left"></th>'+DL.map((d,i)=>'<th style="padding:2px 0">'+(sel?'<span class="p19dh">'+d+'</span>':'<button class="p19dh" onclick="P19.day('+i+')" title="'+E(T('Open this day'))+'">'+d+'<i>'+new Date(ws+i*864e5+12*36e5).getDate()+'</i></button>')+'</th>').join('')+'<th style="font-size:10.5px;color:var(--g4);font-weight:600;text-align:right">'+T('Total')+'</th></tr>';
   const rows=people.map((e,ri)=>{const P=tcPunches(e.id,ws);const s=weekStats(e.id,new Date(ws+12*36e5));const bt=ri?'border-top:1px solid var(--g1);':'';
