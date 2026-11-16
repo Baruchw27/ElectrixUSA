@@ -34,7 +34,7 @@ const css=document.createElement('style');css.textContent=
 +'.p19strip button b{font-size:16px;color:var(--g5);font-weight:600}.p19strip button.on{background:var(--g5);color:var(--g2)}.p19strip button.on b{color:var(--g0,#fff)}'
 +'.p19dh{font:inherit;background:none;border:0;padding:4px 0;cursor:pointer;display:inline-flex;flex-direction:column;align-items:center;color:var(--g4);font-size:10.5px;font-weight:600}.p19dh i{font-style:normal;font-weight:400;font-size:9.5px;color:var(--g3)}'
 +'.p19cell{cursor:pointer}.p19cell:hover{background:var(--g1)}'
-+'.p19bar{position:relative;height:8px;border-radius:4px;background:var(--g1);margin-top:3px}.p19bar i{position:absolute;top:0;bottom:0;border-radius:4px;background:#9fb4cf}html[data-theme=dark] .p19bar i{background:#5f7896}.p19lab{position:relative;height:17px;margin-top:6px}.p19lab span{position:absolute;bottom:0;font-size:11.5px;color:var(--g4);white-space:nowrap}.p19lab b{color:var(--g5);font-weight:700}.p19tim{margin-top:3px;height:15px}.p19tim span{top:0;bottom:auto;font-size:11px}.p19tim span{color:var(--g4)}'
++'.p19bar{position:relative;height:18px;margin-top:3px}.p19bar i{position:absolute;top:0;bottom:0;border-radius:5px;background:#e4e7ec;border-right:2px solid #fff;box-sizing:border-box;font-style:normal;font-size:11px;font-weight:700;color:#3d4350;line-height:18px;text-align:center;overflow:hidden;white-space:nowrap}html[data-theme=dark] .p19bar i{background:#34363c;color:#e2e4e8;border-right-color:#1c1c1e}.p19bar i.mi{background:#f3dcdc;color:#a33}html[data-theme=dark] .p19bar i.mi{background:#4a2c2c;color:#f0b4b4}.p19lab{position:relative;height:17px;margin-top:6px}.p19lab span{position:absolute;bottom:0;font-size:11.5px;color:var(--g4);white-space:nowrap}.p19lab b{color:var(--g5);font-weight:700}.p19tim{margin-top:3px;height:15px}.p19tim span{top:0;bottom:auto;font-size:11px}.p19tim span{color:var(--g4)}'
 +'.p19ax{display:flex;justify-content:space-between;font-size:10px;color:var(--g3);margin:4px 0 2px}'
 +'.p19chg{font-size:12px;color:var(--g4);padding:3px 2px}'
 +'.p19sec{font-size:12px;font-weight:600;color:var(--g4);text-transform:uppercase;letter-spacing:.5px;margin:16px 2px 8px}'
@@ -100,7 +100,8 @@ function bar(dp){const base=(()=>{const d=new Date(dp[0].in);d.setHours(0,0,0,0)
   const short=k=>(siteName(k)||T('No site')).replace(/, NY \d{5}/g,'').split(',')[0];
   const tm=ms=>fmtT(ms).replace(/\s?([AP]M)$/i,(m0,x)=>' '+x.toLowerCase());
   const seg=dp.map(p=>{const a=pos(p.in),end=p.out||p.away;const mi=tcMissing(p);const b=end?pos(end):Math.min(1,a+0.05);return {p,a,b,w:Math.max(0.8,(b-a)*100),mi,end};});
-  const top='<div class="p19lab" data-p19lay="1">'+seg.map(x=>'<span data-p19x="'+(x.a*100).toFixed(2)+'" style="left:'+(x.a*100).toFixed(2)+'%">'+(x.mi?'<b style="color:#c25b5b">'+E(T('no punch-out'))+'</b> · '+E(short(x.p.site)):E(short(x.p.site))+' <b>'+(punchDur(x.p)<0.1?Math.max(1,Math.round(punchDur(x.p)*60))+' '+E(T('min')):punchDur(x.p).toFixed(1))+'</b>')+'</span>').join('')+'</div>';
+  const hrs=p=>punchDur(p)<0.1?Math.max(1,Math.round(punchDur(p)*60))+' '+E(T('min')):punchDur(p).toFixed(1);
+  const top='<div class="p19lab" data-p19lay="1">'+seg.map(x=>'<span data-p19x="'+(x.a*100).toFixed(2)+'" style="left:'+(x.a*100).toFixed(2)+'%">'+(x.mi?'<b style="color:#c25b5b">'+E(T('no punch-out'))+'</b> · '+E(short(x.p.site)):E(short(x.p.site))+(x.w<5?' <b>'+hrs(x.p)+'</b>':''))+'</span>').join('')+'</div>';
   // times where something changes
   let pts=[{x:seg[0].a,t:[seg[0].p.in]}];
   for(let i=0;i<seg.length-1;i++){const e1=seg[i].end,s2=seg[i+1].p.in;pts.push({x:seg[i].b,t:e1?[e1,s2]:[s2]});}
@@ -109,7 +110,7 @@ function bar(dp){const base=(()=>{const d=new Date(dp[0].in);d.setHours(0,0,0,0)
   const txt=q=>{const v=q.t.filter(Boolean).sort((a,b)=>a-b);if(!v.length)return '<b style="color:#c25b5b">?</b>';const lo=v[0],hi=v[v.length-1];
     return Math.abs(hi-lo)<60000?tm(lo):tm(lo)+'–'+tm(hi)+(q.t.some(x=>!x)?' ?':'');};
   const bot='<div class="p19lab p19tim" data-p19lay="1">'+M.map((q,i)=>'<span data-p19x="'+(q.x*100).toFixed(2)+'" data-p19al="'+(i===0?'l':i===M.length-1?'r':'c')+'" style="left:'+(q.x*100).toFixed(2)+'%">'+txt(q)+'</span>').join('')+'</div>';
-  return top+'<div class="p19bar">'+seg.map(x=>'<i title="'+E((siteName(x.p.site)||'')+' · '+fmtT(x.p.in)+' – '+(x.end?fmtT(x.end):'?'))+'" style="left:'+(x.a*100).toFixed(2)+'%;width:'+x.w.toFixed(2)+'%;'+(x.mi?'background:#c25b5b':'')+'"></i>').join('')+'</div>'+bot;}
+  return top+'<div class="p19bar">'+seg.map(x=>'<i title="'+E((siteName(x.p.site)||'')+' · '+fmtT(x.p.in)+' – '+(x.end?fmtT(x.end):'?'))+'" style="left:'+(x.a*100).toFixed(2)+'%;width:'+x.w.toFixed(2)+'%"'+(x.mi?' class="mi"':'')+'>'+(x.w>=5&&!x.mi?hrs(x.p):'')+'</i>').join('')+'</div>'+bot;}
 // labels that would overlap go to the next row; times sit centered on their point (first one left, last one right)
 P19.lay=()=>{document.querySelectorAll('[data-p19lay]').forEach(box=>{const W=box.clientWidth;if(!W)return;const rows=[];const tim=box.classList.contains('p19tim');
   [...box.children].forEach(sp=>{sp.style.top='';const w=sp.offsetWidth;let x=parseFloat(sp.getAttribute('data-p19x'))/100*W;const al=sp.getAttribute('data-p19al');
