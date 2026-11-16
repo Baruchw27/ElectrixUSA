@@ -93,21 +93,25 @@ try{tcTable=window.tcTable;}catch(e){}
 // ── day rows: the 6 AM – 8 PM bar under each man (and the list of changes when his day is open) ──
 const BAR_A=6,BAR_B=20;
 // Baruch 11/15 (3): one plain line; each piece has its hours and its job written right on top of it — no colors to decode.
+// Baruch 11/15 (4, from his tablet): too busy — the job and times were repeated on every man and cut off ("1…", "6 Cameo…").
+// Now: one line with the hours inside each piece. Job and times are written on the line only when he worked more than one job
+// that day, and only on pieces wide enough to read; the jobs are listed under his name; tiny pieces show nothing.
 function bar(dp){const pos=ms=>{const d=new Date(ms);return Math.max(0,Math.min(1,(d.getHours()+d.getMinutes()/60-BAR_A)/(BAR_B-BAR_A)));};
   const short=k=>(siteName(k)||'').replace(/, NY \d{5}/g,'').split(',')[0];
   const seg=dp.map(p=>{const a=pos(p.in),end=p.out||p.away;const mi=tcMissing(p);const b=end?pos(end):Math.min(1,a+0.05);return {p,a,w:Math.max(1.5,(b-a)*100),mi,end};});
-  return '<div class="p19lab">'+seg.map(x=>'<span style="left:'+(x.a*100).toFixed(1)+'%;'+(x.mi?'max-width:'+(100-x.a*100).toFixed(1)+'%':'width:'+x.w.toFixed(1)+'%')+'">'+(x.mi?'<b style="color:#c0392b">'+E(T('no punch-out'))+'</b> · ':'')+E(short(x.p.site))+'</span>').join('')+'</div>'
-    +'<div class="p19bar">'+seg.map(x=>'<i title="'+E((siteName(x.p.site)||'')+' · '+fmtT(x.p.in)+' – '+(x.end?fmtT(x.end):'?'))+'" style="left:'+(x.a*100).toFixed(1)+'%;width:'+x.w.toFixed(1)+'%;'+(x.mi?'background:#c0392b':'')+'">'+(x.mi?'?':(x.w>=5?punchDur(x.p).toFixed(1):''))+'</i>').join('')+'</div>'
-    +'<div class="p19lab p19tim">'+seg.map(x=>'<span style="left:'+(x.a*100).toFixed(1)+'%;'+(x.mi?'max-width:'+(100-x.a*100).toFixed(1)+'%':'width:'+x.w.toFixed(1)+'%')+'">'+fmtT(x.p.in)+' – '+(x.end?fmtT(x.end):'?')+'</span>').join('')+'</div>';}
+  const multi=new Set(dp.map(p=>p.site||'')).size>1;const wide=x=>x.w>=24;
+  const lab=multi&&seg.some(wide)?'<div class="p19lab">'+seg.filter(wide).map(x=>'<span style="left:'+(x.a*100).toFixed(1)+'%;width:'+x.w.toFixed(1)+'%">'+E(short(x.p.site))+'</span>').join('')+'</div>':'';
+  const tim=multi&&seg.some(wide)?'<div class="p19lab p19tim">'+seg.filter(wide).map(x=>'<span style="left:'+(x.a*100).toFixed(1)+'%;width:'+x.w.toFixed(1)+'%">'+fmtT(x.p.in)+' – '+(x.end?fmtT(x.end):'?')+'</span>').join('')+'</div>':'';
+  return lab+'<div class="p19bar" style="'+(lab?'':'margin-top:8px')+'">'+seg.map(x=>'<i title="'+E((siteName(x.p.site)||'')+' · '+fmtT(x.p.in)+' – '+(x.end?fmtT(x.end):'?'))+'" style="left:'+(x.a*100).toFixed(1)+'%;width:'+x.w.toFixed(1)+'%;'+(x.mi?'background:#c0392b':'')+'">'+(x.mi?'?':(x.w>=6?punchDur(x.p).toFixed(1):''))+'</i>').join('')+'</div>'+tim;}
 // Baruch 11/15 (2): no stacked list of jobs and hours — the day is one line with each job's hours and address written on it.
 window.tcDayRow=function(e,ws,di){const dp=tcPunches(e.id,ws).filter(p=>dayIndex(p.in,ws)===di).sort((a,b)=>a.in-b.in);
   const miss=dp.some(tcMissing);const first=dp[0],last=dp[dp.length-1];const h=dp.reduce((q,p)=>q+((p.out||p.away)?punchDur(p):0),0);
   const short=k=>(siteName(k)||T('No site')).replace(/, NY \d{5}/g,'').split(',')[0];
   const sites=[...new Set(dp.map(p=>p.site||''))];const open=tcOpenRow===e.id+'|'+di;
-  const jobs=dp.length?'':E(T('did not punch'));
+  const jobs=dp.length?E(sites.map(short).join(' → '))+(miss?' · <b style="color:#c0392b">'+E(T('no punch-out'))+'</b>':''):E(T('did not punch'));
   let x='<div data-p19row="'+E(e.id)+'" style="border-top:1px solid var(--g1)"><div style="cursor:pointer;padding:10px 0 '+(dp.length?'6px':'10px')+'" onclick="tcRowTap(\''+J(e.id)+'\','+di+')">'
     +'<div style="display:flex;gap:10px;align-items:center"><div style="flex:1;min-width:0"><div style="font-weight:600;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+E(e.name)+(e.lead?' <span style="color:var(--amber)">★</span>':'')+'</div>'
-    +(jobs?'<div style="font-size:12px;color:var(--g4)">'+jobs+'</div>':'')+'</div>'
+    +'<div style="font-size:12.5px;color:var(--g4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+jobs+'</div></div>'
     +(dp.length?'<div style="font-size:14px;white-space:nowrap">'+fmtT(first.in)+' – '+(miss?'<b style="color:#c0392b">?</b>':fmtT(last.out||last.away))+'</div><div style="width:42px;text-align:right;font-weight:700;font-size:15px">'+(miss?'':h.toFixed(1))+'</div>':'<div style="color:var(--g3);font-size:13px">—</div>')
     +'<div style="color:var(--blue-mid);font-size:13px;width:14px;text-align:center">'+(open?'▴':'✎')+'</div></div>'
     +(dp.length?bar(dp):'')+'</div>';
