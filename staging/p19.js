@@ -63,6 +63,9 @@ try{renderPaySeg=window.renderPaySeg;}catch(e){}
 // ── Week ▾ / Day ▾ ──
 function closeMenu(){document.querySelectorAll('.p19dim,.p19menu').forEach(x=>x.remove());}
 const P19=window.P19={};
+// crews closed on the Time cards page (remembered on this phone)
+function p19Closed(){try{return new Set(JSON.parse(localStorage.getItem('p19closed')||'[]'));}catch(e){return new Set();}}
+P19.shut=function(id){const c=p19Closed();if(c.has(id))c.delete(id);else c.add(id);try{localStorage.setItem('p19closed',JSON.stringify([...c]));}catch(e){}try{renderTimeCards();}catch(e){}};
 P19.menu=btn=>{closeMenu();const rc=btn.getBoundingClientRect();const d=document.createElement('div');d.className='p19dim';d.onclick=closeMenu;document.body.appendChild(d);
   const mn=document.createElement('div');mn.className='p19menu';mn.innerHTML=[['week','Week'],['day','Day']].map(([k,l])=>'<button class="'+(tcMode===k?'on':'')+'" onclick="P19.mode(\''+k+'\')">'+E(T(l))+(tcMode===k?OKI:'')+'</button>').join('');
   mn.style.top=Math.round(rc.bottom+6)+'px';mn.style.right=Math.max(8,Math.round(window.innerWidth-rc.right))+'px';document.body.appendChild(mn);};
@@ -173,12 +176,15 @@ window.renderTimeCards=function(){const box=$('tcBox');if(!box)return;if(tcEditi
     top='<div class="card" style="padding:12px 14px">'+nav('tcDayMove',dayDate.toLocaleDateString(LOCX(),{weekday:'long',month:'short',day:'numeric'}),'<span style="cursor:pointer;color:var(--blue-mid)" onclick="P19.mode(\'week\')">'+E(T('Back to the week'))+'</span>')
       +'<div class="p19strip">'+DL.map((d,i)=>'<button class="'+(i===tcDay?'on':'')+'" onclick="P19.day('+i+')">'+E(T(d).slice(0,2))+'<b>'+new Date(ws+i*864e5+12*36e5).getDate()+'</b></button>').join('')+'</div>'
       +'<div class="p19st" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+box_(dh.toFixed(1),T('hours'))+box_(dw,T('worked'))+box_(dm,T('missing'),dm?'bad':'')+'</div></div>'+hn;}
-  const body=G.map(g=>{const ids=g.people.map(e=>e.id);const allOn=sel&&ids.every(id=>tcSel.has(id));
+  // Baruch 11/17: tap a crew's name to close it (and again to open) — only the crews you want stay open; remembered on this phone
+  const CL=p19Closed();
+  const body=G.map(g=>{const ids=g.people.map(e=>e.id);const allOn=sel&&ids.every(id=>tcSel.has(id));const shut=CL.has(g.id);
       const gh=tcMode==='week'?g.people.reduce((q,e)=>q+weekStats(e.id,new Date(ws+12*36e5)).total,0):g.people.reduce((q,e)=>q+tcPunches(e.id,ws).filter(p=>dayIndex(p.in,ws)===tcDay&&(p.out||p.away)).reduce((a,p)=>a+punchDur(p),0),0);
-      const right=tcMode==='day'?'<span style="font-size:12px;color:var(--blue-mid);font-weight:700;cursor:pointer;letter-spacing:.3px" onclick="tcFixCrew(\''+J(g.id)+'\')">'+T('FIX CREW')+'</span>':'<span style="font-size:12px;color:var(--g4)">'+gh.toFixed(1)+' h</span>';
-      return '<div class="row" style="align-items:center;margin:14px 2px 6px">'+(sel?'<span style="display:flex;gap:8px;align-items:center;cursor:pointer" onclick="tcToggleCrew(\''+J(g.id)+'\')"><span style="width:20px;height:20px;border-radius:6px;border:2px solid var(--blue-mid);display:inline-flex;align-items:center;justify-content:center;'+(allOn?'background:var(--blue-mid);color:#fff':'')+'">'+(allOn?'✓':'')+'</span>':'<span>')+'<b style="font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--g4)">'+E(g.name)+'</b></span>'+right+'</div>'
-        +'<div class="card" style="padding:'+(tcMode==='week'?'4px 12px':'0 14px')+'">'+(tcMode==='week'?tcTable(g.people,ws,sel):g.people.map(e=>tcDayRow(e,ws,tcDay)).join('').replace('<div data-p19row','<div data-p19first data-p19row').replace(/(<div data-p19first data-p19row="[^"]*") style="border-top:1px solid var\(--g1\)"/,'$1')
-          )+'</div>';}).join('');
+      const right=shut?'<span style="font-size:12px;color:var(--g4)">'+g.people.length+' · '+gh.toFixed(1)+' h</span>':tcMode==='day'?'<span style="font-size:12px;color:var(--blue-mid);font-weight:700;cursor:pointer;letter-spacing:.3px" onclick="tcFixCrew(\''+J(g.id)+'\')">'+T('FIX CREW')+'</span>':'<span style="font-size:12px;color:var(--g4)">'+gh.toFixed(1)+' h</span>';
+      const chev='<span onclick="event.stopPropagation();P19.shut(\''+J(g.id)+'\')" style="display:inline-block;width:16px;color:var(--g4);font-size:12px;cursor:pointer;transition:transform .15s;transform:rotate('+(shut?'-90deg':'0deg')+')">▾</span>';
+      return '<div class="row" style="align-items:center;margin:14px 2px 6px">'+(sel?'<span style="display:flex;gap:8px;align-items:center;cursor:pointer" onclick="tcToggleCrew(\''+J(g.id)+'\')"><span style="width:20px;height:20px;border-radius:6px;border:2px solid var(--blue-mid);display:inline-flex;align-items:center;justify-content:center;'+(allOn?'background:var(--blue-mid);color:#fff':'')+'">'+(allOn?'✓':'')+'</span>':'<span style="display:flex;align-items:center;gap:4px;cursor:pointer" onclick="P19.shut(\''+J(g.id)+'\')">')+(sel?'':chev)+'<b style="font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--g4)">'+E(g.name)+'</b></span>'+(sel?chev:'')+right+'</div>'+(shut?'':
+        '<div class="card" style="padding:'+(tcMode==='week'?'4px 12px':'0 14px')+'">'+(tcMode==='week'?tcTable(g.people,ws,sel):g.people.map(e=>tcDayRow(e,ws,tcDay)).join('').replace('<div data-p19row','<div data-p19first data-p19row').replace(/(<div data-p19first data-p19row="[^"]*") style="border-top:1px solid var\(--g1\)"/,'$1')
+          )+'</div>');}).join('');
   const foot=tcMode==='week'?(sel?'<div style="position:sticky;bottom:8px;margin-top:10px"><button class="btn" '+(tcSel.size?'':'disabled ')+'onclick="openBulkFix()">'+T('Fix together')+' · '+tcSel.size+' '+T('selected')+'</button></div><button class="btn sec2" style="margin-top:8px" onclick="tcSelMode()">'+T('Cancel')+'</button>':'<button class="btn sec2" style="margin-top:12px" onclick="tcSelMode()">'+T('Select to fix together')+'</button>')
     :'<div style="font-size:12px;color:var(--g4);margin:10px 2px 0">'+E(T('Tap a man to open his day and fix it.'))+'</div>';
   box.innerHTML=top+body+foot;try{P19.lay();}catch(e){}
