@@ -168,12 +168,21 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
   wps.push(...wl.slice(0, 20 - wps.length).map((id) => ({ _type: "waypoint", desc: short(site[id].name).slice(0, 40) + " #" + id, lat: +site[id].lat, lon: +site[id].lng, rad: Math.round(radM(site[id])),
     tst: 1600000000 + ([...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 99999989, 7)) })));
   const hash = wps.map((w) => w.desc + "@" + w.lat.toFixed(5) + "," + w.lon.toFixed(5) + "/" + w.rad).join("|");
+  // Baruch 11/18: while he is on the clock at a job, the phone reports every 5 minutes ("Move mode") — an iPhone otherwise
+  // reports only when it moves; off the clock (or once he left the job) it goes back to the normal mode. Trial: only people
+  // with emps.otMove = true (Shia first). The mode rides on the same "changed?" check as the job list (wp_hash).
+  const moveOn = emp.otMove === true && !!open && !open.d.away && kind !== "leave";
+  const mode = emp.otMove === true ? (moveOn ? "|m:move" : "|m:sig") : "";
+  const hashM = hash + mode;
   const out: any[] = [];
-  if (hash !== (ck.wp || "")) {
+  if (hashM !== (ck.wp || "")) {
     out.push({ _type: "cmd", action: "clearWaypoints" });
     out.push({ _type: "cmd", action: "setWaypoints", waypoints: { _type: "waypoints", waypoints: wps } });
+    if (mode) out.push({ _type: "cmd", action: "setConfiguration", configuration: moveOn
+      ? { _type: "configuration", monitoring: 2, locatorInterval: 300, moveModeLocatorInterval: 300, locatorDisplacement: 100 }
+      : { _type: "configuration", monitoring: 1 } });
   }
-  await adm.rpc("ot_note", { p_who: user, p_kind: kind, p_site: kSite, p_at: at, p_note: note || null, p_wp: hash !== (ck.wp || "") ? hash : null });
+  await adm.rpc("ot_note", { p_who: user, p_kind: kind, p_site: kSite, p_at: at, p_note: note || null, p_wp: hashM !== (ck.wp || "") ? hashM : null });
   return json(out);
 };
 
