@@ -93,9 +93,9 @@ function wxIcon(c){if(c==null)return '';if(c<=1)return IC.sun;if(c<=3||c===45||c
 +'.p23d{flex:0 0 calc(100%/7);scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;gap:1px;background:none;border:0;padding:3px 0;color:inherit;cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}'
 +'.p23d .w{font-size:11.5px;color:var(--g4)}.p23d .n{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700}'
 +'.p23d.td .n{color:#d93025}.p23d.on .n{background:#d93025;color:#fff}.p23d.off .n{color:var(--g3);text-decoration:line-through}.p23d.on.off .n{background:var(--g3);color:#fff;text-decoration:none}'
-+'.p23d .h{font-size:10.5px;color:var(--g3);height:13px;direction:rtl}.p23d .x{height:16px;color:var(--g4);display:flex;align-items:center;gap:2px;font-size:10.5px}'
++'.p23d .h{font-size:10.5px;color:var(--g3);height:13px;direction:rtl}.p23d .hn{font-size:9px;line-height:10px;color:var(--g4);height:20px;max-width:100%;overflow:hidden;text-align:center;padding:0 1px;font-weight:600}.p23d .x{height:16px;color:var(--g4);display:flex;align-items:center;gap:2px;font-size:10.5px}'
 +'.p23d .l{width:24px;height:3px;border-radius:2px;background:var(--g2);overflow:hidden;margin-top:2px}.p23d .l i{display:block;height:3px;background:#5a6bd8}.p23d .l.gap i{background:#c0392b}'
-+'.p23back{position:absolute;top:50%;transform:translateY(-60%);z-index:2;background:var(--card,#fff);border:1.5px solid #f0c2bd;color:#d93025;font-weight:700;font-size:13px;border-radius:10px;padding:3px 8px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.12)}'
++'.p23back{background:var(--card,#fff);border:1.5px solid #f0c2bd;color:#d93025;font-weight:700;font-size:13px;border-radius:10px;padding:3px 8px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.12)}'
 +'html[data-theme=dark] .p23back{background:#1c1c1e}.p23back.l{left:2px}.p23back.r{right:2px}'
 +'.p23sum{font-size:13px;color:var(--g4);margin:8px 4px 8px}'
 +'.p23list{display:grid;grid-template-columns:1fr;gap:10px}@media(min-width:900px){.p23list{grid-template-columns:1fr 1fr}}'
@@ -150,18 +150,15 @@ const P={pv:null,swiped:null,stripX:null};
 /* ───────── top box ───────── */
 function stripDays(k){const out=[];const t0=todayK();const from=addD(k<t0?k:t0,-21);const to=addD(k>t0?k:t0,60);for(let x=from;x<=to;x=addD(x,1)){const wd=new Date(x+'T12:00').getDay();if(wd===6&&!satBooked(x)&&x!==k)continue;out.push(x);}return out;}
 function topBox(k){const t0=todayK();const d=new Date(k+'T12:00');const h=heb(k);const N=D.crews.length||1;
-  const hol=holiday(k);const nx=nextHoliday(k);
-  let hl='';if(hol)hl='<b>'+E(hol.n)+'</b>'+(isOff(k)?' · '+E(T('Day off')):'');
-  if(nx)hl+=(hl?' · ':'')+E(nx.n)+' '+E(T('in'))+' '+nx.i+' '+E(T(nx.i===1?'day':'days'));
-  const cell=x=>{const dd=new Date(x+'T12:00');const hh=heb(x);const off=isOff(x);const n=D.crews.filter(c=>slotHasAny(c.id+'|'+x)).length;const w=WX&&WX.d&&WX.d[x];
+  const rel=k===t0?T('Today'):k===addD(t0,1)?T('Tomorrow'):k===addD(t0,-1)?T('Yesterday'):'';
+  const cell=x=>{const dd=new Date(x+'T12:00');const hh=heb(x);const off=isOff(x);const n=D.crews.filter(c=>slotHasAny(c.id+'|'+x)).length;const w=WX&&WX.d&&WX.d[x];const hol=holiday(x);
     return '<button type="button" class="p23d'+(x===k?' on':'')+(x===t0?' td':'')+(off?' off':'')+'" data-k="'+x+'"><span class="w">'+E(T(DN[dd.getDay()]).slice(0,3))+'</span><span class="n">'+dd.getDate()+'</span>'
-      +'<span class="h">'+(hh?gem(hh.d):'')+'</span><span class="x">'+(off?IC.offS:(w?wxIcon(w.c)+'<span>'+w.t+'°</span>':''))+'</span>'
+      +'<span class="h">'+(hh?gem(hh.d):'')+'</span><span class="hn">'+(hol?E(hol.n):'')+'</span><span class="x">'+(off?IC.offS:(w?wxIcon(w.c)+'<span>'+w.t+'°</span>':''))+'</span>'
       +(off||dd.getDay()===6?'<span class="l" style="visibility:hidden"></span>':'<span class="l'+(n<N&&x>=t0?' gap':'')+'"><i style="width:'+Math.round(n/N*100)+'%"></i></span>')+'</button>';};
   const ed=schedCanEdit();
-  return '<div class="p23top" id="p23top"><div class="p23box"><div class="p23hd"><b>'+E(d.toLocaleDateString(LOC(),{month:'long',year:'numeric'}))+'</b>'+(h?'<span>· '+E(HMEN[h.m]||h.m)+' '+h.y+'</span>':'')+'<span class="sp"></span>'
-    +(ed&&k>=t0&&!isOff(k)?'<button type="button" class="p23more" aria-label="More" onclick="P23.dayMenu(\''+k+'\')">'+IC.more+'</button>':'')+'</div>'
-    +(hl?'<div class="p23hol">'+hl+'</div>':'')
-    +'<div class="p23sw"><div class="p23strip" id="p23strip">'+stripDays(k).map(cell).join('')+'</div><button type="button" class="p23back" style="display:none" id="p23back" onclick="P23.today()"></button></div></div></div>';}
+  return '<div class="p23top" id="p23top"><div class="sc-head" style="margin-bottom:6px"><div><div class="sc-wd">'+E(d.toLocaleDateString(LOC(),{weekday:'long'}))+(h?' · <span dir="rtl">'+gem(h.d)+' '+(HMHE[h.m]||'')+'</span>':'')+'</div><div class="sc-md">'+E(d.toLocaleDateString(LOC(),{month:'long',day:'numeric'}))+(rel?'<span class="sc-rel'+(k===t0?' td':'')+'">'+E(rel)+'</span>':'')+'</div></div>'
+    +'<div style="margin-left:auto;display:flex;align-items:center;gap:8px"><button type="button" class="p23back" style="display:none" id="p23back" onclick="P23.today()"></button>'+(ed&&k>=t0&&!isOff(k)?'<button type="button" class="p23more" aria-label="More" onclick="P23.dayMenu(\''+k+'\')">'+IC.more+'</button>':'')+'</div></div>'
+    +'<div class="p23box"><div class="p23sw"><div class="p23strip" id="p23strip">'+stripDays(k).map(cell).join('')+'</div></div></div></div>';}
 
 /* ───────── crew cards ───────── */
 function avs(guys,k,isT,today,dragOk){return '<div class="sc-avs">'+guys.map(g=>{const st=scDayState(g,isT,today,k);return '<span class="sc-av p23av '+st.k+'" title="'+E(g.name)+'"'+(dragOk?' draggable="true" data-emp="'+E(g.id)+'"':'')+'>'+scInit(g.name)+'</span>';}).join('')+'</div>';}
@@ -238,7 +235,7 @@ function wire(k){const top=document.getElementById('p23top');try{const tb=docume
     if(P.stripX!=null&&P.stripK===k)sp.scrollLeft=P.stripX;else if(on){const i=cells.indexOf(on);sp.scrollLeft=Math.max(0,(i-Math.floor(i>=0?new Date(k+'T12:00').getDay():3))*cw);}
     const back=()=>{const b=document.getElementById('p23back');if(!b)return;const t=cells.find(x=>x.dataset.k===todayK());if(!t){b.style.display='none';return;}
       const L=t.offsetLeft-sp.scrollLeft,W=sp.clientWidth;const away=L<-cw/3||L>W-cw*2/3;
-      if(!away){b.style.display='none';return;}const left=L<0;b.className='p23back '+(left?'l':'r');b.textContent=left?'‹ '+new Date().getDate():new Date().getDate()+' ›';b.style.display='';};
+      if(!away){b.style.display='none';return;}const left=L<0;b.className='p23back';b.textContent=left?'‹ '+new Date().getDate():new Date().getDate()+' ›';b.style.display='';};
     sp.addEventListener('scroll',()=>{P.stripX=sp.scrollLeft;P.stripK=k;back();},{passive:true});back();requestAnimationFrame(back);setTimeout(back,300);
     cells.forEach(b=>{let tm=null,long=false;const x=b.dataset.k;
       const start=()=>{long=false;tm=setTimeout(()=>{long=true;try{navigator.vibrate&&navigator.vibrate(30);}catch(e){}P23.offMenu(x);},550);};const stop=()=>{clearTimeout(tm);};

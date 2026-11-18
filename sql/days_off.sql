@@ -40,14 +40,14 @@ begin
 end $$;
 
 -- Baruch 11/18: 8 PM — if a crew has no job for the next workday, the owner and the site managers get a message.
--- Not on Friday night (Shabbos); Saturday night checks Sunday; not when tomorrow (or today) is a day off.
+-- Not on Friday or Saturday night (Baruch 11/18: no messages for Sunday); not when tomorrow (or today) is a day off.
 create or replace function private.book_tomorrow_tick(p_now timestamptz default now()) returns jsonb
 language plpgsql security definer set search_path = public as $f$
 declare loc timestamp := p_now at time zone 'America/New_York'; td text := to_char(p_now at time zone 'America/New_York','YYYY-MM-DD');
   dow int := extract(dow from (p_now at time zone 'America/New_York'))::int; nk text; lst text; n int := 0; x record; sun boolean;
 begin
   if loc::time < time '20:00' or loc::time >= time '20:30' then return jsonb_build_object('skip','not time'); end if;
-  if dow = 5 then return jsonb_build_object('skip','Friday night'); end if;
+  if dow in (5,6) then return jsonb_build_object('skip','Friday / Saturday night'); end if;
   if private.day_off(td) then return jsonb_build_object('skip','day off today'); end if;
   nk := to_char(loc::date + 1, 'YYYY-MM-DD'); sun := dow = 6;
   if private.day_off(nk) then return jsonb_build_object('skip','tomorrow is a day off'); end if;
