@@ -57,7 +57,9 @@ function usOn(k){const d=new Date(k+'T12:00'),y=d.getFullYear(),mo=d.getMonth(),
   if(mo===4&&wd===1&&dt+7>31)return {n:'Memorial Day'};if(mo===8&&wd===1&&dt<=7)return {n:'Labor Day'};if(mo===10&&wd===4&&dt>=22&&dt<=28)return {n:'Thanksgiving'};return null;}
 function holiday(k){return jewishOn(k)||usOn(k);}
 /* the company's days off: D.daysOff = [{id:'YYYY-MM-DD', off:true|false, name}] — a record wins; no record = a work day */
-function dayOffRec(k){return (D.daysOff||[]).find(x=>x&&x.id===k&&!x.deleted);}
+// the server keeps days off by id (D.daysOff = {'2026-11-26':{...}}); a phone that made one before the first sync may hold a list
+const offList=()=>{const o=D.daysOff;if(!o)return [];if(Array.isArray(o))return o.filter(Boolean);return Object.keys(o).map(k=>Object.assign({id:k},o[k]||{}));};
+function dayOffRec(k){return offList().find(x=>x&&x.id===k&&!x.deleted);}
 function isOff(k){const r=dayOffRec(k);return !!(r&&r.off);}
 function offName(k){const r=dayOffRec(k);const h=holiday(k);return (r&&r.name)||(h&&h.n)||T('Day off');}
 window.EX_isDayOff=isOff;
@@ -294,14 +296,14 @@ window.P23={
     sheet(new Date(k+'T12:00').toLocaleDateString(LOC(),{weekday:'long',month:'long',day:'numeric'})+(h?' · '+h.n:''),[
       off?{l:'✓ '+E(T('It is a work day')),on:"P23.setOff('"+k+"',false)"}:{l:E(T('Make it a day off')),on:"P23.setOff('"+k+"',true)",red:true},
       {l:E(T('Days off'))+' ›',on:"P23.offSettings()"}]);},
-  setOff:async(k,on,name)=>{const m=me();if(!(m.role==='owner'||m.all))return;D.daysOff=D.daysOff||[];let r=D.daysOff.find(x=>x.id===k);const h=holiday(k);
-    if(!r){r={id:k};D.daysOff.push(r);}r.off=!!on;r.name=name||r.name||(h?h.n:'');r.by=m.id;r.at=Date.now();delete r.deleted;save();
+  setOff:async(k,on,name)=>{const m=me();if(!(m.role==='owner'||m.all))return;if(!D.daysOff||Array.isArray(D.daysOff)){const o={};(D.daysOff||[]).forEach(x=>{if(x&&x.id)o[x.id]=x;});D.daysOff=o;}const h=holiday(k);let r=D.daysOff[k];
+    if(!r){r={id:k};D.daysOff[k]=r;}r.off=!!on;r.name=name||r.name||(h?h.n:'');r.by=m.id;r.at=Date.now();delete r.deleted;save();
     try{if(window.EX_saveNow)await EX_saveNow({keys:[['daysOff',k]],waitMs:15000});}catch(e){}renderSched();if(document.getElementById('p23off'))P23.offSettings();
     toast('✓ '+new Date(k+'T12:00').toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'})+' — '+T(on?'Day off':'It is a work day'),'green');},
   offSettings:()=>{const m=me();const can=m.role==='owner'||m.all;const t0=todayK();const L=[];const seen=new Set();
     for(let i=0;i<400;i++){const k=addD(t0,i);const h=holiday(k);if(!h)continue;if(!h.off&&!/Thanksgiving|Christmas|New Year|Memorial|Independence|Labor|Purim|Erev Pesach|Tisha/.test(h.n))continue;
       const prev=holiday(addD(k,-1));const grp=h.n+'|'+(prev&&prev.n===h.n?'':k);L.push({k,h,cont:prev&&prev.n===h.n});}
-    const own=(D.daysOff||[]).filter(x=>x&&!x.deleted&&x.off&&x.id>=t0&&!holiday(x.id)).sort((a,b)=>a.id.localeCompare(b.id));
+    const own=offList().filter(x=>x&&!x.deleted&&x.off&&x.id>=t0&&!holiday(x.id)).sort((a,b)=>a.id.localeCompare(b.id));
     const row=(k,n)=>{const on=isOff(k);return '<div class="p23o"><span>'+E(n)+'<small>'+E(new Date(k+'T12:00').toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric',year:'numeric'}))+(heb(k)?' · <span dir="rtl">'+gem(heb(k).d)+' '+(HMHE[heb(k).m]||'')+'</span>':'')+'</small></span>'+(can?'<button type="button" class="p23tg'+(on?' on':'')+'" onclick="P23.setOff(\''+k+'\','+(!on)+')" aria-label="'+E(T('Day off'))+'"></button>':'<span>'+(on?'✓':'')+'</span>')+'</div>';};
     ask(T('Days off'),'<div id="p23off"><div class="p23s" style="font-size:13px;color:var(--g4)">'+E(T('Turn on the days the company does not work.'))+'</div>'
       +(can?'<div style="display:flex;gap:6px;margin:10px 0 4px"><input type="date" id="p23od" min="'+t0+'" style="flex:1;font-size:15px;padding:8px;border-radius:9px;border:1px solid var(--g2);background:var(--g1);color:inherit"><input id="p23on" placeholder="'+E(T('Name (optional)'))+'" style="flex:1;font-size:15px;padding:8px;border-radius:9px;border:1px solid var(--g2);background:var(--g1);color:inherit"><button class="btn" style="width:auto;padding:8px 12px" onclick="const d=document.getElementById(\'p23od\').value;if(d)P23.setOff(d,true,document.getElementById(\'p23on\').value.trim())">'+E(T('Add'))+'</button></div>':'')
