@@ -514,8 +514,17 @@ const handle = async (req: Request): Promise<Response> => {
     const res: any[] = [];
     for (const c of [...new Set(go.map((it) => it.co))] as string[]) {
       const pr = payroll[c]; const mine = go.filter((it) => it.co === c);
-      const body = mine.flatMap((it) => it.lines.map((l: any) => ({ EmployeeNumber: numOf[it.who].fc, PayNumber: 1, PayCode: "TR", RecordType: "D", Amount: -l.amt, Job: l.code,
-        DateWorked: l.days[l.days.length - 1], StubMessage: "Travel " + (l.job || "") + " (Electrix app)" })));
+      // Baruch 11/18: Fingercheck refuses a check with the same deduction twice ("has the same deduction reported more than once
+      // on one check") — so ONE TR line per man for the week (all his jobs together). The split by job stays in the app.
+      // The line carries the job with the most travel; the stub message names every job.
+      const body = mine.map((it) => {
+        const tot = Math.round(it.lines.reduce((q: number, l: any) => q + l.amt, 0) * 100) / 100;
+        const top = [...it.lines].sort((x: any, y: any) => y.amt - x.amt)[0];
+        const last = it.lines.flatMap((l: any) => l.days).sort().pop();
+        const names = it.lines.map((l: any) => l.job || "").filter(Boolean).join(", ");
+        return { EmployeeNumber: numOf[it.who].fc, PayNumber: 1, PayCode: "TR", RecordType: "D", Amount: -tot, Job: top.code,
+          DateWorked: last, StubMessage: ("Travel " + names).slice(0, 180) + " (Electrix app)" };
+      });
       const r = await fcWrite(c, "POST", `v1/payroll/InsertPayroll?checkDate=${pr.checkDate}&runNumber=${pr.run}`, body);
       for (const it of mine) {
         res.push({ who: it.who, name: it.name, ok: r.ok, total: it.total, checkDate: pr.checkDate, err: r.ok ? null : "Fingercheck answered " + r.status + (typeof r.body === "string" ? ": " + r.body.slice(0, 160) : "") });
