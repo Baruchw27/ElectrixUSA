@@ -21,6 +21,7 @@ const selK=()=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+boa
 const real=list=>(list||[]).filter(a=>a&&a.site&&a.start!=null);
 const fine=()=>{try{return matchMedia('(pointer:fine)').matches;}catch(e){return false;}};
 const wide=()=>window.innerWidth>=900;
+const satB=k=>{try{return typeof satBooked==='function'?satBooked(k):D.crews.some(c=>slotHasAny(c.id+'|'+k))||loansForDay(k).length>0;}catch(e){return false;}};
 
 /* ───────── Spanish ───────── */
 Object.assign(ES,{'Copy the whole day':'Copiar todo el día','Same as yesterday':'Igual que ayer','No job yet':'Todavía sin trabajo','+ Book a job':'+ Reservar un trabajo',
@@ -148,7 +149,7 @@ const COLS=['#4a5bd8','#8e57d6','#1a8a6a','#c27a12','#2a7fb8'];
 const P={pv:null,swiped:null,stripX:null};
 
 /* ───────── top box ───────── */
-function stripDays(k){const out=[];const t0=todayK();const from=addD(k<t0?k:t0,-21);const to=addD(k>t0?k:t0,60);for(let x=from;x<=to;x=addD(x,1)){const wd=new Date(x+'T12:00').getDay();if(wd===6&&!satBooked(x)&&x!==k)continue;out.push(x);}return out;}
+function stripDays(k){const out=[];const t0=todayK();const from=addD(k<t0?k:t0,-21);const to=addD(k>t0?k:t0,60);for(let x=from;x<=to;x=addD(x,1)){const wd=new Date(x+'T12:00').getDay();if(wd===6&&!satB(x)&&x!==k)continue;out.push(x);}return out;}
 function topBox(k){const t0=todayK();const d=new Date(k+'T12:00');const h=heb(k);const N=D.crews.length||1;
   const rel=k===t0?T('Today'):k===addD(t0,1)?T('Tomorrow'):k===addD(t0,-1)?T('Yesterday'):'';
   const cell=x=>{const dd=new Date(x+'T12:00');const hh=heb(x);const off=isOff(x);const n=D.crews.filter(c=>slotHasAny(c.id+'|'+x)).length;const w=WX&&WX.d&&WX.d[x];const hol=holiday(x);
