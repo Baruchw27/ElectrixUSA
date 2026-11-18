@@ -204,14 +204,14 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
   // otherwise reports only when it moves). Work hours = the workday plus 1 hour before and after; kept late = until 1 hour
   // after "Send home". Outside that, the normal mode. Trial: only people with emps.otMove = true (Shia first).
   const moveOn = emp.otMove === true && await workWindow(adm, emp, user, now);
-  const mode = emp.otMove === true ? (moveOn ? "|m:move" : "|m:sig") : "";
+  const mode = emp.otMove === true ? (moveOn ? "|m:move0" : "|m:sig") : "";
   const hashM = hash + mode;
   const out: any[] = [];
   if (hashM !== (ck.wp || "")) {
     out.push({ _type: "cmd", action: "clearWaypoints" });
     out.push({ _type: "cmd", action: "setWaypoints", waypoints: { _type: "waypoints", waypoints: wps } });
     if (mode) out.push({ _type: "cmd", action: "setConfiguration", configuration: moveOn
-      ? { _type: "configuration", monitoring: 2, locatorInterval: 300, moveModeLocatorInterval: 300, locatorDisplacement: 100 }
+      ? { _type: "configuration", monitoring: 2, locatorInterval: 300, moveModeLocatorInterval: 300, locatorDisplacement: 0 }
       : { _type: "configuration", monitoring: 1 } });
   }
   await adm.rpc("ot_note", { p_who: user, p_kind: kind, p_site: kSite, p_at: at, p_note: note || null, p_wp: hashM !== (ck.wp || "") ? hashM : null });
