@@ -192,12 +192,18 @@ function crewCard(day){const k=dkey(day);const isT=day.toDateString()===new Date
   return card(isT?'crews':'crewsT',IC('cal')||tabIcon('sched'),'#9b51e0',isT?'Crews today':'Crews tomorrow',out+'/'+rows.length,rows,6,'',rows.some(r=>r.includes('pill bad'))&&!isT);}
 // Baruch 11/17: a man whose phone saw him LEAVE the job (p.away) is not "on the job now" — he is listed under it as left,
 // with the time his clock closes by itself (1 hour after he left) — the same as Today and the time cards show.
+// when the server closes an open punch by itself (same rule as private.clock_due): 1 h after the day's end; crew kept late →
+// 1 h after "Send home" (never sent home → midnight); he left the job → 1 h after he left, never later than that deadline
+function closeAt(p){const d=new Date(p.in);const end=new Date(d);if(d.getDay()===5)end.setHours(13,15,0,0);else end.setHours(19,0,0,0);let dl=end.getTime()+36e5;
+  const g=(D.goHomeLog||[]).filter(x=>x&&x.who===p.who&&x.ts&&new Date(x.ts).toDateString()===d.toDateString()).sort((a,b)=>b.ts-a.ts)[0];
+  if(g){if(g.kind==='late'){const mn=new Date(d);mn.setHours(24,0,0,0);dl=mn.getTime();}else if(g.ts>end.getTime())dl=g.ts+36e5;}
+  return p.away?Math.min(p.away+36e5,dl):dl;}
 function onsiteCard(){const td=new Date().toDateString();const hr=new Date().getHours();const open=(D.punches||[]).filter(p=>!p.out&&!p.voided&&new Date(p.in).toDateString()===td&&(D.emps||[]).some(e=>e.id===p.who));const live=open.filter(p=>!p.away);const left=open.filter(p=>p.away);
   const by={};live.forEach(p=>{(by[p.site]=by[p.site]||[]).push(p);});const field=(D.emps||[]).filter(e=>e.role==='worker'&&!e.inactive&&!(typeof noClock==='function'&&noClock(e)));
   const rows=Object.entries(by).sort((a,b)=>b[1].length-a[1].length).map(([sid,ps])=>'<div class="p7r one" onclick="openFolder(\''+jsq(sid)+'\')"><div class="w"><b>'+esc(short(siteName(sid)))+'</b><small>'+ps.sort((a,b)=>a.in-b.in).map(p=>esc(nameOf(p.who).split(' ')[0])+'').join(', ')+'</small></div><span class="pill ok">'+ps.length+'</span></div>');
   let notIn=[];try{const k=dkey(new Date());notIn=(D.crews||[]).filter(c=>schedDay(c.id+'|'+k)).flatMap(c=>(D.emps||[]).filter(e=>e.crew===c.id&&!e.inactive&&!(typeof noClock==='function'&&noClock(e)))).filter(e=>!(D.punches||[]).some(p=>p.who===e.id&&new Date(p.in).toDateString()===td));}catch(e){}
   const warn=notIn.length&&hr>=6&&hr<17?'<div class="p7warn">⏱ '+esc(tt('Not in yet'))+': '+notIn.map(e=>esc(e.name.split(' ')[0])).join(', ')+'</div>':'';
-  const lw=left.length?'<div class="p7warn">🚗 '+esc(tt('Left the job'))+': '+left.sort((a,b)=>a.away-b.away).map(p=>esc(nameOf(p.who).split(' ')[0])+' '+esc(fmtT(p.away))+' ('+esc(tt('clock closes'))+' '+esc(fmtT(p.away+3600000))+')').join(', ')+'</div>':'';
+  const lw=left.length?'<div class="p7warn">🚗 '+esc(tt('Left the job'))+': '+left.sort((a,b)=>a.away-b.away).map(p=>esc(nameOf(p.who).split(' ')[0])+' '+esc(fmtT(p.away))+' ('+esc(tt('clock closes'))+' '+esc(fmtT(closeAt(p)))+')').join(', ')+'</div>':'';
   const n=live.filter(p=>field.some(e=>e.id===p.who)).length;
   return card('onsite',IC('pin')||tabIcon('hours'),'#2fb36b','On the job now',n+'/'+field.length,rows,6,(warn+lw)||(rows.length?'':'<div class="p7empty">'+esc(tt('Nobody punched in yet.'))+'</div>'),false);}
 function meetCard(m){const now=Date.now();const td=new Date().toDateString();const tm=new Date();tm.setDate(tm.getDate()+1);const tms=tm.toDateString();
