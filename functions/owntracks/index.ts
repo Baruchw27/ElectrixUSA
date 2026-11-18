@@ -72,6 +72,38 @@ async function arrived(adm: any, user: string, sid: string, at: number, lat: num
   return "";
 }
 
+// work hours for the 5-minute reporting (Baruch 11/18): Mon–Thu 7:00 AM–8:00 PM, Friday 7:00 AM–2:15 PM (the workday 8–7 /
+// 8–1:15 plus 1 hour before and after); Sunday only when his crew (or he himself) is booked that day; never on Saturday or a
+// day off. Kept late ("Stay late") → until 1 hour after "Send home" (never sent home → until midnight).
+async function workWindow(adm: any, emp: any, user: string, now: number): Promise<boolean> {
+  const day = dkey(now);
+  const p = new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "short", hour: "numeric", minute: "numeric", hour12: false }).formatToParts(new Date(now));
+  const g = (t: string) => (p.find((x) => x.type === t) || { value: "" }).value;
+  const dow = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(g("weekday"));
+  const min = (Number(g("hour")) % 24) * 60 + Number(g("minute"));
+  if (dow === 6) return false;
+  const { data: off } = await adm.from("records").select("data").eq("coll", "daysOff").eq("id", day).eq("deleted", false).maybeSingle();
+  if (off?.data?.off === true) return false;
+  if (dow === 0) {
+    let booked = false;
+    if (emp.crew) { const { data: sc } = await adm.from("records").select("data").eq("coll", "sched").eq("id", emp.crew + "|" + day).eq("deleted", false).maybeSingle();
+      const sd: any = sc?.data || {}; booked = !sd.cancel && (!!sd.site || (Array.isArray(sd.assignments) && sd.assignments.length > 0)); }
+    if (!booked) { const { data: ln } = await adm.from("records").select("data").eq("coll", "sched").eq("id", "L:" + user + "|" + day).eq("deleted", false).maybeSingle();
+      booked = !!ln?.data && Array.isArray(ln.data.assignments) && ln.data.assignments.length > 0; }
+    if (!booked) return false;
+  }
+  const start = 7 * 60, end = dow === 5 ? 14 * 60 + 15 : 20 * 60;
+  if (min < start) return false;
+  if (min < end) return true;
+  // after hours: kept late → until 1 hour after "Send home"
+  const { data: gl } = await adm.from("records").select("data").eq("coll", "goHomeLog").eq("deleted", false).eq("data->>who", user);
+  const today = (gl || []).map((r: any) => r.data || {}).filter((x: any) => Number(x.ts) > 0 && dkey(Number(x.ts)) === day).sort((a: any, b: any) => Number(a.ts) - Number(b.ts));
+  const lateAt = today.filter((x: any) => x.kind === "late").map((x: any) => Number(x.ts)).pop();
+  if (!lateAt) return false;
+  const homeAt = today.filter((x: any) => x.kind !== "late" && Number(x.ts) > lateAt).map((x: any) => Number(x.ts))[0];
+  return homeAt ? now < homeAt + 3600000 : true;
+}
+
 export const handle = async (req: Request, adm: any): Promise<Response> => {
   if (req.method !== "POST") return json([]);
   const now = Date.now();
@@ -168,10 +200,10 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
   wps.push(...wl.slice(0, 20 - wps.length).map((id) => ({ _type: "waypoint", desc: short(site[id].name).slice(0, 40) + " #" + id, lat: +site[id].lat, lon: +site[id].lng, rad: Math.round(radM(site[id])),
     tst: 1600000000 + ([...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 99999989, 7)) })));
   const hash = wps.map((w) => w.desc + "@" + w.lat.toFixed(5) + "," + w.lon.toFixed(5) + "/" + w.rad).join("|");
-  // Baruch 11/18: while he is on the clock at a job, the phone reports every 5 minutes ("Move mode") — an iPhone otherwise
-  // reports only when it moves; off the clock (or once he left the job) it goes back to the normal mode. Trial: only people
-  // with emps.otMove = true (Shia first). The mode rides on the same "changed?" check as the job list (wp_hash).
-  const moveOn = emp.otMove === true && !!open && !open.d.away && kind !== "leave";
+  // Baruch 11/18 (2): the phone reports every 5 minutes ("Move mode") during work hours — not only when it moves (an iPhone
+  // otherwise reports only when it moves). Work hours = the workday plus 1 hour before and after; kept late = until 1 hour
+  // after "Send home". Outside that, the normal mode. Trial: only people with emps.otMove = true (Shia first).
+  const moveOn = emp.otMove === true && await workWindow(adm, emp, user, now);
   const mode = emp.otMove === true ? (moveOn ? "|m:move" : "|m:sig") : "";
   const hashM = hash + mode;
   const out: any[] = [];
