@@ -106,7 +106,7 @@ function wxIcon(c){if(c==null)return '';if(c<=1)return IC.sun;if(c<=3||c===45||c
 +'.p23c .act{position:absolute;right:0;top:0;bottom:0;width:104px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-weight:700;font-size:13px;cursor:pointer}'
 +'.p23card{position:relative;background:var(--card,#fff);display:flex;gap:12px;padding:13px 12px 12px 12px;transition:transform .18s;touch-action:pan-y;min-height:100%}'
 +'html[data-theme=dark] .p23card{background:#1c1c1e}.p23c.nolate{background:none}'
-+'.p23card .sc-ring{flex:0 0 40px;width:40px;height:40px}.p23w{flex:1;min-width:0}'
++'.p23rt{flex:0 0 46px;display:flex;flex-direction:column;align-items:center;gap:2px}.p23rt .sc-ring{flex:none;width:40px;height:40px}.p23rt .sc-type{font-size:8.5px;letter-spacing:.02em;line-height:1}.p23card .sc-ring{flex:0 0 40px;width:40px;height:40px}.p23w{flex:1;min-width:0}'
 +'.p23a{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.p23a .ad{font-size:16.5px;font-weight:700;cursor:pointer}.p23a .rp{color:var(--g4);line-height:0}'
 +'.p23tag{font-size:11px;font-weight:700;color:var(--g4);background:var(--g1);border-radius:7px;padding:2px 7px}'
 +'.p23t{font-size:13px;color:var(--g4);margin-top:1px}.p23hr{font-size:12.5px;color:var(--g4);margin-top:2px}'
@@ -164,6 +164,7 @@ function topBox(k){const t0=todayK();const d=new Date(k+'T12:00');const h=heb(k)
     +'<div class="p23box"><div class="p23sw"><div class="p23strip" id="p23strip">'+stripDays(k).map(cell).join('')+'</div></div></div></div>';}
 
 /* ───────── crew cards ───────── */
+const ringT=(c,html)=>'<div class="p23rt">'+html+'<span class="sc-type '+(c.type==='finish'?'f':'r')+'">'+E(T(c.type==='finish'?'Finishing':'Rough'))+'</span></div>';
 function avs(guys,k,isT,today,dragOk){return '<div class="sc-avs">'+guys.map(g=>{const st=scDayState(g,isT,today,k);return '<span class="sc-av p23av '+st.k+'" title="'+E(g.name)+'"'+(dragOk?' draggable="true" data-emp="'+E(g.id)+'"':'')+'>'+scInit(g.name)+'</span>';}).join('')+'</div>';}
 function lineBar(list,k){const span=endOf(k)-DAY_START;let i=0;const segs=list.map(a=>{const s=Math.max(a.start,DAY_START),e=Math.min(a.end==null?endOf(k):a.end,endOf(k));const l=(s-DAY_START)/span*100,w=Math.max(4,(e-s)/span*100);
     return '<i style="left:'+l.toFixed(1)+'%;width:'+w.toFixed(1)+'%;background:'+COLS[(i++)%COLS.length]+'" title="'+E(siteName(a.site))+' · '+E(slotAsgLabel(a))+'">'+scAddr(a.site).a+'</i>';}).join('');
@@ -181,14 +182,14 @@ function crewCard(c,k){const t0=todayK();const isT=k===t0,past=k<t0;const today=
   const days=a0?dayCount(c.id,k,a0.site):1;const ong=a0&&(a0.ongoing||!!ruleFor(c.id,k)&&!D.sched[c.id+'|'+k]);
   let h='<div class="p23a"><span class="ad" onclick="event.stopPropagation();P23.pv(\''+jsq(c.id)+'\')">'+ad.a+'</span>'+(ong?'<span class="rp" title="'+E(T('Ongoing'))+'">'+IC.rep+'</span>':'')+(days>1?'<span class="p23tag">'+E(T('Day'))+' '+days+'</span>':'')+'</div>';
   h+='<div class="p23t">'+ad.b+'</div>';
-  if(asgs.length>1){h+=lineBar(asgs,k);}else if(a0&&!fullDay(a0,k))h+='<div class="p23hr">'+E(slotAsgLabel(a0))+'</div>';
+  if(asgs.length>1){h+=lineBar(asgs,k);}else if(a0)h+='<div class="p23hr">'+E(slotAsgLabel(a0))+'</div>';   // Baruch 11/18: the hours on every crew, under the town
   if(a0&&a0.note)h+='<div class="p23hr">'+E(a0.note)+'</div>';
   // the men (sent-elsewhere men go under their own little line)
   const main=new Set(asgs.map(a=>a.site));const moved={};guys.forEach(g=>{real(loansFor(g.id,k)).filter(a=>!main.has(a.site)).forEach(a=>{const gk=a.site+'|'+a.start+'|'+(a.end==null?'':a.end);(moved[gk]=moved[gk]||{a,men:[]}).men.push(g);});});
   const movedIds=new Set();Object.values(moved).forEach(G=>G.men.forEach(g=>movedIds.add(g.id)));
   if(past){const hrs=guys.map(g=>({g,h:dayHours(g.id,k)})).filter(x=>x.h>0);const tot=hrs.reduce((s,x)=>s+x.h,0);
     h+='<div class="p23hrs">'+(hrs.length?hrs.map(x=>'<b>'+E(x.g.name.split(' ')[0])+(x.g.lead?' ★':'')+'</b> '+x.h.toFixed(1)+' h').join(' · '):E(T('No hours')))+'</div>';
-    return {html:'<div class="p23c nolate" data-crew="'+E(c.id)+'"><div class="p23card">'+scRing(c,0,0,false)+'<div class="p23w">'+h+'</div><div class="p23r"><span class="p23in">'+(tot?tot.toFixed(1)+' h':'')+'</span></div></div></div>'};}
+    return {html:'<div class="p23c nolate" data-crew="'+E(c.id)+'"><div class="p23card">'+ringT(c,scRing(c,0,0,false))+'<div class="p23w">'+h+'</div><div class="p23r"><span class="p23in">'+(tot?tot.toFixed(1)+' h':'')+'</span></div></div></div>'};}
   h+=avs(guys.filter(g=>!movedIds.has(g.id)),k,isT,today,ed&&fine()&&wide());
   Object.values(moved).sort((x,y)=>x.a.start-y.a.start).forEach(G=>{h+='<div class="p21mv" onclick="event.stopPropagation();openLoan(\''+k+'\',\''+jsq(G.men[0].id)+'\')"><div class="sc-top"><span class="sc-addr">↪ '+scAddr(G.a.site).a+'</span><span class="sc-time">'+E(slotAsgLabel(G.a))+'</span></div>'+(G.a.note?'<div class="sc-sub" style="margin:0 0 2px">'+E(G.a.note)+'</div>':'')+avs(G.men,k,isT,today,ed&&fine()&&wide())+'</div>';});
   const late=isT?lateIds(c.id):[];if(late.length)h+='<div class="p23late">'+IC.clock.replace('width="20" height="20"','width="13" height="13"')+' '+E(T('Staying late'))+(late.length<guys.length?' · '+late.map(id=>String(nameOf(id)).split(' ')[0]).join(', '):'')+'</div>';
@@ -205,9 +206,9 @@ function crewCard(c,k){const t0=todayK();const isT=k===t0,past=k<t0;const today=
   const right='<div class="p23r">'+inTxt+(ed?'<button type="button" class="p23more" aria-label="More" onclick="event.stopPropagation();P23.crewMenu(\''+jsq(c.id)+'\',\''+k+'\')">'+IC.more+'</button>':'')+'</div>';
   const canLate=ed&&isT&&window.P9L;const home=late.length>0;
   const act=canLate?'<div class="act" onclick="event.stopPropagation();P23.late(\''+jsq(c.id)+'\')">'+(home?IC.home:IC.clock)+'<span>'+E(T(home?'Send home':'Stay late'))+'</span></div>':'';
-  return {html:'<div class="p23c'+(home?' home':'')+(canLate?'':' nolate')+'" data-crew="'+E(c.id)+'">'+act+'<div class="p23card" data-crew="'+E(c.id)+'" onclick="P23.tap(\''+jsq(c.id)+'\')">'+scRing(c,on,guys.length,isT&&app)+'<div class="p23w">'+h+'</div>'+right+'</div></div>'};}
+  return {html:'<div class="p23c'+(home?' home':'')+(canLate?'':' nolate')+'" data-crew="'+E(c.id)+'">'+act+'<div class="p23card" data-crew="'+E(c.id)+'" onclick="P23.tap(\''+jsq(c.id)+'\')">'+ringT(c,scRing(c,on,guys.length,isT&&app))+'<div class="p23w">'+h+'</div>'+right+'</div></div>'};}
 function noneCard(c,k){const guys=crewGuys(c);const ed=schedCanEdit()&&k>=todayK();
-  return '<div class="p23none" data-crew="'+E(c.id)+'">'+scRing(c,0,0,false).replace(/fill="var\(--sc-(fin|rgh)\)"/g,'fill="#d93025"')+'<div class="p23w"><div class="ad">'+E(T('No job yet'))+'</div><div class="sc-avs" style="margin-top:6px">'+guys.map(g=>'<span class="sc-av" title="'+E(g.name)+'">'+scInit(g.name)+'</span>').join('')+'</div>'
+  return '<div class="p23none" data-crew="'+E(c.id)+'">'+ringT(c,scRing(c,0,0,false).replace(/fill="var\(--sc-(fin|rgh)\)"/g,'fill="#d93025"'))+'<div class="p23w"><div class="ad">'+E(T('No job yet'))+'</div><div class="sc-avs" style="margin-top:6px">'+guys.map(g=>'<span class="sc-av" title="'+E(g.name)+'">'+scInit(g.name)+'</span>').join('')+'</div>'
     +(ed?'<button type="button" class="p23bk" onclick="P21.book(\''+jsq(c.id)+'\',\''+k+'\')">'+E(T('+ Book a job'))+'</button>':'')+'</div></div>';}
 
 /* ───────── the page ───────── */

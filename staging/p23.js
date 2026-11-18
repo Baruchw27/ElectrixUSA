@@ -182,7 +182,7 @@ function crewCard(c,k){const t0=todayK();const isT=k===t0,past=k<t0;const today=
   const days=a0?dayCount(c.id,k,a0.site):1;const ong=a0&&(a0.ongoing||!!ruleFor(c.id,k)&&!D.sched[c.id+'|'+k]);
   let h='<div class="p23a"><span class="ad" onclick="event.stopPropagation();P23.pv(\''+jsq(c.id)+'\')">'+ad.a+'</span>'+(ong?'<span class="rp" title="'+E(T('Ongoing'))+'">'+IC.rep+'</span>':'')+(days>1?'<span class="p23tag">'+E(T('Day'))+' '+days+'</span>':'')+'</div>';
   h+='<div class="p23t">'+ad.b+'</div>';
-  if(asgs.length>1){h+=lineBar(asgs,k);}else if(a0&&!fullDay(a0,k))h+='<div class="p23hr">'+E(slotAsgLabel(a0))+'</div>';
+  if(asgs.length>1){h+=lineBar(asgs,k);}else if(a0)h+='<div class="p23hr">'+E(slotAsgLabel(a0))+'</div>';   // Baruch 11/18: the hours on every crew, under the town
   if(a0&&a0.note)h+='<div class="p23hr">'+E(a0.note)+'</div>';
   // the men (sent-elsewhere men go under their own little line)
   const main=new Set(asgs.map(a=>a.site));const moved={};guys.forEach(g=>{real(loansFor(g.id,k)).filter(a=>!main.has(a.site)).forEach(a=>{const gk=a.site+'|'+a.start+'|'+(a.end==null?'':a.end);(moved[gk]=moved[gk]||{a,men:[]}).men.push(g);});});
