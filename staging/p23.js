@@ -179,7 +179,7 @@ function crewCard(c,k){const t0=todayK();const isT=k===t0,past=k<t0;const today=
   const st=guys.map(g=>scDayState(g,isT,today,k));const on=st.filter(x=>x.k==='in').length;
   const s0=a0&&D.sites.find(x=>x.id===a0.site);const ad=a0?scAddr(a0.site):{a:'',b:''};
   const days=a0?dayCount(c.id,k,a0.site):1;const ong=a0&&(a0.ongoing||!!ruleFor(c.id,k)&&!D.sched[c.id+'|'+k]);
-  let h='<div class="p23a"><span class="ad" onclick="event.stopPropagation();P23.pv(\''+jsq(c.id)+'\')">'+ad.a+'</span>'+(ong?'<span class="rp" title="'+E(T('Ongoing'))+'">'+IC.rep+'</span>':'')+(days>1?'<span class="p23tag">'+E(T('Day'))+' '+days+'</span>':'')+'</div>';
+  let h='<span class="sc-type '+(c.type==='finish'?'f':'r')+'" style="display:inline-block;margin-bottom:2px">'+E(T(c.type==='finish'?'Finishing':'Rough'))+'</span><div class="p23a"><span class="ad" onclick="event.stopPropagation();P23.pv(\''+jsq(c.id)+'\')">'+ad.a+'</span>'+(ong?'<span class="rp" title="'+E(T('Ongoing'))+'">'+IC.rep+'</span>':'')+(days>1?'<span class="p23tag">'+E(T('Day'))+' '+days+'</span>':'')+'</div>';
   h+='<div class="p23t">'+ad.b+'</div>';
   if(asgs.length>1){h+=lineBar(asgs,k);}else if(a0&&!fullDay(a0,k))h+='<div class="p23hr">'+E(slotAsgLabel(a0))+'</div>';
   if(a0&&a0.note)h+='<div class="p23hr">'+E(a0.note)+'</div>';
@@ -207,7 +207,7 @@ function crewCard(c,k){const t0=todayK();const isT=k===t0,past=k<t0;const today=
   const act=canLate?'<div class="act" onclick="event.stopPropagation();P23.late(\''+jsq(c.id)+'\')">'+(home?IC.home:IC.clock)+'<span>'+E(T(home?'Send home':'Stay late'))+'</span></div>':'';
   return {html:'<div class="p23c'+(home?' home':'')+(canLate?'':' nolate')+'" data-crew="'+E(c.id)+'">'+act+'<div class="p23card" data-crew="'+E(c.id)+'" onclick="P23.tap(\''+jsq(c.id)+'\')">'+scRing(c,on,guys.length,isT&&app)+'<div class="p23w">'+h+'</div>'+right+'</div></div>'};}
 function noneCard(c,k){const guys=crewGuys(c);const ed=schedCanEdit()&&k>=todayK();
-  return '<div class="p23none" data-crew="'+E(c.id)+'">'+scRing(c,0,0,false).replace(/fill="var\(--sc-(fin|rgh)\)"/g,'fill="#d93025"')+'<div class="p23w"><div class="ad">'+E(T('No job yet'))+'</div><div class="sc-avs" style="margin-top:6px">'+guys.map(g=>'<span class="sc-av" title="'+E(g.name)+'">'+scInit(g.name)+'</span>').join('')+'</div>'
+  return '<div class="p23none" data-crew="'+E(c.id)+'">'+scRing(c,0,0,false).replace(/fill="var\(--sc-(fin|rgh)\)"/g,'fill="#d93025"')+'<div class="p23w"><span class="sc-type '+(c.type==='finish'?'f':'r')+'" style="display:inline-block;margin-bottom:2px">'+E(T(c.type==='finish'?'Finishing':'Rough'))+'</span><div class="ad">'+E(T('No job yet'))+'</div><div class="sc-avs" style="margin-top:6px">'+guys.map(g=>'<span class="sc-av" title="'+E(g.name)+'">'+scInit(g.name)+'</span>').join('')+'</div>'
     +(ed?'<button type="button" class="p23bk" onclick="P21.book(\''+jsq(c.id)+'\',\''+k+'\')">'+E(T('+ Book a job'))+'</button>':'')+'</div></div>';}
 
 /* ───────── the page ───────── */
