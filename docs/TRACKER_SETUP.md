@@ -25,7 +25,8 @@ Tell the men in Spanish, one message, both phone types:
 
 **Android**
 1. Install OwnTracks. Electrix app → Punch → Automatic time clock → **Connect**.
-2. OwnTracks → ☰ → Preferences → Advanced → **Remote configuration ON**.
+2. OwnTracks → ☰ → Preferences → Advanced → **Remote configuration ON**, and **external configuration ON** too
+   (Baruch 11/19: external configuration is needed on Android as well, not only iPhone).
    Without it the phone IGNORES every setting the server sends (5 min, 250 m, interval lock). Baruch turned it on by hand for Shauly 11/18.
 3. Phone settings → Apps → OwnTracks → Battery: **Unrestricted** (not optimized); battery saver OFF.
 4. Location permission: **Allow all the time** + **Precise**.
