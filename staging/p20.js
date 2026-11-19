@@ -142,18 +142,29 @@ window.otCard=function(m){if(!otWho(m))return '';if(!otSt){otLoad(false);return 
       +'<button class="btn" style="margin-top:10px" onclick="otLoad(true)">'+E(t('I understand — set it up'))+'</button>');
   otWatch();const ios=otIOS();const store=ios?'https://apps.apple.com/app/id692424691':'https://play.google.com/store/apps/details?id=org.owntracks.android';
   const alw='<div style="margin:10px 0;padding:10px 12px;border-radius:12px;background:#c0392b;color:#fff;font-weight:800;font-size:14.5px;line-height:1.35">⚠ '+E(t('Location must be set to ALWAYS. "While Using" or "Once" will NOT work — your hours will be wrong.'))+'</div>';
-  let body;
+  let body;   // Baruch 11/19: every step crew 5 needed, so the next crew does it once and right
   if(ios)body=stp(1,E(t('Install the free OwnTracks app'))+bt(store,'⬇ '+E(t('Install OwnTracks')),true))
-    +stp(2,'<b>'+E(t('Open OwnTracks first'))+'</b> — '+E(t('tap the ⓘ (top left) → Settings → scroll all the way to the bottom → Remote Control → turn ON the first switch, "Allow external configuration", and confirm. Without this the iPhone ignores step 3.')))
+    +stp(2,'<b>'+E(t('Open OwnTracks first'))+'</b> — '+E(t('tap ⓘ (top left) → Settings → scroll all the way down → Remote Control → turn ON "Allow external configuration" AND "Remote configuration". Without this the iPhone ignores step 3.')))
     +stp(3,E(t('Come back here and tap Connect. In OwnTracks tap Import / OK.'))+bt(otLink(),'🔗 '+E(t('Connect'))))
     +stp(4,E(t('Location: tap "Allow While Using App", then "Change to Always Allow". Check: Settings → OwnTracks → Location → Always, and Precise Location ON.')))
-    +stp(5,E(t('In OwnTracks tap the ↑ arrow (top right) once. Do not swipe OwnTracks closed.')));
+    +stp(5,E(t('iPhone Settings → OwnTracks → Background App Refresh ON. iPhone Settings → Battery → Low Power Mode OFF.')))
+    +stp(6,'<b>'+E(t('Keep OwnTracks open in the background — never swipe it closed.'))+'</b> '+E(t('If it is closed it only reports when you drive, and your hours can come out wrong.')));
   else body=stp(1,E(t('Install the free OwnTracks app'))+bt(store,'⬇ '+E(t('Install OwnTracks')),true))
     +stp(2,E(t('Tap Connect. In OwnTracks tap Import / OK.'))+bt(otLink(),'🔗 '+E(t('Connect'))))
-    +stp(3,E(t('Location: "Allow all the time", and "Use precise location" ON. Or: Settings → Apps → OwnTracks → Permissions → Location.')))
-    +stp(4,E(t('Battery: Settings → Apps → OwnTracks → Battery → "Unrestricted" (so the phone does not put it to sleep).')));
+    +stp(3,E(t('In OwnTracks: ☰ → Preferences → Advanced → turn ON "Remote configuration" (and "external configuration" if you see it).')))
+    +stp(4,E(t('Location: "Allow all the time", and "Use precise location" ON. Or: Settings → Apps → OwnTracks → Permissions → Location.')))
+    +stp(5,E(t('Battery: Settings → Apps → OwnTracks → Battery → "Unrestricted" (so the phone does not put it to sleep). Battery saver OFF.')))
+    +stp(6,'<b>'+E(t('Keep OwnTracks open in the background — never swipe it closed.'))+'</b> '+E(t('If it is closed it only reports when you drive, and your hours can come out wrong.')));
   return box(hd+'<div style="font-size:13px;color:var(--g5);margin-top:4px;line-height:1.45">'+body+alw
-    +'<div>'+E(t('When it is connected this box goes away by itself (it checks every 30 seconds). You never need to open OwnTracks again.'))+'</div>'+typeIn(ios)+'</div>');};
+    +'<div>'+E(t('When it is connected this box goes away by itself (it checks every 30 seconds).'))+'</div>'+typeIn(ios)+'</div>');};
+try{Object.assign(ES,{
+ 'tap ⓘ (top left) → Settings → scroll all the way down → Remote Control → turn ON "Allow external configuration" AND "Remote configuration". Without this the iPhone ignores step 3.':'toque ⓘ (arriba a la izquierda) → Ajustes → baje hasta el final → Control remoto → encienda "Permitir configuración externa" Y "Configuración remota". Sin esto el iPhone no hace caso al paso 3.',
+ 'iPhone Settings → OwnTracks → Background App Refresh ON. iPhone Settings → Battery → Low Power Mode OFF.':'Ajustes del iPhone → OwnTracks → Actualización en segundo plano ENCENDIDA. Ajustes → Batería → Modo de bajo consumo APAGADO.',
+ 'Keep OwnTracks open in the background — never swipe it closed.':'Deje OwnTracks abierto en el fondo — nunca lo cierre deslizando hacia arriba.',
+ 'If it is closed it only reports when you drive, and your hours can come out wrong.':'Si está cerrado solo avisa cuando maneja, y sus horas pueden salir mal.',
+ 'In OwnTracks: ☰ → Preferences → Advanced → turn ON "Remote configuration" (and "external configuration" if you see it).':'En OwnTracks: ☰ → Preferencias → Avanzado → encienda "Configuración remota" (y "configuración externa" si la ve).',
+ 'Battery: Settings → Apps → OwnTracks → Battery → "Unrestricted" (so the phone does not put it to sleep). Battery saver OFF.':'Batería: Ajustes → Aplicaciones → OwnTracks → Batería → "Sin restricciones" (para que el teléfono no la duerma). Ahorro de batería APAGADO.',
+ 'When it is connected this box goes away by itself (it checks every 30 seconds).':'Cuando esté conectado este cuadro se quita solo (revisa cada 30 segundos).'});}catch(e){}
 try{otCard=window.otCard;}catch(e){}
 // Baruch 11/16: a Punch page for someone who normally has none (e.g. Shia, to test the automatic clock on his iPhone for a
 // day or two) — turned on per person with emps.punchPage = true; remove the flag to take it away again.

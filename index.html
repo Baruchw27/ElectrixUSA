@@ -59,7 +59,7 @@ html[data-theme=dark] .pn-sl i{background:#f2f2f7;color:#111}
 #pg-punch:not(.pnopen) #punchExtra{display:none!important}
 #pg-punch #punchSched,#pg-punch #myListPunch,#pg-punch #quickExp,#pg-punch #mySites{display:none!important}
 .cfimg{display:block;max-width:230px;max-height:260px;border-radius:8px;cursor:pointer;object-fit:cover}.cfile{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:rgba(0,0,0,.06);cursor:pointer;min-width:190px;max-width:260px}html[data-theme=dark] .cfile{background:rgba(255,255,255,.08)}.cfic{font-size:26px;line-height:1}.cfnm{display:flex;flex-direction:column;min-width:0}.cfnm b{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cfnm small{font-size:12px;opacity:.65}.crow .cclip{width:34px;margin-right:-6px}</style>
-<script>window.EX_VER='vh100c1119';</script><script src="config.js"></script>
+<script>window.EX_VER='vh101c1119';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="sync.js?vh60c1112"></script>
 <script src="extras.js?vh59c1112"></script>
@@ -2526,7 +2526,7 @@ function otLoad(accept){if(otBusy)return;otBusy=true;
 function otIOS(){return /iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);}
 function otLink(){const m=me();if(!otSt||!otSt.token)return '#';const nm=String(m.name||'').trim().split(/\s+/);
   const cfg={_type:'configuration',mode:3,url:otSt.url,auth:true,username:otSt.who,password:otSt.token,deviceId:'phone',tid:((nm[0]||'X')[0]+((nm[1]||nm[0]||'X')[0])).toUpperCase(),
-    monitoring:1,cmd:true,allowRemoteLocation:false,remoteConfiguration:false,locatorDisplacement:200,locatorInterval:300,ignoreInaccurateLocations:150,ranging:false,sub:false,pubRetain:false,extendedData:false};
+    monitoring:1,cmd:true,allowRemoteLocation:false,remoteConfiguration:true,locatorDisplacement:250,locatorInterval:300,moveModeLocatorInterval:300,pegLocatorFastestIntervalToInterval:true,ignoreInaccurateLocations:150,ranging:false,sub:false,pubRetain:false,extendedData:false};
   return 'owntracks:///config?inline='+encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(cfg)))));}
 function otCard(m){if(!otWho(m))return '';if(!otSt){otLoad(false);return '';}
   if(otSt.last)return '';   // Baruch 11/11: once connected it is always on — nothing on his screen
