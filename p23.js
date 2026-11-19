@@ -199,9 +199,9 @@ function crewCard(c,k){const t0=todayK();const isT=k===t0,past=k<t0;const today=
     return {html:'<div class="p23c nolate" data-crew="'+E(c.id)+'"><div class="p23card">'+ringT(c,scRing(c,0,0,false))+'<div class="p23w">'+h+'</div><div class="p23r"><span class="p23in">'+(tot?tot.toFixed(1)+' h':'')+'</span></div></div></div>'};}
   if(!a0){// Baruch 11/19: a crew split in halves — every half looks the same: address big, town, hours, its men. No arrows.
     const GS=Object.values(moved).sort((x,y)=>x.a.start-y.a.start||String(x.a.site).localeCompare(String(y.a.site)));
-    GS.forEach((G,gi)=>{const ad2=scAddr(G.a.site);h+='<div'+(gi?' class="p23half"':'')+' onclick="event.stopPropagation();openLoan(\''+k+'\',\''+jsq(G.men[0].id)+'\')" style="cursor:pointer">'
-      +'<div class="p23a"><span class="ad">'+ad2.a+'</span></div><div class="p23t">'+ad2.b+'</div><div class="p23hr">'+E(slotAsgLabel(G.a))+'</div>'+(G.a.note?'<div class="p23hr">'+E(G.a.note)+'</div>':'')
-      +avs(G.men,k,isT,today,ed&&fine()&&wide())+'</div>';});
+    GS.forEach((G,gi)=>{const ad2=scAddr(G.a.site);const pk=c.id+'@'+G.a.site;h+='<div'+(gi?' class="p23half"':'')+'>'   // Baruch 11/19: taps work like every other crew (card = details, address = job preview)
+      +'<div class="p23a"><span class="ad" onclick="event.stopPropagation();P23.pv(\''+jsq(pk)+'\')">'+ad2.a+'</span></div><div class="p23t">'+ad2.b+'</div><div class="p23hr">'+E(slotAsgLabel(G.a))+'</div>'+(G.a.note?'<div class="p23hr">'+E(G.a.note)+'</div>':'')
+      +avs(G.men,k,isT,today,ed&&fine()&&wide())+(P.pv===pk?preview(G.a.site):'')+'</div>';});
     const fr=guys.filter(g=>!movedIds.has(g.id));
     if(fr.length){h+='<div'+(GS.length?' class="p23half"':'')+'><div class="p23a"><span class="ad" style="color:#d93025">'+E(T('No job yet'))+'</span></div>'+avs(fr,k,isT,today,ed&&fine()&&wide())
       +(ed?'<button type="button" class="p23bk" onclick="event.stopPropagation();P21.book(\''+jsq(c.id)+'\',\''+k+'\')">'+E(T('+ Book a job'))+'</button>':'')+'</div>';}
@@ -303,10 +303,10 @@ window.P23={
   today:()=>{P.stripX=null;boardDay=0;renderSched();},
   late:cid=>{const late=lateIds(cid).length>0;const c=D.crews.find(x=>x.id===cid);
     askConfirm((late?T('Send this crew home?'):T('Keep this crew late today?'))+' ('+(c?c.name:'')+') — '+T('They get a message.'),()=>{P.swiped=null;if(late)P9L.home(cid);else P21.late(cid);setTimeout(renderSched,300);},T(late?'Send home':'Stay late'));},
-  crewMenu:(cid,k)=>{const c=D.crews.find(x=>x.id===cid);const rows=[{l:'↪ '+E(T('Send to another job')),on:"P21.send('"+jsq(cid)+"','"+k+"')"},{l:'✂ '+E(T('Split the crew')),on:"P21.split('"+jsq(cid)+"','"+k+"')"},
-      {l:'⧉ '+E(T('Copy')),on:"P21.copy('"+jsq(cid)+"','"+k+"')"},{l:'✎ '+E(T('Change job')),on:"editSlot('"+jsq(cid)+"','"+k+"')"}];
+  crewMenu:(cid,k)=>{const c=D.crews.find(x=>x.id===cid);const own=real(slotAsgs(cid+'|'+k));const halves=[...new Set(crewGuys(c||{id:cid}).flatMap(g=>real(loansFor(g.id,k)).map(a=>a.site)))];const rows=[{l:'↪ '+E(T('Send to another job')),on:"P21.send('"+jsq(cid)+"','"+k+"')"},{l:'✂ '+E(T('Split the crew')),on:"P21.split('"+jsq(cid)+"','"+k+"')"},
+      {l:'⧉ '+E(T('Copy')),on:"P21.copy('"+jsq(cid)+"','"+k+"')"},{l:'✎ '+E(T('Change job')),on:(own.length?"editSlot('":"P21.split('")+jsq(cid)+"','"+k+"')"}];   // Baruch 11/19: a crew split by people changes its jobs man by man
     if(k===todayK()&&window.P9L&&(fine()||wide())){const late=lateIds(cid).length>0;rows.push({l:'🕖 '+E(T(late?'Send home':'Stay late')),on:"P23.late('"+jsq(cid)+"')",red:!late});}
-    sheet((c?c.name:'')+' · '+scAddr((real(slotAsgs(cid+'|'+k))[0]||{}).site||'').a.replace(/&amp;/g,'&'),rows);},
+    sheet((c?c.name:'')+' · '+(own.length?scAddr(own[0].site).a:halves.map(x=>scAddr(x).a).join(' + ')).replace(/&amp;/g,'&'),rows);},
   dayMenu:k=>{const y=addD(k,-1);sheet(new Date(k+'T12:00').toLocaleDateString(LOC(),{weekday:'long',month:'short',day:'numeric'}),[
       {l:'⧉ '+E(T('Same as yesterday')),s:E(new Date(y+'T12:00').toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'}))+' → '+E(new Date(k+'T12:00').toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'})),on:"EX_sameAsPrev('"+k+"')"},
       {l:'⧉ '+E(T('Copy the whole day')),on:"EX_copyWholeDay('"+k+"')"}]);},
