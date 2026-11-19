@@ -190,7 +190,12 @@ window.P9L={
       try{const _n=new Date(),_e=_n.getDay()===5?795:1140,_pk=_n.getHours()*60+_n.getMinutes()>=_e-15;   // Baruch 11/18: kept late after the 🏠 pack-up message went out → tell them to ignore it
         pushTo(ids,()=>('🕖 '+(_pk?t('Ignore the go-home message — you are staying late today. You\'ll get a message when to go home.'):t('Stay later today — don\'t leave at the usual time. You\'ll get a message when to go home.'))),'info',{tab:'home'});}catch(e){}
       toast('🕖 '+ids.length+' '+tt('staying late'),'green');try{renderSched();}catch(e){}},tt('Keep late'));},
-  home(crew){const late=lateNow();const ids=(D.emps||[]).filter(e=>late.includes(e.id)&&(!crew||e.crew===crew)).map(e=>e.id);if(!ids.length)return;
+  lateIds(list){const m=me();const late=lateNow();const ids=(list||[]).filter(id=>!late.includes(id));if(!ids.length){toast(tt('Nobody to keep late'));return;}
+    askConfirm(tt('Keep these guys late today?')+'\n'+ids.map(id=>nameOf(id)).join(', '),()=>{const ts=Date.now();ids.forEach(who=>D.goHomeLog.push({id:nid('g'),who,by:m.id,ts,kind:'late'}));save();
+      try{const _n=new Date(),_e=_n.getDay()===5?795:1140,_pk=_n.getHours()*60+_n.getMinutes()>=_e-15;
+        pushTo(ids,()=>('🕖 '+(_pk?t('Ignore the go-home message — you are staying late today. You\'ll get a message when to go home.'):t('Stay later today — don\'t leave at the usual time. You\'ll get a message when to go home.'))),'info',{tab:'home'});}catch(e){}
+      toast('🕖 '+ids.length+' '+tt('staying late'),'green');try{renderSched();}catch(e){}},tt('Keep late'));},
+  home(crew,only){const late=lateNow();const ids=(D.emps||[]).filter(e=>late.includes(e.id)&&(!crew||e.crew===crew)&&(!only||only.includes(e.id))).map(e=>e.id);if(!ids.length)return;
     askConfirm(tt('Send them home now?')+'\n'+ids.map(id=>nameOf(id)).join(', '),()=>{ids.forEach(id=>{try{goHome(id,true);}catch(e){}const L=D.goHomeLog;const x=L[L.length-1];if(x&&x.who===id)x.kind='home';});save();toast('🏠 '+tt('Go-home sent to')+' '+ids.length,'green');try{renderSched();}catch(e){}},tt('Send home'));}};
 if(typeof window.renderGoHomeIn==='function'){window.renderGoHomeIn=function(boxId){const m=me();const box=document.getElementById(boxId);if(!box)return;
   if(boxId==='goHomeBox2'&&typeof schedView!=='undefined'&&schedView!=='today'){box.innerHTML='';return;}
