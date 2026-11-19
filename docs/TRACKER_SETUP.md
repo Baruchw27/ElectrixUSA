@@ -52,7 +52,9 @@ OwnTracks on the same phone; not needed.
 
 ## 4. Clock rules (all automatic for appClock people)
 - Tracker never starts the day — he punches in himself. 5-min "punch in" reminder when at a job and not punched in
-  (none while a clock-in waits for approval).
+  (none while a clock-in waits for approval). A clock-in waiting for approval counts as on the clock (switch / away work);
+  it also closes by itself like any punch (clock_tick, 11/19). The server's 'where is he scheduled' = private.man_sched_site
+  (his own L: booking first, then a changed day, then the crew's job).
 - Job on his schedule that day → switch on the first report. Job not on his schedule → 5 min + second report.
 - (11/19) A reading is used if it is NEW (newer than the newest one already handled), however late, with its own phone time;
   a repeat of a reading already handled is dropped (Android re-sends its last fix); other-day / >12 h readings dropped.

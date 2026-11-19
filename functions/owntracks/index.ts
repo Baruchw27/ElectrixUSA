@@ -68,8 +68,9 @@ async function load(adm: any, user: string, now: number) {
   const { data: srows } = await adm.from("records").select("id,name:data->name,lat:data->lat,lng:data->lng,rad:data->rad,stage:data->stage").eq("coll", "sites").eq("deleted", false);
   const site: Record<string, any> = {}; for (const s of srows || []) site[s.id] = { name: s.name ?? undefined, lat: s.lat ?? undefined, lng: s.lng ?? undefined, rad: s.rad ?? undefined, stage: s.stage ?? undefined };
   const { data: pr } = await adm.from("records").select("id,data").eq("coll", "punches").eq("deleted", false).eq("data->>who", user).gte("data->>in", String(now - 20 * 3600000));
+  // Baruch 11/19 (bug 6): a clock-in waiting for approval (pending) counts as on the clock; a rejected one does not
   const open = (pr || []).map((r: any) => ({ id: r.id, d: r.data || {} }))
-    .filter((x: any) => x.d.out == null && !x.d.voided && !x.d.pending && x.d.src !== "fingercheck").sort((a: any, b: any) => Number(b.d.in) - Number(a.d.in))[0] || null;
+    .filter((x: any) => x.d.out == null && !x.d.voided && !x.d.rejected && x.d.src !== "fingercheck").sort((a: any, b: any) => Number(b.d.in) - Number(a.d.in))[0] || null;
   // Baruch 11/19: a clock-in that is waiting for the office to approve counts as punched in — no "punch in" reminders
   const waiting = (pr || []).some((r: any) => { const d = r.data || {}; return d.out == null && !d.voided && d.pending && !d.rejected && d.src !== "fingercheck"; });
   const es = emp.lang === "es";
@@ -94,7 +95,7 @@ async function arrived(adm: any, user: string, sid: string, at: number, lat: num
     await save(open.id, old);
     const id = "p" + crypto.randomUUID().replace(/-/g, "").slice(0, 14);
     await adm.from("records").upsert({ coll: "punches", id, deleted: false, updated_by: "owntracks", updated_at: new Date().toISOString(),
-      data: { id, who: user, site: sid, in: lv, out: null, lat, lng, selfie: open.d.selfie || "", transfer: true, auto: "phone", seen: Math.max(at, now - 60000) } }, { onConflict: "coll,id" });
+      data: { id, who: user, site: sid, in: lv, out: null, lat, lng, selfie: open.d.selfie || "", transfer: true, auto: "phone", seen: Math.max(at, now - 60000), ...(open.d.pending ? { afterPending: open.id } : {}) } }, { onConflict: "coll,id" });
     await tell("↔ You are at " + short(S.name) + " — your clock switched there by itself (from " + hm(lv) + ").",
       "↔ Está en " + short(S.name) + " — su reloj cambió solo a este trabajo (desde las " + hm(lv) + ").");
     return "clock: switched from " + (open.d.site || "a job not in the app");
