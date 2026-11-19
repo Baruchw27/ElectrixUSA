@@ -30,7 +30,12 @@ const radM = (s: any) => Math.max(100, (Number(s?.rad) || 300) * 0.3048);   // t
 // Baruch 11/18: the jobs on a man's schedule for a day — his crew's day booking (an explicit day overrides the ongoing job),
 // else the crew's ongoing job (unless cancelled/replaced that day) plus that day's extra bookings, plus jobs he alone was
 // sent to (loans "L:<who>|<day>"). Same rules as the app's effectiveAsgs().
-const STALE = 10 * 60000;   // Baruch 11/18 (6): a report whose phone time is older than this is not acted on
+const STALE = 10 * 60000;   // a "punch in" reminder only goes out when the phone's latest reading is this fresh
+// Baruch 11/19: a late report is NOT thrown away for being late — what decides is whether it is NEW. Every location reading
+// newer than the newest one already handled is used, with its own phone time (a phone that was quiet for an hour and then
+// sends a burst: each reading counts, in order). A reading we already had (Android re-sends its last fix again and again)
+// is a repeat and is dropped. Readings from another day, or more than 12 hours old, are dropped.
+const MAXAGE = 12 * 3600000;
 async function schedSites(adm: any, emp: any, user: string, day: string): Promise<Set<string>> {
   const out = new Set<string>(); const add = (s: any) => { if (s) out.add(String(s)); };
   const dow = new Date(day + "T12:00:00Z").getUTCDay();
@@ -76,7 +81,7 @@ async function load(adm: any, user: string, now: number) {
 }
 
 // he has been at job `sid` for 5 minutes (arrived at `at`)
-async function arrived(adm: any, user: string, sid: string, at: number, lat: number | null, lng: number | null, now: number) {
+async function arrived(adm: any, user: string, sid: string, at: number, lat: number | null, lng: number | null, now: number, lastAt: number = at) {
   const { emp, site, open, waiting, tell, save } = await load(adm, user, now);
   const S = site[sid]; if (!S || emp.inactive) return "";
   if (!open && waiting) return "waiting for office approval — no reminder";
@@ -94,7 +99,7 @@ async function arrived(adm: any, user: string, sid: string, at: number, lat: num
       "↔ Está en " + short(S.name) + " — su reloj cambió solo a este trabajo (desde las " + hm(lv) + ").");
     return "clock: switched from " + (open.d.site || "a job not in the app");
   }
-  if (!open && hourNY(at) >= 6 && hourNY(at) < 19 && dkey(at) === dkey(now) && emp.appClock === true) {
+  if (!open && hourNY(at) >= 6 && hourNY(at) < 19 && dkey(at) === dkey(now) && emp.appClock === true && now - lastAt <= STALE + DWELL) {   // no reminder from old readings
     await tell("📍 You are at " + short(S.name) + ". Open the app and punch in.", "📍 Está en " + short(S.name) + ". Abra la app y marque entrada.");
     return "reminded to punch in";
   }
@@ -143,7 +148,7 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
     if (!sc?.v || sc.v.length < 16 || sc.v !== sec) return json({ error: "secret" }, 403);
     const { data: due } = await adm.rpc("ot_due", { p_before: now - DWELL });
     const res: any[] = [];
-    for (const d of due || []) { const note = await arrived(adm, d.who, d.site, Number(d.at), d.lat ?? null, d.lng ?? null, now);
+    for (const d of due || []) { const note = await arrived(adm, d.who, d.site, Number(d.at), d.lat ?? null, d.lng ?? null, now, Number(d.last ?? d.at));
       await adm.rpc("ot_note", { p_who: d.who, p_kind: "stay5", p_site: d.site, p_at: Number(d.at), p_note: note || null, p_wp: null }); res.push({ who: d.who, site: d.site, note }); }
     return json({ done: res.length, res });
   }
@@ -165,9 +170,16 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
     const r = await arrived(adm, user, sid, at, lat, lng, now); return r ? r + " (on his schedule)" : "";
   };
 
-  if (now - at > STALE) {
-    // Baruch 11/18 (6): an old report (an Android phone re-sends its last location, even days old) is not acted on
-    note = "old report ignored (" + Math.round((now - at) / 60000) + " min old)";
+  // Baruch 11/19: new or repeat? (location readings only; arrive/leave events always count)
+  let repeat = false;
+  if (msg._type === "location" && Number(msg.tst) > 1e9) {
+    const { data: prevT } = await adm.rpc("ot_tst", { p_who: user, p_tst: at });
+    if (prevT != null && Number(prevT) > 0 && at <= Number(prevT)) repeat = true;
+  }
+  if (now - at > MAXAGE || dkey(at) !== dkey(now)) {
+    note = "old report ignored (" + Math.round((now - at) / 60000) + " min old, other day / over 12 h)";
+  } else if (repeat) {
+    note = "repeat of a reading already handled — ignored";
   } else if (msg._type === "transition" && (msg.event === "enter" || msg.event === "leave")) {
     const sid = (/#([A-Za-z0-9_.:-]+)\s*$/.exec(String(msg.desc || "")) || [])[1] || null;
     if (sid && sid.startsWith("nj_") && open && "nj_" + open.id === sid) {

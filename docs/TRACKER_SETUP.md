@@ -52,7 +52,10 @@ OwnTracks on the same phone; not needed.
 - Tracker never starts the day — he punches in himself. 5-min "punch in" reminder when at a job and not punched in
   (none while a clock-in waits for approval).
 - Job on his schedule that day → switch on the first report. Job not on his schedule → 5 min + second report.
-- Reports older than 10 min are received but ignored for decisions.
+- (11/19) A reading is used if it is NEW (newer than the newest one already handled), however late, with its own phone time;
+  a repeat of a reading already handled is dropped (Android re-sends its last fix); other-day / >12 h readings dropped.
+  Bursts are handled in order: same place → only 'last seen', a new job / leaving → counted at its real time.
+  'Punch in' reminders only from fresh readings (≤15 min). Needs private.ot_tokens.last_tst + public.ot_tst (sql/ot_tst.sql).
 - Away > 1 h → clock closes at the time he left. Open punch closed 1 h after day end at last seen time.
 - 🏠 pack-up message 15 min before day end, not to men kept late; kept late after it → "ignore the go-home message".
 - Punch saved on the phone with no signal and sent late → waits for Payroll approval (lateEntry).
