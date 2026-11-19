@@ -10,6 +10,8 @@ Everything here was learned on crew 5 (Nov 11–19 2026). Do not drop a step bec
 - Every clock rule keys on `appClock` only — nothing is tied to crew 5. No other setting is needed.
 
 ## 2. Phone steps — EVERY phone, no exceptions
+(Since live vh101c1119 the setup link turns Android Remote configuration on by itself and the Punch-page setup card lists all
+of these steps in English and Spanish. Still check each phone.)
 Tell the men in Spanish, one message, both phone types:
 
 **iPhone**
@@ -71,3 +73,9 @@ OwnTracks on the same phone; not needed.
 - private.ot_tokens.last_at = last report; ot_events only logs decisions (not every report).
 - Report frequency per phone: function_edge_logs for /functions/v1/owntracks grouped by user agent + IP, matched to last_at.
 - Positions are never stored. Never use the tracker to rebuild a commute.
+
+## 7. Lessons
+- 11/19 Mario: OwnTracks swiped closed → nothing from 8:48 to 1:17 PM. Keeping it open is the #1 rule.
+- 11/19 Shauly: every report all day carried a GPS reading from the day before (4:18 PM 11/18) — the phone was not getting
+  new fixes at all (location permission / precise / battery). Check last_tst vs last_at: if last_tst is hours old while
+  last_at is fresh, the phone is reporting but its GPS is stuck.
