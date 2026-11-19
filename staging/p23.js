@@ -32,7 +32,7 @@ Object.assign(ES,{'Copy the whole day':'Copiar todo el día','Same as yesterday'
  'Day off':'Día libre','Days off':'Días libres','Make it a day off':'Hacerlo día libre','It is a work day':'Es día de trabajo','Turn on the days the company does not work.':'Active los días que la compañía no trabaja.',
  'Add a day off':'Agregar un día libre','Name (optional)':'Nombre (opcional)','Add':'Agregar','Upcoming holidays':'Próximos feriados','Your days off':'Sus días libres',
  'in':'en','days':'días','day':'día','Tomorrow':'Mañana','Today':'Hoy','crews booked':'cuadrillas reservadas','of':'de','No GPS fence — punch-in won\'t work':'Sin cerca GPS — no se puede marcar entrada',
- 'Move':'Mover','to':'a','for the rest of today':'por el resto del día','for this day':'por este día','is off this day':'tiene libre este día','Staying late':'Se quedan más tarde',
+ 'Move':'Mover','to':'a','for the rest of today':'por el resto del día','for this day':'por este día','is off this day':'tiene libre este día','Staying late':'Se quedan más tarde','from':'desde',
  'This day is a day off.':'Este día es día libre.','Weather':'Clima','Only the owner can change days off.':'Solo el dueño puede cambiar los días libres.'});
 
 /* ───────── Hebrew calendar ───────── */
@@ -166,9 +166,14 @@ function topBox(k){const t0=todayK();const d=new Date(k+'T12:00');const h=heb(k)
 /* ───────── crew cards ───────── */
 const ringT=(c,html)=>'<div class="p23rt">'+html+'<span class="sc-type '+(c.type==='finish'?'f':'r')+'">'+E(T(c.type==='finish'?'Finishing':'Rough'))+'</span></div>';
 function avs(guys,k,isT,today,dragOk){return '<div class="sc-avs">'+guys.map(g=>{const st=scDayState(g,isT,today,k);return '<span class="sc-av p23av '+st.k+'" title="'+E(g.name)+'"'+(dragOk?' draggable="true" data-emp="'+E(g.id)+'"':'')+'>'+scInit(g.name)+'</span>';}).join('')+'</div>';}
-function lineBar(list,k){const span=endOf(k)-DAY_START;let i=0;const segs=list.map(a=>{const s=Math.max(a.start,DAY_START),e=Math.min(a.end==null?endOf(k):a.end,endOf(k));const l=(s-DAY_START)/span*100,w=Math.max(4,(e-s)/span*100);
+function lineBar(list,k){// Baruch 11/18: the bar runs past the end of the day when a job does (a move at 6:47 PM must show)
+  const L=list.slice().sort((a,b)=>a.start-b.start);const endB=Math.max(endOf(k),...L.map(a=>a.end!=null?a.end:a.start+60));const span=endB-DAY_START;let i=0;
+  const segs=L.map((a,j)=>{const nx=L[j+1];const s=Math.max(a.start,DAY_START),e=Math.min(a.end!=null?a.end:(nx?nx.start:endB),endB);const l=(s-DAY_START)/span*100,w=Math.max(4,(e-s)/span*100);
     return '<i style="left:'+l.toFixed(1)+'%;width:'+w.toFixed(1)+'%;background:'+COLS[(i++)%COLS.length]+'" title="'+E(siteName(a.site))+' · '+E(slotAsgLabel(a))+'">'+scAddr(a.site).a+'</i>';}).join('');
-  const mid=Math.round((DAY_START+endOf(k))/2);return '<div class="p23line"><div class="p23bar">'+segs+'</div><div class="p23ax"><span>'+fMin(DAY_START)+'</span><span>'+fMin(mid)+'</span><span>'+fMin(endOf(k))+'</span></div></div>';}
+  const mid=endB>endOf(k)?endOf(k):Math.round((DAY_START+endB)/2);return '<div class="p23line"><div class="p23bar">'+segs+'</div><div class="p23ax"><span>'+fMin(DAY_START)+'</span><span>'+fMin(mid)+'</span><span>'+fMin(endB)+'</span></div></div>';}
+// Baruch 11/18: on today, the crew's job is where they should be NOW — the latest booking that has started (a move later in the
+// day takes over the card); before the first start, the first one. Other days: the first booking, as before.
+function curAsg(asgs,k){if(!asgs.length)return null;if(k!==todayK())return asgs[0];const nm=nowMin();const st=asgs.filter(a=>a.start<=nm);return st.length?st[st.length-1]:asgs[0];}
 function preview(siteId){const s=D.sites.find(x=>x.id===siteId);if(!s)return '';const ph=sitePhotos(s).slice(0,5);const notes=(s.notes||[]).filter(n=>n&&(n.text||n.txt)).sort((a,b)=>(b.ts||0)-(a.ts||0));
   const files=(s.files||[]).filter(f=>f&&f.kind!=='img').length+((s.links||[]).length||0);const tasks=(D.jobs||[]).filter(j=>j&&j.site===s.id&&j.status!=='done'&&!j.deleted).length;
   return '<div class="p23pv" onclick="event.stopPropagation()">'+(ph.length?'<div class="p23ph">'+ph.map(p=>'<img loading="lazy" src="'+E(safeSrc?safeSrc(p.src):p.src)+'" alt="">').join('')+'</div>':'<div class="mt">'+E(T('No photos yet'))+'</div>')
@@ -176,12 +181,13 @@ function preview(siteId){const s=D.sites.find(x=>x.id===siteId);if(!s)return '';
    +'<div class="mt">'+[files?files+' '+E(T(files===1?'file':'files')):'',tasks?tasks+' '+E(T(tasks===1?'open task':'open tasks')):''].filter(Boolean).join(' · ')+'</div>'
    +'<button type="button" class="go" onclick="event.stopPropagation();openFolder(\''+jsq(s.id)+'\')">'+E(T('Open full job'))+' ›</button></div>';}
 function crewCard(c,k){const t0=todayK();const isT=k===t0,past=k<t0;const today=new Date().toDateString();const ed=schedCanEdit()&&!past;const guys=crewGuys(c);
-  const asgs=real(slotAsgs(c.id+'|'+k)).sort((a,b)=>a.start-b.start);const a0=asgs[0];const app=appClockCrew(c);
+  const asgs=real(slotAsgs(c.id+'|'+k)).sort((a,b)=>a.start-b.start);const a0=curAsg(asgs,k);const aPrev=a0&&asgs.indexOf(a0)>0?asgs[asgs.indexOf(a0)-1]:null;const app=appClockCrew(c);
   const st=guys.map(g=>scDayState(g,isT,today,k));const on=st.filter(x=>x.k==='in').length;
   const s0=a0&&D.sites.find(x=>x.id===a0.site);const ad=a0?scAddr(a0.site):{a:'',b:''};
   const days=a0?dayCount(c.id,k,a0.site):1;const ong=a0&&(a0.ongoing||!!ruleFor(c.id,k)&&!D.sched[c.id+'|'+k]);
   let h='<div class="p23a"><span class="ad" onclick="event.stopPropagation();P23.pv(\''+jsq(c.id)+'\')">'+ad.a+'</span>'+(ong?'<span class="rp" title="'+E(T('Ongoing'))+'">'+IC.rep+'</span>':'')+(days>1?'<span class="p23tag">'+E(T('Day'))+' '+days+'</span>':'')+'</div>';
-  h+='<div class="p23t">'+ad.b+'</div>';
+  h+='<div class="p23t">'+ad.b+(aPrev?' · '+E(T('from'))+' '+E(fMin(a0.start)):'')+'</div>';
+  if(aPrev)h+='<div class="p23hr" style="opacity:.75">'+scAddr(aPrev.site).a+' · '+E(fMin(aPrev.start))+' – '+E(fMin(a0.start))+'</div>';   // Baruch 11/18: where they were before the move
   if(asgs.length>1){h+=lineBar(asgs,k);}else if(a0)h+='<div class="p23hr">'+E(slotAsgLabel(a0))+'</div>';   // Baruch 11/18: the hours on every crew, under the town
   if(a0&&a0.note)h+='<div class="p23hr">'+E(a0.note)+'</div>';
   // the men (sent-elsewhere men go under their own little line)
