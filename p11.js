@@ -171,7 +171,7 @@ function setQty(key,v){const c=CART.find(x=>(x.sid||'c:'+x.name)===key);if(!c)re
 
 /* job: the crew's job today (or tomorrow) is filled in */
 function dk(d){try{return dkey(d)}catch(e){const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}}
-function crewSite(off){const m=M();if(!m||!m.crew)return '';try{const sl=schedDay(m.crew+'|'+dk(new Date(Date.now()+off*86400000)));return sl&&sl.site||'';}catch(e){return ''}}
+function crewSite(off){const m=M();if(!m||!m.crew)return '';try{const sl=mySchedDay(m,dk(new Date(Date.now()+off*86400000)));return sl&&sl.site||'';}catch(e){return ''}}
 function defaultJob(){const a=crewSite(0);if(a)return {site:a,addr:'',sub:"Today's job"};const b=crewSite(1);if(b)return {site:b,addr:'',sub:"Tomorrow's job"};return {site:'',addr:''};}
 const sName=id=>{try{return siteName(id)}catch(e){const s=(D.sites||[]).find(x=>x.id===id);return s?s.name:''}};
 function phaseOf(id){try{const s=(D.sites||[]).find(x=>x.id===id);const p=window.EX_jobPhase?window.EX_jobPhase(s):(s&&s.phase);return p?String(p).replace(/^./,c=>c.toUpperCase()):''}catch(e){return ''}}

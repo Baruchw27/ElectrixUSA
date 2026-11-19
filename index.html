@@ -59,7 +59,7 @@ html[data-theme=dark] .pn-sl i{background:#f2f2f7;color:#111}
 #pg-punch:not(.pnopen) #punchExtra{display:none!important}
 #pg-punch #punchSched,#pg-punch #myListPunch,#pg-punch #quickExp,#pg-punch #mySites{display:none!important}
 .cfimg{display:block;max-width:230px;max-height:260px;border-radius:8px;cursor:pointer;object-fit:cover}.cfile{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:rgba(0,0,0,.06);cursor:pointer;min-width:190px;max-width:260px}html[data-theme=dark] .cfile{background:rgba(255,255,255,.08)}.cfic{font-size:26px;line-height:1}.cfnm{display:flex;flex-direction:column;min-width:0}.cfnm b{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cfnm small{font-size:12px;opacity:.65}.crow .cclip{width:34px;margin-right:-6px}</style>
-<script>window.EX_VER='vh101c1119';</script><script src="config.js"></script>
+<script>window.EX_VER='vh102c1119';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="sync.js?vh60c1112"></script>
 <script src="extras.js?vh59c1112"></script>
@@ -1793,7 +1793,7 @@ function editSlot(cid,k){if(!schedCanEdit())return;schedCrew=cid;openSlot(k);}
 function renderTodayBoard(){
   {const m0=me();if(m0.role!=='worker'){renderDayBoard();return;}}renderGoHomeIn('goHomeBox2');
   const m=me();const el=document.getElementById('todayBoard');
-  if(m.role==='worker'){const days=[0,1].map(off=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+off);const k=dkey(d);const sl=m.crew?schedDay(m.crew+'|'+k):null;return '<div class="card" style="padding:11px 13px;'+(sl?'':'opacity:.65')+'"><div style="font-size:11px;color:var(--g4);text-transform:uppercase">'+(off?t('Tomorrow'):t('Today'))+' · '+t(DN[d.getDay()])+' '+d.toLocaleDateString(LOC(),{month:'short',day:'numeric'})+'</div>'+(sl?'<b style="font-size:16px;color:var(--blue)">📍 '+esc(siteName(sl.site))+'</b><div style="font-size:13px;color:var(--g4)">'+esc(sl.time)+(sl.note?' · '+noteLines(sl.note):'')+'</div>':'<span style="color:var(--g3)">'+t('No job scheduled')+'</span>')+'</div>';}).join('');el.innerHTML=days;return;}
+  if(m.role==='worker'){const days=[0,1].map(off=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+off);const k=dkey(d);const sl=mySchedDay(m,k);return '<div class="card" style="padding:11px 13px;'+(sl?'':'opacity:.65')+'"><div style="font-size:11px;color:var(--g4);text-transform:uppercase">'+(off?t('Tomorrow'):t('Today'))+' · '+t(DN[d.getDay()])+' '+d.toLocaleDateString(LOC(),{month:'short',day:'numeric'})+'</div>'+(sl?'<b style="font-size:16px;color:var(--blue)">📍 '+esc(siteName(sl.site))+'</b><div style="font-size:13px;color:var(--g4)">'+esc(sl.time)+(sl.note?' · '+noteLines(sl.note):'')+'</div>':'<span style="color:var(--g3)">'+t('No job scheduled')+'</span>')+'</div>';}).join('');el.innerHTML=days;return;}
   const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+boardDay);const k=dkey(d);
   const isT=boardDay===0;
   const nav='<div class="row" style="margin-bottom:10px;align-items:center"><button class="bs" onclick="boardDay--;renderSched()">‹</button><b>'+(isT?t('Today')+' · ':boardDay===1?t('Tomorrow')+' · ':'')+t(DN[d.getDay()])+' '+d.toLocaleDateString(LOC(),{month:'short',day:'numeric'})+'</b><button class="bs" onclick="boardDay++;renderSched()">›</button></div>';
@@ -1906,11 +1906,15 @@ function schedPick(list,key){if(!list.length)return {f:null,prev:null};const dk0
   const nm=d.getHours()*60+d.getMinutes();const L=list.slice().sort((a,b)=>(a.start==null?-1:a.start)-(b.start==null?-1:b.start));const st=L.filter(a=>a.start==null||a.start<=nm);
   const f=st.length?st[st.length-1]:L[0];const i=L.indexOf(f);return {f,prev:i>0&&f.start!=null&&L[i-1].site!==f.site?{site:L[i-1].site,start:L[i-1].start,until:f.start}:null};}
 function schedDay(key){const r=D.sched[key];if(r&&!(r.cancel||r.replace||r.patch)&&(r.site||(Array.isArray(r.assignments)&&r.assignments.some(a=>a&&a.site)))){if(r.site)return r;const P=schedPick(r.assignments.filter(a=>a&&a.site),key);const f=P.f;return Object.assign({},r,{site:f.site,time:(P.prev?'':r.time)||fMin(f.start),prev:P.prev});}
-  const a=(typeof slotAsgs==='function')?slotAsgs(key):[];if(!a.length)return null;const P=schedPick(a,key);const f=P.f;return {site:f.site,time:fMin(f.start),note:f.note||'',assignments:a,ongoing:!!f.ongoing,prev:P.prev};}
+  const a=(typeof slotAsgs==='function')?slotAsgs(key):[];if(!a.length){   // Baruch 11/19: a crew whose men were all booked one by one ("Pick people") HAS jobs
+    try{const i=key.lastIndexOf('|');const crew=key.slice(0,i),date=key.slice(i+1);if(!D.crews.some(c=>c.id===crew))return null;
+      const ids=new Set(crewMembers(crew).map(e=>e.id));const L=loansForDay(date).filter(x=>ids.has(x.emp)).map(x=>x.a);if(!L.length)return null;
+      const P=schedPick(L,key);const f=P.f;const sites=[...new Set(L.map(x=>x.site))];return {site:f.site,time:fMin(f.start),note:'',assignments:L,split:true,splitSites:sites,prev:null};}catch(e){return null;}}
+  const P=schedPick(a,key);const f=P.f;return {site:f.site,time:fMin(f.start),note:f.note||'',assignments:a,ongoing:!!f.ongoing,prev:P.prev};}
 function slotHasAny(key){return slotAsgs(key).length>0;}
 // Baruch 11/18: ONE man's job for a day — his own move (booked with "Pick people") wins over his crew's job; today = where he should be now
 function mySchedDay(m,k){if(!m)return null;let L=[];try{L=empTimeline(m.id,k).filter(a=>a&&a.site);}catch(e){}
-  if(!L.length)return m.crew?schedDay(m.crew+'|'+k):null;const P=schedPick(L,'x|'+k);const f=P.f;return {site:f.site,time:fMin(f.start),note:f.note||'',prev:P.prev,loan:f.src==='loan'};}
+  if(!L.length){const r=m.crew?schedDay(m.crew+'|'+k):null;return r&&!r.split?r:null;}const P=schedPick(L,'x|'+k);const f=P.f;return {site:f.site,time:fMin(f.start),note:f.note||'',prev:P.prev,loan:f.src==='loan'};}
 // remaining minutes in a crew's configurable workday after its booked assignments for a date
 function remainingMin(crewId,date){const wd=crewWorkday(crewId);const a=slotAsgs(crewId+'|'+date).filter(x=>x.start!=null);let cov=0;if(a.length){const s=a.map(x=>[x.start,x.end==null?wd.end:x.end]).sort((p,q)=>p[0]-q[0]);let cs=s[0][0],ce=s[0][1];for(let i=1;i<s.length;i++){if(s[i][0]<=ce)ce=Math.max(ce,s[i][1]);else{cov+=ce-cs;cs=s[i][0];ce=s[i][1];}}cov+=ce-cs;}return Math.max(0,(wd.end-wd.start)-cov);}
 function slotAsgLabel(a){return fMin(a.start)+(a.end!=null?'–'+fMin(a.end):'');}
@@ -2256,14 +2260,14 @@ function myDel(id){const m=me();D.mylist[m.id]=myList().filter(q=>q.id!==id);sav
 let plSiteId=null,plPh='rough';
 function pl(site,ph){const s=D.punchlists[site]=D.punchlists[site]||{rough:[],finish:[]};return s[ph]=s[ph]||[];}
 function openPL(site,ph){if(site&&typeof site==='string'&&D.sites.some(s=>s.id===site)){openFolder(site);setTimeout(()=>fdJump('fdNotes'),120);return;}openKeep();return;const m=me();const sel=document.getElementById('plSite');sel.innerHTML=liveSites().map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('')+(canNewJob(m)?'<option value="__new">🏗 '+t('+ New job (not in the list yet)')+'</option>':'');
-  if(!site){const sl=m.crew?schedDay(m.crew+'|'+dkey(new Date())):null;site=sl?sl.site:(fdSite||(D.sites[0]||{}).id);}plSiteId=site;sel.value=site;const st=D.sites.find(x=>x.id===site);plPh=ph||(st&&st.phase==='finish'?'finish':'rough');show('m-pl');renderPL();}
+  if(!site){const sl=mySchedDay(m,dkey(new Date()));site=sl?sl.site:(fdSite||(D.sites[0]||{}).id);}plSiteId=site;sel.value=site;const st=D.sites.find(x=>x.id===site);plPh=ph||(st&&st.phase==='finish'?'finish':'rough');show('m-pl');renderPL();}
 function renderPL(){const sel=document.getElementById('plSite');if(sel.value==='__new'){sel.value=plSiteId||'';hide('m-pl');openNewJob();return;}plSiteId=sel.value||plSiteId;const r=pl(plSiteId,'rough'),f=pl(plSiteId,'finish');const cnt=l=>l.filter(x=>x.done).length+'/'+l.length;
   document.getElementById('plPhase').innerHTML='<div class="chip '+(plPh==='rough'?'on':'')+'" onclick="plPh=\'rough\';renderPL()">'+t('Rough')+' '+cnt(r)+'</div><div class="chip '+(plPh==='finish'?'on':'')+'" onclick="plPh=\'finish\';renderPL()">'+t('Finishing')+' '+cnt(f)+'</div>';
   const list=pl(plSiteId,plPh);const done=list.filter(x=>x.done).length;document.getElementById('plProg').innerHTML=list.length?'<div style="height:8px;background:var(--g1);border-radius:4px;overflow:hidden;margin-bottom:4px"><div style="width:'+Math.round(done/list.length*100)+'%;height:100%;background:var(--green)"></div></div>'+done+' / '+list.length+' '+t('done')+(done===list.length&&list.length?' · ✓ '+t('complete'):''):'';
   const order={};list.slice().sort((a,b)=>a.ts-b.ts).forEach((x,i)=>order[x.id]=i+1);document.getElementById('plList').innerHTML=list.length?list.slice().sort((a,b)=>(a.done?1:0)-(b.done?1:0)||a.ts-b.ts).map(x=>'<div class="ck '+(x.done?'done':'')+'" onclick="plToggle(\''+jsq(x.id)+'\')"><span class="num">'+order[x.id]+'.</span><span class="bx">'+(x.done?'✓':'')+'</span><span class="tx">'+esc(x.text)+'<span class="who">'+(x.done?'✓ '+esc(nameOf(x.doneBy))+' · '+when(x.doneAt):t('added by')+' '+esc(nameOf(x.by)))+'</span></span>'+(canDelPL(x)?'<span class="x" onclick="event.stopPropagation();plDel(\''+jsq(x.id)+'\')">×</span>':'')+'</div>').join(''):'<div style="font-size:13px;color:var(--g3);padding:10px 0">'+t('Nothing on this list yet. Add the first item below.')+'</div>';}
 const isBoss=m=>!!m&&(m.role==='owner'||m.role==='manager'||!!m.all||(m.role==='office'&&m.title==='Payroll'));
 function siteVisible(s,m){m=m||me();if(!s)return false;if(isBoss(m)||m.allJobs||matAllJobs(m))return true;if(m.crew&&s.crew===m.crew)return true;if((s.share||[]).some(x=>x===m.id||x===m.crew))return true;
-  const k=dkey(new Date());if(m.crew&&(schedDay(m.crew+'|'+k)||{}).site===s.id)return true;if(D.jobs.some(j=>j.site===s.id&&j.status!=='done'&&(j.to===m.id||j.to===m.crew||(j.tos||[]).includes(m.id))))return true;return false;}
+  const k=dkey(new Date());if(m.crew&&(mySchedDay(m,k)||{}).site===s.id)return true;if(D.jobs.some(j=>j.site===s.id&&j.status!=='done'&&(j.to===m.id||j.to===m.crew||(j.tos||[]).includes(m.id))))return true;return false;}
 function liveSites(){return D.sites.filter(s=>s&&s.stage!=='lost');}
 function visSites(){const m=me();return liveSites().filter(s=>siteVisible(s,m));}
 function matAllJobs(m){m=m||me();return !!m&&m.role==='office'&&m.title==='Material';}
@@ -2374,7 +2378,7 @@ function distFt(a,b,c,d){const R=20902231,p=Math.PI/180,x=(c-a)*p,y=(d-b)*p,h=Ma
 const fmtT=t=>new Date(t).toLocaleTimeString(LOC(),{hour:'numeric',minute:'2-digit'});
 function renderPunchSched(){const m=me(),el=document.getElementById('punchSched');if(m.role!=='worker'||!m.crew){el.innerHTML='';return;}
   const td=new Date();td.setHours(0,0,0,0);const tm=new Date(td);tm.setDate(td.getDate()+1);
-  const sl=schedDay(m.crew+'|'+dkey(td)),sl2=schedDay(m.crew+'|'+dkey(tm));const st=punchState(m);const cur=D.punches.find(x=>x.who===m.id&&!x.out);
+  const sl=mySchedDay(m,dkey(td)),sl2=mySchedDay(m,dkey(tm));const st=punchState(m);const cur=D.punches.find(x=>x.who===m.id&&!x.out);
   const site=cur?cur.site:(sl?sl.site:'');const s=site?D.sites.find(x=>x.id===site):null;
   const mates=D.emps.filter(e=>e.crew===m.crew&&e.id!==m.id&&e.active!==false);
   const wk=weekStats(m.id);const hr=new Date().getHours();const hi=hr<12?t('Good morning'):hr<17?t('Good afternoon'):t('Good evening');
@@ -2391,7 +2395,7 @@ function renderPunchSched(){const m=me(),el=document.getElementById('punchSched'
 function renderPunch(){
   const m=me();renderPunchSched();renderFixMine();renderMySites();document.getElementById('quickExp').style.display=canAddPersonal(m)?'block':'none';document.querySelectorAll('#quickExp > div > button').forEach(b=>b.style.display=canAddExp(m)?'':'none');
   renderPunchSites();if(false)document.getElementById('punchSite').innerHTML=STAGE_ORDER.map(k=>{const L=D.sites.filter(s=>(s.stage||'active')===k);return L.length?'<optgroup label="'+t(STAGE[k][0])+' ('+L.length+')">'+L.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')+'</optgroup>':'';}).join('');
-  const sl=m.crew?schedDay(m.crew+'|'+dkey(new Date())):null;if(sl)document.getElementById('punchSite').value=sl.site;
+  const sl=mySchedDay(m,dkey(new Date()));if(sl)document.getElementById('punchSite').value=sl.site;
   autoSite();
   document.getElementById('demoSw').className='sw'+(D.demo?' on':'');
   const open=D.punches.find(p=>p.who===m.id&&!p.out);
@@ -2501,11 +2505,11 @@ function pnRender(){const wrap=document.getElementById('pnWrap');if(!wrap)return
       +(pastDayEnd(open)?'<div style="padding:0 16px 6px">'+(open.keepOpen&&open.keepOpen>Date.now()?'<div class="pn-mut">✓ '+t('Kept on the clock until')+' '+fmtT(open.keepOpen)+'</div>':'<button class="pn-btn ghost" onclick="stillWorking()">⏳ '+t('Still working — keep me on the clock')+'</button>')+'</div>':'')
       +pnSlide('out',t('Slide to punch out'),'■');
     b='<a class="pn-link" onclick="pnPick(!pnPickOn)">'+t(pnPickOn?'Close':'Different job?')+'</a>';}
-  else if(best){const sl=m.crew?schedDay(m.crew+'|'+dkey(new Date())):null;const cr=m.crew?(D.crews||[]).find(c=>c.id===m.crew):null;
+  else if(best){const sl=mySchedDay(m,dkey(new Date()));const cr=m.crew?(D.crews||[]).find(c=>c.id===m.crew):null;
     h=pnPhoto(best)+'<div class="pn-b"><div class="pn-k">📍 '+t("You're at")+'</div><div class="pn-n">'+esc(pnSN(best.name))+'</div>'+(sl&&sl.site===best.id&&cr?'<div class="pn-mut">'+t('Scheduled for')+' '+esc(cr.name)+'</div>':'')+'</div>'+pnSlide('in:'+best.id,t('Slide to punch in'),'›');
     b='<a class="pn-link" onclick="pnPick(!pnPickOn)">'+t(pnPickOn?'Close':'Different job?')+'</a>';}
   else{h='<div class="pn-b" style="padding-bottom:16px"><div class="pn-k">📍 '+t(autoSite._done||!navigator.geolocation?'Not at a job':'Finding your location…')+'</div><div class="pn-n">'+t('You are not at any job right now.')+'</div><button class="pn-btn" onclick="pnPick(true)">'+t('Pick a job from the list')+'</button><button class="pn-btn ghost" onclick="punchNewJob()">➕ '+t('Job not in the app')+'</button></div>';}
-  {const fid=(open&&open.site)||(best&&best.id)||(()=>{const sl=m.crew?schedDay(m.crew+'|'+dkey(new Date())):null;return sl&&sl.site;})();const fs=fid?D.sites.find(x=>x.id===fid):null;
+  {const fid=(open&&open.site)||(best&&best.id)||(()=>{const sl=mySchedDay(m,dkey(new Date()));return sl&&sl.site;})();const fs=fid?D.sites.find(x=>x.id===fid):null;
    if(false&&fs&&(m.role!=='worker'||mySites(m).some(x=>x.id===fs.id)))b='<a class="pn-link" style="text-decoration:none" onclick="openFolder(\''+jsq(fs.id)+'\')">📁 '+t('Plans & files')+' · '+esc(pnSN(fs.name))+' ›</a>'+b;}
   if(card._h!==h){card.innerHTML=h;card._h=h;}below.innerHTML=b;document.getElementById('pnToday').innerHTML=pnTodayHtml(m)+otCard(m);pnBind();}
 
@@ -2791,7 +2795,7 @@ function nearbySites(){if(!lastPos||!lastPos.latitude)return null;return visSite
 function punchSiteChanged(){const sel=document.getElementById('punchSite');if(sel.value==='__all'){punchAll=true;renderPunchSites();const s=document.getElementById('punchSite');if(s.options.length)s.selectedIndex=0;setTimeout(()=>{try{EX_pick&&EX_pick(s);}catch(e){}},50);return;}checkGPS();}
 function renderPunchSites(){const sel=document.getElementById('punchSite');if(!sel)return;const cur=sel.value;const pf=document.getElementById('punchFind');if(pf&&pf.value.trim()){punchFilter();return;}
   if(!punchAll&&!D.demo){const nb=nearbySites();
-    if(nb&&nb.length){const m=me();const sl=m&&m.crew?schedDay(m.crew+'|'+dkey(new Date())):null;const open=m?D.punches.find(p=>p.who===m.id&&!p.out):null;const keep=[open&&open.site,sl&&sl.site].filter(id=>id&&!nb.some(x=>x.s.id===id));
+    if(nb&&nb.length){const m=me();const sl=m&&mySchedDay(m,dkey(new Date()));const open=m?D.punches.find(p=>p.who===m.id&&!p.out):null;const keep=[open&&open.site,sl&&sl.site].filter(id=>id&&!nb.some(x=>x.s.id===id));
       sel.innerHTML='<optgroup label="📍 '+t('Near you')+'">'+nb.map(x=>'<option value="'+x.s.id+'">'+esc(x.s.name)+' — '+(x.mi<0.1?t('here'):x.mi.toFixed(1)+' mi')+'</option>').join('')+'</optgroup>'+(keep.length?'<optgroup label="'+t('Your job today')+'">'+keep.map(id=>'<option value="'+id+'">'+esc(siteName(id))+'</option>').join('')+'</optgroup>':'')+'<option value="__all">🔎 '+t('Show all jobs…')+'</option>';
       if(cur&&[...sel.options].some(o=>o.value===cur))sel.value=cur;else sel.value=nb[0].s.id;return;}
     if(!lastPos&&navigator.geolocation&&Date.now()-_nearAsk>20000){_nearAsk=Date.now();try{gpsOnce(p=>{lastPos=p.coords;renderPunchSites();try{checkGPS();}catch(e){}},()=>{},{timeout:10000});}catch(e){}}}sel.innerHTML=STAGE_ORDER.map(k=>{const L=visSites().filter(s=>(s.stage||'active')===k);return L.length?'<optgroup label="'+t(STAGE[k][0])+' ('+L.length+')">'+L.map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('')+'</optgroup>':'';}).join('');if(cur&&D.sites.some(s=>s.id===cur))sel.value=cur;}
@@ -2839,7 +2843,7 @@ function oneTapHtml(best,open){const big=(cls,on,txt)=>'<button class="btn '+cls
   if(best)return big('gr',"oneTap('"+jsq(best.id)+"')",'▶ '+t('Punch in at')+' '+esc(best.name));
   return '<div class="gps no" style="margin-bottom:6px">'+t('You are not at any job right now.')+'</div>'+(open&&!open.site?'':'<button class="btn sec2" style="margin-bottom:8px" onclick="punchNewJob()">➕ '+t('Job not on the list')+'</button>');}
 function oneTap(id,sw){const sel=document.getElementById('punchSite');const pf=document.getElementById('punchFind');if(pf)pf.value='';renderPunchSites();if(![...sel.options].some(o=>o.value===id)){const o=document.createElement('option');o.value=id;o.textContent=siteName(id);sel.appendChild(o);}sel.value=id;gpsOk=true;if(sw)switchSite();else doPunch();}
-function schedHeadsUp(m,site){try{const sl=m&&m.crew?schedDay(m.crew+'|'+dkey(new Date())):null;if(!sl||!sl.site||!site||sl.site===site)return;
+function schedHeadsUp(m,site){try{const sl=m&&mySchedDay(m,dkey(new Date()));if(!sl||!sl.site||!site||sl.site===site)return;
   const mg=x=>{const s=D.sites.find(q=>q.id===x)||{};return Array.isArray(s.managers)?s.managers:(s.manager?[s.manager]:[]);};const ids=[...new Set(mg(site).concat(mg(sl.site)))].filter(id=>id&&id!==m.id);
   if(ids.length)pushTo(ids,()=>('📍 '+nameOf(m.id)+' '+t('punched in at')+' '+siteName(site)+' — '+t('scheduled for')+' '+siteName(sl.site)),'info',{site:site});}catch(e){}}
 function punchNewJob(){const m=me();askPrompt(t('Job not on the list'),[{label:t('Address, or what job it is'),value:''}],([txt])=>{txt=String(txt||'').trim();if(txt.length<3){toast(t('Write the address or what job it is'));return;}
@@ -3440,7 +3444,7 @@ function renderMatActs(){const m=me();const el=document.getElementById('matActs'
 async function dlPhoto(d,name){name=name||('electrix-'+Date.now()+'.jpg');try{const dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null;if(dl){const blob=await (await fetch(d)).blob();await dl.save({filename:name,data:blob});toast('⬇ '+t('Saved'),'green');return;}}catch(e){if(e&&e.code==='not_granted'){toast(t('Allow downloads to save photos'));return;}}const a=document.createElement('a');a.href=d;a.download=name;document.body.appendChild(a);a.click();a.remove();}
 function viewMatPhotos(id){const x=D.mats.find(q=>q.id===id);if(!x||!x.photos)return;document.getElementById('photoWrap').innerHTML=x.photos.map((p,i)=>'<div style="flex:0 0 100%"><img src="'+safeSrc(p.d)+'" style="max-width:100%;max-height:70vh;border-radius:10px"><div style="margin-top:8px"><button class="bs b" onclick="dlPhoto(\''+safeSrc(p.d)+'\',\'material-'+id+'-'+(i+1)+'.jpg\')">⬇ '+t('Save photo')+'</button></div></div>').join('');show('m-photo');}
 let mtFrom='garage';function mtFromPick(el){mtFrom=el.dataset.v;document.querySelectorAll('#mtFromChips .chip').forEach(c=>c.className='chip'+(c===el?' on':''));}
-function openMat(){mtPhotos=[];mtPicks=[];setTimeout(()=>{mtRenderPicks();const f=document.getElementById('mtFind');if(f)f.value='';},0);mtFrom='garage';document.querySelectorAll('#mtFromChips .chip').forEach(c=>c.className='chip'+(c.dataset.v==='garage'?' on':''));document.getElementById('mtPrev').innerHTML='';const m=me();const sel=document.getElementById('mtSite');sel.innerHTML='<option value="">— '+t('Pick the job')+' —</option>'+liveSites().map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');sel.value='';const sl=m.crew?schedDay(m.crew+'|'+dkey(new Date())):null;const op=D.punches.find(p=>p.who===m.id&&!p.out);const pre='';mtNewAddr='';const sf=document.getElementById('mtSiteFind');if(sf)sf.value=pre?siteName(pre):'';document.getElementById('mtItems').value='';show('m-mat');}
+function openMat(){mtPhotos=[];mtPicks=[];setTimeout(()=>{mtRenderPicks();const f=document.getElementById('mtFind');if(f)f.value='';},0);mtFrom='garage';document.querySelectorAll('#mtFromChips .chip').forEach(c=>c.className='chip'+(c.dataset.v==='garage'?' on':''));document.getElementById('mtPrev').innerHTML='';const m=me();const sel=document.getElementById('mtSite');sel.innerHTML='<option value="">— '+t('Pick the job')+' —</option>'+liveSites().map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');sel.value='';const sl=mySchedDay(m,dkey(new Date()));const op=D.punches.find(p=>p.who===m.id&&!p.out);const pre='';mtNewAddr='';const sf=document.getElementById('mtSiteFind');if(sf)sf.value=pre?siteName(pre):'';document.getElementById('mtItems').value='';show('m-mat');}
 function saveMat(){if(mtPicks.length){const ta=document.getElementById('mtItems');const lines=mtPicks.map(p=>p.n+' '+(p.unit?p.unit+' ':'')+p.name+(p.id?(p.have>=p.n?'  ['+t('garage')+']':'  ['+t('order')+']'):''));ta.value=lines.join('\n')+(ta.value.trim()?'\n'+ta.value.trim():'');mtPicks=[];mtRenderPicks();}let items=fmtClean(document.getElementById('mtItems').value);if(!items){toast(t('List what you need'));return;}
   if(!mtNewAddr&&!document.getElementById('mtSite').value){toast('📍 '+t('Pick the job address or type a new one'));try{const f=document.getElementById('mtSiteFind');if(f){f.focus();f.scrollIntoView({block:'center'});}}catch(e){}return;}
   if(mtNewAddr){if(isBoss(me())){const ns={id:nid('s'),name:mtNewAddr,rad:300,phase:'rough',stage:'upcoming',files:[],links:[],notes:[],ts:Date.now(),fromMat:true};D.sites.push(ns);sortSites();const sel=document.getElementById('mtSite');sel.insertAdjacentHTML('beforeend','<option value="'+ns.id+'">'+esc(ns.name)+'</option>');sel.value=ns.id;toast('🏗 '+t('New job added')+': '+mtNewAddr);}else{document.getElementById('mtSite').insertAdjacentHTML('beforeend','<option value="__addr">'+esc(mtNewAddr)+'</option>');document.getElementById('mtSite').value='__addr';}}
@@ -3538,7 +3542,7 @@ setInterval(()=>{if(window.EX_REAL)return;const now=Date.now();D.meets.forEach(x
 
 // ───────────── PUNCH FIX REQUESTS — workers ask, payroll approves (only payroll + owner touch the clock) ─────────────
 const fxLabel=f=>new Date(f.date+'T12:00').toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'})+' '+f.in+'–'+f.out;
-function openFix(){const m=me();document.getElementById('fxSite').innerHTML=liveSites().map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');const sl=m.crew?schedDay(m.crew+'|'+dkey(new Date())):null;if(sl)document.getElementById('fxSite').value=sl.site;document.getElementById('fxDate').value=dkey(new Date());document.getElementById('fxWhy').value='';show('m-fix');}
+function openFix(){const m=me();document.getElementById('fxSite').innerHTML=liveSites().map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');const sl=mySchedDay(m,dkey(new Date()));if(sl)document.getElementById('fxSite').value=sl.site;document.getElementById('fxDate').value=dkey(new Date());document.getElementById('fxWhy').value='';show('m-fix');}
 function sendFix(){const m=me();const f={id:nid('f'),who:m.id,site:document.getElementById('fxSite').value,date:document.getElementById('fxDate').value,in:document.getElementById('fxIn').value,out:document.getElementById('fxOut').value,why:document.getElementById('fxWhy').value.trim(),status:'pending',ts:Date.now()};
   if(!f.date||!f.in||!f.why){toast(t('Fill in date, time and what happened'));return;}
   D.fixes.unshift(f);save();hide('m-fix');renderFixMine();
@@ -4333,7 +4337,7 @@ function repExport(){const rows=[['date','who','type','source','store','site','a
 let fdSite=null;
 const canEditFolder=m=>isBoss(m)||(!!m&&m.role==='office'&&!!m.jobEdit);   // Baruch 11/9: office people with 'jobEdit' (Matty) add/replace files + edit job info
 const canMoveStage=m=>isBoss(m);   // moving a job's stage (Trello list) stays with the bosses
-const mySites=m=>m.role==='worker'?D.sites.filter(s=>s.crew===m.crew||(m.crew&&(schedDay(m.crew+'|'+dkey(new Date()))||{}).site===s.id)):D.sites;
+const mySites=m=>m.role==='worker'?D.sites.filter(s=>s.crew===m.crew||(m.crew&&(mySchedDay(m,dkey(new Date()))||{}).site===s.id)):D.sites;
 const fileIcon=f=>f.kind==='img'?'🖼':f.kind==='pdf'?'📕':f.kind==='doc'?'📘':f.kind==='sheet'?'📗':'📎';
 function fdJump(id){const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
 function openFolder(id){const _s=D.sites.find(x=>x.id===id);if(_s&&!siteVisible(_s)&&!matAllJobs()){toast(t('This job is not assigned to you.'));return;}fdSite=id;const s=D.sites.find(x=>x.id===id);const m=me();if(!s)return;if(s.lat&&!s.trip&&typeof roadTrip==='function')roadTrip(s).then(()=>{if(fdSite===id&&!document.getElementById('m-folder').classList.contains('hid')){const el=document.getElementById('fdTitle');if(el)openFolder(id);}}).catch(()=>{});if(!s.lat&&!s.geoTried)setTimeout(()=>{try{geocodeMissing();}catch(e){}},50);const ed=canEditFolder(m);
@@ -4698,7 +4702,7 @@ function garStep(n,mode){if(mode)garMode=mode;const el=document.getElementById('
   else el.innerHTML='<h2>'+(garMode==='out'?'📤 '+t('Take out'):'📥 '+t('Put back'))+'</h2><div class="note">'+t('How do you want to count it?')+'</div><button type="button" class="btn" '+big+' onclick="garGo(\'scan\')">▦ '+t('Scan barcode')+'</button><button type="button" class="btn sec2" '+big+' onclick="garGo(\'photo\')">📷 '+t('Take a picture')+'</button><button type="button" class="btn sec2" style="margin-top:14px" onclick="garStep(1)">‹ '+t('Back')+'</button>';}
 function garGo(how){hide('m-garage');if(how==='scan')scanQuick(garMode);else photoFirst(garMode);}
 // which job: today's schedule first, then the closest job
-function garDefaultSite(){const m=me();const sl=m.crew?schedDay(m.crew+'|'+dkey(new Date())):null;if(sl&&sl.site)return sl.site;const near=(typeof nearbySites==='function'&&nearbySites())||[];return near[0]?near[0].s.id:'';}
+function garDefaultSite(){const m=me();const sl=mySchedDay(m,dkey(new Date()));if(sl&&sl.site)return sl.site;const near=(typeof nearbySites==='function'&&nearbySites())||[];return near[0]?near[0].s.id:'';}
 function photoFirst(mode){if(mode==='out'){openPickup();const c=document.getElementById('puCam');c.value='';c.click();}else{openStockIn();const c=document.getElementById('siCam');c.value='';c.click();}}
 async function aiReadMaterial(dataUrl,mode){const prevId=mode==='out'?'puPrev':'siPrev';const box=document.getElementById(prevId);const status=document.createElement('div');status.className='note';status.style.marginTop='6px';status.innerHTML='🤖 '+t('Reading the photo…');box.appendChild(status);
   try{const sample=window.claude&&window.claude.use?await window.claude.use('sample'):null;if(!sample)throw {code:'no_sample'};const lim=await sample.limits().catch(()=>null);if(!lim||!lim.images)throw {code:'images_unavailable'};
@@ -4986,7 +4990,7 @@ try{document.addEventListener('visibilitychange',()=>{const S=scM;if(!S)return;
 // after scanning: say where it goes (or where it came from) and complete it right here
 function scanFinish(){if(!scM)return;const L=scLines();if(!L.length){const md=scM.mode==='out'?'m-pick2':'m-stockin';scanClose();hide(md);return;}const out=scM.mode==='out';const m=me();
   try{scM.stop&&scM.stop();}catch(e){}scM.stop=null;
-  const near=(typeof nearbySites==='function'&&nearbySites())||[];const sl=m.crew?schedDay(m.crew+'|'+dkey(new Date())):null;
+  const near=(typeof nearbySites==='function'&&nearbySites())||[];const sl=mySchedDay(m,dkey(new Date()));
   const pre=garDefaultSite()||(out?document.getElementById('puSite').value:'')||'';
   const opts=(near.length?'<optgroup label="📍 '+t('Near you')+'">'+near.map(x=>'<option value="'+x.s.id+'">'+esc(x.s.name)+'</option>').join('')+'</optgroup>':'')+'<optgroup label="'+t('All jobs')+'">'+visSites().map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('')+'</optgroup>';
   const sh=document.getElementById('scSheet');
@@ -5431,7 +5435,7 @@ function openTake(mode,id){tkMode=mode;tkFile=null;tkPick=id||null;const m=me();
   document.getElementById('tkNote').textContent=mode==='take'?t('Snap it, pick which one, say where it\'s going. 10 seconds.'):t('Snap it and pick which one — it goes back to the garage.');
   document.getElementById('tkPrev').innerHTML='';document.getElementById('tkFind').value=id?D.tools.find(x=>x.id===id).name:'';tkMatch();
   const dest=document.getElementById('tkDest');dest.style.display=mode==='take'?'block':'none';
-  const mine=vanOwners().some(e=>e.id===m.id)?'van:'+m.id:(m.crew&&(schedDay(m.crew+'|'+dkey(new Date()))||{}).site?'site:'+schedDay(m.crew+'|'+dkey(new Date())).site:'garage');
+  const mine=vanOwners().some(e=>e.id===m.id)?'van:'+m.id:(m.crew&&(mySchedDay(m,dkey(new Date()))||{}).site?'site:'+mySchedDay(m,dkey(new Date())).site:'garage');
   document.getElementById('tkTo').innerHTML=locOpts();document.getElementById('tkTo').value=mine;
   show('m-take');}
 function tkMatch(){const q=document.getElementById('tkFind').value.trim();const el=document.getElementById('tkMatches');
