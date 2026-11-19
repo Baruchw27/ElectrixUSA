@@ -59,7 +59,7 @@ html[data-theme=dark] .pn-sl i{background:#f2f2f7;color:#111}
 #pg-punch:not(.pnopen) #punchExtra{display:none!important}
 #pg-punch #punchSched,#pg-punch #myListPunch,#pg-punch #quickExp,#pg-punch #mySites{display:none!important}
 .cfimg{display:block;max-width:230px;max-height:260px;border-radius:8px;cursor:pointer;object-fit:cover}.cfile{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:rgba(0,0,0,.06);cursor:pointer;min-width:190px;max-width:260px}html[data-theme=dark] .cfile{background:rgba(255,255,255,.08)}.cfic{font-size:26px;line-height:1}.cfnm{display:flex;flex-direction:column;min-width:0}.cfnm b{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cfnm small{font-size:12px;opacity:.65}.crow .cclip{width:34px;margin-right:-6px}</style>
-<script>window.EX_VER='vh103c1119';</script><script src="config.js"></script>
+<script>window.EX_VER='vh104c1119';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="sync.js?vh60c1112"></script>
 <script src="extras.js?vh59c1112"></script>
@@ -2378,7 +2378,7 @@ function distFt(a,b,c,d){const R=20902231,p=Math.PI/180,x=(c-a)*p,y=(d-b)*p,h=Ma
 const fmtT=t=>new Date(t).toLocaleTimeString(LOC(),{hour:'numeric',minute:'2-digit'});
 function renderPunchSched(){const m=me(),el=document.getElementById('punchSched');if(m.role!=='worker'||!m.crew){el.innerHTML='';return;}
   const td=new Date();td.setHours(0,0,0,0);const tm=new Date(td);tm.setDate(td.getDate()+1);
-  const sl=mySchedDay(m,dkey(td)),sl2=mySchedDay(m,dkey(tm));const st=punchState(m);const cur=D.punches.find(x=>x.who===m.id&&!x.out);
+  const sl=mySchedDay(m,dkey(td)),sl2=mySchedDay(m,dkey(tm));const st=punchState(m);const cur=D.punches.find(x=>x.who===m.id&&!x.out&&(x.src!=='fingercheck'||!m.appClock));
   const site=cur?cur.site:(sl?sl.site:'');const s=site?D.sites.find(x=>x.id===site):null;
   const mates=D.emps.filter(e=>e.crew===m.crew&&e.id!==m.id&&e.active!==false);
   const wk=weekStats(m.id);const hr=new Date().getHours();const hi=hr<12?t('Good morning'):hr<17?t('Good afternoon'):t('Good evening');
@@ -2398,7 +2398,7 @@ function renderPunch(){
   const sl=mySchedDay(m,dkey(new Date()));if(sl)document.getElementById('punchSite').value=sl.site;
   autoSite();
   document.getElementById('demoSw').className='sw'+(D.demo?' on':'');
-  const open=D.punches.find(p=>p.who===m.id&&!p.out);
+  const open=D.punches.find(p=>p.who===m.id&&!p.out&&(p.src!=='fingercheck'||!m.appClock));
   {const pm=noClock(m)&&!open;const nb=document.getElementById('payMNote');if(nb)nb.hidden=!pm;const pb=document.querySelector('#pg-punch .punch-big');if(pb)pb.style.display=pm?'none':'';}
   const away=D.punches.find(p=>p.who===m.id&&p.away);
   const b=document.getElementById('punchBtn');
@@ -2423,7 +2423,7 @@ function renderPunch(){
   const wb=document.getElementById('weekBox');if(wb){const lw=new Date();lw.setDate(lw.getDate()-7);wb.innerHTML=weekCard(m.id,false,lw,'Last week · paid this week');}
   document.getElementById('punchLog').innerHTML=logs.length?logs.map(p=>{
     const status=p.away?`<span style="color:#c0392b">${t('off site')} ${fmtT(p.away)}</span>`:p.out?fmtT(p.out):`<span style="color:var(--green)">${t('on site')}</span>`;
-    const trips=(p.trips||[]).map(t=>`<div style="font-size:11px;color:var(--g4);padding-left:10px">↳ ${t('material run')} ${fmtT(t.left)}–${fmtT(t.back)} (${Math.round((t.back-t.left)/60000)} min, ${t('paid')})</div>`).join('');
+    const trips=(p.trips||[]).map(tr=>`<div style="font-size:11px;color:var(--g4);padding-left:10px">↳ ${t('material run')} ${fmtT(tr.left)}–${fmtT(tr.back)} (${Math.round((tr.back-tr.left)/60000)} min, ${t('paid')})</div>`).join('');   // Baruch 11/19: 't' was shadowed — the Punch page crashed once a punch had a trip
     const gh=p.goHome?`<div style="font-size:11px;color:#c0392b;padding-left:10px">🏠 Go-home sent ${fmtT(p.goHome)}${!p.out&&Date.now()-p.goHome>15*60000?' · ⚠ still on clock — phone buzzing':''}</div>`:'';
     const ghBtn=((m.role==='manager'||m.role==='owner'||m.all)&&!p.out&&!p.goHome)?`<button class="bs r" style="margin-top:6px;align-self:flex-end" onclick="goHome('${jsq(p.who)}')">🏠 ${t('Go home')}</button>`:'';
     return `<div class="plog" style="flex-direction:column;align-items:stretch"><div style="display:flex;justify-content:space-between"><span><b>${esc(nameOf(p.who))}</b> · ${esc(p.site?siteName(p.site):('📍 '+((p.newJob&&p.newJob.text)||'')))}</span><span>${fmtT(p.in)} – ${status}</span></div>${trips}${gh}${punchFlags(p)}${ghBtn}</div>`;}).join('')
@@ -2464,7 +2464,7 @@ function pnBind(){document.querySelectorAll('#pnCard .pn-sl').forEach(el=>{if(el
 function pnDo(a){if(a==='out'){doPunch();return;}const i=a.indexOf(':');const k=a.slice(0,i),id=a.slice(i+1);if(k==='in')oneTap(id);else if(k==='sw')oneTap(id,true);}
 function pnTab(w){pnWk=w?1:0;pnDayOpen=-1;pnRender();try{window.scrollTo(0,0);}catch(e){}}
 function pnPick(on){pnPickOn=!!on;const pb=document.querySelector('#pg-punch .punch-big');if(pb)pb.classList.toggle('pn-open',pnPickOn);if(pnPickOn){try{renderPunchSites();checkGPS();}catch(e){}setTimeout(()=>{try{pb.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){}},50);}pnRender();}
-function pnDriving(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out);if(!p)return;delete p.away;p.driveUntil=Date.now()+60*60000;save();renderPunch();toast('✓ '+t('You stay on the clock'),'green');}
+function pnDriving(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out&&(x.src!=='fingercheck'||!m.appClock));if(!p)return;delete p.away;p.driveUntil=Date.now()+60*60000;save();renderPunch();toast('✓ '+t('You stay on the clock'),'green');}
 function pnDay(i){pnDayOpen=pnDayOpen===i?-1:i;pnRender();}
 function pnTick(){const n=new Date();const c=document.getElementById('pnClock');if(!c)return;c.textContent=pnTime(n);
   if(n.getMinutes()!==pnLastMin){pnLastMin=n.getMinutes();const pg=document.getElementById('pg-punch');if(pg&&pg.classList.contains('on')&&!pnDrag){try{pnRender();}catch(e){}}}}
@@ -2487,7 +2487,7 @@ function pnRender(){const wrap=document.getElementById('pnWrap');if(!wrap)return
   document.getElementById('pnDate').textContent=n.toLocaleDateString(LOC(),{weekday:'long',month:'long',day:'numeric'});
   document.getElementById('pnT0').textContent=t('Today');document.getElementById('pnT1').textContent=t('Week');
   document.getElementById('pnT0').className=pnWk?'':'on';document.getElementById('pnT1').className=pnWk?'on':'';pg.classList.toggle('pnwk',!!pnWk);
-  const open=D.punches.find(p=>p.who===m.id&&!p.out);pg.classList.toggle('pnopen',!!open);
+  const open=D.punches.find(p=>p.who===m.id&&!p.out&&(p.src!=='fingercheck'||!m.appClock));pg.classList.toggle('pnopen',!!open);
   const as=document.getElementById('pnAllSec'),pl=document.getElementById('punchLog');const all=m.role!=='worker';if(as)as.style.display=all?'':'none';if(pl)pl.style.display=all?'':'none';
   const card=document.getElementById('pnCard'),below=document.getElementById('pnBelow');
   if(pnWk){card.innerHTML=pnWeekCard(m);document.getElementById('pnWeek').innerHTML=pnWeekHtml(m);return;}
@@ -2556,7 +2556,7 @@ function otPayHtml(){const m=me();if(!m||!(m.role==='owner'||canEditHours(m)))re
   return '<div class="card" style="padding:10px 14px"><b style="font-size:14px">🛰 '+esc(t('Automatic time clock'))+'</b>'+ppl.map(row).join('')+'</div>';}
 setTimeout(()=>{try{Object.assign(ES,{"Automatic time clock":"Reloj automático","Turn on":"Activar","Your phone tells the app when you arrive at and leave Electrix jobs — even when the app is closed — so your hours are right and the drive counts for the job you go to. Only arriving and leaving at Electrix jobs while you are on the clock is kept. Nothing else.":"Su teléfono le avisa a la app cuando llega y sale de los trabajos de Electrix — aunque la app esté cerrada — para que sus horas estén bien y el manejo cuente para el trabajo al que va. Solo se guarda cuando llega y sale de trabajos de Electrix mientras está marcando. Nada más.","I understand — set it up":"Entiendo — configurarlo","Location must be set to ALWAYS. \"While Using\" or \"Once\" will NOT work — your hours will be wrong.":"La ubicación tiene que estar en SIEMPRE. \"Mientras se usa\" o \"Una vez\" NO funciona — sus horas saldrán mal.","When the iPhone asks about location: tap \"Allow While Using App\" first, then when it asks again tap \"Change to Always Allow\". Or: Settings → OwnTracks → Location → Always, and turn on Precise Location.":"Cuando el iPhone pregunte por la ubicación: toque primero \"Permitir mientras se usa la app\", y cuando vuelva a preguntar toque \"Cambiar a Permitir siempre\". O: Ajustes → OwnTracks → Ubicación → Siempre, y active Ubicación exacta.","When the phone asks about location choose \"Allow all the time\". Or: Settings → Apps → OwnTracks → Permissions → Location → Allow all the time.":"Cuando el teléfono pregunte por la ubicación escoja \"Permitir todo el tiempo\". O: Ajustes → Aplicaciones → OwnTracks → Permisos → Ubicación → Permitir todo el tiempo.","When it is connected this box goes away by itself. You never need to open OwnTracks again.":"Cuando quede conectado este cuadro desaparece solo. No necesita abrir OwnTracks nunca más.","not set up":"no configurado","not connected yet":"aún no conectado","last check-in":"último reporte","On":"Activado","Not checking in":"No se reporta","Not connected yet":"Aún no conectado","Install the free OwnTracks app":"Instale la app gratis OwnTracks","Install OwnTracks":"Instalar OwnTracks","Connect it to Electrix (no typing)":"Conéctela a Electrix (sin escribir nada)","Connect":"Conectar","When the phone asks about location, choose \"Always\" (iPhone: \"Change to Always Allow\"). If you missed it: Settings → OwnTracks → Location → Always.":"Cuando el teléfono pregunte por la ubicación, escoja \"Siempre\" (iPhone: \"Cambiar a Permitir siempre\"). Si se lo saltó: Ajustes → OwnTracks → Ubicación → Siempre.","That's it — you never need to open OwnTracks again.":"Listo — no necesita abrir OwnTracks nunca más.","Last check-in":"Último reporte","Set it up once — 3 steps":"Configúrelo una vez — 3 pasos"});}catch(e){}},0);
 function geoOk(x){if(!x||!x.in||Date.now()-x.in>14*36e5)return false;if(window.EX_REAL&&window.EX_ME&&me()&&me().id!==window.EX_ME)return false;return true;}
-function onLeave(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out&&!x.away&&geoOk(x));if(!p)return;
+function onLeave(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out&&(x.src!=='fingercheck'||!m.appClock)&&!x.away&&geoOk(x));if(!p)return;
   p.away=Date.now();save();renderPunch();
   {const msg=()=>('🚗 '+t('You left')+' '+pnName(p)+'. '+t('At another job? Open the app and switch.')+' '+t('Not back within 1 hour: your clock closes at')+' '+fmtT(p.away));notify(msg());try{pushTo([m.id],msg,'warn',{tab:'punch'},null,true);}catch(e){}}
   setTimeout(()=>{const q=D.punches.find(x=>x===p);if(q&&q.away&&!q.out){q.out=q.away;delete q.away;save();renderPunch();notify('1 hour passed — punch-out at '+fmtT(q.out)+' is now final.');}},60*60*1000);
@@ -2602,7 +2602,7 @@ function simReturn(){onReturn();}
 let watchId=null,lastNag=0;
 function startWatch(){if(watchId||!navigator.geolocation)return;
   watchId=gpsListen(pos=>{const m=me();if(m.role==='owner')return;if(!geoOk({in:Date.now()}))return;
-    const p=D.punches.find(x=>x.who===m.id&&!x.out&&geoOk(x));
+    const p=D.punches.find(x=>x.who===m.id&&!x.out&&(x.src!=='fingercheck'||!m.appClock)&&geoOk(x));
     if(p){const s=D.sites.find(x=>x.id===p.site);if(!s||!s.lat)return;
       const d=distFt(pos.coords.latitude,pos.coords.longitude,s.lat,s.lng);const acc=(pos.coords.accuracy||0)*3.281;
       if(acc>330)return; // too rough to judge
@@ -2613,7 +2613,7 @@ function startWatch(){if(watchId||!navigator.geolocation)return;
       notify('You\'re at '+here.name+' but not punched in. Punch in now — this reminder repeats every 5 minutes.');}
   },()=>{});
 }
-function simArrive(){const m=me();if(D.punches.find(x=>x.who===m.id&&!x.out))return;const s=D.sites.find(x=>x.id===document.getElementById('punchSite').value);notify('You\'re at '+s.name+' but not punched in. Punch in now — this reminder repeats every 5 minutes.');}
+function simArrive(){const m=me();if(D.punches.find(x=>x.who===m.id&&!x.out&&(x.src!=='fingercheck'||!m.appClock)))return;const s=D.sites.find(x=>x.id===document.getElementById('punchSite').value);notify('You\'re at '+s.name+' but not punched in. Punch in now — this reminder repeats every 5 minutes.');}
 
 function gpsOnce(ok,bad,o){let done=false,stop=()=>{};const lim=(o&&o.timeout)||15000;
   const tm=setTimeout(()=>{if(done)return;done=true;stop();bad&&bad({code:3,message:'timeout'});},lim);
@@ -2650,7 +2650,7 @@ function checkGPS(){
   },err=>{box.className='gps no';const c=err&&err.code;box.innerHTML=(c===1?'🚫 '+t('Your phone is not giving the app its location.')+'<div style="font-size:12px;margin-top:4px">'+t('Turn on Location for this app / browser in phone settings. Inside the Claude app, location can be blocked by Claude itself.')+'</div>':c===3?'⏳ '+t('GPS took too long. Step outside or near a window and tap the job again.'):'📡 '+t('No GPS signal right now. Try again in a moment.'))+fenceHelpBtn(s.id);gpsOk=false;},c=>distFt(c.latitude,c.longitude,s.lat,s.lng)<=fenceFt(c));
 }
 function doPunch(){
-  const m=me();finalizeAway(m.id);const open=D.punches.find(p=>p.who===m.id&&!p.out);
+  const m=me();finalizeAway(m.id);const open=D.punches.find(p=>p.who===m.id&&!p.out&&(p.src!=='fingercheck'||!m.appClock));
   if(open){openPunchOut(open);return;}
   if(!gpsOk){toast(t('You need to be at the job site to punch in.'));return;}
   if(D.selfie){const i=document.getElementById('punchSelfie');i.value='';i.click();toast('📷 '+t('Quick selfie, then you are in'));return;}
@@ -2676,12 +2676,12 @@ function poFinish(){const p=poPunch;if(!p)return;const m=me();if(p.away&&!p.out&
 function selfiePicked(inp){const f=inp.files&&inp.files[0];if(!f){finishPunchIn(null,true);return;}shrinkTo(f,240,d=>finishPunchIn(d));}
 function learnFence(siteId){const s=D.sites.find(x=>x.id===siteId);if(!s||s.lat||!navigator.geolocation)return;gpsOnce(p=>{if(s.lat)return;s.lat=p.coords.latitude;s.lng=p.coords.longitude;s.rad=s.rad||300;s.fenceBy=me().id;s.fenceAt=Date.now();save();
   const office=D.emps.filter(e=>e.role==='owner'||e.role==='manager'||e.all).map(e=>e.id);pushTo(office,()=>('📍 '+t('Fence set by')+' '+nameOf(me().id)+' @ '+s.name+' — '+t('check it\'s the right house')),'info',{site:s.id});},()=>{},{enableHighAccuracy:true,timeout:15000,maximumAge:120000});}
-function finishPunchIn(selfie,missing){const m=me();if(D.punches.find(p=>p.who===m.id&&!p.out))return;const site=document.getElementById('punchSite').value;
+function finishPunchIn(selfie,missing){const m=me();if(D.punches.find(p=>p.who===m.id&&!p.out&&(p.src!=='fingercheck'||!m.appClock)))return;const site=document.getElementById('punchSite').value;
   const p={who:m.id,site,in:Date.now(),out:null,lat:lastPos?lastPos.latitude:null,lng:lastPos?lastPos.longitude:null,selfie:selfie||'',noSelfie:!!(D.selfie&&!selfie),offline:navigator.onLine===false};D.punches.push(p);
   try{save();}catch(e){p.selfie='';save();}renderPunch();try{navigator.vibrate&&navigator.vibrate(80);}catch(e){}toast('✓ '+t('Punched in')+' '+fmtT(p.in)+' · '+siteName(site)+(p.offline?' · 📵 '+t('saved on phone'):''),'green');tone('in');schedHeadsUp(m,site);logTravel(m.id,site);
   if(p.noSelfie)pushTo(D.emps.filter(e=>canEditHours(e)&&e.role!=='owner').map(e=>e.id),()=>('⚠ '+nameOf(m.id)+' '+t('punched in without a selfie')+' @ '+siteName(site)),'info',{tab:'hours'});}
 // lunch (L1: up to 40 min a workday paid, the rest unpaid — see lunchInfo); stored as breakStart / breaks
-function toggleBreak(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out);if(!p)return;buzz(25);if(p.breakStart){endBreak(p);toast('▶ '+t('Back on the clock'),'green');}else{p.breakStart=Date.now();toast('🍽 '+t('On lunch — up to 40 min paid'));}save();renderPunch();}
+function toggleBreak(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out&&(x.src!=='fingercheck'||!m.appClock));if(!p)return;buzz(25);if(p.breakStart){endBreak(p);toast('▶ '+t('Back on the clock'),'green');}else{p.breakStart=Date.now();toast('🍽 '+t('On lunch — up to 40 min paid'));}save();renderPunch();}
 function endBreak(p){(p.breaks=p.breaks||[]).push({s:p.breakStart,e:Date.now()});delete p.breakStart;}
 // Baruch 11/11: the drive goes to the job he drives TO. When the phone was asleep it only notices he left once he arrives, so
 // the old job then ends one drive earlier (distance between the two jobs, ~40 km/h on the road, at least 3 min) — never before
@@ -2691,7 +2691,7 @@ function swLeave(p,site){const now=Date.now();let lv=p.away&&now-p.away<=3600000
   if(a&&a.lat!=null&&bl){const km=distFt(+a.lat,+a.lng,bl[0],bl[1])/3280.84;const min=Math.max(3,Math.round(km*1.3/40*60));lv=Math.min(lv,now-min*60000);}
   lv=Math.max(lv,now-3600000,+p.seen||0,+p.in+60000);return Math.min(lv,now);}
 // switch job site without punching out (one tap: closes this punch, opens the next one at the selected site)
-function switchSite(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out);if(!p)return;const site=document.getElementById('punchSite').value;if(site===p.site){toast(t('Pick the other job site in the list first, then tap Switch.'));return;}
+function switchSite(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out&&(x.src!=='fingercheck'||!m.appClock));if(!p)return;const site=document.getElementById('punchSite').value;if(site===p.site){toast(t('Pick the other job site in the list first, then tap Switch.'));return;}
   if(!gpsOk){toast(t('You need to be at the new job site to switch.'));return;}const at=swLeave(p,site);if(p.breakStart)endBreak(p);p.out=at;delete p.away;D.punches.push({who:m.id,site,in:at,out:null,lat:lastPos?lastPos.latitude:null,lng:lastPos?lastPos.longitude:null,selfie:p.selfie||'',transfer:true});save();renderPunch();toast('↔ '+t('Switched to')+' '+siteName(site),'green');schedHeadsUp(m,site);logTravel(m.id,site);}
 // time off requests → payroll approves in Hours
 function reqTimeOff(){const m=me();const d=dkey(new Date());askPrompt(t('Request time off'),[{label:t('From'),value:d,type:'date'},{label:t('To'),value:d,type:'date'},{label:t('Reason'),value:''}],([a,b,why])=>{if(!a||!b)return;const r={id:nid('to'),who:m.id,from:a,to:b<a?a:b,why:(why||'').trim(),status:'pending',ts:Date.now()};D.timeoff.push(r);save();renderPunch();try{renderHours();}catch(e){}toast('🏖 '+t('Sent to Baruch and Yossi'),'green');
@@ -2795,7 +2795,7 @@ function nearbySites(){if(!lastPos||!lastPos.latitude)return null;return visSite
 function punchSiteChanged(){const sel=document.getElementById('punchSite');if(sel.value==='__all'){punchAll=true;renderPunchSites();const s=document.getElementById('punchSite');if(s.options.length)s.selectedIndex=0;setTimeout(()=>{try{EX_pick&&EX_pick(s);}catch(e){}},50);return;}checkGPS();}
 function renderPunchSites(){const sel=document.getElementById('punchSite');if(!sel)return;const cur=sel.value;const pf=document.getElementById('punchFind');if(pf&&pf.value.trim()){punchFilter();return;}
   if(!punchAll&&!D.demo){const nb=nearbySites();
-    if(nb&&nb.length){const m=me();const sl=m&&mySchedDay(m,dkey(new Date()));const open=m?D.punches.find(p=>p.who===m.id&&!p.out):null;const keep=[open&&open.site,sl&&sl.site].filter(id=>id&&!nb.some(x=>x.s.id===id));
+    if(nb&&nb.length){const m=me();const sl=m&&mySchedDay(m,dkey(new Date()));const open=m?D.punches.find(p=>p.who===m.id&&!p.out&&(p.src!=='fingercheck'||!m.appClock)):null;const keep=[open&&open.site,sl&&sl.site].filter(id=>id&&!nb.some(x=>x.s.id===id));
       sel.innerHTML='<optgroup label="📍 '+t('Near you')+'">'+nb.map(x=>'<option value="'+x.s.id+'">'+esc(x.s.name)+' — '+(x.mi<0.1?t('here'):x.mi.toFixed(1)+' mi')+'</option>').join('')+'</optgroup>'+(keep.length?'<optgroup label="'+t('Your job today')+'">'+keep.map(id=>'<option value="'+id+'">'+esc(siteName(id))+'</option>').join('')+'</optgroup>':'')+'<option value="__all">🔎 '+t('Show all jobs…')+'</option>';
       if(cur&&[...sel.options].some(o=>o.value===cur))sel.value=cur;else sel.value=nb[0].s.id;return;}
     if(!lastPos&&navigator.geolocation&&Date.now()-_nearAsk>20000){_nearAsk=Date.now();try{gpsOnce(p=>{lastPos=p.coords;renderPunchSites();try{checkGPS();}catch(e){}},()=>{},{timeout:10000});}catch(e){}}}sel.innerHTML=STAGE_ORDER.map(k=>{const L=visSites().filter(s=>(s.stage||'active')===k);return L.length?'<optgroup label="'+t(STAGE[k][0])+' ('+L.length+')">'+L.map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('')+'</optgroup>':'';}).join('');if(cur&&D.sites.some(s=>s.id===cur))sel.value=cur;}
@@ -2818,18 +2818,18 @@ function fenceHere(id){const s=D.sites.find(x=>x.id===id);if(!s||!canFenceEdit(m
 function fenceHelpBtn(id){return '<div style="font-size:12px;margin-top:8px;color:var(--g4)">'+t('Call the office. If they tell you to:')+' <span style="color:var(--blue-mid);text-decoration:underline;cursor:pointer" onclick="openSemi(\''+jsq(id)+'\')">'+t('ask the office to clock me in')+'</span></div>';}
 let semiSite=null;
 function semiUsed(who){const ws=weekStart().getTime();return D.punches.filter(p=>p.who===who&&p.semi&&p.in>=ws).length;}
-function openSemi(id){const m=me();if(D.punches.find(p=>p.who===m.id&&!p.out))return;if(semiUsed(m.id)>=2){alert(t('You already used this 2 times this week. Call the office.'));return;}semiSite=id;
+function openSemi(id){const m=me();if(D.punches.find(p=>p.who===m.id&&!p.out&&(p.src!=='fingercheck'||!m.appClock)))return;if(semiUsed(m.id)>=2){alert(t('You already used this 2 times this week. Call the office.'));return;}semiSite=id;
   document.getElementById('smFind').value='';smList(id);document.getElementById('smWhy').value='';show('m-semi');}
 function smList(pre){const q=document.getElementById('smFind').value;const r=siteMatch(q)||visSites().filter(s=>['active','roughdone','ready','inspection'].includes(s.stage||'active'));const sel=document.getElementById('smSite');sel.innerHTML=r.slice(0,80).map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');if(pre&&r.some(s=>s.id===pre))sel.value=pre;}
 function semiSubmit(){const m=me();const site=document.getElementById('smSite').value;const why=document.getElementById('smWhy').value.trim();if(!site){toast(t('Pick the job'));return;}if(why.length<8){toast(t('Write what happened (at least a few words).'));return;}
-  const go=(lat,lng)=>{if(D.punches.find(p=>p.who===m.id&&!p.out))return;const p={who:m.id,site,in:Date.now(),out:null,lat,lng,selfie:'',semi:true,pending:true,why,offline:navigator.onLine===false};D.punches.push(p);const s=D.sites.find(x=>x.id===site);if(s)s.fenceReq={who:m.id,lat,lng,ts:Date.now(),punch:true};save();hide('m-semi');renderPunch();
+  const go=(lat,lng)=>{if(D.punches.find(p=>p.who===m.id&&!p.out&&(p.src!=='fingercheck'||!m.appClock)))return;const p={who:m.id,site,in:Date.now(),out:null,lat,lng,selfie:'',semi:true,pending:true,why,offline:navigator.onLine===false};D.punches.push(p);const s=D.sites.find(x=>x.id===site);if(s)s.fenceReq={who:m.id,lat,lng,ts:Date.now(),punch:true};save();hide('m-semi');renderPunch();
     const to=D.emps.filter(e=>e.role==='owner'||e.role==='manager'||e.all||(e.role==='office'&&canEditHours(e))).map(e=>e.id);pushTo(to,()=>('⏳ '+nameOf(m.id)+' '+t('is waiting to be clocked in at')+' '+siteName(site)+' — '+t('fix the geofence or approve')+': "'+why.slice(0,60)+'"'),'warn',{site});
     toast('⏳ '+t('Sent. You are NOT clocked in until the office confirms.'),'amber');};
   if(navigator.geolocation)gpsOnce(p=>go(p.coords.latitude,p.coords.longitude),()=>go(null,null),{enableHighAccuracy:true,timeout:8000,maximumAge:60000});else go(null,null);}
 function semiApprove(site,ok){const s=D.sites.find(x=>x.id===site);D.punches.filter(p=>p.site===site&&p.pending&&!p.lateEntry).forEach(p=>{if(ok){p.pending=false;p.approvedBy=me().id;pushTo([p.who],()=>('✅ '+t('The office clocked you in at')+' '+siteName(site)+' '+t('from')+' '+fmtT(p.in)),'info',{tab:'punch'});}else{p.rejected=true;p.out=p.in;p.pending=false;pushTo([p.who],()=>('✗ '+t('The office did not approve your clock-in at')+' '+siteName(site)+'. '+t('Call them.')),'warn',{tab:'punch'});}});if(s)delete s.fenceReq;save();try{openFence(site);}catch(e){}refreshAfterFence();}
-function autoSite(){if(D.demo||!navigator.geolocation)return;const now=Date.now();if(autoSite._t&&now-autoSite._t<5000){const el=document.getElementById('autoAt');const m=me();if(el&&autoSite._done)el.innerHTML=oneTapHtml(autoSite._best?D.sites.find(x=>x.id===autoSite._best):null,m?D.punches.find(x=>x.who===m.id&&!x.out):null);try{pnRender();}catch(e){}return;}autoSite._t=now;
+function autoSite(){if(D.demo||!navigator.geolocation)return;const now=Date.now();if(autoSite._t&&now-autoSite._t<5000){const el=document.getElementById('autoAt');const m=me();if(el&&autoSite._done)el.innerHTML=oneTapHtml(autoSite._best?D.sites.find(x=>x.id===autoSite._best):null,m?D.punches.find(x=>x.who===m.id&&!x.out&&(x.src!=='fingercheck'||!m.appClock)):null);try{pnRender();}catch(e){}return;}autoSite._t=now;
   gpsOnce(p=>{lastPos=p.coords;let best=null,bd=1e12;visSites().forEach(s=>{if(!s.lat)return;const d=distFt(p.coords.latitude,p.coords.longitude,s.lat,s.lng);if(d<=(s.rad||300)&&d<bd){bd=d;best=s;}});
-    const el=document.getElementById('autoAt');const m=me();const open=m?D.punches.find(x=>x.who===m.id&&!x.out):null;
+    const el=document.getElementById('autoAt');const m=me();const open=m?D.punches.find(x=>x.who===m.id&&!x.out&&(x.src!=='fingercheck'||!m.appClock)):null;
     if(best&&!open&&!pnPickOn){const sel=document.getElementById('punchSite');const pf=document.getElementById('punchFind');if(pf)pf.value='';renderPunchSites();sel.value=best.id;checkGPS();}
     autoSite._best=best?best.id:null;autoSite._done=true;if(el)el.innerHTML=oneTapHtml(best,open);try{pnRender();}catch(e){}},()=>{},{enableHighAccuracy:true,timeout:10000,maximumAge:30000});}
 // Baruch 11/11 (1) one tap: the app already knows where he stands — one big button to punch in or switch jobs.
@@ -2847,7 +2847,7 @@ function schedHeadsUp(m,site){try{const sl=m&&mySchedDay(m,dkey(new Date()));if(
   const mg=x=>{const s=D.sites.find(q=>q.id===x)||{};return Array.isArray(s.managers)?s.managers:(s.manager?[s.manager]:[]);};const ids=[...new Set(mg(site).concat(mg(sl.site)))].filter(id=>id&&id!==m.id);
   if(ids.length)pushTo(ids,()=>('📍 '+nameOf(m.id)+' '+t('punched in at')+' '+siteName(site)+' — '+t('scheduled for')+' '+siteName(sl.site)),'info',{site:site});}catch(e){}}
 function punchNewJob(){const m=me();askPrompt(t('Job not on the list'),[{label:t('Address, or what job it is'),value:''}],([txt])=>{txt=String(txt||'').trim();if(txt.length<3){toast(t('Write the address or what job it is'));return;}
-  const go=pos=>{let now=Date.now();const open=D.punches.find(x=>x.who===m.id&&!x.out);if(open){if(open.away&&now-open.away<=3600000)now=open.away;if(open.breakStart)endBreak(open);open.out=now;delete open.away;}
+  const go=pos=>{let now=Date.now();const open=D.punches.find(x=>x.who===m.id&&!x.out&&(x.src!=='fingercheck'||!m.appClock));if(open){if(open.away&&now-open.away<=3600000)now=open.away;if(open.breakStart)endBreak(open);open.out=now;delete open.away;}
     const nj={id:nid('nj'),text:txt.slice(0,140),lat:pos?pos.latitude:null,lng:pos?pos.longitude:null,by:m.id,ts:now};
     D.punches.push({id:nid('p'),who:m.id,site:null,in:now,out:null,lat:nj.lat,lng:nj.lng,selfie:'',newJob:nj,transfer:!!open});save();renderPunch();toast('✓ '+t('Punched in')+' '+fmtT(now)+' · '+nj.text,'green');tone('in');
     const to=D.emps.filter(e=>!e.inactive&&(canEditHours(e)||e.role==='manager')).map(e=>e.id);pushTo(to,()=>('📍 '+nameOf(m.id)+' '+t('punched in at a job that is not in the app')+': "'+nj.text+'" — '+t('match it in Jobs')),'warn',{tab:'sites'});};
@@ -2863,7 +2863,7 @@ function fieldJobMatch(njId,siteId){if(!siteId){toast(t('Pick the job first'));r
   if(s&&nj&&nj.lat&&!s.lat){s.lat=nj.lat;s.lng=nj.lng;s.rad=s.rad||300;s.fenceBy=nj.by;s.fenceAt=now;}
   save();try{renderSites();}catch(e){}try{renderHours();}catch(e){}toast('✓ '+n+' '+t('clock entries moved to')+' '+(s?s.name:''),'green');}
 function fieldJobCreate(njId){const p=(D.punches||[]).find(x=>x&&x.newJob&&x.newJob.id===njId);if(!p)return;window._fieldJob=njId;openNewJob();try{document.getElementById('njAddr').value=p.newJob.text;}catch(e){}}
-function stillWorking(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out);if(!p)return;p.keepOpen=Date.now()+2*36e5;save();renderPunch();toast('✓ '+t('You stay on the clock'),'green');}
+function stillWorking(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out&&(x.src!=='fingercheck'||!m.appClock));if(!p)return;p.keepOpen=Date.now()+2*36e5;save();renderPunch();toast('✓ '+t('You stay on the clock'),'green');}
 function pastDayEnd(p){const d=new Date(p.in);const fri=d.getDay()===5;const e=new Date(d);e.setHours(fri?13:19,fri?15:0,0,0);return Date.now()>e.getTime();}
 function fenceHelp(id){const s=D.sites.find(x=>x.id===id);if(!s)return;const m=me();const send=(lat,lng)=>{s.fenceReq={who:m.id,lat,lng,ts:Date.now()};save();const to=D.emps.filter(e=>e.role==='owner'||e.role==='manager'||e.all||(e.role==='office'&&canEditHours(e))).map(e=>e.id);pushTo(to,()=>('📍 '+nameOf(m.id)+' '+t('can\'t punch in at')+' '+s.name+' — '+t('check the geofence')),'warn',{site:s.id});toast('✓ '+t('The office was told. They will fix it and you can punch in.'),'green');};
   if(navigator.geolocation)gpsOnce(p=>send(p.coords.latitude,p.coords.longitude),()=>send(null,null),{enableHighAccuracy:true,timeout:8000,maximumAge:120000});else send(null,null);}
@@ -3444,7 +3444,7 @@ function renderMatActs(){const m=me();const el=document.getElementById('matActs'
 async function dlPhoto(d,name){name=name||('electrix-'+Date.now()+'.jpg');try{const dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null;if(dl){const blob=await (await fetch(d)).blob();await dl.save({filename:name,data:blob});toast('⬇ '+t('Saved'),'green');return;}}catch(e){if(e&&e.code==='not_granted'){toast(t('Allow downloads to save photos'));return;}}const a=document.createElement('a');a.href=d;a.download=name;document.body.appendChild(a);a.click();a.remove();}
 function viewMatPhotos(id){const x=D.mats.find(q=>q.id===id);if(!x||!x.photos)return;document.getElementById('photoWrap').innerHTML=x.photos.map((p,i)=>'<div style="flex:0 0 100%"><img src="'+safeSrc(p.d)+'" style="max-width:100%;max-height:70vh;border-radius:10px"><div style="margin-top:8px"><button class="bs b" onclick="dlPhoto(\''+safeSrc(p.d)+'\',\'material-'+id+'-'+(i+1)+'.jpg\')">⬇ '+t('Save photo')+'</button></div></div>').join('');show('m-photo');}
 let mtFrom='garage';function mtFromPick(el){mtFrom=el.dataset.v;document.querySelectorAll('#mtFromChips .chip').forEach(c=>c.className='chip'+(c===el?' on':''));}
-function openMat(){mtPhotos=[];mtPicks=[];setTimeout(()=>{mtRenderPicks();const f=document.getElementById('mtFind');if(f)f.value='';},0);mtFrom='garage';document.querySelectorAll('#mtFromChips .chip').forEach(c=>c.className='chip'+(c.dataset.v==='garage'?' on':''));document.getElementById('mtPrev').innerHTML='';const m=me();const sel=document.getElementById('mtSite');sel.innerHTML='<option value="">— '+t('Pick the job')+' —</option>'+liveSites().map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');sel.value='';const sl=mySchedDay(m,dkey(new Date()));const op=D.punches.find(p=>p.who===m.id&&!p.out);const pre='';mtNewAddr='';const sf=document.getElementById('mtSiteFind');if(sf)sf.value=pre?siteName(pre):'';document.getElementById('mtItems').value='';show('m-mat');}
+function openMat(){mtPhotos=[];mtPicks=[];setTimeout(()=>{mtRenderPicks();const f=document.getElementById('mtFind');if(f)f.value='';},0);mtFrom='garage';document.querySelectorAll('#mtFromChips .chip').forEach(c=>c.className='chip'+(c.dataset.v==='garage'?' on':''));document.getElementById('mtPrev').innerHTML='';const m=me();const sel=document.getElementById('mtSite');sel.innerHTML='<option value="">— '+t('Pick the job')+' —</option>'+liveSites().map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');sel.value='';const sl=mySchedDay(m,dkey(new Date()));const op=D.punches.find(p=>p.who===m.id&&!p.out&&(p.src!=='fingercheck'||!m.appClock));const pre='';mtNewAddr='';const sf=document.getElementById('mtSiteFind');if(sf)sf.value=pre?siteName(pre):'';document.getElementById('mtItems').value='';show('m-mat');}
 function saveMat(){if(mtPicks.length){const ta=document.getElementById('mtItems');const lines=mtPicks.map(p=>p.n+' '+(p.unit?p.unit+' ':'')+p.name+(p.id?(p.have>=p.n?'  ['+t('garage')+']':'  ['+t('order')+']'):''));ta.value=lines.join('\n')+(ta.value.trim()?'\n'+ta.value.trim():'');mtPicks=[];mtRenderPicks();}let items=fmtClean(document.getElementById('mtItems').value);if(!items){toast(t('List what you need'));return;}
   if(!mtNewAddr&&!document.getElementById('mtSite').value){toast('📍 '+t('Pick the job address or type a new one'));try{const f=document.getElementById('mtSiteFind');if(f){f.focus();f.scrollIntoView({block:'center'});}}catch(e){}return;}
   if(mtNewAddr){if(isBoss(me())){const ns={id:nid('s'),name:mtNewAddr,rad:300,phase:'rough',stage:'upcoming',files:[],links:[],notes:[],ts:Date.now(),fromMat:true};D.sites.push(ns);sortSites();const sel=document.getElementById('mtSite');sel.insertAdjacentHTML('beforeend','<option value="'+ns.id+'">'+esc(ns.name)+'</option>');sel.value=ns.id;toast('🏗 '+t('New job added')+': '+mtNewAddr);}else{document.getElementById('mtSite').insertAdjacentHTML('beforeend','<option value="__addr">'+esc(mtNewAddr)+'</option>');document.getElementById('mtSite').value='__addr';}}
