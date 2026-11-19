@@ -257,9 +257,15 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
   const mode = emp.otMove === true ? (moveOn ? "|m:move250" : "|m:sig") : "";
   const hashM = hash + mode;
   const out: any[] = [];
-  if (hashM !== (ck.wp || "")) {
+  // Baruch 11/19: the job list is wiped and reloaded ONLY when the jobs change — switching 5-minute / normal mode (7 AM, 8 PM)
+  // used to reload it too, and an iPhone standing inside a job could then miss its next "arrived" / "left"
+  const prev = ck.wp || ""; const pi = prev.lastIndexOf("|m:");
+  const prevJobs = pi >= 0 ? prev.slice(0, pi) : prev, prevMode = pi >= 0 ? prev.slice(pi) : "";
+  if (hash !== prevJobs) {
     out.push({ _type: "cmd", action: "clearWaypoints" });
     out.push({ _type: "cmd", action: "setWaypoints", waypoints: { _type: "waypoints", waypoints: wps } });
+  }
+  if (mode !== prevMode) {
     if (mode) out.push({ _type: "cmd", action: "setConfiguration", configuration: moveOn
       ? { _type: "configuration", monitoring: 2, locatorInterval: 300, moveModeLocatorInterval: 300, locatorDisplacement: 250, pegLocatorFastestIntervalToInterval: true }
       : { _type: "configuration", monitoring: 1 } });

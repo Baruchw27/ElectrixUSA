@@ -44,6 +44,8 @@ OwnTracks on the same phone; not needed.
   `monitoring:2, locatorInterval:300, moveModeLocatorInterval:300, locatorDisplacement:250, pegLocatorFastestIntervalToInterval:true`
   during the work window, normal mode outside it; plus the list of his jobs (waypoints) incl. ongoing job and moves (L: rows).
 - Work window: Mon–Thu 7:00–20:00, Fri 7:00–14:15, Sunday only if booked, never Saturday / day off; kept late → until 1 h after Send home.
+- The job list is wiped/reloaded ONLY when his jobs change; a mode switch (7 AM / 8 PM) sends only setConfiguration (11/19 —
+  reloading it while he stood inside a job made iPhones miss arrive/leave).
 - locatorDisplacement 0 floods the server (every 3–6 s) — never use 0.
 
 ## 4. Clock rules (all automatic for appClock people)
