@@ -109,7 +109,7 @@ function wxIcon(c){if(c==null)return '';if(c<=1)return IC.sun;if(c<=3||c===45||c
 +'.p23rt{flex:0 0 46px;display:flex;flex-direction:column;align-items:center;gap:2px}.p23rt .sc-ring{flex:none;width:40px;height:40px}.p23rt .sc-type{font-size:8.5px;letter-spacing:.02em;line-height:1}.p23card .sc-ring{flex:0 0 40px;width:40px;height:40px}.p23w{flex:1;min-width:0}'
 +'.p23a{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.p23a .ad{font-size:16.5px;font-weight:700;cursor:pointer}.p23a .rp{color:var(--g4);line-height:0}'
 +'.p23tag{font-size:11px;font-weight:700;color:var(--g4);background:var(--g1);border-radius:7px;padding:2px 7px}'
-+'.p23t{font-size:13px;color:var(--g4);margin-top:1px}.p23half{margin-top:12px;padding-top:10px;border-top:1px solid var(--g2)}.p23hr{font-size:12.5px;color:var(--g4);margin-top:2px}'
++'.p23t{font-size:13px;color:var(--g4);margin-top:1px}.p23half{margin-top:12px;padding-top:10px;border-top:1px solid var(--g2)}.p23halfLate{margin-top:8px;background:none;border:1px solid var(--g2);border-radius:9px;padding:6px 11px;font:600 13px inherit;font-family:inherit;color:var(--g5);cursor:pointer}.p23hr{font-size:12.5px;color:var(--g4);margin-top:2px}'
 +'.p23r{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:0 0 auto}.p23in{font-size:13px;font-weight:700}.p23in.fc{font-size:11.5px;font-weight:600;color:var(--g3)}'
 +'.p23by{font-size:11.5px;color:var(--g3);margin-top:6px}.p23warn{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:#a3261b;background:#fdecea;border-radius:8px;padding:3px 8px;margin-top:6px}'
 +'html[data-theme=dark] .p23warn{background:#4a1d19;color:#ffb4ab}'
@@ -198,10 +198,23 @@ function crewCard(c,k){const t0=todayK();const isT=k===t0,past=k<t0;const today=
     h+='<div class="p23hrs">'+(hrs.length?hrs.map(x=>'<b>'+E(x.g.name.split(' ')[0])+(x.g.lead?' ★':'')+'</b> '+x.h.toFixed(1)+' h').join(' · '):E(T('No hours')))+'</div>';
     return {html:'<div class="p23c nolate" data-crew="'+E(c.id)+'"><div class="p23card">'+ringT(c,scRing(c,0,0,false))+'<div class="p23w">'+h+'</div><div class="p23r"><span class="p23in">'+(tot?tot.toFixed(1)+' h':'')+'</span></div></div></div>'};}
   if(!a0){// Baruch 11/19: a crew split in halves — every half looks the same: address big, town, hours, its men. No arrows.
-    const GS=Object.values(moved).sort((x,y)=>x.a.start-y.a.start||String(x.a.site).localeCompare(String(y.a.site)));
-    GS.forEach((G,gi)=>{const ad2=scAddr(G.a.site);const pk=c.id+'@'+G.a.site;h+='<div'+(gi?' class="p23half"':'')+'>'   // Baruch 11/19: taps work like every other crew (card = details, address = job preview)
-      +'<div class="p23a"><span class="ad" onclick="event.stopPropagation();P23.pv(\''+jsq(pk)+'\')">'+ad2.a+'</span></div><div class="p23t">'+ad2.b+'</div><div class="p23hr">'+E(slotAsgLabel(G.a))+'</div>'+(G.a.note?'<div class="p23hr">'+E(G.a.note)+'</div>':'')
-      +avs(G.men,k,isT,today,ed&&fine()&&wide())+(P.pv===pk?preview(G.a.site):'')+'</div>';});
+    // Baruch 11/19 (evening): each man is shown at the job he is at NOW (his latest started booking); a man moved later in the
+    // day shows the move like a crew card does — "from 6:35 PM", the earlier job underneath, and the time bar. Halves = men
+    // with the same day; each half can be kept late on its own.
+    const byMan={};guys.forEach(g=>{const L=real(loansFor(g.id,k)).slice().sort((a,b)=>a.start-b.start);if(L.length)byMan[g.id]=L;});
+    const halves={};Object.keys(byMan).forEach(id=>{const L=byMan[id];const cur=curAsg(L,k);const key=L.map(a=>a.site+'@'+a.start+'-'+(a.end==null?'':a.end)).join(',');
+      (halves[key]=halves[key]||{L,cur,men:[]}).men.push(guys.find(g=>g.id===id));});
+    const lateAll=isT?lateIds(c.id):[];
+    Object.values(halves).sort((x,y)=>x.L[0].start-y.L[0].start||String(x.cur.site).localeCompare(String(y.cur.site))).forEach((G,gi)=>{
+      const cur=G.cur,ci=G.L.indexOf(cur),prev=ci>0?G.L[ci-1]:null;const ad2=scAddr(cur.site);const pk=c.id+'@'+cur.site;const ids=G.men.map(g=>g.id);
+      const lateH=ids.every(id=>lateAll.includes(id));
+      h+='<div'+(gi?' class="p23half"':'')+'>'
+      +'<div class="p23a"><span class="ad" onclick="event.stopPropagation();P23.pv(\''+jsq(pk)+'\')">'+ad2.a+'</span></div><div class="p23t">'+ad2.b+(prev?' · '+E(T('from'))+' '+E(fMin(cur.start)):'')+'</div>'
+      +(prev?'<div class="p23hr" style="opacity:.75">'+scAddr(prev.site).a+' · '+E(fMin(prev.start))+' – '+E(fMin(cur.start))+'</div>':'')
+      +(G.L.length>1?lineBar(G.L,k):'<div class="p23hr">'+E(slotAsgLabel(cur))+'</div>')+(cur.note?'<div class="p23hr">'+E(cur.note)+'</div>':'')
+      +avs(G.men,k,isT,today,ed&&fine()&&wide())
+      +(isT&&ed&&window.P9L&&P9L.lateIds?'<button type="button" class="p23halfLate" onclick="event.stopPropagation();'+(lateH?'P9L.home(null,'+E(JSON.stringify(ids))+')':'P9L.lateIds('+E(JSON.stringify(ids))+')')+'">🕖 '+E(T(lateH?'Send home':'Stay late'))+'</button>':'')
+      +(P.pv===pk?preview(cur.site):'')+'</div>';});
     const fr=guys.filter(g=>!movedIds.has(g.id));
     if(fr.length){h+='<div'+(GS.length?' class="p23half"':'')+'><div class="p23a"><span class="ad" style="color:#d93025">'+E(T('No job yet'))+'</span></div>'+avs(fr,k,isT,today,ed&&fine()&&wide())
       +(ed?'<button type="button" class="p23bk" onclick="event.stopPropagation();P21.book(\''+jsq(c.id)+'\',\''+k+'\')">'+E(T('+ Book a job'))+'</button>':'')+'</div>';}
