@@ -81,3 +81,7 @@ OwnTracks on the same phone; not needed.
 - 11/19 Shauly: every report all day carried a GPS reading from the day before (4:18 PM 11/18) — the phone was not getting
   new fixes at all (location permission / precise / battery). Check last_tst vs last_at: if last_tst is hours old while
   last_at is fresh, the phone is reporting but its GPS is stuck.
+
+## 8. OwnTracks reminders (11/19, cron 'ot-nudge' every 5 min → private.ot_nudge_tick, sql/ot_nudge.sql)
+- 8:00 AM workdays (not Sat / day off; Sunday only if booked): 'make sure OwnTracks is open, don't swipe it closed'.
+- On the clock + no NEW reading (last_tst) for 1 hour during the workday (or kept late): 'open OwnTracks once' — once per quiet stretch.
