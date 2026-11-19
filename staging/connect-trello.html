@@ -34,7 +34,8 @@
       <button class="btn" id="go">Connect</button>
       <p id="msg"></p>
     </div>
-    <p class="muted">Your Trello stays private: only you see your Trello tasks in Electrix. The code is saved on the Electrix server only — please don't email or text it to anyone. You can disconnect any time in Trello → Settings → Applications → Electrix USA → Revoke.</p>
+    <p class="muted" id="boardNote" hidden>This lets the Electrix app move job cards on the <b>General Overview</b> board when a job is moved in the app (both stay the same). Sign in with a Trello account that is on that board. The code is saved on the Electrix server only — please don't email or text it to anyone.</p>
+    <p class="muted" id="privNote">Your Trello stays private: only you see your Trello tasks in Electrix. The code is saved on the Electrix server only — please don't email or text it to anyone. You can disconnect any time in Trello → Settings → Applications → Electrix USA → Revoke.</p>
   </div>
   <div id="done" class="card" hidden>
     <p class="ok" id="doneMsg"></p>
@@ -52,6 +53,7 @@
     if(!r.ok){hello.innerHTML='<span class="err"></span>';hello.firstChild.textContent=r.error||'This link is not valid.';return;}
     hello.textContent='Hi '+(r.name||'')+' — two quick steps (about a minute).';
     document.getElementById('allow').href=r.allow;document.getElementById('steps').hidden=false;
+    if(r.kind==='board'){window._board=1;document.querySelector('h1').textContent='Connect the jobs board to Electrix';document.getElementById('boardNote').hidden=false;document.getElementById('privNote').hidden=true;}
   }).catch(function(){hello.innerHTML='<span class="err">No connection. Please check your internet and open the link again.</span>';});
   document.getElementById('go').onclick=function(){
     var tok=(document.getElementById('tok').value||'').replace(/\s+/g,'');var msg=document.getElementById('msg');var b=this;
@@ -60,7 +62,8 @@
     call({action:'connect',token:tok}).then(function(r){b.disabled=false;
       if(!r.ok){msg.className='err';msg.textContent=r.error||'Could not connect.';return;}
       document.getElementById('steps').hidden=true;document.getElementById('done').hidden=false;
-      document.getElementById('doneMsg').textContent='✓ Connected — your Trello ('+(r.trello||'')+') is now linked to Electrix.';
+      document.getElementById('doneMsg').textContent=r.kind==='board'?'✓ Connected — the jobs board ('+(r.board||'')+') is linked through '+(r.trello||'')+'. Jobs moved in the app now move on the board too.':'✓ Connected — your Trello ('+(r.trello||'')+') is now linked to Electrix.';
+      if(r.kind==='board'){var d=document.querySelector('#done p:not(.ok)');if(d)d.textContent='You can close this page.';}
       hello.textContent='All set, '+(r.name||'')+'.';
     }).catch(function(){b.disabled=false;msg.className='err';msg.textContent='No connection. Please try again.';});
   };

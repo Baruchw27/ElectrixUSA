@@ -103,7 +103,7 @@ function colls(){return Object.keys(D).filter(k=>!SKIP.has(k)&&D[k]!==null&&type
 // otherwise a device's absolute qty write would clobber another device's concurrent change. Strip qty from the
 // sync view everywhere snap is set; the live value still comes down from the server on pull/catch-up for display.
 // 11/12: what the phone remembers for a record the server sent — the same shape diff() compares (employees get the sign-in name added),
-// or 11 employees without it looked changed forever and every office phone re-saved them every few minutes
+// or employees without it looked changed forever and every office phone re-saved them every few minutes
 function snapJ(coll,data){return canon(coll==='_'?(data||{}).v:coll==='emps'&&data&&typeof data==='object'&&!Array.isArray(data)?stripEmp(data):upStrip(coll,data));}
 function upStrip(coll,data){if(coll==='stock'&&data&&typeof data==='object'){const d=Object.assign({},data);delete d.qty;delete d.qv;return d;}return data;}
 function recordsOf(k){const v=D[k];const out={};
@@ -429,6 +429,7 @@ function listKeepNewer(old,inc){if(!old||typeof old!=='object'||!inc||typeof inc
     const stamped=/^lc_/.test(k)?!!a.by:((+a.rev||0)>=1&&!!a.eat);if(!stamped)continue;
     if(b===undefined||(/^li_/.test(k)&&b&&typeof b==='object'&&(+a.rev||0)>(+b.rev||0))){(out=out||Object.assign({},inc))[k]=a;}}
   return out||inc;}
+// full download in the background (quick start runs it twice a day)
 let refreshing=false;
 async function refreshAll(){if(refreshing||!REAL||!ready||!st.online)return;refreshing=true;
   try{if(await turnedOff())return;const rows=await pullAll();if(rows.length){applyRows(rows,{replace:true});applyPendingQueue();takeSnap();seenSave(localSave());bump();}
