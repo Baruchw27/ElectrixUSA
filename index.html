@@ -59,7 +59,7 @@ html[data-theme=dark] .pn-sl i{background:#f2f2f7;color:#111}
 #pg-punch:not(.pnopen) #punchExtra{display:none!important}
 #pg-punch #punchSched,#pg-punch #myListPunch,#pg-punch #quickExp,#pg-punch #mySites{display:none!important}
 .cfimg{display:block;max-width:230px;max-height:260px;border-radius:8px;cursor:pointer;object-fit:cover}.cfile{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:rgba(0,0,0,.06);cursor:pointer;min-width:190px;max-width:260px}html[data-theme=dark] .cfile{background:rgba(255,255,255,.08)}.cfic{font-size:26px;line-height:1}.cfnm{display:flex;flex-direction:column;min-width:0}.cfnm b{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cfnm small{font-size:12px;opacity:.65}.crow .cclip{width:34px;margin-right:-6px}</style>
-<script>window.EX_VER='vh97c1118';</script><script src="config.js"></script>
+<script>window.EX_VER='vh98c1118';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="sync.js?vh60c1112"></script>
 <script src="extras.js?vh59c1112"></script>
@@ -1908,6 +1908,9 @@ function schedPick(list,key){if(!list.length)return {f:null,prev:null};const dk0
 function schedDay(key){const r=D.sched[key];if(r&&!(r.cancel||r.replace||r.patch)&&(r.site||(Array.isArray(r.assignments)&&r.assignments.some(a=>a&&a.site)))){if(r.site)return r;const P=schedPick(r.assignments.filter(a=>a&&a.site),key);const f=P.f;return Object.assign({},r,{site:f.site,time:(P.prev?'':r.time)||fMin(f.start),prev:P.prev});}
   const a=(typeof slotAsgs==='function')?slotAsgs(key):[];if(!a.length)return null;const P=schedPick(a,key);const f=P.f;return {site:f.site,time:fMin(f.start),note:f.note||'',assignments:a,ongoing:!!f.ongoing,prev:P.prev};}
 function slotHasAny(key){return slotAsgs(key).length>0;}
+// Baruch 11/18: ONE man's job for a day — his own move (booked with "Pick people") wins over his crew's job; today = where he should be now
+function mySchedDay(m,k){if(!m)return null;let L=[];try{L=empTimeline(m.id,k).filter(a=>a&&a.site);}catch(e){}
+  if(!L.length)return m.crew?schedDay(m.crew+'|'+k):null;const P=schedPick(L,'x|'+k);const f=P.f;return {site:f.site,time:fMin(f.start),note:f.note||'',prev:P.prev,loan:f.src==='loan'};}
 // remaining minutes in a crew's configurable workday after its booked assignments for a date
 function remainingMin(crewId,date){const wd=crewWorkday(crewId);const a=slotAsgs(crewId+'|'+date).filter(x=>x.start!=null);let cov=0;if(a.length){const s=a.map(x=>[x.start,x.end==null?wd.end:x.end]).sort((p,q)=>p[0]-q[0]);let cs=s[0][0],ce=s[0][1];for(let i=1;i<s.length;i++){if(s[i][0]<=ce)ce=Math.max(ce,s[i][1]);else{cov+=ce-cs;cs=s[i][0];ce=s[i][1];}}cov+=ce-cs;}return Math.max(0,(wd.end-wd.start)-cov);}
 function slotAsgLabel(a){return fMin(a.start)+(a.end!=null?'–'+fMin(a.end):'');}

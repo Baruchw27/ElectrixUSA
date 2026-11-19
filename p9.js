@@ -149,7 +149,7 @@ const st=document.createElement('style');st.id='p9field';st.textContent=fcss;doc
 const day0=off=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+off);return d;};
 // their "calendar": today + tomorrow — job, hours, meetings, tasks (no inspections, no week view)
 function myDays(m){const el=document.getElementById('todayBoard');if(!el)return;const fmt=at=>new Date(at).toLocaleTimeString(LOC(),{hour:'numeric',minute:'2-digit'});
-  el.innerHTML=[0,1].map(off=>{const d=day0(off);const k=dkey(d);const sl=m.crew?schedDay(m.crew+'|'+k):null;const s=sl&&(D.sites||[]).find(x=>x.id===sl.site);const c=(D.crews||[]).find(x=>x.id===m.crew);
+  el.innerHTML=[0,1].map(off=>{const d=day0(off);const k=dkey(d);const sl=typeof mySchedDay==='function'?mySchedDay(m,k):(m.crew?schedDay(m.crew+'|'+k):null);const s=sl&&(D.sites||[]).find(x=>x.id===sl.site);const c=(D.crews||[]).find(x=>x.id===m.crew);
     let meets=[];try{meets=(D.meets||[]).filter(x=>inMeet(x,m.id)&&new Date(x.at).toDateString()===d.toDateString()).sort((a,b)=>a.at-b.at);}catch(e){}
     let tasks=[];try{const end=d.getTime()+86400000;tasks=visibleJobs().filter(j=>j.status!=='done').filter(j=>{const due=gpDue(j);return due!==null&&(off===0?due<end:(due>=d.getTime()&&due<end));});}catch(e){}
     return '<div class="p9day"><div class="k">'+esc(off?tt('Tomorrow'):tt('Today'))+' · '+esc(d.toLocaleDateString(LOC(),{weekday:'long',month:'short',day:'numeric'}))+'</div>'
@@ -162,7 +162,7 @@ if(typeof window.renderTodayBoard==='function'){const _tb=window.renderTodayBoar
 if(typeof window.renderSched==='function'){const _rs=window.renderSched;window.renderSched=function(){const m=W();if(m&&typeof schedView!=='undefined'&&schedView!=='today'){try{schedView='today';}catch(e){}}
   const r=_rs.apply(this,arguments);try{const sw=document.getElementById('schedSwitch');if(sw)sw.style.display=m?'none':'';const h=document.querySelector('#pg-sched .p8h2');if(h)h.textContent=tt(m?'My days':'Schedule');}catch(e){}return r;};try{renderSched=window.renderSched;}catch(x){}}
 // their crew's scheduled jobs (this week ± a few days) open for them
-const onMySched=(s,m)=>{if(!m||!m.crew||!s)return false;for(let o=-7;o<=7;o++){const sl=schedDay(m.crew+'|'+dkey(day0(o)));if(sl&&sl.site===s.id)return true;}return false;};
+const onMySched=(s,m)=>{if(!m||!m.crew||!s)return false;for(let o=-7;o<=7;o++){const sl=schedDay(m.crew+'|'+dkey(day0(o)));if(sl&&sl.site===s.id)return true;try{if(loansFor(m.id,dkey(day0(o))).some(x=>x&&x.site===s.id))return true;}catch(e){}}return false;};
 if(typeof window.siteVisible==='function'){const _sv=window.siteVisible;window.siteVisible=function(s,m){if(_sv.apply(this,arguments))return true;try{m=m||me();return m&&m.role==='worker'&&onMySched(s,m);}catch(e){return false;}};try{siteVisible=window.siteVisible;}catch(x){}}
 // their job page: name, Rough/Finishing, hours, directions, site manager, their tasks, photos (see all + add), notes
 if(typeof window.openFolder==='function'){const _of=window.openFolder;window.openFolder=function(id){const r=_of.apply(this,arguments);const f=document.getElementById('m-folder');const m=W();

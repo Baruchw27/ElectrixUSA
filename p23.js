@@ -186,6 +186,7 @@ function crewCard(c,k){const t0=todayK();const isT=k===t0,past=k<t0;const today=
   const s0=a0&&D.sites.find(x=>x.id===a0.site);const ad=a0?scAddr(a0.site):{a:'',b:''};
   const days=a0?dayCount(c.id,k,a0.site):1;const ong=a0&&(a0.ongoing||!!ruleFor(c.id,k)&&!D.sched[c.id+'|'+k]);
   let h='<div class="p23a"><span class="ad" onclick="event.stopPropagation();P23.pv(\''+jsq(c.id)+'\')">'+ad.a+'</span>'+(ong?'<span class="rp" title="'+E(T('Ongoing'))+'">'+IC.rep+'</span>':'')+(days>1?'<span class="p23tag">'+E(T('Day'))+' '+days+'</span>':'')+'</div>';
+  if(!a0)h='<div class="p23a"><span class="ad">'+E(T('No job yet'))+'</span></div>';   // Baruch 11/18: only men booked one by one — the crew itself has no job
   h+='<div class="p23t">'+ad.b+(aPrev?' · '+E(T('from'))+' '+E(fMin(a0.start)):'')+'</div>';
   if(aPrev)h+='<div class="p23hr" style="opacity:.75">'+scAddr(aPrev.site).a+' · '+E(fMin(aPrev.start))+' – '+E(fMin(a0.start))+'</div>';   // Baruch 11/18: where they were before the move
   if(asgs.length>1){h+=lineBar(asgs,k);}else if(a0)h+='<div class="p23hr">'+E(slotAsgLabel(a0))+'</div>';   // Baruch 11/18: the hours on every crew, under the town
@@ -196,7 +197,7 @@ function crewCard(c,k){const t0=todayK();const isT=k===t0,past=k<t0;const today=
   if(past){const hrs=guys.map(g=>({g,h:dayHours(g.id,k)})).filter(x=>x.h>0);const tot=hrs.reduce((s,x)=>s+x.h,0);
     h+='<div class="p23hrs">'+(hrs.length?hrs.map(x=>'<b>'+E(x.g.name.split(' ')[0])+(x.g.lead?' ★':'')+'</b> '+x.h.toFixed(1)+' h').join(' · '):E(T('No hours')))+'</div>';
     return {html:'<div class="p23c nolate" data-crew="'+E(c.id)+'"><div class="p23card">'+ringT(c,scRing(c,0,0,false))+'<div class="p23w">'+h+'</div><div class="p23r"><span class="p23in">'+(tot?tot.toFixed(1)+' h':'')+'</span></div></div></div>'};}
-  h+=avs(guys.filter(g=>!movedIds.has(g.id)),k,isT,today,ed&&fine()&&wide());
+  {const fr=guys.filter(g=>!movedIds.has(g.id));if(fr.length)h+=avs(fr,k,isT,today,ed&&fine()&&wide());if(!a0&&ed&&fr.length)h+='<button type="button" class="p23bk" onclick="event.stopPropagation();P21.book(\''+jsq(c.id)+'\',\''+k+'\')">'+E(T('+ Book a job'))+'</button>';}
   Object.values(moved).sort((x,y)=>x.a.start-y.a.start).forEach(G=>{h+='<div class="p21mv" onclick="event.stopPropagation();openLoan(\''+k+'\',\''+jsq(G.men[0].id)+'\')"><div class="sc-top"><span class="sc-addr">↪ '+scAddr(G.a.site).a+'</span><span class="sc-time">'+E(slotAsgLabel(G.a))+'</span></div>'+(G.a.note?'<div class="sc-sub" style="margin:0 0 2px">'+E(G.a.note)+'</div>':'')+avs(G.men,k,isT,today,ed&&fine()&&wide())+'</div>';});
   const late=isT?lateIds(c.id):[];if(late.length)h+='<div class="p23late">'+IC.clock.replace('width="20" height="20"','width="13" height="13"')+' '+E(T('Staying late'))+(late.length<guys.length?' · '+late.map(id=>String(nameOf(id)).split(' ')[0]).join(', '):'')+'</div>';
   // warnings
@@ -222,7 +223,8 @@ renderDayBoard=function(){const m=me();const el=document.getElementById('todayBo
   if(P.lastK!==k){P.pv=null;P.lastK=k;}
   wxLoad();
   const crews=D.crews.slice().sort((a,b)=>(+crewNum(a)||0)-(+crewNum(b)||0));
-  const off=isOff(k);const booked=c=>off?!!(D.sched[c.id+'|'+k]&&real(slotAsgs(c.id+'|'+k)).length):slotHasAny(c.id+'|'+k);
+  const off=isOff(k);const anyMoved=c=>crewGuys(c).some(g=>real(loansFor(g.id,k)).length);   // Baruch 11/18: men booked one by one ("Pick people") count — the card shows them
+  const booked=c=>(off?!!(D.sched[c.id+'|'+k]&&real(slotAsgs(c.id+'|'+k)).length):slotHasAny(c.id+'|'+k))||anyMoved(c);
   const work=crews.filter(booked),free=crews.filter(c=>!booked(c)&&crewGuys(c).length);
   let body='';
   if(off){body='<div class="p23dayoff">'+IC.off+'<b>'+E(offName(k))+' — '+E(T('No work'))+'</b>'+E(T('No bookings · no punch-in reminders'))+'</div>'+(work.length?'<div class="p23list" style="margin-top:10px">'+work.map(c=>crewCard(c,k).html).join('')+'</div>':'');}
