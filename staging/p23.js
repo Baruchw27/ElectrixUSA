@@ -109,7 +109,7 @@ function wxIcon(c){if(c==null)return '';if(c<=1)return IC.sun;if(c<=3||c===45||c
 +'.p23rt{flex:0 0 46px;display:flex;flex-direction:column;align-items:center;gap:2px}.p23rt .sc-ring{flex:none;width:40px;height:40px}.p23rt .sc-type{font-size:8.5px;letter-spacing:.02em;line-height:1}.p23card .sc-ring{flex:0 0 40px;width:40px;height:40px}.p23w{flex:1;min-width:0}'
 +'.p23a{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.p23a .ad{font-size:16.5px;font-weight:700;cursor:pointer}.p23a .rp{color:var(--g4);line-height:0}'
 +'.p23tag{font-size:11px;font-weight:700;color:var(--g4);background:var(--g1);border-radius:7px;padding:2px 7px}'
-+'.p23t{font-size:13px;color:var(--g4);margin-top:1px}.p23half{margin-top:12px;padding-top:10px;border-top:1px solid var(--g2)}.p23halfLate{margin-top:8px;background:none;border:1px solid var(--g2);border-radius:9px;padding:6px 11px;font:600 13px inherit;font-family:inherit;color:var(--g5);cursor:pointer}.p23hr{font-size:12.5px;color:var(--g4);margin-top:2px}'
++'.p23t{font-size:13px;color:var(--g4);margin-top:1px}.p23half{margin-top:12px}.p23sub{margin-left:-2px;border-radius:10px}.p23subcard{padding:4px 2px 6px 2px!important;gap:0!important}.p23sub.p23half{margin-top:12px}.p23sub.p23half .p23subcard{border-top:1px solid var(--g2);padding-top:10px!important}.p23hr{font-size:12.5px;color:var(--g4);margin-top:2px}'
 +'.p23r{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:0 0 auto}.p23in{font-size:13px;font-weight:700}.p23in.fc{font-size:11.5px;font-weight:600;color:var(--g3)}'
 +'.p23by{font-size:11.5px;color:var(--g3);margin-top:6px}.p23warn{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:#a3261b;background:#fdecea;border-radius:8px;padding:3px 8px;margin-top:6px}'
 +'html[data-theme=dark] .p23warn{background:#4a1d19;color:#ffb4ab}'
@@ -208,13 +208,13 @@ function crewCard(c,k){const t0=todayK();const isT=k===t0,past=k<t0;const today=
     Object.values(halves).sort((x,y)=>x.L[0].start-y.L[0].start||String(x.cur.site).localeCompare(String(y.cur.site))).forEach((G,gi)=>{
       const cur=G.cur,ci=G.L.indexOf(cur),prev=ci>0?G.L[ci-1]:null;const ad2=scAddr(cur.site);const pk=c.id+'@'+cur.site;const ids=G.men.map(g=>g.id);
       const lateH=ids.every(id=>lateAll.includes(id));
-      h+='<div'+(gi?' class="p23half"':'')+'>'
+      const canH=isT&&ed&&window.P9L;const hk=c.id+'#'+gi;   // Baruch 11/19: swipe a half to the left = Stay late for those men, like every crew card
+      h+='<div class="p23c p23sub'+(lateH?' home':'')+(canH?'':' nolate')+(gi?' p23half':'')+'" data-crew="'+E(hk)+'">'+(canH?'<div class="act" onclick="event.stopPropagation();P23.lateHalf('+E(JSON.stringify(ids))+','+(lateH?1:0)+')">'+(lateH?IC.home:IC.clock)+'<span>'+E(T(lateH?'Send home':'Stay late'))+'</span></div>':'')+'<div class="p23card p23subcard" data-crew="'+E(hk)+'"><div style="flex:1;min-width:0">'
       +'<div class="p23a"><span class="ad" onclick="event.stopPropagation();P23.pv(\''+jsq(pk)+'\')">'+ad2.a+'</span></div><div class="p23t">'+ad2.b+(prev?' · '+E(T('from'))+' '+E(fMin(cur.start)):'')+'</div>'
       +(prev?'<div class="p23hr" style="opacity:.75">'+scAddr(prev.site).a+' · '+E(fMin(prev.start))+' – '+E(fMin(cur.start))+'</div>':'')
       +(G.L.length>1?lineBar(G.L,k):'<div class="p23hr">'+E(slotAsgLabel(cur))+'</div>')+(cur.note?'<div class="p23hr">'+E(cur.note)+'</div>':'')
       +avs(G.men,k,isT,today,ed&&fine()&&wide())
-      +(isT&&ed&&window.P9L&&P9L.lateIds?'<button type="button" class="p23halfLate" onclick="event.stopPropagation();'+(lateH?'P9L.home(null,'+E(JSON.stringify(ids))+')':'P9L.lateIds('+E(JSON.stringify(ids))+')')+'">🕖 '+E(T(lateH?'Send home':'Stay late'))+'</button>':'')
-      +(P.pv===pk?preview(cur.site):'')+'</div>';});
+      +(P.pv===pk?preview(cur.site):'')+'</div></div></div>';});
     const fr=guys.filter(g=>!movedIds.has(g.id));
     if(fr.length){h+='<div'+(GS.length?' class="p23half"':'')+'><div class="p23a"><span class="ad" style="color:#d93025">'+E(T('No job yet'))+'</span></div>'+avs(fr,k,isT,today,ed&&fine()&&wide())
       +(ed?'<button type="button" class="p23bk" onclick="event.stopPropagation();P21.book(\''+jsq(c.id)+'\',\''+k+'\')">'+E(T('+ Book a job'))+'</button>':'')+'</div>';}
@@ -234,7 +234,7 @@ function crewCard(c,k){const t0=todayK();const isT=k===t0,past=k<t0;const today=
   const by=changedBy(c.id,k);if(by)h+='<div class="p23by">'+E(by)+'</div>';
   const inTxt=isT?(app?(nowMin()>=420&&nowMin()<=endOf(k)+120?'<span class="p23in">'+on+'/'+guys.length+' '+E(T('in'))+'</span>':''):'<span class="p23in fc">Fingercheck</span>'):'';
   const right='<div class="p23r">'+inTxt+(ed?'<button type="button" class="p23more" aria-label="More" onclick="event.stopPropagation();P23.crewMenu(\''+jsq(c.id)+'\',\''+k+'\')">'+IC.more+'</button>':'')+'</div>';
-  const canLate=ed&&isT&&window.P9L;const home=late.length>0;
+  const canLate=ed&&isT&&window.P9L&&!!a0;const home=late.length>0;   // a split crew (no job of its own): each half swipes on its own
   const act=canLate?'<div class="act" onclick="event.stopPropagation();P23.late(\''+jsq(c.id)+'\')">'+(home?IC.home:IC.clock)+'<span>'+E(T(home?'Send home':'Stay late'))+'</span></div>':'';
   return {html:'<div class="p23c'+(home?' home':'')+(canLate?'':' nolate')+'" data-crew="'+E(c.id)+'">'+act+'<div class="p23card" data-crew="'+E(c.id)+'" onclick="P23.tap(\''+jsq(c.id)+'\')">'+ringT(c,scRing(c,on,guys.length,isT&&app))+'<div class="p23w">'+h+'</div>'+right+'</div></div>'};}
 function noneCard(c,k){const guys=crewGuys(c);const ed=schedCanEdit()&&k>=todayK();
@@ -288,7 +288,7 @@ function wire(k){const top=document.getElementById('p23top');try{const tb=docume
         document.querySelectorAll('#todayBoard .p23card').forEach(o=>{if(o!==card)o.style.transform='';});card.__noTap=Date.now();}x0=null;});});
   // computer: drag a man onto another crew
   document.querySelectorAll('#todayBoard .p23av[draggable=true]').forEach(av=>{av.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',av.dataset.emp);e.dataTransfer.effectAllowed='move';});});
-  document.querySelectorAll('#todayBoard .p23c').forEach(box=>{const cid=box.dataset.crew;
+  document.querySelectorAll('#todayBoard .p23c:not(.p23sub)').forEach(box=>{const cid=box.dataset.crew;
     box.addEventListener('dragover',e=>{e.preventDefault();box.classList.add('drop');});box.addEventListener('dragleave',()=>box.classList.remove('drop'));
     box.addEventListener('drop',e=>{e.preventDefault();box.classList.remove('drop');const emp=e.dataTransfer.getData('text/plain');if(emp)P23.moveMan(emp,cid,k);});});}
 
@@ -311,9 +311,11 @@ function undoBar(before){const old=document.getElementById('p23undo');if(old)old
 function sheet(title,rows){ask(title,'<div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">'+rows.map(r=>'<button class="btn sec2" type="button" style="text-align:left'+(r.red?';color:#c0392b':'')+'" onclick="hide(\'m-ask\');'+r.on+'">'+r.l+(r.s?'<div style="font-size:12px;font-weight:400;color:var(--g4)">'+r.s+'</div>':'')+'</button>').join('')+'</div>',null);
   const ok=document.getElementById('askOk');if(ok&&ok.parentNode)ok.parentNode.style.display='none';}
 window.P23={
-  tap:cid=>{const c=document.querySelector('#todayBoard .p23card[data-crew="'+cid+'"]');if(c&&c.__noTap&&Date.now()-c.__noTap<400)return;if(P.swiped){P.swiped=null;renderSched();return;}scToggle(cid);},
+  tap:cid=>{const c=document.querySelector('#todayBoard .p23card[data-crew="'+cid+'"]');if(c&&c.__noTap&&Date.now()-c.__noTap<400)return;if([...document.querySelectorAll('#todayBoard .p23subcard')].some(x=>x.__noTap&&Date.now()-x.__noTap<400))return;   // a half was just swiped
+    if(P.swiped){P.swiped=null;renderSched();return;}scToggle(cid);},
   pv:cid=>{P.pv=P.pv===cid?null:cid;renderSched();},
   today:()=>{P.stripX=null;boardDay=0;renderSched();},
+  lateHalf:(ids,isLate)=>{P.swiped=null;if(isLate)P9L.home(null,ids);else P9L.lateIds(ids);setTimeout(renderSched,300);},
   late:cid=>{const late=lateIds(cid).length>0;const c=D.crews.find(x=>x.id===cid);
     askConfirm((late?T('Send this crew home?'):T('Keep this crew late today?'))+' ('+(c?c.name:'')+') — '+T('They get a message.'),()=>{P.swiped=null;if(late)P9L.home(cid);else P21.late(cid);setTimeout(renderSched,300);},T(late?'Send home':'Stay late'));},
   crewMenu:(cid,k)=>{const c=D.crews.find(x=>x.id===cid);const own=real(slotAsgs(cid+'|'+k));const halves=[...new Set(crewGuys(c||{id:cid}).flatMap(g=>real(loansFor(g.id,k)).map(a=>a.site)))];const rows=[{l:'↪ '+E(T('Send to another job')),on:"P21.send('"+jsq(cid)+"','"+k+"')"},{l:'✂ '+E(T('Split the crew')),on:"P21.split('"+jsq(cid)+"','"+k+"')"},
