@@ -133,7 +133,7 @@ function render(){const m=M();const el=$('jobList');const pg=$('pg-jobs');if(!m|
     if(!rest.length&&!pri.length&&!chk.length)h+='<div class="p10empty">✓ '+esc(tt('All caught up.'))+'</div>';
     el.innerHTML=h;return;}
   // today's job first (field people: the job their crew is on today)
-  let tsite=null;try{if(m.crew){const sl=schedDay(m.crew+'|'+dkey(new Date()));if(sl&&sl.site)tsite=sl.site;}}catch(e){}
+  let tsite=null;try{if(m.crew){const sl=mySchedDay(m,dkey(new Date()));if(sl&&sl.site)tsite=sl.site;}}catch(e){}
   const tL=tsite?rest.filter(j=>j.site===tsite).sort(sortT):[];
   if(tL.length)h+='<div class="p10today"><div class="k">📍 '+esc(tt("TODAY'S JOB"))+'</div><div class="a">'+esc(short(siteName(tsite)))+'</div>'+tL.map(j=>row(j,m)).join('')+'</div>';
   // every other job, its tasks under it
