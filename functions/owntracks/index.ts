@@ -65,18 +65,21 @@ async function load(adm: any, user: string, now: number) {
   const { data: pr } = await adm.from("records").select("id,data").eq("coll", "punches").eq("deleted", false).eq("data->>who", user).gte("data->>in", String(now - 20 * 3600000));
   const open = (pr || []).map((r: any) => ({ id: r.id, d: r.data || {} }))
     .filter((x: any) => x.d.out == null && !x.d.voided && !x.d.pending && x.d.src !== "fingercheck").sort((a: any, b: any) => Number(b.d.in) - Number(a.d.in))[0] || null;
+  // Baruch 11/19: a clock-in that is waiting for the office to approve counts as punched in — no "punch in" reminders
+  const waiting = (pr || []).some((r: any) => { const d = r.data || {}; return d.out == null && !d.voided && d.pending && !d.rejected && d.src !== "fingercheck"; });
   const es = emp.lang === "es";
   const tell = async (en: string, sp: string) => { const nid = "n" + crypto.randomUUID().replace(/-/g, "");
     await adm.from("records").upsert({ coll: "inbox", id: nid, deleted: false, updated_by: "server", updated_at: new Date().toISOString(),
       data: { id: nid, to: user, msg: es ? sp : en, kind: "warn", ts: Date.now(), read: false, link: { tab: "punch" }, auto: true } }, { onConflict: "coll,id" }); };
   const save = async (id: string, d: any) => adm.from("records").update({ data: d, updated_at: new Date().toISOString(), updated_by: "owntracks" }).eq("coll", "punches").eq("id", id);
-  return { emp, site, open, tell, save };
+  return { emp, site, open, waiting, tell, save };
 }
 
 // he has been at job `sid` for 5 minutes (arrived at `at`)
 async function arrived(adm: any, user: string, sid: string, at: number, lat: number | null, lng: number | null, now: number) {
-  const { emp, site, open, tell, save } = await load(adm, user, now);
+  const { emp, site, open, waiting, tell, save } = await load(adm, user, now);
   const S = site[sid]; if (!S || emp.inactive) return "";
+  if (!open && waiting) return "waiting for office approval — no reminder";
   if (open && open.d.site === sid) return "";                       // already clocked in here
   if (open && (open.d.site || open.d.newJob) && Number(open.d.in) < at) {
     const A = placeOf(open.d, site) || ({} as any); let lv = open.d.away && at - Number(open.d.away) <= 3600000 ? Number(open.d.away) : at;
