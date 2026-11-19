@@ -4,3 +4,6 @@
   After committing to main, also run `git push origin main:gh-pages`, then confirm the served EX_VER with a ?b= cache-buster.
 - Every release: bump EX_VER in index.html AND version.json (live: {"v":"vh.."}; staging/version.json: {"v":"vs.."}) and the sw.js cache name.
   If version.json does not match EX_VER, every phone restarts itself after opening and shows "Update ready" forever.
+- Automatic time clock / OwnTracks: read docs/TRACKER_SETUP.md first — every phone step (iPhone AND Android remote
+  configuration ON, external configuration, Always + Precise, battery) and every rule learned on crew 5. Keep it up to date
+  whenever a tracker setting or rule changes.
