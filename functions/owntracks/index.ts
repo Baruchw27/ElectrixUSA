@@ -27,6 +27,32 @@ const distM = (a: number, b: number, c: number, d: number) => { const R = 637100
 const short = (n: string) => String(n || "").replace(/,?\s*NY\s*\d{5}.*$/i, "").replace(/,?\s*NJ\s*\d{5}.*$/i, "").trim();
 const radM = (s: any) => Math.max(100, (Number(s?.rad) || 300) * 0.3048);   // the app keeps the fence in feet; phones need ≥ ~100 m
 
+// Baruch 11/18: the jobs on a man's schedule for a day — his crew's day booking (an explicit day overrides the ongoing job),
+// else the crew's ongoing job (unless cancelled/replaced that day) plus that day's extra bookings, plus jobs he alone was
+// sent to (loans "L:<who>|<day>"). Same rules as the app's effectiveAsgs().
+const STALE = 10 * 60000;   // Baruch 11/18 (6): a report whose phone time is older than this is not acted on
+async function schedSites(adm: any, emp: any, user: string, day: string): Promise<Set<string>> {
+  const out = new Set<string>(); const add = (s: any) => { if (s) out.add(String(s)); };
+  const dow = new Date(day + "T12:00:00Z").getUTCDay();
+  if (emp.crew) {
+    const { data: dr } = await adm.from("records").select("id,data").eq("coll", "sched").eq("id", emp.crew + "|" + day).eq("deleted", false).maybeSingle();
+    const { data: rows } = await adm.from("records").select("id,data").eq("coll", "sched").eq("deleted", false).like("id", "ONG:" + emp.crew + ":%");
+    const row: any = dr?.data || null;
+    const isPatch = !!(row && (row.cancel || row.replace || row.patch));
+    if (row && !isPatch && (Array.isArray(row.assignments) || row.site)) { add(row.site); for (const a of row.assignments || []) add(a && a.site); }
+    else {
+      const rules = (rows || []).filter((r: any) => String(r.id).startsWith("ONG:")).map((r: any) => r.data || {})
+        .filter((r: any) => r.site && (!r.from || day >= r.from) && (!r.to || day <= r.to) && (r.workdays || [1, 2, 3, 4, 5]).includes(dow))
+        .sort((a: any, b: any) => String(b.from || "").localeCompare(String(a.from || "")));
+      if (rules[0] && !((row && row.cancel) || []).includes("ONG")) { const rep = ((row && row.replace) || {})["ONG"]; add(rep ? rep.site : rules[0].site); }
+      for (const a of (row && Array.isArray(row.assignments) ? row.assignments : [])) add(a && a.site);
+    }
+  }
+  const { data: ln } = await adm.from("records").select("data").eq("coll", "sched").eq("id", "L:" + user + "|" + day).eq("deleted", false).maybeSingle();
+  for (const a of (ln?.data && Array.isArray(ln.data.assignments) ? ln.data.assignments : [])) add(a && a.site);
+  return out;
+}
+
 // where a punch is: a job in the app, or (Baruch 11/11) a "job not in the app" at the GPS point he punched in at
 const placeOf = (d: any, site: Record<string, any>) => d.site && site[d.site] ? { key: d.site, lat: site[d.site].lat, lng: site[d.site].lng, rad: radM(site[d.site]), name: site[d.site].name }
   : d.newJob && d.newJob.lat != null ? { key: null, lat: d.newJob.lat, lng: d.newJob.lng, rad: 150, name: d.newJob.text || "the job" } : null;
@@ -127,8 +153,19 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
   if (emp.inactive) return json([]);
   let kind: string | null = null, kSite: string | null = null, note = "";
   const at = Number(msg.tst) > 1e9 ? Math.min(Number(msg.tst) * 1000, now) : now;
+  // Baruch 11/18 (7): a job on his schedule for that day needs no proof — on the clock and arriving there switches him on the
+  // first report (no 5 minutes, no second report). Only a job we did not send him to still needs the proof.
+  let schedSet: Set<string> | null = null, switched = false;
+  const onSched = async (sid: string) => { if (!open) return false; if (!schedSet) schedSet = await schedSites(adm, emp, user, dkey(at)); return schedSet.has(sid); };
+  const switchNow = async (sid: string, lat: number | null, lng: number | null) => {
+    await adm.rpc("ot_pend", { p_who: user, p_site: "*", p_at: null, p_lat: null, p_lng: null });
+    const r = await arrived(adm, user, sid, at, lat, lng, now); return r ? r + " (on his schedule)" : "";
+  };
 
-  if (msg._type === "transition" && (msg.event === "enter" || msg.event === "leave")) {
+  if (now - at > STALE) {
+    // Baruch 11/18 (6): an old report (an Android phone re-sends its last location, even days old) is not acted on
+    note = "old report ignored (" + Math.round((now - at) / 60000) + " min old)";
+  } else if (msg._type === "transition" && (msg.event === "enter" || msg.event === "leave")) {
     const sid = (/#([A-Za-z0-9_.:-]+)\s*$/.exec(String(msg.desc || "")) || [])[1] || null;
     if (sid && sid.startsWith("nj_") && open && "nj_" + open.id === sid) {
       kind = msg.event === "enter" ? "arrive" : "leave"; kSite = sid; const nm = String(open.d.newJob?.text || "the job").slice(0, 60);
@@ -151,6 +188,8 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
         if (open.d.away) { const gap = at - Number(open.d.away);
           const d = { ...open.d, seen: at }; if (gap >= 0 && gap <= 3600000) d.trips = [...(open.d.trips || []), { left: Number(open.d.away), back: at }];
           delete d.away; delete d.awayBy; await save(open.id, d); note = "clock: back on site"; }
+      } else if (open && Number(open.d.in) < at && await onSched(sid)) {
+        note = await switchNow(sid, msg.lat ?? null, msg.lon ?? null) || "on his schedule";
       } else {
         await adm.rpc("ot_pend", { p_who: user, p_site: sid, p_at: at, p_lat: msg.lat ?? null, p_lng: msg.lon ?? null }); note = "waiting 5 min";
       }
@@ -165,12 +204,16 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
       let best: string | null = null, bestD = Infinity;
       for (const id in site) { const J = site[id]; if (J.lat == null || J.lng == null || J.stage === "done") continue;
         const dm = distM(+msg.lat, +msg.lon, +J.lat, +J.lng); if (dm <= radM(J) + slack && dm < bestD) { best = id; bestD = dm; } }
-      if (best && !(open && open.d.site === best)) {
+      if (best && open && open.d.site !== best && Number(open.d.in) < at && await onSched(best)) {
+        // Baruch 11/18 (7): a job on his schedule today → switch on this first report
+        const r = await switchNow(best, msg.lat, msg.lon); kind = "arrive"; kSite = best; note = r || "on his schedule";
+        if (r.startsWith("clock: switched")) switched = true;
+      } else if (best && !(open && open.d.site === best)) {
         await adm.rpc("ot_pend", { p_who: user, p_site: best, p_at: at, p_lat: msg.lat, p_lng: msg.lon, p_src: "loc" });   // switches after 5 minutes there, once a 2nd report confirms it
         if (!note) note = "at " + best + ", waiting 5 min";
       } else if (!best) await adm.rpc("ot_pend", { p_who: user, p_site: "*", p_at: null, p_lat: null, p_lng: null });   // drove past: no switch
     }
-    if (S && S.lat != null) {
+    if (S && S.lat != null && !switched) {
       const dm = distM(+msg.lat, +msg.lon, +S.lat, +S.lng);
       if (dm <= S.rad + Math.min(Number(msg.acc) || 0, 150) && at > (Number(open.d.seen) || 0)) {
         const d = { ...open.d, seen: at };
@@ -186,8 +229,9 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
   // the jobs his phone should watch: the job he is on + today's schedule for his crew + his jobs of the last 3 weeks, up to 20
   const want: string[] = [];
   if (open && open.d.site) want.push(open.d.site);
-  if (emp.crew) { const { data: sc } = await adm.from("records").select("data").eq("coll", "sched").eq("id", emp.crew + "|" + dkey(now)).maybeSingle();
-    const sd: any = sc?.data || {}; if (sd.site) want.push(sd.site); for (const a of Array.isArray(sd.assignments) ? sd.assignments : []) if (a && a.site) want.push(a.site); }
+  // today's schedule — the day booking, the crew's ongoing job and jobs he alone was sent to (Baruch 11/18)
+  const ss = schedSet as Set<string> | null;
+  for (const sid of (ss && dkey(at) === dkey(now) ? ss : await schedSites(adm, emp, user, dkey(now)))) want.push(sid);
   const { data: rec } = await adm.from("records").select("data").eq("coll", "punches").eq("deleted", false).eq("data->>who", user).gte("data->>in", String(now - 21 * 86400000));
   for (const r of (rec || []).sort((a: any, b: any) => Number(b.data?.in) - Number(a.data?.in))) if (r.data?.site) want.push(r.data.site);
   // the job he is clocked in at is always watched, even when it is marked done (Baruch 11/12: 11 Canterbury was skipped)
@@ -204,17 +248,17 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
   // otherwise reports only when it moves). Work hours = the workday plus 1 hour before and after; kept late = until 1 hour
   // after "Send home". Outside that, the normal mode. Trial: only people with emps.otMove = true (Shia first).
   const moveOn = emp.otMove === true && await workWindow(adm, emp, user, now);
-  // Baruch 11/18 (3): distance 100, not 0 (0 flooded the server with a report every few seconds), and on Android never more
+  // Baruch 11/18 (3): distance 250 (Baruch, 11/18 late), not 0 (0 flooded the server with a report every few seconds), and on Android never more
   // often than the 5-minute interval (pegLocatorFastestIntervalToInterval) — the setup that works on Shia's phone. The new
   // tag "move100" makes every phone in the trial get the new setting once.
-  const mode = emp.otMove === true ? (moveOn ? "|m:move100" : "|m:sig") : "";
+  const mode = emp.otMove === true ? (moveOn ? "|m:move250" : "|m:sig") : "";
   const hashM = hash + mode;
   const out: any[] = [];
   if (hashM !== (ck.wp || "")) {
     out.push({ _type: "cmd", action: "clearWaypoints" });
     out.push({ _type: "cmd", action: "setWaypoints", waypoints: { _type: "waypoints", waypoints: wps } });
     if (mode) out.push({ _type: "cmd", action: "setConfiguration", configuration: moveOn
-      ? { _type: "configuration", monitoring: 2, locatorInterval: 300, moveModeLocatorInterval: 300, locatorDisplacement: 100, pegLocatorFastestIntervalToInterval: true }
+      ? { _type: "configuration", monitoring: 2, locatorInterval: 300, moveModeLocatorInterval: 300, locatorDisplacement: 250, pegLocatorFastestIntervalToInterval: true }
       : { _type: "configuration", monitoring: 1 } });
   }
   await adm.rpc("ot_note", { p_who: user, p_kind: kind, p_site: kSite, p_at: at, p_note: note || null, p_wp: hashM !== (ck.wp || "") ? hashM : null });
