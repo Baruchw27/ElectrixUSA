@@ -128,9 +128,11 @@ async function arrived(adm: any, user: string, sid: string, at: number, lat: num
   if (!open && hourNY(at) >= 6 && hourNY(at) < 19 && dkey(at) === dkey(now) && emp.appClock === true && now - lastAt <= STALE + DWELL) {   // no reminder from old readings
     // Baruch 11/20 (Lennin got it 9 times in 2 hours): one reminder, a 2nd one 30 minutes later if he is still not punched in,
     // then ONE message to the office (the same people who get the 8:30 list), then nothing more for that job today.
-    const en = "📍 You are at " + short(S.name) + ". Open the app and punch in.", sp = "📍 Está en " + short(S.name) + ". Abra la app y marque entrada.";
+    // Baruch 11/20: a punch made with no signal waits on his phone — the reminder tells him to open the app where he has signal
+    const en0 = "📍 You are at " + short(S.name) + ". Open the app and punch in.", sp0 = "📍 Está en " + short(S.name) + ". Abra la app y marque entrada.";
+    const en = en0 + " Already punched in? Open the app where you have signal so it gets sent.", sp = sp0 + " ¿Ya marcó? Abra la app donde tenga señal para que se envíe.";
     const { data: ib } = await adm.from("records").select("data").eq("coll", "inbox").eq("deleted", false).eq("data->>to", user).gte("data->>ts", String(now - 20 * 3600000));
-    const sent = (ib || []).map((r: any) => r.data || {}).filter((x: any) => (x.msg === en || x.msg === sp) && dkey(Number(x.ts)) === dkey(now)).map((x: any) => Number(x.ts)).sort((a: number, b: number) => a - b);
+    const sent = (ib || []).map((r: any) => r.data || {}).filter((x: any) => [en, sp, en0, sp0].includes(x.msg) && dkey(Number(x.ts)) === dkey(now)).map((x: any) => Number(x.ts)).sort((a: number, b: number) => a - b);
     if (sent.length === 0 || (sent.length === 1 && now - sent[0] >= 30 * 60000)) { await tell(en, sp); return sent.length ? "reminded again (2nd)" : "reminded to punch in"; }
     if (sent.length === 1) return "reminded already — 2nd reminder after 30 min";
     if (now - sent[1] < 15 * 60000) return "reminded twice — office is told 15 min after the 2nd";
@@ -147,8 +149,8 @@ async function arrived(adm: any, user: string, sid: string, at: number, lat: num
     for (const o of to) {
       const { data: oe } = await adm.from("records").select("data").eq("coll", "emps").eq("id", o).maybeSingle();
       const msg = (oe?.data?.lang === "es")
-        ? "📍 " + nm + " está en " + short(S.name) + " desde las " + since + " y no marcó entrada (se le avisó 2 veces)."
-        : "📍 " + nm + " has been at " + short(S.name) + " since " + since + " and is not punched in (reminded twice).";
+        ? "📍 " + nm + " está en " + short(S.name) + " desde las " + since + " y no marcó entrada, o su marca todavía no nos llegó (¿sin señal?). Se le avisó 2 veces."
+        : "📍 " + nm + " has been at " + short(S.name) + " since " + since + " and is not punched in, or his punch hasn't reached us yet (no signal?). He was reminded twice.";
       const nid = "n" + crypto.randomUUID().replace(/-/g, "");
       await adm.from("records").upsert({ coll: "inbox", id: nid, deleted: false, updated_by: "server", updated_at: new Date().toISOString(),
         data: { id: nid, to: o, msg, kind: "warn", ts: Date.now(), read: false, link: { tab: "hours" }, auto: true, tag } }, { onConflict: "coll,id" });
