@@ -71,7 +71,48 @@ function durState(){const ks=durKeys();let lost=false,pend=false;ks.forEach(k=>{
 // write something that must not be lost
 function putSafe(k,v){return durPut(k,v);}
 function storeQ(){return putSafe('ex_queue',JSON.stringify(queue));}
-function saveQ(){const n=Object.keys(queue).length;st.pending=n;const ok=storeQ();durState();return ok;}
+// ── Baruch 11/20 (Lennin, Android): a punch made with no signal is sent by the phone ITSELF as soon as there is signal,
+// even with the app closed (Android "Background Sync" — iPhones don't allow it). While offline the app writes the punch rows
+// ready to send into BG_DB; the app's helper (sw.js) sends them to the "punchsync" function with this phone's punch key
+// (it can only save this person's own punches, through the same server checks). Back in the app, what the helper already
+// sent is taken off the queue (bgAdopt), so nothing is sent twice.
+const BG_DB='ex_bg_'+String(CFG.url||'local').replace(/^https?:\/\//,'').replace(/[^a-z0-9]/gi,'_');
+const BG_ON=('serviceWorker' in navigator)&&('SyncManager' in window)&&!!window.indexedDB&&!!CFG.url;
+let bgDbP=null;
+function bgDb(){if(bgDbP)return bgDbP;bgDbP=new Promise(res=>{try{const r=indexedDB.open(BG_DB,1);r.onupgradeneeded=()=>{try{r.result.createObjectStore('kv');}catch(e){}};
+  r.onsuccess=()=>res(r.result);r.onerror=()=>res(null);r.onblocked=()=>res(null);}catch(e){res(null);}});return bgDbP;}
+function bgOp(mode,fn){return bgDb().then(db=>new Promise(res=>{if(!db)return res(null);try{const tx=db.transaction('kv',mode);const q=fn(tx.objectStore('kv'));
+  tx.oncomplete=()=>res(q&&'result' in q?q.result:true);tx.onerror=tx.onabort=()=>res(null);}catch(e){res(null);}}));}
+const bgGet=k=>bgOp('readonly',o=>o.get(k));const bgPut=(k,v)=>bgOp('readwrite',o=>o.put(v,k));
+let bgCfg=null;
+async function bgKey(){if(!BG_ON||!REAL||!ready||!st.online)return;try{
+  const s=await withTO(sb.auth.getSession(),6000,'bg');const uid=s&&s.data&&s.data.session&&s.data.session.user?s.data.session.user.id:null;if(!uid)return;
+  const cfg=bgCfg||await bgGet('cfg');if(cfg&&cfg.key&&cfg.uid===uid&&Date.now()-cfg.at<7*864e5){bgCfg=cfg;return;}
+  const dev=(cfg&&cfg.dev)||('d'+Array.from(crypto.getRandomValues(new Uint8Array(12))).map(b=>b.toString(16).padStart(2,'0')).join(''));
+  const r=await withTO(sb.rpc('bg_key_register',{p_dev:dev}),8000,'bg key');if(!r||r.error||!r.data)return;
+  bgCfg={dev,key:r.data,uid,fn:CFG.url+'/functions/v1/punchsync',at:Date.now()};await bgPut('cfg',bgCfg);}catch(e){}}
+// the row exactly as _flush builds it (punches only; a punch with a photo is left for the app)
+function bgRow(o){const live=liveRecord(o.coll,o.id);const cur=JSON.parse(JSON.stringify(upStrip(o.coll,live||o.data)));
+  if(!cur||typeof cur!=='object'||Object.keys(cur).some(f=>typeof cur[f]==='string'&&cur[f].startsWith('data:')))return null;
+  const plain=v=>!!v&&typeof v==='object'&&!Array.isArray(v);let bb=null;try{bb=o.base?JSON.parse(o.base):null;}catch(e){}
+  if(bb&&plain(cur)&&plain(bb)){const patch={},unset=[];Object.keys(cur).forEach(f=>{if(canon(cur[f])!==canon(bb[f]))patch[f]=cur[f];});Object.keys(bb).forEach(f=>{if(!(f in cur))unset.push(f);});
+    const row={coll:o.coll,id:o.id,patch,unset,by:st.user||null};const ab={};Object.keys(patch).forEach(f=>{if(Array.isArray(patch[f])&&Array.isArray(bb[f]))ab[f]=bb[f];});if(Object.keys(ab).length)row.base=ab;return row;}
+  return {coll:o.coll,id:o.id,full:cur,by:st.user||null};}
+let bgT=null;
+function bgPrep(){if(!BG_ON||!REAL)return;clearTimeout(bgT);bgT=setTimeout(async()=>{try{
+  if(st.online&&ready)return;                               // with signal the app sends by itself
+  const rows=[];Object.keys(queue).forEach(k=>{const o=queue[k];if(!o||o.coll!=='punches'||o.del)return;const row=bgRow(o);if(row)rows.push({k,sig:canon(o.data),row});});
+  if(!rows.length)return;const cfg=bgCfg||await bgGet('cfg');if(!cfg||!cfg.key)return;
+  await bgPut('out',{rows,at:Date.now()});
+  const reg=await navigator.serviceWorker.ready;if(reg&&reg.sync)await reg.sync.register('ex-punch|'+BG_DB);}catch(e){}},300);}
+// what the helper already sent while the app was closed: take it off the queue (only if unchanged since), then refresh
+async function bgAdopt(){if(!BG_ON)return 0;try{const sent=await bgGet('sent');if(!sent||typeof sent!=='object'||!Object.keys(sent).length)return 0;let n=0;
+  Object.keys(sent).forEach(k=>{const o=queue[k];if(o&&!o.del&&canon(o.data)===sent[k]){delete queue[k];n++;}});
+  await bgPut('sent',{});if(n){saveQ();setTimeout(()=>{try{catchUp();}catch(_){}},0);}return n;}catch(e){return 0;}}
+async function bgForget(){if(!BG_ON)return;try{const c=bgCfg||await bgGet('cfg');if(c&&c.dev&&st.online){try{await withTO(sb.rpc('bg_key_drop',{p_dev:c.dev}),3000,'bg off');}catch(e){}}
+  bgCfg=null;await bgPut('cfg',null);await bgPut('out',{rows:[],at:Date.now()});await bgPut('sent',{});}catch(e){}}
+window.EX_bg={on:BG_ON,db:BG_DB,get:bgGet,prep:()=>bgPrep(),adopt:bgAdopt,key:bgKey};
+function saveQ(){const n=Object.keys(queue).length;st.pending=n;const ok=storeQ();durState();if(BG_ON&&n&&(!st.online||!ready))bgPrep();return ok;}
 window.EX_queued=function(coll,id){return !!queue[coll+'\u0001'+id];};
 window.EX_queuedIn=function(coll){return Object.keys(queue).filter(k=>queue[k]&&queue[k].coll===coll).map(k=>queue[k].id);};
 // Changes the server refused (permission, or another phone changed the same day first). Kept on the phone, with what
@@ -196,7 +237,8 @@ let suppressRejectToast=false; // EX_saveNow shows its own message at the point 
 let flushInFlight=null;
 function flush(){if(!REAL||!ready||!st.online)return Promise.resolve();if(flushInFlight)return flushInFlight;
   flushInFlight=_flush();const done=()=>{flushInFlight=null;};flushInFlight.then(done,done);return flushInFlight;}
-async function _flush(){Object.keys(queue).forEach(k=>{const o=queue[k];if(o&&(SKIP.has(o.coll)||(o.coll==='_'&&SKIP.has(o.id))))delete queue[k];});const keys=Object.keys(queue);if(!keys.length){lastReject=[];return;}flushing=true;st.flushing=true;paint();
+async function _flush(){if(BG_ON){await bgAdopt();try{await bgPut('out',{rows:[],at:Date.now()});}catch(e){}setTimeout(()=>{bgKey();},0);}   // Baruch 11/20: the app sends now — the helper has nothing to send
+  Object.keys(queue).forEach(k=>{const o=queue[k];if(o&&(SKIP.has(o.coll)||(o.coll==='_'&&SKIP.has(o.id))))delete queue[k];});const keys=Object.keys(queue);if(!keys.length){lastReject=[];return;}flushing=true;st.flushing=true;paint();
   let skipped=0;const myRej=[];lastFlushError=null;
   try{const ups=[],dels=[],refs=[];
     for(const k of keys){const o=queue[k];if(o.del)dels.push(o);else{
@@ -579,6 +621,7 @@ window.EX_logout=async function(){
       const ids=P.filter(x=>x&&x.who===who&&x.sub&&x.sub.endpoint===ep).map(x=>x.id);
       if(ids.length&&st&&st.online){try{await withTO(sb.rpc('save_records',{rows:ids.map(id=>({coll:'push',id,deleted:true,full:{},by:st.user||null}))}),4000,'push off');}catch(e){}}
       try{await withTO(sub.unsubscribe(),2000,'unsubscribe');}catch(e){}}}}catch(e){}
+  try{await bgForget();}catch(e){}   // Baruch 11/20: this phone's punch key stops working
   try{if(sb)await withTO(sb.auth.signOut(),3000,'sign-out');}catch(e){}
   try{const K=(typeof KEY!=='undefined'?KEY:'electrix_v29');
       ['ex_auth','ex_uid','ex_queue','electrix_bio','ex_faceid_asked','ex_faceid','ex_pwv',K,K+'__stockq'].forEach(k=>localStorage.removeItem(k));}catch(e){}

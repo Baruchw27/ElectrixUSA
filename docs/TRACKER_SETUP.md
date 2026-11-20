@@ -119,3 +119,13 @@ OwnTracks on the same phone; not needed.
   a punch made with no signal waits on the phone until the app is open WITH signal (11/20: Mayquin punched 7:06, it arrived 7:29).
   The server can't know about a punch that hasn't arrived, so reminders can still go out after a man really punched.
 - Why: 11/20 Lennin got the reminder 9 times between 7:31 and 8:57 and never punched in.
+
+## 13. Android: punches made with no signal send themselves (live 11/20 10:35, app vh110, punchsync v1, sql/bg_punch.sql)
+- A punch made with no signal waits on the phone. On ANDROID the app's helper (sw.js, Background Sync) sends it to the
+  "punchsync" function by itself as soon as there is signal, even with the app closed. iPhones don't allow this — for them
+  the reminder says "Already punched in? Open the app where you have signal so it gets sent."
+- Each phone gets a punch key (public.bg_key_register) the first time the updated app is open WITH signal; it can only save
+  that person's own punches, through the same server checks (saved AS him: late → waiting for approval, no 2nd open punch).
+  Sign-out turns the key off (bg_key_drop). Keys: private.bg_keys (last_used shows when a phone used it).
+- With the app open on screen the helper does nothing (the app sends). What the helper sent is taken off the app's list
+  when it opens (bgAdopt) — nothing is sent twice. Punches with a photo are left for the app.
