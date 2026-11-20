@@ -93,3 +93,9 @@ OwnTracks on the same phone; not needed.
 - Reminders: "open OwnTracks" at the booked start; "punch in" at booked start + 5 min; the 1-hour no-location check runs from the booked start.
 - Tracker: the 5-minute Move reports start 1 hour before the booked start (normal days: 7:00).
 - Days with nothing booked before 8:00 work exactly as before.
+
+## 10. Only jobs that are in the app (live 11/19 midnight, owntracks v15 = commit 55ee6a1)
+- The tracker uses only jobs that show in the app. Lost bids (stage "lost" — Trello "Lost Bids", ~160, hidden in the app) and
+  finished jobs ("done") are ignored: never sent to the phone to watch, never "arrived", never a punch-in reminder.
+  (Exception: a job someone is already clocked in at is always watched.)
+- Why: 11/19 7 AM Lennin got "you are at 107-115 Bethune Blvd, punch in" — a lost bid next to where he lives.
