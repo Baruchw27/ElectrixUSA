@@ -99,3 +99,13 @@ OwnTracks on the same phone; not needed.
   finished jobs ("done") are ignored: never sent to the phone to watch, never "arrived", never a punch-in reminder.
   (Exception: a job someone is already clocked in at is always watched.)
 - Why: 11/19 7 AM Lennin got "you are at 107-115 Bethune Blvd, punch in" — a lost bid next to where he lives.
+
+## 11. Go home at / Stay late till when (live 11/20 00:25: app vh108, owntracks v16 = commit 9765c47, sql/go_home_at.sql + sql/stay_late_until.sql)
+- Send to another job → Until? → "Go home at" a time: the booking gets home = true and that end. private.man_sched_end(emp,crew,day)
+  = that time (his own booking first, else his crew's day booking if he has none), else the normal end (7:00 PM, Fri 1:15 PM).
+  Only home = true counts — old bookings carry leftover end times from the old crew hours and are ignored.
+  Follows it: 🏠 pack-up message 15 min before, "still punched in" 5 min after, automatic close 1 h after, OwnTracks 1-hour check
+  until it, tracker 5-minute reports until 1 h after it.
+- Stay late → "Till when?": "I'll send them home" (as before) or "Until a time" (goHomeLog 'late' gets until = minutes). 15 min before
+  that time clock_tick sends the same 🏠 "Pack up — go home in 15 minutes" message, writes a goHomeLog 'home' record (by: server) and
+  goHome on his open punch — exactly what Send home does. A manual Send home or a new Stay late wins (the day's LAST record counts).
