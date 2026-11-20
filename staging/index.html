@@ -59,10 +59,10 @@ html[data-theme=dark] .pn-sl i{background:#f2f2f7;color:#111}
 #pg-punch:not(.pnopen) #punchExtra{display:none!important}
 #pg-punch #punchSched,#pg-punch #myListPunch,#pg-punch #quickExp,#pg-punch #mySites{display:none!important}
 .cfimg{display:block;max-width:230px;max-height:260px;border-radius:8px;cursor:pointer;object-fit:cover}.cfile{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:rgba(0,0,0,.06);cursor:pointer;min-width:190px;max-width:260px}html[data-theme=dark] .cfile{background:rgba(255,255,255,.08)}.cfic{font-size:26px;line-height:1}.cfnm{display:flex;flex-direction:column;min-width:0}.cfnm b{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cfnm small{font-size:12px;opacity:.65}.crow .cclip{width:34px;margin-right:-6px}</style>
-<script>window.EX_VER='vs162c1120';</script><script src="config.js"></script>
+<script>window.EX_VER='vs163c1120';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
-<script src="sync.js?vs162c1120"></script>
-<script src="extras.js?vs162c1120"></script>
+<script src="sync.js?vs163c1120"></script>
+<script src="extras.js?vs163c1120"></script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Electrix">
 <link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <style>
@@ -1893,7 +1893,7 @@ function fMin(x){if(x==null)return '';const h=Math.floor(x/60),mi=x%60,ap=h>=12?
 function min2hhmm(x){return x==null?'':String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0');}
 function hhmm2min(v){if(!v)return null;const p=String(v).split(':').map(Number);return p[0]*60+(p[1]||0);}
 // raw day row -> one-off/legacy assignments (no rules)
-function rawDayAsgs(key){const r=D.sched[key];if(!r)return [];if(Array.isArray(r.assignments))return r.assignments.filter(a=>a&&a.site).map(a=>({id:a.id||newAsgId(),site:a.site,start:a.start==null?null:a.start,end:a.end==null?null:a.end,note:a.note||''}));if(r.site)return [{id:'legacy',site:r.site,start:pMin(r.time),end:null,note:r.note||'',legacy:true}];return [];}
+function rawDayAsgs(key){const r=D.sched[key];if(!r)return [];if(Array.isArray(r.assignments))return r.assignments.filter(a=>a&&a.site).map(a=>Object.assign({id:a.id||newAsgId(),site:a.site,start:a.start==null?null:a.start,end:a.end==null?null:a.end,note:a.note||''},a.home?{home:true}:{}));if(r.site)return [{id:'legacy',site:r.site,start:pMin(r.time),end:null,note:r.note||'',legacy:true}];return [];}
 // ── ongoing "until reassigned" rule: ONE per crew, key "ONG:<crewId>" ──
 function crewWorkday(crewId){const c=D.crews.find(x=>x.id===crewId);const d=c&&c.day;return {start:(d&&d.start!=null)?d.start:480,end:(d&&d.end!=null)?d.end:1110,workdays:(d&&d.workdays)||[0,1,2,3,4,5]};}
 function rulesForCrew(crewId){const pre='ONG:'+crewId+':';return Object.keys(D.sched).filter(k=>k.slice(0,pre.length)===pre).map(k=>Object.assign({ruleId:k.slice(pre.length)},D.sched[k])).filter(r=>r&&r.site);}
@@ -1910,7 +1910,7 @@ function effectiveAsgs(crewId,date){const key=crewId+'|'+date;const row=D.sched[
   let out=[];
   if(ruleActiveOn(rule,date)&&!((row&&row.cancel)||[]).includes('ONG')){const rep=((row&&row.replace)||{})['ONG'];
     out.push(rep?{id:'ong',site:rep.site,start:rep.start,end:rep.end,note:rep.note||'',exception:true}:{id:'ong',site:rule.site,start:rule.start,end:rule.end,note:rule.note||'',ongoing:true});}
-  if(row&&Array.isArray(row.assignments))row.assignments.filter(a=>a&&a.site).forEach(a=>out.push({id:a.id||newAsgId(),site:a.site,start:a.start==null?null:a.start,end:a.end==null?null:a.end,note:a.note||'',oneoff:true}));
+  if(row&&Array.isArray(row.assignments))row.assignments.filter(a=>a&&a.site).forEach(a=>out.push(Object.assign({id:a.id||newAsgId(),site:a.site,start:a.start==null?null:a.start,end:a.end==null?null:a.end,note:a.note||'',oneoff:true},a.home?{home:true}:{})));
   return out.sort((a,b)=>(a.start==null?1e9:a.start)-(b.start==null?1e9:b.start));}
 // slotAsgs delegates crew|date keys to the composed view so every renderer/conflict check sees recurring days.
 function slotAsgs(key){const i=key.lastIndexOf('|');if(i>0){const crew=key.slice(0,i),date=key.slice(i+1);if(/^\d{4}-\d{2}-\d{2}$/.test(date)&&D.crews.some(c=>c.id===crew))return effectiveAsgs(crew,date);}return rawDayAsgs(key);}
@@ -1938,7 +1938,7 @@ function crewStatus(crewId,date){const a=slotAsgs(crewId+'|'+date);if(!a.length)
 const STATUS_LABEL={free:'Available',partial:'Partially booked',full:'Fully booked'};
 // ── temporary individual moves (loans). key = "L:<empId>|<date>" ──
 function loanKey(empId,date){return 'L:'+empId+'|'+date;}
-function loansForDay(date){const out=[];Object.keys(D.sched).forEach(key=>{if(key.slice(0,2)!=='L:')return;const rest=key.slice(2);const i=rest.lastIndexOf('|');if(i<0||rest.slice(i+1)!==date)return;const empId=rest.slice(0,i);const r=D.sched[key];((r&&r.assignments)||[]).forEach(a=>{if(a&&a.site)out.push({emp:empId,a:{id:a.id||newAsgId(),site:a.site,start:a.start,end:a.end==null?null:a.end,note:a.note||''}});});});return out;}
+function loansForDay(date){const out=[];Object.keys(D.sched).forEach(key=>{if(key.slice(0,2)!=='L:')return;const rest=key.slice(2);const i=rest.lastIndexOf('|');if(i<0||rest.slice(i+1)!==date)return;const empId=rest.slice(0,i);const r=D.sched[key];((r&&r.assignments)||[]).forEach(a=>{if(a&&a.site)out.push({emp:empId,a:Object.assign({id:a.id||newAsgId(),site:a.site,start:a.start,end:a.end==null?null:a.end,note:a.note||''},a.home?{home:true}:{})});});});return out;}
 function loansFor(empId,date){return loansForDay(date).filter(x=>x.emp===empId).map(x=>x.a);}
 // ── conflict detection (time overlaps) ──
 function asgOverlap(a,b){const ae=a.end==null?WDAY_END:a.end,be=b.end==null?WDAY_END:b.end;return a.start!=null&&b.start!=null&&a.start<be&&b.start<ae;}
@@ -5954,7 +5954,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vs162c1120"></script><script src="scanner-v2-ui.js?vs162c1120"></script><script src="sched-v21.js?vs162c1120"></script><script src="p2.js?vs162c1120"></script><script src="p4.js?vs162c1120"></script><script src="p5.js?vs162c1120"></script><script src="p6.js?vs162c1120"></script><script src="p7.js?vs138c1117"></script><script src="p8.js?vs162c1120"></script><script src="p9.js?vs162c1120"></script><script src="p10.js?vs86c1112"></script><script src="p11.js?vs162c1120"></script><script src="p12.js?vs162c1120"></script><script src="p13.js?vs162c1120"></script><script src="p14.js?vs162c1120"></script><script src="p15.js?vs162c1120"></script><script src="p16.js?vs162c1120"></script><script src="p17.js?vs135c1116"></script><script src="p18.js?vs135c1116"></script><script src="p19.js?vs136c1117"></script><script src="p20.js?vs135c1116"></script><script src="p21.js?vs139c1118"></script><script src="p22.js?vs136c1117"></script><script src="p23.js?vs144c1118"></script><script src="selftest.js?vs162c1120"></script>
+<script src="scanner-v2.js?vs163c1120"></script><script src="scanner-v2-ui.js?vs163c1120"></script><script src="sched-v21.js?vs163c1120"></script><script src="p2.js?vs163c1120"></script><script src="p4.js?vs163c1120"></script><script src="p5.js?vs163c1120"></script><script src="p6.js?vs163c1120"></script><script src="p7.js?vs138c1117"></script><script src="p8.js?vs163c1120"></script><script src="p9.js?vs163c1120"></script><script src="p10.js?vs86c1112"></script><script src="p11.js?vs163c1120"></script><script src="p12.js?vs163c1120"></script><script src="p13.js?vs163c1120"></script><script src="p14.js?vs163c1120"></script><script src="p15.js?vs163c1120"></script><script src="p16.js?vs163c1120"></script><script src="p17.js?vs135c1116"></script><script src="p18.js?vs135c1116"></script><script src="p19.js?vs136c1117"></script><script src="p20.js?vs135c1116"></script><script src="p21.js?vs139c1118"></script><script src="p22.js?vs136c1117"></script><script src="p23.js?vs144c1118"></script><script src="selftest.js?vs163c1120"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,

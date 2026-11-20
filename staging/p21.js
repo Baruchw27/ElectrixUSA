@@ -37,10 +37,10 @@ Object.assign(ES,{'Send to another job':'Mandar a otro trabajo','Split the crew'
 let wdDate=null;
 crewWorkday=function(){const k=wdDate||(typeof slotDay!=='undefined'&&slotDay)||todayK();return {start:DAY_START,end:endOf(k),workdays:WORKDAYS};};
 ['crewStatus','remainingMin'].forEach(fn=>{const f=window[fn];if(typeof f!=='function')return;window[fn]=function(c,d){const o=wdDate;wdDate=d;try{return f.apply(this,arguments);}finally{wdDate=o;}};});
-// Friday: a full-day job shows till 1:15 PM
+// Friday: a full-day job shows till 1:15 PM — unless the boss set "Go home at" (Baruch 11/20: crew 3 till 3:15, crew 4 till 2:30)
 const _eff=effectiveAsgs;
 effectiveAsgs=function(crewId,date){const out=_eff.apply(this,arguments);if(!isFri(date))return out;
-  return out.map(a=>(a.start!=null&&a.start<FRI_END&&(a.end==null||a.end>FRI_END))?Object.assign({},a,{end:FRI_END}):a);};
+  return out.map(a=>(!a.home&&a.start!=null&&a.start<FRI_END&&(a.end==null||a.end>FRI_END))?Object.assign({},a,{end:FRI_END}):a);};
 // the crew's own hours setting is gone (one workday for everyone)
 setCrewHours=function(){toast(T('All crews work 8:00 AM – 7:00 PM, Friday till 1:15 PM'));};
 ES['All crews work 8:00 AM – 7:00 PM, Friday till 1:15 PM']='Todas las cuadrillas trabajan 8:00 AM – 7:00 PM, viernes hasta 1:15 PM';
