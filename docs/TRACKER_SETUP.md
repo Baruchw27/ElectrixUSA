@@ -85,3 +85,11 @@ OwnTracks on the same phone; not needed.
 ## 8. OwnTracks reminders (11/19, cron 'ot-nudge' every 5 min → private.ot_nudge_tick, sql/ot_nudge.sql)
 - 8:00 AM workdays (not Sat / day off; Sunday only if booked): 'make sure OwnTracks is open, don't swipe it closed'.
 - On the clock + no NEW reading (last_tst) for 1 hour during the workday (or kept late): 'open OwnTracks once' — once per quiet stretch.
+
+## 9. Early start — a day booked before 8:00 (live 11/19: app vh107, owntracks v14 = commit e5ee089, sql/early_start.sql)
+- Book it in Schedule (crew ⋯ → Send to another job → At a time e.g. 6:30 AM → Rest of the day, or a man's own booking).
+- private.man_sched_start(emp, crew, day) = earliest booked start that day (his own L: booking, else the crew day row), never later than 8:00.
+- Pay (app time cards/totals): counted from the booked start instead of 8:00. Fingercheck always gets the raw punch times.
+- Reminders: "open OwnTracks" at the booked start; "punch in" at booked start + 5 min; the 1-hour no-location check runs from the booked start.
+- Tracker: the 5-minute Move reports start 1 hour before the booked start (normal days: 7:00).
+- Days with nothing booked before 8:00 work exactly as before.
