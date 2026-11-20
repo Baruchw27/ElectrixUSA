@@ -137,8 +137,12 @@ async function arrived(adm: any, user: string, sid: string, at: number, lat: num
     const tag = "notin:" + user + ":" + sid + ":" + dkey(now);
     const { data: done } = await adm.from("records").select("id").eq("coll", "inbox").eq("data->>tag", tag);
     if (done && done.length) return "reminded twice, office told — no more";
-    const { data: cf } = await adm.from("server_config").select("v").eq("k", "clock_check_to").maybeSingle();
-    let to: string[] = ["o1"]; try { const v = JSON.parse(cf?.v || "null"); if (Array.isArray(v) && v.length) to = v.map(String); } catch (_e) { /* default */ }
+    // who: Shia (o1) and Baruch (u1), plus the site manager(s) of THAT job (job folder → site managers; else his crew's manager)
+    const { data: sr } = await adm.from("records").select("data").eq("coll", "sites").eq("id", sid).maybeSingle();
+    let mg: string[] = Array.isArray(sr?.data?.managers) ? sr.data.managers : (sr?.data?.manager ? [sr.data.manager] : []);
+    if (!mg.length && emp.crew) { const { data: cr } = await adm.from("records").select("data").eq("coll", "crews").eq("id", emp.crew).maybeSingle();
+      mg = Array.isArray(cr?.data?.managers) ? cr.data.managers : (cr?.data?.manager ? [cr.data.manager] : []); }
+    const to = [...new Set(["o1", "u1", ...mg.map(String)].filter((x) => x && x !== user))];
     const since = hm(sent[0] - DWELL), nm = String(emp.name || user);
     for (const o of to) {
       const { data: oe } = await adm.from("records").select("data").eq("coll", "emps").eq("id", o).maybeSingle();

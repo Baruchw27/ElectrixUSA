@@ -109,3 +109,9 @@ OwnTracks on the same phone; not needed.
 - Stay late → "Till when?": "I'll send them home" (as before) or "Until a time" (goHomeLog 'late' gets until = minutes). 15 min before
   that time clock_tick sends the same 🏠 "Pack up — go home in 15 minutes" message, writes a goHomeLog 'home' record (by: server) and
   goHome on his open punch — exactly what Send home does. A manual Send home or a new Stay late wins (the day's LAST record counts).
+
+## 12. "You are at the job — punch in" reminder (live 11/20 morning)
+- At his job 5 min and not punched in → 1st reminder. Still not punched in 30 min later → 2nd reminder. 15 min after the 2nd →
+  ONE message to Shia (o1), Baruch (u1) and the site manager(s) of THAT job (job folder managers; else his crew's manager):
+  "<name> has been at <job> since <time> and is not punched in (reminded twice)." Then nothing more for that job that day.
+- Why: 11/20 Lennin got the reminder 9 times between 7:31 and 8:57 and never punched in.
