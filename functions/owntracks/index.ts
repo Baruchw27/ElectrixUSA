@@ -25,6 +25,9 @@ const hm = (ms: number) => new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour
 const distM = (a: number, b: number, c: number, d: number) => { const R = 6371000, p = Math.PI / 180, x = (c - a) * p, y = (d - b) * p;
   const h = Math.sin(x / 2) ** 2 + Math.cos(a * p) * Math.cos(c * p) * Math.sin(y / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); };
 const short = (n: string) => String(n || "").replace(/,?\s*NY\s*\d{5}.*$/i, "").replace(/,?\s*NJ\s*\d{5}.*$/i, "").trim();
+// Baruch 11/19 (Lennin, Bethune Blvd): the tracker uses only jobs that are in the app. A lost bid (copied from Trello's
+// "Lost Bids" list, hidden in the app) is never a job — standing next to one does nothing. Finished jobs are skipped too.
+const inApp = (J: any) => !!J && J.stage !== "lost" && J.stage !== "done";
 const radM = (s: any) => Math.max(100, (Number(s?.rad) || 300) * 0.3048);   // the app keeps the fence in feet; phones need ≥ ~100 m
 
 // Baruch 11/18: the jobs on a man's schedule for a day — his crew's day booking (an explicit day overrides the ongoing job),
@@ -95,6 +98,7 @@ async function load(adm: any, user: string, now: number) {
 async function arrived(adm: any, user: string, sid: string, at: number, lat: number | null, lng: number | null, now: number, lastAt: number = at) {
   const { emp, site, open, waiting, tell, save } = await load(adm, user, now);
   const S = site[sid]; if (!S || emp.inactive) return "";
+  if (S.stage === "lost" && !(open && open.d.site === sid)) return "lost bid, not a job in the app — ignored";
   if (!open && waiting) return "waiting for office approval — no reminder";
   if (open && open.d.site === sid) return "";                       // already clocked in here
   if (open && (open.d.site || open.d.newJob) && Number(open.d.in) < at) {
@@ -228,7 +232,7 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
     const atOpen = !!(S && S.lat != null && distM(+msg.lat, +msg.lon, +S.lat, +S.lng) <= S.rad + slack);
     if (!atOpen) {
       let best: string | null = null, bestD = Infinity;
-      for (const id in site) { const J = site[id]; if (J.lat == null || J.lng == null || J.stage === "done") continue;
+      for (const id in site) { const J = site[id]; if (J.lat == null || J.lng == null || !inApp(J)) continue;
         const dm = distM(+msg.lat, +msg.lon, +J.lat, +J.lng); if (dm <= radM(J) + slack && dm < bestD) { best = id; bestD = dm; } }
       if (best && open && open.d.site !== best && Number(open.d.in) < at && await onSched(best)) {
         // Baruch 11/18 (7): a job on his schedule today → switch on this first report
@@ -262,7 +266,7 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
   for (const r of (rec || []).sort((a: any, b: any) => Number(b.data?.in) - Number(a.data?.in))) if (r.data?.site) want.push(r.data.site);
   // the job he is clocked in at is always watched, even when it is marked done (Baruch 11/12: 11 Canterbury was skipped)
   const onNow = open && open.d.site ? open.d.site : null;
-  const wl = [...new Set(want)].filter((id) => site[id] && site[id].lat != null && site[id].lng != null && (id === onNow || site[id].stage !== "done")).slice(0, 20);
+  const wl = [...new Set(want)].filter((id) => site[id] && site[id].lat != null && site[id].lng != null && (id === onNow || inApp(site[id]))).slice(0, 20);
   const wps: any[] = [];
   if (open && !open.d.site && open.d.newJob && open.d.newJob.lat != null)
     wps.push({ _type: "waypoint", desc: String(open.d.newJob.text || "New job").replace(/#/g, "").slice(0, 40) + " #nj_" + open.id, lat: +open.d.newJob.lat, lon: +open.d.newJob.lng, rad: 150,
