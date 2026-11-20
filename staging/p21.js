@@ -55,9 +55,13 @@ async function put(keys,apply,okMsg){apply();save();let res;
   toast('⏳ '+T('Saved on this phone — it will be sent automatically'),'blue');return true;}
 const stamp=()=>({rev:0,by:me().id,at:Date.now()});
 function cleanA(a){const o={id:a.id||newAsgId(),site:a.site,start:a.start,end:a.end==null?null:a.end,note:a.note||''};if(a.remind)o.remind=true;if(a.home)o.home=true;return o;}   // home: Baruch 11/20 — the end the boss set with "Go home at"
-function crewRow(key,list){const L=list.map(cleanA).sort((a,b)=>(a.start||0)-(b.start||0));const p=L[0];
+// Baruch 11/20: the same job right after itself is ONE job (crew 4: 246 Cherry 8:00–1:15 + "at 1:15, go home at 2:30" → 8:00–2:30)
+function joinSame(L){const out=[];L.forEach(a=>{const p=out[out.length-1];
+  if(p&&p.site===a.site&&p.end!=null&&a.start!=null&&a.start<=p.end){p.end=a.end==null?null:Math.max(p.end,a.end);if(a.home)p.home=true;else delete p.home;if(a.note)p.note=a.note;return;}
+  out.push(a);});return out;}
+function crewRow(key,list){const L=joinSame(list.map(cleanA).sort((a,b)=>(a.start||0)-(b.start||0)));const p=L[0];
   return {site:p.site,time:fMin(p.start),assignments:L,note:L.map(a=>a.note).filter(Boolean).join('\n'),rev:rowRev(key)+1,by:me().id,at:Date.now()};}
-function loanRow(emp,key,list){return {emp,assignments:list.map(cleanA).sort((a,b)=>(a.start||0)-(b.start||0)),rev:rowRev(key)+1,by:me().id,at:Date.now()};}
+function loanRow(emp,key,list){return {emp,assignments:joinSame(list.map(cleanA).sort((a,b)=>(a.start||0)-(b.start||0))),rev:rowRev(key)+1,by:me().id,at:Date.now()};}
 const real=list=>(list||[]).filter(a=>a&&a.site&&a.start!=null);
 // cut a list of jobs at time T: keep what happens before T (a job running past T ends at T)
 const cutAt=(list,T)=>real(list).filter(a=>a.start<T).map(a=>Object.assign({},a,{end:(a.end==null||a.end>T)?T:a.end,remind:false,home:false}));
