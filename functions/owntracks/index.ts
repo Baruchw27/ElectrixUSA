@@ -58,6 +58,16 @@ async function schedSites(adm: any, emp: any, user: string, day: string): Promis
   return out;
 }
 
+// Baruch 11/19: his earliest booked start that day in minutes (his own booking, else his crew's day booking); 480 = 8:00 when
+// nothing earlier is booked — a day booked for 6:30 opens the 5-minute window at 5:30
+async function schedStart(adm: any, emp: any, user: string, day: string): Promise<number> {
+  let m = 480; const take = (L: any) => { for (const a of (Array.isArray(L) ? L : [])) { const v = Number(a && a.site ? a.start : NaN); if (Number.isFinite(v) && v < m) m = v; } };
+  const { data: ln } = await adm.from("records").select("data").eq("coll", "sched").eq("id", "L:" + user + "|" + day).eq("deleted", false).maybeSingle();
+  take(ln?.data?.assignments);
+  if (emp.crew) { const { data: dr } = await adm.from("records").select("data").eq("coll", "sched").eq("id", emp.crew + "|" + day).eq("deleted", false).maybeSingle(); take(dr?.data?.assignments); }
+  return m;
+}
+
 // where a punch is: a job in the app, or (Baruch 11/11) a "job not in the app" at the GPS point he punched in at
 const placeOf = (d: any, site: Record<string, any>) => d.site && site[d.site] ? { key: d.site, lat: site[d.site].lat, lng: site[d.site].lng, rad: radM(site[d.site]), name: site[d.site].name }
   : d.newJob && d.newJob.lat != null ? { key: null, lat: d.newJob.lat, lng: d.newJob.lng, rad: 150, name: d.newJob.text || "the job" } : null;
@@ -127,7 +137,7 @@ async function workWindow(adm: any, emp: any, user: string, now: number): Promis
       booked = !!ln?.data && Array.isArray(ln.data.assignments) && ln.data.assignments.length > 0; }
     if (!booked) return false;
   }
-  const start = 7 * 60, end = dow === 5 ? 14 * 60 + 15 : 20 * 60;
+  const start = Math.min(7 * 60, (await schedStart(adm, emp, user, day)) - 60), end = dow === 5 ? 14 * 60 + 15 : 20 * 60;   // booked early → 1 hour before it
   if (min < start) return false;
   if (min < end) return true;
   // after hours: kept late → until 1 hour after "Send home"
