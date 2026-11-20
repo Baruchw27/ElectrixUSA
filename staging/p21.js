@@ -27,7 +27,7 @@ Object.assign(ES,{'Send to another job':'Mandar a otro trabajo','Split the crew'
  'every workday from':'cada día de trabajo desde','Sunday–Friday':'domingo a viernes','Fri till 1:15 PM':'viernes hasta 1:15 PM',
  'They get a message right away.':'Reciben un mensaje enseguida.','They get a message now and again at':'Reciben un mensaje ahora y otra vez a las',
  'Other days already booked stay as they are.':'Los otros días ya reservados quedan como están.','stays at':'se queda en','stay at':'se quedan en',
- 'Booked':'Reservado','Sent':'Mandado','Saved on this phone — it will be sent automatically':'Guardado en este teléfono — se mandará automáticamente',
+ 'Go home at':'Se van a casa a las','then home':'y luego a casa','Booked':'Reservado','Sent':'Mandado','Saved on this phone — it will be sent automatically':'Guardado en este teléfono — se mandará automáticamente',
  'Not saved':'No se guardó','Someone else changed this day first. Open it again and try once more.':'Otra persona cambió este día primero. Ábralo otra vez e intente de nuevo.',
  'The server did not accept this change.':'El servidor no aceptó este cambio.','Tap a man, then pick his job':'Toque a un hombre y elija su trabajo',
  'Same as the crew':'Igual que la cuadrilla','Crew job':'Trabajo de la cuadrilla','Nobody was changed':'No se cambió a nadie','Split':'Dividir',
@@ -54,13 +54,13 @@ async function put(keys,apply,okMsg){apply();save();let res;
     ask(T('Not saved'),'<div style="font-size:14px;line-height:1.45">'+E(stale?T('Someone else changed this day first. Open it again and try once more.'):T('The server did not accept this change.'))+'</div>',null,'OK');return false;}
   toast('⏳ '+T('Saved on this phone — it will be sent automatically'),'blue');return true;}
 const stamp=()=>({rev:0,by:me().id,at:Date.now()});
-function cleanA(a){const o={id:a.id||newAsgId(),site:a.site,start:a.start,end:a.end==null?null:a.end,note:a.note||''};if(a.remind)o.remind=true;return o;}
+function cleanA(a){const o={id:a.id||newAsgId(),site:a.site,start:a.start,end:a.end==null?null:a.end,note:a.note||''};if(a.remind)o.remind=true;if(a.home)o.home=true;return o;}   // home: Baruch 11/20 — the end the boss set with "Go home at"
 function crewRow(key,list){const L=list.map(cleanA).sort((a,b)=>(a.start||0)-(b.start||0));const p=L[0];
   return {site:p.site,time:fMin(p.start),assignments:L,note:L.map(a=>a.note).filter(Boolean).join('\n'),rev:rowRev(key)+1,by:me().id,at:Date.now()};}
 function loanRow(emp,key,list){return {emp,assignments:list.map(cleanA).sort((a,b)=>(a.start||0)-(b.start||0)),rev:rowRev(key)+1,by:me().id,at:Date.now()};}
 const real=list=>(list||[]).filter(a=>a&&a.site&&a.start!=null);
 // cut a list of jobs at time T: keep what happens before T (a job running past T ends at T)
-const cutAt=(list,T)=>real(list).filter(a=>a.start<T).map(a=>Object.assign({},a,{end:(a.end==null||a.end>T)?T:a.end,remind:false}));
+const cutAt=(list,T)=>real(list).filter(a=>a.start<T).map(a=>Object.assign({},a,{end:(a.end==null||a.end>T)?T:a.end,remind:false,home:false}));
 
 // ───────── job list: this crew's recent jobs, active jobs, search ─────────
 function recentFor(crew,day){const seen=new Map();for(let i=0;i<21;i++){const k=addD(day,-i-1);real(effectiveAsgs(crew,k)).forEach(a=>{if(!seen.has(a.site))seen.set(a.site,k);});}
@@ -97,7 +97,7 @@ function css(){if(document.getElementById('p21css'))return;const st=document.cre
 css();
 function host(){let o=document.getElementById('m-p21');if(o)return o;css();
   o=document.createElement('div');o.className='ov hid';o.id='m-p21';o.innerHTML='<div class="md"><div class="hd"></div><div id="p21Body"></div></div>';document.body.appendChild(o);return o;}
-function open(o){S=Object.assign({site:null,who:'crew',people:[],when:'all',at:null,until:'day',back:null,how:'today',note:'',q:'',step:1,pick:null,men:{}},o);
+function open(o){S=Object.assign({site:null,who:'crew',people:[],when:'all',at:null,until:'day',back:null,home:null,how:'today',note:'',q:'',step:1,pick:null,men:{}},o);
   if(S.mode==='split'){S.step=2;const base=real(effectiveAsgs(S.crew,S.day))[0];crewMembers(S.crew).forEach(m=>{const l=real(loansFor(m.id,S.day))[0];S.men[m.id]=l?l.site:(base?base.site:null);});S.base=base?base.site:null;}
   host();draw();show('m-p21');}
 function crewName(c){return nameOf(c);}
@@ -131,8 +131,9 @@ function draw(){const b=document.getElementById('p21Body');if(!b||!S)return;cons
   if(S.who==='people')h+='<div class="p21pp">'+men.map(m=>'<button type="button" class="'+(S.people.includes(m.id)?'on':'')+'" onclick="P21.person(\''+jsq(m.id)+'\')">'+E(short(m,men))+'</button>').join('')+'</div>';
   if(S.mode==='send'){h+='<div class="p21g">'+E(T('When?'))+'</div>'+sel('when',(isT?[['now',T('Right now')]]:[['all',T('All day')]]).concat([['at',T('At a time')]]));
     if(S.when==='at')h+='<div style="margin:4px 2px"><input type="time" id="p21at" value="'+min2hhmm(S.at==null?720:S.at)+'" onchange="P21.at(this.value)"></div>';
-    h+='<div class="p21g">'+E(T('Until?'))+'</div>'+sel('until',[['day',T('Rest of the day')],['back',T(S.who==='people'?'Back to his crew at':'Back to the first job at')]]);
-    if(S.until==='back')h+='<div style="margin:4px 2px"><input type="time" value="'+min2hhmm(backMin())+'" onchange="P21.back2(this.value)"></div>';}
+    h+='<div class="p21g">'+E(T('Until?'))+'</div>'+sel('until',[['day',T('Rest of the day')],['back',T(S.who==='people'?'Back to his crew at':'Back to the first job at')],['home',T('Go home at')]]);
+    if(S.until==='back')h+='<div style="margin:4px 2px"><input type="time" value="'+min2hhmm(backMin())+'" onchange="P21.back2(this.value)"></div>';
+    if(S.until==='home')h+='<div style="margin:4px 2px"><input type="time" id="p21home" value="'+min2hhmm(homeMin())+'" onchange="P21.home(this.value)"></div>';}
   else h+='<div class="p21g">'+E(T('How long?'))+'</div>'+sel('how',[['today',isT?T('Just today'):T('Just this day')],['week',T('Rest of the week')]].concat(S.who==='crew'?[['ong',T('Until I change it')]]:[]));
   h+='<div class="p21g">'+E(T('Note (optional)'))+'</div><textarea id="p21note" placeholder="'+E(T('e.g. bring the ladder'))+'" oninput="P21.note(this.value)">'+E(S.note)+'</textarea>';
   h+='<div class="p21sum">'+summary()+'</div><button class="btn" style="margin-top:12px" onclick="P21.go()">'+E(T(S.mode==='send'?'Send':'Book'))+'</button><button class="btn sec2" style="margin-top:8px" onclick="hide(\'m-p21\')">'+E(T('Cancel'))+'</button>';
@@ -140,6 +141,10 @@ function draw(){const b=document.getElementById('p21Body');if(!b||!S)return;cons
 function startMin(){const isT=S.day===todayK();if(S.mode!=='send'&&S.mode!=='split')return DAY_START;if(S.when==='now'&&isT)return Math.max(DAY_START,Math.floor(nowMin()/5)*5);if(S.when==='at')return S.at==null?720:S.at;return DAY_START;}
 function backMin(){const st=startMin();const b=S.back==null?Math.min(endOf(S.day)-30,st+180):S.back;return Math.max(st+15,Math.min(b,endOf(S.day)-15));}
 const backOn=()=>S.mode==='send'&&S.until==='back';
+// Baruch 11/20: "Go home at" — the day ends at the time he picks (e.g. Friday till 3:00 PM instead of 1:15). The pack-up message,
+// the automatic close and the tracker follow it (server: private.man_sched_end). Default: 2 hours after the normal end.
+function homeMin(){const st=startMin();const h=S.home==null?Math.min(22*60,endOf(S.day)+120):S.home;return Math.max(st+15,Math.min(h,23*60+45));}
+const homeOn=()=>S.mode==='send'&&S.until==='home';
 // the job the crew is on at a given time that day (where the men go back to)
 function jobAt(crew,day,m){const L=real(effectiveAsgs(crew,day));const a=L.find(x=>x.start<=m&&(x.end==null||x.end>m))||L.filter(x=>x.start<=m).pop()||L[0];return a?a.site:null;}
 function names(ids){const n=ids.map(id=>(D.emps.find(e=>e.id===id)||{}).name||'').map(x=>x.split(' ')[0]);return n.length<=1?n.join(''):n.slice(0,-1).join(', ')+' '+T('and')+' '+n[n.length-1];}
@@ -150,8 +155,8 @@ function summary(){const st=startMin();const s=S.site?siteName(S.site).split(','
     return Object.keys(by).map(id=>'<b>'+E(names(by[id]))+'</b> → '+E(siteName(id).split(',')[0])).join('<br>')+'<br>'+E(T('from'))+' '+E(fMin(st))+'. '+E(remindTxt&&S.when==='at'?T('They get a message now and again at')+' '+fMin(st)+'.':T('They get a message right away.'));}
   const who=S.who==='crew'?crewName(S.crew):names(S.people);
   if(S.mode==='send'){const rest=S.who==='people'?crewMembers(S.crew).filter(m=>!S.people.includes(m.id)).map(m=>m.id):[];
-    const bk=backOn()?backMin():endOf(S.day);const home=backOn()?jobAt(S.crew,S.day,st):null;
-    return '<b>'+E(who)+'</b> → <b>'+E(s)+'</b> '+E(T('from'))+' '+E(fMin(st))+' '+E(T('till'))+' '+E(fMin(bk))+(home?', '+E(T('then back to'))+' '+E(siteName(home).split(',')[0]):'')+'. '
+    const bk=backOn()?backMin():homeOn()?homeMin():endOf(S.day);const home=backOn()?jobAt(S.crew,S.day,st):null;
+    return '<b>'+E(who)+'</b> → <b>'+E(s)+'</b> '+E(T('from'))+' '+E(fMin(st))+' '+E(T('till'))+' '+E(fMin(bk))+(home?', '+E(T('then back to'))+' '+E(siteName(home).split(',')[0]):'')+(homeOn()?', '+E(T('then home')):'')+'. '
       +(rest.length?E(names(rest))+' '+E(T(rest.length===1?'stays at':'stay at'))+' '+E(siteName((real(effectiveAsgs(S.crew,S.day))[0]||{}).site||'').split(',')[0])+'. ':'')
       +E(S.when==='at'&&remindTxt?T('They get a message now and again at')+' '+fMin(st)+'.':T('They get a message right away.'));}
   if(S.how==='ong')return '<b>'+E(who)+'</b> → <b>'+E(s)+'</b> '+E(T('every workday from'))+' '+E(fmtDay(S.day))+', '+E(T('Sunday–Friday'))+', 8:00 AM – 7:00 PM ('+E(T('Fri till 1:15 PM'))+'). '+E(T('Other days already booked stay as they are.'));
@@ -173,13 +178,13 @@ async function go(){const st=startMin();const isT=S.day===todayK();
   if(S.who==='people'){const days=S.mode==='send'?[day]:daysFor();const keys=[];days.forEach(k=>S.people.forEach(id=>keys.push(loanKey(id,k))));
     const bk=backOn()?backMin():null;const home=bk!=null?jobAt(crew,day,st):null;
     const ok=await put(keys,()=>{days.forEach(k=>S.people.forEach(id=>{const key=loanKey(id,k);const s0=k===day?st:DAY_START;const keep=cutAt(loansFor(id,k),s0);
-      const add=[{site,start:s0,end:bk!=null&&k===day?bk:endOf(k),note,remind:remind&&k===day}];
+      const hm=homeOn()&&k===day?homeMin():null;const add=[{site,start:s0,end:bk!=null&&k===day?bk:hm!=null?hm:endOf(k),note,remind:remind&&k===day,home:hm!=null}];
       // back to his crew's job at that time: a reminder 'time to go' goes out then
       if(bk!=null&&k===day&&home)add.push({site:home,start:bk,end:endOf(k),note:'',remind:true});
       D.sched[key]=loanRow(id,key,keep.concat(add));}));},T(S.mode==='send'?'Sent':'Booked'));
     if(ok)hide('m-p21');return;}
   if(S.mode==='send'){const key=crew+'|'+day;const keep=st>DAY_START?cutAt(effectiveAsgs(crew,day),st):[];const bk=backOn()?backMin():null;const home=bk!=null?jobAt(crew,day,st):null;
-    const add=[{site,start:st,end:bk!=null?bk:endOf(day),note,remind}];if(bk!=null&&home)add.push({site:home,start:bk,end:endOf(day),note:'',remind:true});
+    const hm=homeOn()?homeMin():null;const add=[{site,start:st,end:bk!=null?bk:hm!=null?hm:endOf(day),note,remind,home:hm!=null}];if(bk!=null&&home)add.push({site:home,start:bk,end:endOf(day),note:'',remind:true});
     const ok=await put([key],()=>{D.sched[key]=crewRow(key,keep.concat(add));},T('Sent'));if(ok)hide('m-p21');return;}
   if(S.how==='ong'){const cur=activeRule(crew);const rid=Date.now().toString(36);const rk='ONG:'+crew+':'+rid;const keys=[rk];const dayKey=crew+'|'+day;
     if(cur)keys.push('ONG:'+crew+':'+cur.ruleId);const hadDay=!!D.sched[dayKey];if(hadDay)keys.push(dayKey);
@@ -206,7 +211,7 @@ window.P21={
   change:()=>{S.step=1;draw();},back:()=>{S.pick=null;S.q='';S.step=2;draw();},
   man:id=>{S.pick=id;S.q='';S.step=1;draw();},
   person:id=>{const i=S.people.indexOf(id);if(i>=0)S.people.splice(i,1);else S.people.push(id);draw();},
-  at:v=>{S.at=hhmm2min(v);draw();},back2:v=>{S.back=hhmm2min(v);draw();},note:v=>{S.note=v;const x=document.querySelector('#p21Body .p21sum');if(x)x.innerHTML=summary();},
+  at:v=>{S.at=hhmm2min(v);draw();},back2:v=>{S.back=hhmm2min(v);draw();},home:v=>{S.home=hhmm2min(v);draw();},note:v=>{S.note=v;const x=document.querySelector('#p21Body .p21sum');if(x)x.innerHTML=summary();},
   go:()=>go(),
   // copy ONE crew's day to other days (same day picker and warnings as the day editor's "Copy day")
   copy:(crew,day)=>{schedCrew=crew;openSlot(day);hide('m-slot');slotCopyPrompt();sunOn();}};
