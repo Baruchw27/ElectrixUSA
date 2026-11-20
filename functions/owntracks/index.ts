@@ -126,8 +126,30 @@ async function arrived(adm: any, user: string, sid: string, at: number, lat: num
     return "clock: switched from " + (open.d.site || "a job not in the app");
   }
   if (!open && hourNY(at) >= 6 && hourNY(at) < 19 && dkey(at) === dkey(now) && emp.appClock === true && now - lastAt <= STALE + DWELL) {   // no reminder from old readings
-    await tell("📍 You are at " + short(S.name) + ". Open the app and punch in.", "📍 Está en " + short(S.name) + ". Abra la app y marque entrada.");
-    return "reminded to punch in";
+    // Baruch 11/20 (Lennin got it 9 times in 2 hours): one reminder, a 2nd one 30 minutes later if he is still not punched in,
+    // then ONE message to the office (the same people who get the 8:30 list), then nothing more for that job today.
+    const en = "📍 You are at " + short(S.name) + ". Open the app and punch in.", sp = "📍 Está en " + short(S.name) + ". Abra la app y marque entrada.";
+    const { data: ib } = await adm.from("records").select("data").eq("coll", "inbox").eq("deleted", false).eq("data->>to", user).gte("data->>ts", String(now - 20 * 3600000));
+    const sent = (ib || []).map((r: any) => r.data || {}).filter((x: any) => (x.msg === en || x.msg === sp) && dkey(Number(x.ts)) === dkey(now)).map((x: any) => Number(x.ts)).sort((a: number, b: number) => a - b);
+    if (sent.length === 0 || (sent.length === 1 && now - sent[0] >= 30 * 60000)) { await tell(en, sp); return sent.length ? "reminded again (2nd)" : "reminded to punch in"; }
+    if (sent.length === 1) return "reminded already — 2nd reminder after 30 min";
+    if (now - sent[1] < 15 * 60000) return "reminded twice — office is told 15 min after the 2nd";
+    const tag = "notin:" + user + ":" + sid + ":" + dkey(now);
+    const { data: done } = await adm.from("records").select("id").eq("coll", "inbox").eq("data->>tag", tag);
+    if (done && done.length) return "reminded twice, office told — no more";
+    const { data: cf } = await adm.from("server_config").select("v").eq("k", "clock_check_to").maybeSingle();
+    let to: string[] = ["o1"]; try { const v = JSON.parse(cf?.v || "null"); if (Array.isArray(v) && v.length) to = v.map(String); } catch (_e) { /* default */ }
+    const since = hm(sent[0] - DWELL), nm = String(emp.name || user);
+    for (const o of to) {
+      const { data: oe } = await adm.from("records").select("data").eq("coll", "emps").eq("id", o).maybeSingle();
+      const msg = (oe?.data?.lang === "es")
+        ? "📍 " + nm + " está en " + short(S.name) + " desde las " + since + " y no marcó entrada (se le avisó 2 veces)."
+        : "📍 " + nm + " has been at " + short(S.name) + " since " + since + " and is not punched in (reminded twice).";
+      const nid = "n" + crypto.randomUUID().replace(/-/g, "");
+      await adm.from("records").upsert({ coll: "inbox", id: nid, deleted: false, updated_by: "server", updated_at: new Date().toISOString(),
+        data: { id: nid, to: o, msg, kind: "warn", ts: Date.now(), read: false, link: { tab: "hours" }, auto: true, tag } }, { onConflict: "coll,id" });
+    }
+    return "reminded twice — office told";
   }
   return "";
 }
