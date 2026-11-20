@@ -113,5 +113,9 @@ OwnTracks on the same phone; not needed.
 ## 12. "You are at the job — punch in" reminder (live 11/20 morning)
 - At his job 5 min and not punched in → 1st reminder. Still not punched in 30 min later → 2nd reminder. 15 min after the 2nd →
   ONE message to Shia (o1), Baruch (u1) and the site manager(s) of THAT job (job folder managers; else his crew's manager):
-  "<name> has been at <job> since <time> and is not punched in (reminded twice)." Then nothing more for that job that day.
+  "<name> has been at <job> since <time> and is not punched in, or his punch hasn't reached us yet (no signal?). He was reminded twice."
+  Then nothing more for that job that day.
+- The reminder also says "Already punched in? Open the app where you have signal so it gets sent." (live 11/20 9:31, owntracks v18):
+  a punch made with no signal waits on the phone until the app is open WITH signal (11/20: Mayquin punched 7:06, it arrived 7:29).
+  The server can't know about a punch that hasn't arrived, so reminders can still go out after a man really punched.
 - Why: 11/20 Lennin got the reminder 9 times between 7:31 and 8:57 and never punched in.
