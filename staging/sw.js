@@ -1,5 +1,5 @@
 // Offline support: the app opens even with no signal; data waits on the phone and syncs later.
-const C='electrix-staging-v217'; // STAGING: own cache name
+const C='electrix-staging-v218'; // STAGING: own cache name
 // Baruch 11/5: libraries and opened files stay on the phone across app updates (they used to be downloaded again after every update)
 const BASEC=C.indexOf('electrix-staging')===0?'electrix-staging':'electrix';const LIBC=BASEC+'-libs',FILEC=BASEC+'-files',OPENC=BASEC+'-open',PLANC=BASEC+'-plans',KEEP=[LIBC,FILEC,OPENC,PLANC];   // -plans: p16 plan shelf (cleared by p16 itself)
 const SHELL=['./','index.html','sync.js','extras.js','config.js','manifest.json','icon-192.png','icon-512.png','apple-touch-icon.png','logo-light.svg','logo-dark.svg','scanner-v2.js','scanner-v2-ui.js','catalog-real.json','sched-v21.js','p2.js','p4.js','p5.js','p6.js','p7.js','p8.js','p9.js','p10.js','p11.js','p12.js','p13.js','p14.js','p15.js','p16.js','p17.js','p18.js','p19.js','p20.js','p21.js','p22.js','p23.js','mat-es.js'];
@@ -72,4 +72,28 @@ async function privateFile(e,u){const priv=u.href.replace('/storage/v1/object/pu
   const go=async p=>{const h=new Headers();const rg=e.request.headers.get('range');if(rg)h.set('range',rg);h.set('Authorization','Bearer '+p.token);if(p.anon)h.set('apikey',p.anon);return fetch(priv,{headers:h,mode:'cors',credentials:'omit'});};
   try{let p=PASS||await askPass(e.clientId);if(p){PASS=p;let r=await go(p);if(r.status===400||r.status===401||r.status===403){const p2=await askPass(e.clientId);if(p2&&p2.token!==p.token){PASS=p2;r=await go(p2);}}if(r.ok||r.status===206)return r;}}catch(x){}
   return fetch(e.request); // older link style / not signed in
+}
+// ---- Baruch 11/20 (Lennin, Android): a punch made with no signal is sent from here as soon as the phone has signal again,
+// even with the app closed (Background Sync; Android only). The app wrote the rows ready to send (sync.js bgPrep) into its
+// own IndexedDB (the tag names it); they go to the "punchsync" function with this phone's punch key, which can only save
+// this person's own punches through the same server checks. What was sent is noted in 'sent' so the app takes it off its
+// queue the next time it opens (nothing is sent twice). With the app open on screen this does nothing — the app sends itself.
+self.addEventListener('sync',e=>{const t=e.tag||'';if(t.indexOf('ex-punch|')!==0)return;e.waitUntil(bgSend(t.slice(9),e.lastChance));});
+function bgIdb(name){return new Promise(res=>{try{const r=indexedDB.open(name,1);r.onupgradeneeded=()=>{try{r.result.createObjectStore('kv');}catch(x){}};r.onsuccess=()=>res(r.result);r.onerror=()=>res(null);r.onblocked=()=>res(null);}catch(x){res(null);}});}
+function bgKv(db,mode,fn){return new Promise(res=>{try{const tx=db.transaction('kv',mode);const q=fn(tx.objectStore('kv'));tx.oncomplete=()=>res(q&&'result' in q?q.result:true);tx.onerror=tx.onabort=()=>res(null);}catch(x){res(null);}});}
+async function bgSend(name,last){
+  if(!/^ex_bg_[A-Za-z0-9_]+$/.test(name))return;
+  const cs=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+  if(cs.some(c=>c.visibilityState==='visible'))return;                          // the open app sends by itself
+  const db=await bgIdb(name);if(!db)return;
+  const cfg=await bgKv(db,'readonly',o=>o.get('cfg'));const out=await bgKv(db,'readonly',o=>o.get('out'));
+  if(!cfg||!cfg.key||!cfg.fn||!out||!Array.isArray(out.rows)||!out.rows.length)return;
+  let r;try{r=await fetch(cfg.fn,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dev:cfg.dev,key:cfg.key,rows:out.rows.map(x=>x.row)})});}
+  catch(x){if(last)return;throw x;}                                            // no signal yet: the phone tries again later
+  if(r.status===401){await bgKv(db,'readwrite',o=>o.put({rows:[],at:Date.now(),why:'key'},'out'));return;}   // key gone (signed out): the app sends it
+  if(!r.ok){if(last)return;throw new Error('punchsync '+r.status);}
+  const j=await r.json().catch(()=>({}));const ok=new Set(Array.isArray(j.ok)?j.ok:[]);
+  const sent=(await bgKv(db,'readonly',o=>o.get('sent')))||{};
+  out.rows.forEach(x=>{if(ok.has(x.row.id))sent[x.k]=x.sig;});
+  await bgKv(db,'readwrite',o=>{o.put(sent,'sent');return o.put({rows:out.rows.filter(x=>!ok.has(x.row.id)),at:Date.now()},'out');});   // refused / skipped stay for the app
 }
