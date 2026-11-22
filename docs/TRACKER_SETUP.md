@@ -168,7 +168,7 @@ OwnTracks on the same phone; not needed.
 - How to check a "stuck" punch: private.devices (pending, last_at per phone), private.bg_keys.last_used, edge logs for
   /functions/v1/punchsync, records_history for the punch insert.
 
-## 18. A late report reopens a clock the server closed by mistake (built 11/22, waiting for Baruch's OK to go live)
+## 18. A late report reopens a clock the server closed by mistake (live 11/22 4:43 PM: owntracks v21 = commit a60e58d)
 - What happened (Carlos, Sun 11/22): he left 220 Prospect at 12:59 PM and was back at 1:30, but his phone's reports reached the
   server only at 2:54. At 2:00 the server closed his clock at 12:59 ("left and not back within 1 hour"). The late arrival
   changed nothing because there was no open clock any more. His punch was reopened by hand at 4:40 PM.
