@@ -138,8 +138,10 @@ function ruleFor(cid,k){try{return (rulesForCrew(cid)||[]).filter(r=>(r.from||''
 function changedBy(cid,k){let r=D.sched[cid+'|'+k];if(!r||!r.by){const ru=ruleFor(cid,k);if(ru)r=D.sched['ONG:'+cid+':'+ru.ruleId];}
   if(!r||!r.by||!r.at)return '';const d=new Date(r.at);const when=dkey(d)===todayK()?fmtT(r.at):d.toLocaleDateString(LOC(),{month:'short',day:'numeric'})+' '+fmtT(r.at);
   return T('Changed by')+' '+String(nameOf(r.by)||'').split(' ')[0]+' · '+when;}
-function dayCount(cid,k,site){let n=1,x=k;for(let i=0;i<90;i++){x=addD(x,-1);const wd=new Date(x+'T12:00').getDay();if(wd===6||isOff(x))continue;
-  if(real(effectiveAsgs(cid,x)).some(a=>a.site===site))n++;else break;}return n;}
+// Baruch 11/22: Day 1, 2, 3… keeps counting across weekends — a day the crew wasn't booked anywhere (Sunday, Saturday, a day off)
+// is skipped; only a day at a DIFFERENT job starts the count again (it used to restart every Monday once Sunday wasn't booked)
+function dayCount(cid,k,site){let n=1,x=k;for(let i=0;i<120;i++){x=addD(x,-1);if(isOff(x))continue;
+  const L=real(effectiveAsgs(cid,x));if(L.some(a=>a.site===site))n++;else if(!L.length)continue;else break;}return n;}
 const fullDay=(a,k)=>a.start<=DAY_START&&(a.end==null||a.end>=endOf(k));
 function lateIds(cid){const t0=new Date().toDateString();const last={};(D.goHomeLog||[]).filter(x=>x&&new Date(x.ts).toDateString()===t0).sort((a,b)=>a.ts-b.ts).forEach(x=>{last[x.who]=x;});return crewGuys({id:cid}).map(e=>e.id).filter(id=>last[id]&&last[id].kind==='late');}
 function dayHours(id,k){return (D.punches||[]).filter(p=>p&&p.who===id&&p.in!=null&&dkey(new Date(p.in))===k&&!p.voided&&!p.rejected&&(typeof payCounts!=='function'||payCounts(p))&&(p.out||p.away)).reduce((s,p)=>s+punchDur(p),0);}
