@@ -157,7 +157,7 @@ function hasProb(e,ws){return tcPunches(e.id,ws).some(tcMissing);}
 window.renderTimeCards=function(){const box=$('tcBox');if(!box)return;if(tcEditing()){tcLater();return;}
   const sy=window.scrollY,sc=[];{let el=box.parentElement;while(el){if(el.scrollHeight>el.clientHeight&&el.scrollTop)sc.push([el,el.scrollTop]);el=el.parentElement;}}const m=me();if(!canEditHours(m)){box.innerHTML='';return;}
   const ws=tcStart(),we=ws+7*864e5;let G=tcGroups(ws);const sel=!!tcSel&&tcMode==='week';
-  if(tcDay==null){const td=dayIndex(Date.now(),ws);tcDay=td>=0&&td<7?Math.max(1,td-1):1;}
+  if(tcDay==null){const td=dayIndex(Date.now(),ws);tcDay=td>=0&&td<7?td:1;}   // Baruch 11/22: Day opens on today (was yesterday)
   const all=G.flatMap(g=>g.people);let tot=0,ot=0,miss=0,trv=0;all.forEach(e=>{const s=weekStats(e.id,new Date(ws+12*36e5));tot+=s.total;ot+=s.ot;miss+=tcPunches(e.id,ws).filter(tcMissing).length;trv+=tcTravel(e.id,ws);});
   const probN=all.filter(e=>hasProb(e,ws)).length;if(onlyProb&&!probN)onlyProb=false;
   const hn=typeof oldRangeNote==='function'?oldRangeNote('punches',ws,we,renderTimeCards):'';
