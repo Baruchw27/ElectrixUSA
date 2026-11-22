@@ -59,7 +59,7 @@ html[data-theme=dark] .pn-sl i{background:#f2f2f7;color:#111}
 #pg-punch:not(.pnopen) #punchExtra{display:none!important}
 #pg-punch #punchSched,#pg-punch #myListPunch,#pg-punch #quickExp,#pg-punch #mySites{display:none!important}
 .cfimg{display:block;max-width:230px;max-height:260px;border-radius:8px;cursor:pointer;object-fit:cover}.cfile{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:rgba(0,0,0,.06);cursor:pointer;min-width:190px;max-width:260px}html[data-theme=dark] .cfile{background:rgba(255,255,255,.08)}.cfic{font-size:26px;line-height:1}.cfnm{display:flex;flex-direction:column;min-width:0}.cfnm b{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cfnm small{font-size:12px;opacity:.65}.crow .cclip{width:34px;margin-right:-6px}</style>
-<script>window.EX_VER='vs190c1122';</script><script src="config.js"></script>
+<script>window.EX_VER='vs191c1122';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="sync.js?vs190c1122"></script>
 <script src="extras.js?vs190c1122"></script>
@@ -4469,7 +4469,9 @@ function laborModel(from,until,H){const wk={},pay={},paidTr={};const wkey=ts=>dk
   D.punches.forEach(p=>{if(!p||p.in<lo||p.in>=hi||!payCounts(p)||!(p.out||p.away)||(ok&&p.in<H.cut))return;const k=p.who+'|'+wkey(p.in);wk[k]=(wk[k]||0)+punchDur(p);});
   if(ok){H.agg.forEach(a=>{const k=a.who+'|'+a.wk;wk[k]=(wk[k]||0)+a.h;});H.raw.forEach(p=>{if(!payCounts(p)||!(p.out||p.away))return;const k=p.who+'|'+wkey(p.in);wk[k]=(wk[k]||0)+punchDur(p);});}
   (D.fcpay||[]).forEach(c=>{if(!c||c.deleted||!c.periodBegin)return;const k=c.who+'|'+c.periodBegin;const o=pay[k]||(pay[k]={wages:0,h:0,tr:0,gross:0,ot:0});o.wages+=(+c.reg||0)+(+c.ot||0);o.h+=(+c.regH||0)+(+c.otH||0);o.ot+=+c.otH||0;o.tr+=+c.travel||0;o.gross+=+c.gross||0;if(+c.travel>0)paidTr[k]=1;});
-  const perHour=k=>{const P=pay[k];if(P&&P.h>0)return {r:P.wages/P.h,est:false};const who=k.split('|')[0];const r=rateOf(who);if(r==null)return {r:0,est:true,none:true};const h=wk[k]||0;const ot=Math.max(0,h-OT_AFTER);return {r:h?r*(h+0.5*ot)/h:r,est:true};};
+  const perHour=k=>{const P=pay[k];if(P&&P.h>0)return {r:P.wages/P.h,est:false};
+  // Baruch 11/22: a paid week whose checks net to 0 hours (check cancelled, e.g. a loan taken back) costs what payroll paid, spread over his punched hours
+  if(P&&(wk[k]||0)>0)return {r:Math.max(0,P.wages)/wk[k],est:false};const who=k.split('|')[0];const r=rateOf(who);if(r==null)return {r:0,est:true,none:true};const h=wk[k]||0;const ot=Math.max(0,h-OT_AFTER);return {r:h?r*(h+0.5*ot)/h:r,est:true};};
   return {wk,pay,wkey,perHour,paidTr};}
 function repLabor(from,until,money_,H){const L=laborModel(from,until,H);const inR=ts=>ts>=from&&ts<until;
   const pun=repPun(from,until,H);const wkOf=p=>p.wk||L.wkey(p.in);
