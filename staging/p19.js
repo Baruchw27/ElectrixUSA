@@ -21,10 +21,12 @@ const css=document.createElement('style');css.textContent=
  '#pg-hours{max-width:760px;margin-left:auto;margin-right:auto}'
 +'#p19h{display:flex;align-items:center;justify-content:space-between;gap:10px}#p19h h2{margin:0}'
 +'.p19per{font:inherit;font-size:13.5px;font-weight:600;color:var(--g5);background:var(--g1);border:0;border-radius:8px;padding:7px 10px;display:inline-flex;align-items:center;gap:4px;cursor:pointer}'
-+'#paySeg.p19tabs{display:flex;gap:20px;margin:12px 0 14px!important;border-bottom:1px solid var(--g2);overflow-x:auto;scrollbar-width:none}#paySeg.p19tabs::-webkit-scrollbar{display:none}'
++'#paySeg.p19tabs{position:sticky;top:var(--p19t0,47px);z-index:41;background:var(--g0);display:flex;gap:20px;margin:12px 0 14px!important;border-bottom:1px solid var(--g2);overflow-x:auto;scrollbar-width:none}#paySeg.p19tabs::-webkit-scrollbar{display:none}'
 +'#paySeg.p19tabs button{font:inherit;font-size:14.5px;background:none;border:0;padding:8px 0 10px;color:var(--g4);position:relative;white-space:nowrap;cursor:pointer}'
 +'#paySeg.p19tabs button.on{color:var(--g5);font-weight:600}#paySeg.p19tabs button.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;border-radius:2px;background:var(--blue-mid,#d93a2b)}'
 +'#paySeg.p19tabs .n{display:inline-block;min-width:16px;padding:0 5px;margin-left:5px;border-radius:9px;background:#c0392b;color:#fff;font-size:11px;font-weight:600;line-height:17px;text-align:center}'
++'@supports (overflow-x:clip){html:has(#pg-hours.on),html:has(#pg-hours.on) body{overflow-x:clip}}'   // Baruch 11/22: overflow-x:hidden made the page unable to lock anything on top; clip stops sideways sliding the same way (payroll page only)
++'.p19stick{position:sticky;top:calc(var(--p19t0,47px) + var(--p19t1,44px));z-index:40;background:var(--g0);padding:0 0 8px;margin:0 0 2px}.p19stick .card{margin:0;box-shadow:0 6px 14px -10px rgba(0,0,0,.35)}'
 +'.p19nav{display:flex;align-items:center;justify-content:space-between;gap:8px}.p19nav button{width:38px;height:38px;border-radius:10px;border:1px solid var(--g2);background:var(--g1);color:var(--g5);font-size:18px;cursor:pointer}'
 +'.p19st{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:10px}.p19st>div{background:var(--g1);border-radius:10px;padding:8px 4px;text-align:center}.p19st b{display:block;font-size:17px}.p19st span{font-size:11.5px;color:var(--g4)}'
 +'.p19st .bad b{color:#c0392b}.p19st .tap{cursor:pointer}'
@@ -57,7 +59,8 @@ window.renderPaySeg=function(){const el=$('paySeg');if(!el)return;if(!SECS.some(
   const n=payFixCount()+clockIssues().length;el.className='p19tabs';
   el.innerHTML=SECS.map(([k,l])=>'<button class="'+(paySec===k?'on':'')+'" onclick="setPaySec(\''+k+'\')">'+E(T(l))+(k==='fix'&&n?'<span class="n">'+n+'</span>':'')+'</button>').join('');
   document.querySelectorAll('#pg-hours [data-ps]').forEach(d=>{d.style.display=d.getAttribute('data-ps')===paySec?'':'none';});
-  if(paySec==='cards')setTimeout(()=>{try{P19.lay();}catch(e){}},0);   // the labels are placed once the page is showing (it was hidden while drawn)
+  if(paySec==='cards')setTimeout(()=>{try{P19.lay();}catch(e){}},0);
+  try{const tb=document.querySelector('.top');const ps=$('paySeg');const r=document.documentElement;if(tb)r.style.setProperty('--p19t0',(getComputedStyle(tb).position==='sticky'||getComputedStyle(tb).position==='fixed'?tb.offsetHeight:0)+'px');if(ps&&ps.offsetHeight)r.style.setProperty('--p19t1',ps.offsetHeight+'px');}catch(e){}   // the labels are placed once the page is showing (it was hidden while drawn)
   head();};
 try{renderPaySeg=window.renderPaySeg;}catch(e){}
 
@@ -176,9 +179,10 @@ window.renderTimeCards=function(){const box=$('tcBox');if(!box)return;if(tcEditi
   // Tap a day → it turns dark and everyone's day shows. Tap it again → it turns white and the week is back.
   {const DL=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];const isDay=tcMode==='day';
     let dh=0,dw=0,dm=0;if(isDay)all.forEach(e=>{const dp=tcPunches(e.id,ws).filter(p=>dayIndex(p.in,ws)===tcDay);if(dp.length)dw++;if(dp.some(tcMissing))dm++;dh+=dp.reduce((a,p)=>a+((p.out||p.away||!tcMissing(p))?punchDur(p):0),0);});
-    top='<div class="card" style="padding:12px 14px">'+nav('tcMove',lbl,ws===weekStart().getTime()?T('This week'):ws===weekStart().getTime()-7*864e5?T('Last week'):'')
-      +'<div class="p19strip">'+DL.map((d,i)=>'<button class="'+(isDay&&i===tcDay?'on':'')+'" onclick="P19.dday('+i+')">'+E(T(d).slice(0,2))+'<b>'+new Date(ws+i*864e5+12*36e5).getDate()+'</b></button>').join('')+'</div>'
-      +(isDay?'<div class="p19st" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+box_(dh.toFixed(1),T('hours'))+box_(dw,T('worked'))+box_(dm,T('missing'),dm?'bad':'')+'</div>'
+    // Baruch 11/22: the dates and the days stay locked on top while you scroll down to crew 5
+    top='<div class="p19stick"><div class="card" style="padding:12px 14px">'+nav('tcMove',lbl,ws===weekStart().getTime()?T('This week'):ws===weekStart().getTime()-7*864e5?T('Last week'):'')
+      +'<div class="p19strip">'+DL.map((d,i)=>'<button class="'+(isDay&&i===tcDay?'on':'')+'" onclick="P19.dday('+i+')">'+E(T(d).slice(0,2))+'<b>'+new Date(ws+i*864e5+12*36e5).getDate()+'</b></button>').join('')+'</div></div></div>'
+      +'<div class="card" style="padding:4px 14px 12px">'+(isDay?'<div class="p19st" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+box_(dh.toFixed(1),T('hours'))+box_(dw,T('worked'))+box_(dm,T('missing'),dm?'bad':'')+'</div>'
         :'<div class="p19st">'+box_(tot.toFixed(1),T('hours'))+box_(ot.toFixed(1),T('overtime'))+box_(miss,T('missing'),miss?'bad':'',miss?"setPaySec('fix')":'')+(TRAVEL_ON?box_(money(trv).replace(/\.00$/,''),T('travel')):'')+'</div>')
       +'</div>'+hn;
     if(!isDay){top+=sendCard(ws,we)
