@@ -1,5 +1,5 @@
 // Offline support: the app opens even with no signal; data waits on the phone and syncs later.
-const C='electrix-v177';
+const C='electrix-v178';
 // Baruch 11/5: libraries and opened files stay on the phone across app updates (they used to be downloaded again after every update)
 const BASEC=C.indexOf('electrix-staging')===0?'electrix-staging':'electrix';const LIBC=BASEC+'-libs',FILEC=BASEC+'-files',OPENC=BASEC+'-open',PLANC=BASEC+'-plans',KEEP=[LIBC,FILEC,OPENC,PLANC];   // -plans: p16 plan shelf (cleared by p16 itself)
 const SHELL=['./','index.html','sync.js','extras.js','config.js','manifest.json','icon-192.png','icon-512.png','apple-touch-icon.png','logo-light.svg','logo-dark.svg','scanner-v2.js','scanner-v2-ui.js','catalog-real.json','sched-v21.js','p2.js','p4.js','p5.js','p6.js','p7.js','p8.js','p9.js','p10.js','p11.js','p12.js','p13.js','p14.js','p15.js','p16.js','p17.js','p18.js','p19.js','p20.js','p21.js','p22.js','p23.js','mat-es.js'];
@@ -51,7 +51,7 @@ self.addEventListener('push',e=>{let d={};try{d=e.data.json();}catch(x){d={title
       const lines=items.slice(0,12).map(x=>'• '+String(x.msg||'').replace(/\s+/g,' ').slice(0,90));if(n>12)lines.push(es?'+ '+(n-12)+' más':'+ '+(n-12)+' more');
       o={body:lines.join('\n'),icon:'icon-192.png',badge:'icon-192.png',tag:'ex-sum',renotify:true,data:{id:'',link:{bell:1},msg:'',items}};
       for(const x of cur){try{x.close();}catch(y){}}}
-    const jobs=[self.registration.showNotification(title,o)];
+    const jobs=[self.registration.showNotification(title,o),bgPush().catch(()=>{})];   // Baruch 11/21: a notification means signal — send waiting punches now (iPhones)
     if(typeof d.badge==='number'&&self.navigator&&self.navigator.setAppBadge)jobs.push(self.navigator.setAppBadge(d.badge).catch(()=>{}));   // P2: unread count on the app icon
     await Promise.all(jobs);})());});
 
@@ -89,3 +89,8 @@ async function bgSend(name,last){
   out.rows.forEach(x=>{if(ok.has(x.row.id))sent[x.k]=x.sig;});
   await bgKv(db,'readwrite',o=>{o.put(sent,'sent');return o.put({rows:out.rows.filter(x=>!ok.has(x.row.id)),at:Date.now()},'out');});   // refused / skipped stay for the app
 }
+// Baruch 11/21 (iPhones have no background sending): any notification that reaches the phone wakes this helper for a few
+// seconds, and a notification only arrives when there is signal — so it sends the punches waiting on the phone right then.
+function bgPush(){return new Promise(res=>{try{const r=indexedDB.open('ex_bg_reg',1);r.onupgradeneeded=()=>{try{r.result.createObjectStore('kv');}catch(x){}};
+  r.onsuccess=()=>{try{const tx=r.result.transaction('kv','readonly');const q=tx.objectStore('kv').get(self.registration.scope);tx.oncomplete=()=>res(q.result||null);tx.onerror=()=>res(null);}catch(x){res(null);}};r.onerror=()=>res(null);}catch(x){res(null);}})
+  .then(name=>name?bgSend(name,true):null);}

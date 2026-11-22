@@ -77,7 +77,13 @@ function storeQ(){return putSafe('ex_queue',JSON.stringify(queue));}
 // (it can only save this person's own punches, through the same server checks). Back in the app, what the helper already
 // sent is taken off the queue (bgAdopt), so nothing is sent twice.
 const BG_DB='ex_bg_'+String(CFG.url||'local').replace(/^https?:\/\//,'').replace(/[^a-z0-9]/gi,'_');
-const BG_ON=('serviceWorker' in navigator)&&('SyncManager' in window)&&!!window.indexedDB&&!!CFG.url;
+// Baruch 11/21: iPhones too — they have no background sending, but every notification that reaches the phone wakes the helper
+// for a few seconds and it sends the waiting punches then (sw.js push → bgPush). So every phone keeps its rows ready.
+const BG_ON=('serviceWorker' in navigator)&&!!window.indexedDB&&!!CFG.url;
+const BG_SYNC=BG_ON&&('SyncManager' in window);
+// the helper finds this app's database by its own scope (live and the test app share one web address)
+async function bgReg(){try{const reg=await navigator.serviceWorker.ready;if(!reg||!reg.scope)return;await new Promise(res=>{const r=indexedDB.open('ex_bg_reg',1);
+  r.onupgradeneeded=()=>{try{r.result.createObjectStore('kv');}catch(e){}};r.onsuccess=()=>{try{const tx=r.result.transaction('kv','readwrite');tx.objectStore('kv').put(BG_DB,reg.scope);tx.oncomplete=()=>res();tx.onerror=()=>res();}catch(e){res();}};r.onerror=()=>res();});}catch(e){}}
 let bgDbP=null;
 function bgDb(){if(bgDbP)return bgDbP;bgDbP=new Promise(res=>{try{const r=indexedDB.open(BG_DB,1);r.onupgradeneeded=()=>{try{r.result.createObjectStore('kv');}catch(e){}};
   r.onsuccess=()=>res(r.result);r.onerror=()=>res(null);r.onblocked=()=>res(null);}catch(e){res(null);}});return bgDbP;}
@@ -87,10 +93,10 @@ const bgGet=k=>bgOp('readonly',o=>o.get(k));const bgPut=(k,v)=>bgOp('readwrite',
 let bgCfg=null;
 async function bgKey(){if(!BG_ON||!REAL||!ready||!st.online)return;try{
   const s=await withTO(sb.auth.getSession(),6000,'bg');const uid=s&&s.data&&s.data.session&&s.data.session.user?s.data.session.user.id:null;if(!uid)return;
-  const cfg=bgCfg||await bgGet('cfg');if(cfg&&cfg.key&&cfg.uid===uid&&Date.now()-cfg.at<7*864e5){bgCfg=cfg;return;}
+  const cfg=bgCfg||await bgGet('cfg');if(cfg&&cfg.key&&cfg.uid===uid&&Date.now()-cfg.at<7*864e5){if(!bgCfg)bgReg();bgCfg=cfg;return;}
   const dev=(cfg&&cfg.dev)||('d'+Array.from(crypto.getRandomValues(new Uint8Array(12))).map(b=>b.toString(16).padStart(2,'0')).join(''));
   const r=await withTO(sb.rpc('bg_key_register',{p_dev:dev}),8000,'bg key');if(!r||r.error||!r.data)return;
-  bgCfg={dev,key:r.data,uid,fn:CFG.url+'/functions/v1/punchsync',at:Date.now()};await bgPut('cfg',bgCfg);}catch(e){}}
+  bgCfg={dev,key:r.data,uid,fn:CFG.url+'/functions/v1/punchsync',at:Date.now()};await bgPut('cfg',bgCfg);await bgReg();}catch(e){}}
 // the row exactly as _flush builds it (punches only; a punch with a photo is left for the app)
 function bgRow(o){const live=liveRecord(o.coll,o.id);const cur=JSON.parse(JSON.stringify(upStrip(o.coll,live||o.data)));
   if(!cur||typeof cur!=='object'||Object.keys(cur).some(f=>typeof cur[f]==='string'&&cur[f].startsWith('data:')))return null;
@@ -104,14 +110,14 @@ function bgPrep(){if(!BG_ON||!REAL)return;clearTimeout(bgT);bgT=setTimeout(async
   const rows=[];Object.keys(queue).forEach(k=>{const o=queue[k];if(!o||o.coll!=='punches'||o.del)return;const row=bgRow(o);if(row)rows.push({k,sig:canon(o.data),row});});
   if(!rows.length)return;const cfg=bgCfg||await bgGet('cfg');if(!cfg||!cfg.key)return;
   await bgPut('out',{rows,at:Date.now()});
-  const reg=await navigator.serviceWorker.ready;if(reg&&reg.sync)await reg.sync.register('ex-punch|'+BG_DB);}catch(e){}},300);}
+  if(BG_SYNC){const reg=await navigator.serviceWorker.ready;if(reg&&reg.sync)await reg.sync.register('ex-punch|'+BG_DB);}}catch(e){}},300);}   // iPhone: sent when a notification arrives
 // what the helper already sent while the app was closed: take it off the queue (only if unchanged since), then refresh
 async function bgAdopt(){if(!BG_ON)return 0;try{const sent=await bgGet('sent');if(!sent||typeof sent!=='object'||!Object.keys(sent).length)return 0;let n=0;
   Object.keys(sent).forEach(k=>{const o=queue[k];if(o&&!o.del&&canon(o.data)===sent[k]){delete queue[k];n++;}});
   await bgPut('sent',{});if(n){saveQ();setTimeout(()=>{try{catchUp();}catch(_){}},0);}return n;}catch(e){return 0;}}
 async function bgForget(){if(!BG_ON)return;try{const c=bgCfg||await bgGet('cfg');if(c&&c.dev&&st.online){try{await withTO(sb.rpc('bg_key_drop',{p_dev:c.dev}),3000,'bg off');}catch(e){}}
   bgCfg=null;await bgPut('cfg',null);await bgPut('out',{rows:[],at:Date.now()});await bgPut('sent',{});}catch(e){}}
-window.EX_bg={on:BG_ON,db:BG_DB,get:bgGet,prep:()=>bgPrep(),adopt:bgAdopt,key:bgKey};
+window.EX_bg={on:BG_ON,sync:BG_SYNC,db:BG_DB,get:bgGet,prep:()=>bgPrep(),adopt:bgAdopt,key:bgKey};
 function saveQ(){const n=Object.keys(queue).length;st.pending=n;const ok=storeQ();durState();if(BG_ON&&n&&(!st.online||!ready))bgPrep();return ok;}
 window.EX_queued=function(coll,id){return !!queue[coll+'\u0001'+id];};
 window.EX_queuedIn=function(coll){return Object.keys(queue).filter(k=>queue[k]&&queue[k].coll===coll).map(k=>queue[k].id);};

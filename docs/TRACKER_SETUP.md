@@ -129,3 +129,11 @@ OwnTracks on the same phone; not needed.
   Sign-out turns the key off (bg_key_drop). Keys: private.bg_keys (last_used shows when a phone used it).
 - With the app open on screen the helper does nothing (the app sends). What the helper sent is taken off the app's list
   when it opens (bgAdopt) — nothing is sent twice. Punches with a photo are left for the app.
+
+## 14. iPhones + fewer wrong reminders (live 11/21 night, app vh111, owntracks v19, sql/office_no_punch_reminders.sql)
+- iPhones: every notification that reaches the phone wakes the app's helper for a few seconds and it sends the punches waiting
+  on the phone (sw.js push → bgPush). Needs the app INSTALLED on the home screen + notifications allowed. Every phone (not only
+  Android) now gets a punch key; the helper finds its app's database by its scope (IndexedDB 'ex_bg_reg').
+- "You are at the job — punch in": never for office people / the owner (role office/owner, i.e. Shia), and none after the
+  workday — 7:00 PM, Friday 1:15 PM, or the "Go home at" time — unless kept late with Stay late.
+- Server: the 8:05 "Time to punch in" reminder and the 8:30 "not punched in yet" list leave out office/owner too.
