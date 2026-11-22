@@ -126,6 +126,17 @@ async function arrived(adm: any, user: string, sid: string, at: number, lat: num
     return "clock: switched from " + (open.d.site || "a job not in the app");
   }
   if (!open && hourNY(at) >= 6 && hourNY(at) < 19 && dkey(at) === dkey(now) && emp.appClock === true && now - lastAt <= STALE + DWELL) {   // no reminder from old readings
+    // Baruch 11/21: office people (Shia …) and the owner never get "punch in" reminders; and none after the workday ends —
+    // 7:00 PM, Friday 1:15 PM, or the go-home time the boss set ("Go home at") — unless he was kept late (Stay late)
+    if (emp.role === "office" || emp.role === "owner") return "office — no punch-in reminder";
+    { const day = dkey(at); const dow = new Date(day + "T12:00:00Z").getUTCDay();
+      const endM = (await schedEnd(adm, emp, user, day)) ?? (dow === 5 ? 795 : 1140);
+      const mNY = hourNY(at) * 60 + Number(new Intl.DateTimeFormat("en-US", { timeZone: TZ, minute: "numeric" }).format(new Date(at)));
+      if (mNY >= endM) {
+        const { data: gl } = await adm.from("records").select("data").eq("coll", "goHomeLog").eq("deleted", false).eq("data->>who", user);
+        const last = (gl || []).map((r: any) => r.data || {}).filter((x: any) => Number(x.ts) > 0 && dkey(Number(x.ts)) === day).sort((a: any, b: any) => Number(a.ts) - Number(b.ts)).pop();
+        if (!(last && last.kind === "late")) return "after the workday — no punch-in reminder";
+      } }
     // Baruch 11/20 (Lennin got it 9 times in 2 hours): one reminder, a 2nd one 30 minutes later if he is still not punched in,
     // then ONE message to the office (the same people who get the 8:30 list), then nothing more for that job today.
     // Baruch 11/20: a punch made with no signal waits on his phone — the reminder tells him to open the app where he has signal
