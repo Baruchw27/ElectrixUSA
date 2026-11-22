@@ -24,7 +24,7 @@ Object.assign(ES,{'Send to another job':'Mandar a otro trabajo','Split the crew'
  'Who?':'¿Quién?','Whole crew':'Toda la cuadrilla','Pick people':'Elegir personas','When?':'¿Cuándo?','All day':'Todo el día','Right now':'Ahora mismo','At a time':'A una hora',
  'Note (optional)':'Nota (opcional)','e.g. bring the ladder':'ej. traer la escalera','Book':'Reservar','Send':'Mandar','Change job':'Cambiar trabajo','Back':'Atrás',
  'Go to':'Ir a','Pick at least one person':'Elija por lo menos una persona','Pick a time':'Elija una hora','yesterday':'ayer','today':'hoy',
- 'every workday from':'cada día de trabajo desde','Sunday–Friday':'domingo a viernes','Fri till 1:15 PM':'viernes hasta 1:15 PM',
+ 'every workday from':'cada día de trabajo desde','Sunday–Friday':'domingo a viernes','Monday–Friday':'lunes a viernes','Fri till 1:15 PM':'viernes hasta 1:15 PM',
  'They get a message right away.':'Reciben un mensaje enseguida.','They get a message now and again at':'Reciben un mensaje ahora y otra vez a las',
  'Other days already booked stay as they are.':'Los otros días ya reservados quedan como están.','stays at':'se queda en','stay at':'se quedan en',
  'Go home at':'Se van a casa a las','then home':'y luego a casa','Booked':'Reservado','Sent':'Mandado','Saved on this phone — it will be sent automatically':'Guardado en este teléfono — se mandará automáticamente',
@@ -163,7 +163,7 @@ function summary(){const st=startMin();const s=S.site?siteName(S.site).split(','
     return '<b>'+E(who)+'</b> → <b>'+E(s)+'</b> '+E(T('from'))+' '+E(fMin(st))+' '+E(T('till'))+' '+E(fMin(bk))+(home?', '+E(T('then back to'))+' '+E(siteName(home).split(',')[0]):'')+(homeOn()?', '+E(T('then home')):'')+'. '
       +(rest.length?E(names(rest))+' '+E(T(rest.length===1?'stays at':'stay at'))+' '+E(siteName((real(effectiveAsgs(S.crew,S.day))[0]||{}).site||'').split(',')[0])+'. ':'')
       +E(S.when==='at'&&remindTxt?T('They get a message now and again at')+' '+fMin(st)+'.':T('They get a message right away.'));}
-  if(S.how==='ong')return '<b>'+E(who)+'</b> → <b>'+E(s)+'</b> '+E(T('every workday from'))+' '+E(fmtDay(S.day))+', '+E(T('Sunday–Friday'))+', 8:00 AM – 7:00 PM ('+E(T('Fri till 1:15 PM'))+'). '+E(T('Other days already booked stay as they are.'));
+  if(S.how==='ong')return '<b>'+E(who)+'</b> → <b>'+E(s)+'</b> '+E(T('every workday from'))+' '+E(fmtDay(S.day))+', '+E(T('Monday–Friday'))+', 8:00 AM – 7:00 PM ('+E(T('Fri till 1:15 PM'))+'). '+E(T('Other days already booked stay as they are.'));
   const ds=daysFor();return '<b>'+E(who)+'</b> → <b>'+E(s)+'</b>: '+E(ds.length>1?fmtDay(ds[0])+' – '+fmtDay(ds[ds.length-1]):fmtDay(ds[0]))+', 8:00 AM – '+E(fMin(endOf(ds[0])))+(ds.length>1&&ds.some(isFri)?' ('+E(T('Fri till 1:15 PM'))+')':'')+'.';}
 
 // ───────── doing it ─────────
@@ -194,7 +194,7 @@ async function go(){const st=startMin();const isT=S.day===todayK();
     if(cur)keys.push('ONG:'+crew+':'+cur.ruleId);const hadDay=!!D.sched[dayKey];if(hadDay)keys.push(dayKey);
     const ok=await put(keys,()=>{if(cur){const ck='ONG:'+crew+':'+cur.ruleId;const prev=addD(day,-1);
         if(prev<(cur.from||'')&&(cur.from||'')>=todayK())delete D.sched[ck];else D.sched[ck]=Object.assign({},D.sched[ck],{to:prev,rev:(cur.rev||0)+1,by:me().id,at:Date.now()});}
-      D.sched[rk]={site,start:DAY_START,end:DAY_END,workdays:WORKDAYS,from:day,to:null,note,rev:1,by:me().id,at:Date.now()};
+      D.sched[rk]={site,start:DAY_START,end:DAY_END,workdays:[1,2,3,4,5],from:day,to:null,note,rev:1,by:me().id,at:Date.now()};
       if(hadDay)delete D.sched[dayKey];},T('Booked'));
     if(ok)hide('m-p21');return;}
   const days=daysFor();const keys=days.map(k=>crew+'|'+k);
