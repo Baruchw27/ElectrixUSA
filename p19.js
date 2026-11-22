@@ -21,10 +21,12 @@ const css=document.createElement('style');css.textContent=
  '#pg-hours{max-width:760px;margin-left:auto;margin-right:auto}'
 +'#p19h{display:flex;align-items:center;justify-content:space-between;gap:10px}#p19h h2{margin:0}'
 +'.p19per{font:inherit;font-size:13.5px;font-weight:600;color:var(--g5);background:var(--g1);border:0;border-radius:8px;padding:7px 10px;display:inline-flex;align-items:center;gap:4px;cursor:pointer}'
-+'#paySeg.p19tabs{display:flex;gap:20px;margin:12px 0 14px!important;border-bottom:1px solid var(--g2);overflow-x:auto;scrollbar-width:none}#paySeg.p19tabs::-webkit-scrollbar{display:none}'
++'#paySeg.p19tabs{position:sticky;top:var(--p19t0,47px);z-index:41;background:var(--g0);display:flex;gap:20px;margin:12px 0 14px!important;border-bottom:1px solid var(--g2);overflow-x:auto;scrollbar-width:none}#paySeg.p19tabs::-webkit-scrollbar{display:none}'
 +'#paySeg.p19tabs button{font:inherit;font-size:14.5px;background:none;border:0;padding:8px 0 10px;color:var(--g4);position:relative;white-space:nowrap;cursor:pointer}'
 +'#paySeg.p19tabs button.on{color:var(--g5);font-weight:600}#paySeg.p19tabs button.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;border-radius:2px;background:var(--blue-mid,#d93a2b)}'
 +'#paySeg.p19tabs .n{display:inline-block;min-width:16px;padding:0 5px;margin-left:5px;border-radius:9px;background:#c0392b;color:#fff;font-size:11px;font-weight:600;line-height:17px;text-align:center}'
++'@supports (overflow-x:clip){html:has(#pg-hours.on),html:has(#pg-hours.on) body{overflow-x:clip}}'   // Baruch 11/22: overflow-x:hidden made the page unable to lock anything on top; clip stops sideways sliding the same way (payroll page only)
++'.p19stick{position:sticky;top:calc(var(--p19t0,47px) + var(--p19t1,44px));z-index:40;background:var(--g0);padding:0 0 8px;margin:0 0 2px}.p19stick .card{margin:0;box-shadow:0 6px 14px -10px rgba(0,0,0,.35)}'
 +'.p19nav{display:flex;align-items:center;justify-content:space-between;gap:8px}.p19nav button{width:38px;height:38px;border-radius:10px;border:1px solid var(--g2);background:var(--g1);color:var(--g5);font-size:18px;cursor:pointer}'
 +'.p19st{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:10px}.p19st>div{background:var(--g1);border-radius:10px;padding:8px 4px;text-align:center}.p19st b{display:block;font-size:17px}.p19st span{font-size:11.5px;color:var(--g4)}'
 +'.p19st .bad b{color:#c0392b}.p19st .tap{cursor:pointer}'
@@ -32,7 +34,7 @@ const css=document.createElement('style');css.textContent=
 +'.p19send{padding:4px 14px!important}.p19send .ln{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--g1);cursor:pointer}.p19send .ln:first-of-type{border-top:0}'
 +'.p19strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-top:10px}.p19strip button{font:inherit;display:flex;flex-direction:column;align-items:center;padding:6px 0;border-radius:10px;border:0;background:none;color:var(--g4);font-size:11.5px;cursor:pointer}'
 +'.p19strip button b{font-size:16px;color:var(--g5);font-weight:600}.p19strip button.on{background:var(--g5);color:var(--g2)}.p19strip button.on b{color:var(--g0,#fff)}'
-+'.p19dh{font:inherit;background:none;border:0;padding:4px 0;cursor:pointer;display:inline-flex;flex-direction:column;align-items:center;color:var(--g4);font-size:10.5px;font-weight:600}.p19dh i{font-style:normal;font-weight:400;font-size:9.5px;color:var(--g3)}'
++'.p19dh{font:inherit;background:none;border:0;padding:4px 0;cursor:pointer;display:inline-flex;flex-direction:column;align-items:center;color:var(--g4);font-size:10.5px;font-weight:600}.p19dh i{font-style:normal;font-weight:400;font-size:9.5px;color:var(--g3)}.p19dh.on{color:var(--g5);box-shadow:inset 0 -2px 0 var(--blue-mid,#d93a2b)}.p19dh.on i{color:var(--g5)}.p19dt{display:flex;justify-content:space-between;align-items:baseline;margin:6px 0 0;padding:10px 0 2px;border-top:1px solid var(--g2);font-size:13px;font-weight:600;color:var(--g5)}'
 +'.p19cell{cursor:pointer}.p19cell:hover{background:var(--g1)}'
 +'.p19bar{position:relative;height:18px;margin-top:3px}.p19bar i{position:absolute;top:0;bottom:0;border-radius:5px;background:#e4e7ec;border-right:2px solid #fff;box-sizing:border-box;font-style:normal;font-size:11px;font-weight:700;color:#3d4350;line-height:18px;text-align:center;overflow:hidden;white-space:nowrap}html[data-theme=dark] .p19bar i{background:#34363c;color:#e2e4e8;border-right-color:#1c1c1e}.p19bar i.mi{background:#f3dcdc;color:#a33}html[data-theme=dark] .p19bar i.mi{background:#4a2c2c;color:#f0b4b4}.p19lab{position:relative;height:17px;margin-top:6px}.p19lab span{position:absolute;bottom:0;font-size:11.5px;color:var(--g4);white-space:nowrap}.p19lab b{color:var(--g5);font-weight:700}.p19tim{margin-top:3px;height:15px}.p19tim span{top:0;bottom:auto;font-size:11px}.p19tim span{color:var(--g4)}'
 +'.p19ax{display:flex;justify-content:space-between;font-size:10px;color:var(--g3);margin:4px 0 2px}'
@@ -52,11 +54,13 @@ document.head.appendChild(css);
 const SECS=[['cards','Time cards'],['today','Today'],['fix','To fix'],['setup','Setup']];
 function head(){const pg=$('pg-hours');if(!pg)return;let h=$('p19h');
   if(!h){const h2=pg.querySelector('h2');h=document.createElement('div');h.id='p19h';if(h2){h2.parentNode.insertBefore(h,h2);h.appendChild(h2);}else pg.prepend(h);const r=document.createElement('div');r.id='p19slot';h.appendChild(r);}
-  const sl=$('p19slot');if(sl)sl.innerHTML=paySec==='cards'?'<button class="p19per" onclick="P19.menu(this)">'+E(T(tcMode==='day'?'Day':'Week'))+CHEV+'</button>':'';}
+  const sl=$('p19slot');if(sl)sl.innerHTML='';}   // Baruch 11/22 (idea 5): no Week/Day switch — the week stays, a tapped day opens under it
 window.renderPaySeg=function(){const el=$('paySeg');if(!el)return;if(!SECS.some(s=>s[0]===paySec))paySec='cards';
   const n=payFixCount()+clockIssues().length;el.className='p19tabs';
   el.innerHTML=SECS.map(([k,l])=>'<button class="'+(paySec===k?'on':'')+'" onclick="setPaySec(\''+k+'\')">'+E(T(l))+(k==='fix'&&n?'<span class="n">'+n+'</span>':'')+'</button>').join('');
   document.querySelectorAll('#pg-hours [data-ps]').forEach(d=>{d.style.display=d.getAttribute('data-ps')===paySec?'':'none';});
+  if(paySec==='cards')setTimeout(()=>{try{P19.lay();}catch(e){}},0);
+  try{const tb=document.querySelector('.top');const ps=$('paySeg');const r=document.documentElement;if(tb)r.style.setProperty('--p19t0',(getComputedStyle(tb).position==='sticky'||getComputedStyle(tb).position==='fixed'?tb.offsetHeight:0)+'px');if(ps&&ps.offsetHeight)r.style.setProperty('--p19t1',ps.offsetHeight+'px');}catch(e){}   // the labels are placed once the page is showing (it was hidden while drawn)
   head();};
 try{renderPaySeg=window.renderPaySeg;}catch(e){}
 
@@ -69,9 +73,13 @@ P19.shut=function(id){const c=p19Closed();if(c.has(id))c.delete(id);else c.add(i
 P19.menu=btn=>{closeMenu();const rc=btn.getBoundingClientRect();const d=document.createElement('div');d.className='p19dim';d.onclick=closeMenu;document.body.appendChild(d);
   const mn=document.createElement('div');mn.className='p19menu';mn.innerHTML=[['week','Week'],['day','Day']].map(([k,l])=>'<button class="'+(tcMode===k?'on':'')+'" onclick="P19.mode(\''+k+'\')">'+E(T(l))+(tcMode===k?OKI:'')+'</button>').join('');
   mn.style.top=Math.round(rc.bottom+6)+'px';mn.style.right=Math.max(8,Math.round(window.innerWidth-rc.right))+'px';document.body.appendChild(mn);};
-P19.mode=k=>{closeMenu();tcOpenRow=null;tcSetMode(k);head();};
+P19.mode=k=>{closeMenu();tcOpenRow=null;tcMode=k;renderTimeCards();head();};
 // tap a day letter → that day for everyone; tap a number → that man's day, open to fix
-P19.day=(i,who)=>{tcDay=i;tcOpenRow=who?who+'|'+i:null;tcMode='day';try{localStorage.setItem('ex_tcmode','day');}catch(e){}renderTimeCards();head();
+try{tcMode='week';}catch(e){}   // Baruch 11/22: always opens on the week
+// tap a day letter → that day opens under the week (tap it again to close it); tap a number → that day, his row open to fix
+P19.dday=i=>{if(tcMode==='day'&&tcDay===i){tcMode='week';}else{tcDay=i;tcMode='day';}tcOpenRow=null;renderTimeCards();};
+P19.pick=i=>P19.dday(i);
+P19.day=(i,who)=>{tcDay=i;tcOpenRow=who?who+'|'+i:null;tcMode='day';renderTimeCards();head();
   if(who)setTimeout(()=>{const el=document.querySelector('[data-p19row="'+who+'"]');if(el)try{el.scrollIntoView({block:'center'});}catch(e){}},30);};
 P19.prob=v=>{onlyProb=v;renderTimeCards();};
 // open someone's day (from Today / To fix)
@@ -80,7 +88,7 @@ P19.open=(who,ms)=>{tcWs=weekStart(new Date(ms)).getTime();const di=dayIndex(ms,
 // ── week table: day letters and every number open the day ──
 const sCol=(()=>{const P=['#4f7cff','#e0a33a','#2f9e6b','#9b6cf0','#20a4b8','#8d96aa'];const m={};let n=0;return k=>m[k]||(m[k]=P[n++%P.length]);})();
 window.tcTable=function(people,ws,sel){const DL=lang()==='es'?['D','L','M','M','J','V','S']:['S','M','T','W','T','F','S'];
-  const th='<tr>'+(sel?'<th></th>':'')+'<th style="text-align:left"></th>'+DL.map((d,i)=>'<th style="padding:2px 0">'+(sel?'<span class="p19dh">'+d+'</span>':'<button class="p19dh" onclick="P19.day('+i+')" title="'+E(T('Open this day'))+'">'+d+'<i>'+new Date(ws+i*864e5+12*36e5).getDate()+'</i></button>')+'</th>').join('')+'<th style="font-size:10.5px;color:var(--g4);font-weight:600;text-align:right">'+T('Total')+'</th></tr>';
+  const th='<tr>'+(sel?'<th></th>':'')+'<th style="text-align:left"></th>'+DL.map((d,i)=>'<th style="padding:2px 0">'+(sel?'<span class="p19dh">'+d+'</span>':'<button class="p19dh" onclick="P19.dday('+i+')" title="'+E(T('Open this day'))+'">'+d+'<i>'+new Date(ws+i*864e5+12*36e5).getDate()+'</i></button>')+'</th>').join('')+'<th style="font-size:10.5px;color:var(--g4);font-weight:600;text-align:right">'+T('Total')+'</th></tr>';
   const rows=people.map((e,ri)=>{const P=tcPunches(e.id,ws);const s=weekStats(e.id,new Date(ws+12*36e5));const bt=ri?'border-top:1px solid var(--g1);':'';
     const cells=[0,1,2,3,4,5,6].map(i=>{const dp=P.filter(p=>dayIndex(p.in,ws)===i);const miss=dp.some(tcMissing),ed=dp.some(p=>p.edits&&p.edits.length);const h=s.days[i];
       const v=miss?'<span style="display:inline-block;width:20px;height:20px;line-height:20px;border-radius:50%;background:#fde8e6;color:#c0392b;font-weight:800">!</span>':h?h.toFixed(1):'·';
@@ -100,19 +108,20 @@ const BAR_A=6,BAR_B=20;
 // overlap move to a second row). Under the line only the times where something changes: start, each switch (2:41 — or
 // 2:42–2:53 when there was a gap), and the end. Times that fall almost together are joined into one.
 // Baruch 11/16: no hour ruler — every man's line runs the full width, from his first punch-in (left) to his last punch-out (right).
-function bar(dp){const t0=dp[0].in;const ends=dp.map(p=>p.out||p.away||0).filter(Boolean);const t1=Math.max(t0+36e5,ends.length?Math.max(...ends):0,...dp.map(p=>p.in+(p.out||p.away?0:36e5)));
+function bar(dp){const t0=dp[0].in;const NOW=Date.now();const lv=p=>!p.out&&!p.away&&!tcMissing(p);   // Baruch 11/22: still on the clock today → his line runs to now
+  const EN=p=>p.out||p.away||(lv(p)?Math.max(p.in+60000,NOW):0);const ends=dp.map(EN).filter(Boolean);const t1=Math.max(t0+36e5,ends.length?Math.max(...ends):0,...dp.map(p=>p.in+(EN(p)?0:36e5)));
   const pos=ms=>Math.max(0,Math.min(1,(ms-t0)/(t1-t0)));
   const short=k=>(siteName(k)||T('No site')).replace(/, NY \d{5}/g,'').split(',')[0];
   const tm=ms=>fmtT(ms).replace(/\s?([AP]M)$/i,(m0,x)=>' '+x.toLowerCase());
-  const seg=dp.map(p=>{const a=pos(p.in),end=p.out||p.away;const mi=tcMissing(p);const b=end?pos(end):Math.min(1,a+0.05);return {p,a,b,w:Math.max(0.8,(b-a)*100),mi,end};});
+  const seg=dp.map(p=>{const a=pos(p.in),end=EN(p);const mi=tcMissing(p);const b=end?pos(end):Math.min(1,a+0.05);return {p,a,b,w:Math.max(0.8,(b-a)*100),mi,end};});
   const hrs=p=>punchDur(p)<0.1?Math.max(1,Math.round(punchDur(p)*60))+' '+E(T('min')):punchDur(p).toFixed(1);
   const top='<div class="p19lab" data-p19lay="1">'+seg.map(x=>'<span data-p19x="'+(x.a*100).toFixed(2)+'" style="left:'+(x.a*100).toFixed(2)+'%">'+(x.mi?'<b style="color:#c25b5b">'+E(T('no punch-out'))+'</b> · '+E(short(x.p.site)):E(short(x.p.site))+(x.w<5?' <b>'+hrs(x.p)+'</b>':''))+'</span>').join('')+'</div>';
   // times where something changes
   let pts=[{x:seg[0].a,t:[seg[0].p.in]}];
   for(let i=0;i<seg.length-1;i++){const e1=seg[i].end,s2=seg[i+1].p.in;pts.push({x:seg[i].b,t:e1?[e1,s2]:[s2]});}
-  const L=seg[seg.length-1];pts.push({x:L.b,t:[L.end||null]});
-  const M=[];pts.forEach(q=>{const k=M[M.length-1];if(k&&q.x-k.x<0.06){k.t=k.t.concat(q.t);}else M.push({x:q.x,t:q.t.slice()});});
-  const txt=q=>{const v=q.t.filter(Boolean).sort((a,b)=>a-b);if(!v.length)return '<b style="color:#c25b5b">?</b>';const lo=v[0],hi=v[v.length-1];
+  const L=seg[seg.length-1];pts.push({x:L.b,t:[L.end||null],now:lv(L.p)});
+  const M=[];pts.forEach(q=>{const k=M[M.length-1];if(k&&q.x-k.x<0.06){k.t=k.t.concat(q.t);if(q.now)k.now=true;}else M.push({x:q.x,t:q.t.slice(),now:q.now});});
+  const txt=q=>{if(q.now&&q.t.length===1)return E(T('now'));const v=q.t.filter(Boolean).sort((a,b)=>a-b);if(!v.length)return '<b style="color:#c25b5b">?</b>';const lo=v[0],hi=v[v.length-1];
     return Math.abs(hi-lo)<60000?tm(lo):tm(lo)+'–'+tm(hi)+(q.t.some(x=>!x)?' ?':'');};
   const bot='<div class="p19lab p19tim" data-p19lay="1">'+M.map((q,i)=>'<span data-p19x="'+(q.x*100).toFixed(2)+'" data-p19al="'+(i===0?'l':i===M.length-1?'r':'c')+'" style="left:'+(q.x*100).toFixed(2)+'%">'+txt(q)+'</span>').join('')+'</div>';
   return top+'<div class="p19bar">'+seg.map(x=>'<i title="'+E((siteName(x.p.site)||'')+' · '+fmtT(x.p.in)+' – '+(x.end?fmtT(x.end):'?'))+'" style="left:'+(x.a*100).toFixed(2)+'%;width:'+x.w.toFixed(2)+'%"'+(x.mi?' class="mi"':'')+'>'+(x.w>=5&&!x.mi?hrs(x.p):'')+'</i>').join('')+'</div>'+bot;}
@@ -125,7 +134,8 @@ P19.lay=()=>{document.querySelectorAll('[data-p19lay]').forEach(box=>{const W=bo
 window.addEventListener('resize',()=>{clearTimeout(P19._rt);P19._rt=setTimeout(P19.lay,120);});
 // Baruch 11/15 (2): no stacked list of jobs and hours — the day is one line with each job's hours and address written on it.
 window.tcDayRow=function(e,ws,di){const dp=tcPunches(e.id,ws).filter(p=>dayIndex(p.in,ws)===di).sort((a,b)=>a.in-b.in);
-  const miss=dp.some(tcMissing);const first=dp[0],last=dp[dp.length-1];const h=dp.reduce((q,p)=>q+((p.out||p.away)?punchDur(p):0),0);
+  const miss=dp.some(tcMissing);const first=dp[0],last=dp[dp.length-1];const live=!!last&&!last.out&&!last.away&&!miss;   // Baruch 11/22: today — still on the clock
+  const h=dp.reduce((q,p)=>q+((p.out||p.away||(live&&p===last))?punchDur(p):0),0);
   const short=k=>(siteName(k)||T('No site')).replace(/, NY \d{5}/g,'').split(',')[0];
   const sites=[...new Set(dp.map(p=>p.site||''))];const open=tcOpenRow===e.id+'|'+di;
   const night=dp.some(p=>{const e2=p.out||p.away;return e2&&new Date(e2).getDate()!==new Date(p.in).getDate();});
@@ -133,7 +143,7 @@ window.tcDayRow=function(e,ws,di){const dp=tcPunches(e.id,ws).filter(p=>dayIndex
   let x='<div data-p19row="'+E(e.id)+'" style="border-top:1px solid var(--g1)"><div style="cursor:pointer;padding:10px 0 '+(dp.length?'6px':'10px')+'" onclick="tcRowTap(\''+J(e.id)+'\','+di+')">'
     +'<div style="display:flex;gap:10px;align-items:center"><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:15.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+E(e.name)+(e.lead?' <span style="color:var(--amber)">★</span>':'')+'</div>'
     +(jobs?'<div style="font-size:12.5px;color:var(--g4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+jobs+'</div>':'')+'</div>'
-    +(dp.length?'<div style="font-size:12.5px;color:var(--g4);white-space:nowrap">'+fmtT(first.in)+' – '+(miss?'<b style="color:#c0392b">?</b>':fmtT(last.out||last.away))+'</div><div style="width:46px;text-align:right;font-weight:800;font-size:17px">'+(miss?'':h.toFixed(1))+'</div>':'<div style="color:var(--g3);font-size:13px">—</div>')
+    +(dp.length?'<div style="font-size:12.5px;color:var(--g4);white-space:nowrap">'+fmtT(first.in)+' – '+(miss?'<b style="color:#c0392b">?</b>':live?E(T('now')):fmtT(last.out||last.away))+'</div><div style="width:46px;text-align:right;font-weight:800;font-size:17px">'+(miss?'':h.toFixed(1))+'</div>':'<div style="color:var(--g3);font-size:13px">—</div>')
     +'<div style="color:var(--g4);font-size:16px;width:14px;text-align:center">'+(open?'⌃':'›')+'</div></div>'
     +(dp.length?bar(dp):'')+'</div>';
   if(open){let ed=tcDayEdit(e,ws,di,dp);const ch=[];dp.forEach(p=>(p.edits||[]).forEach(c=>ch.push(c)));
@@ -157,7 +167,7 @@ function hasProb(e,ws){return tcPunches(e.id,ws).some(tcMissing);}
 window.renderTimeCards=function(){const box=$('tcBox');if(!box)return;if(tcEditing()){tcLater();return;}
   const sy=window.scrollY,sc=[];{let el=box.parentElement;while(el){if(el.scrollHeight>el.clientHeight&&el.scrollTop)sc.push([el,el.scrollTop]);el=el.parentElement;}}const m=me();if(!canEditHours(m)){box.innerHTML='';return;}
   const ws=tcStart(),we=ws+7*864e5;let G=tcGroups(ws);const sel=!!tcSel&&tcMode==='week';
-  if(tcDay==null){const td=dayIndex(Date.now(),ws);tcDay=td>=0&&td<7?Math.max(1,td-1):1;}
+  if(tcDay==null){const td=dayIndex(Date.now(),ws);tcDay=td>=0&&td<7?td:1;}   // Baruch 11/22: Day opens on today (was yesterday)
   const all=G.flatMap(g=>g.people);let tot=0,ot=0,miss=0,trv=0;all.forEach(e=>{const s=weekStats(e.id,new Date(ws+12*36e5));tot+=s.total;ot+=s.ot;miss+=tcPunches(e.id,ws).filter(tcMissing).length;trv+=tcTravel(e.id,ws);});
   const probN=all.filter(e=>hasProb(e,ws)).length;if(onlyProb&&!probN)onlyProb=false;
   const hn=typeof oldRangeNote==='function'?oldRangeNote('punches',ws,we,renderTimeCards):'';
@@ -165,17 +175,19 @@ window.renderTimeCards=function(){const box=$('tcBox');if(!box)return;if(tcEditi
   const nav=(fn,txt,sub)=>'<div class="p19nav"><button aria-label="‹" onclick="'+fn+'(-1)">‹</button><div style="text-align:center"><b style="font-size:16px">'+txt+'</b><div style="font-size:11.5px;color:var(--g4)">'+sub+'</div></div><button aria-label="›" onclick="'+fn+'(1)">›</button></div>';
   const box_=(v,l,cls,click)=>'<div class="'+(cls||'')+(click?' tap':'')+'"'+(click?' onclick="'+click+'"':'')+'><b>'+v+'</b><span>'+E(l)+(click?' ›':'')+'</span></div>';
   let top;
-  if(tcMode==='week'){
-    top='<div class="card" style="padding:12px 14px">'+nav('tcMove',lbl,ws===weekStart().getTime()?T('This week'):ws===weekStart().getTime()-7*864e5?T('Last week'):'')
-      +'<div class="p19st">'+box_(tot.toFixed(1),T('hours'))+box_(ot.toFixed(1),T('overtime'))+box_(miss,T('missing'),miss?'bad':'',miss?"setPaySec('fix')":'')+(TRAVEL_ON?box_(money(trv).replace(/\.00$/,''),T('travel')):'')+'</div></div>'
-      +hn+sendCard(ws,we)
+  // Baruch 11/22: ONE card — the week's dates, and under them the 7 days, always there. No day picked = the week.
+  // Tap a day → it turns dark and everyone's day shows. Tap it again → it turns white and the week is back.
+  {const DL=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];const isDay=tcMode==='day';
+    let dh=0,dw=0,dm=0;if(isDay)all.forEach(e=>{const dp=tcPunches(e.id,ws).filter(p=>dayIndex(p.in,ws)===tcDay);if(dp.length)dw++;if(dp.some(tcMissing))dm++;dh+=dp.reduce((a,p)=>a+((p.out||p.away||!tcMissing(p))?punchDur(p):0),0);});
+    // Baruch 11/22: the dates and the days stay locked on top while you scroll down to crew 5
+    top='<div class="p19stick"><div class="card" style="padding:12px 14px">'+nav('tcMove',lbl,ws===weekStart().getTime()?T('This week'):ws===weekStart().getTime()-7*864e5?T('Last week'):'')
+      +'<div class="p19strip">'+DL.map((d,i)=>'<button class="'+(isDay&&i===tcDay?'on':'')+'" onclick="P19.dday('+i+')">'+E(T(d).slice(0,2))+'<b>'+new Date(ws+i*864e5+12*36e5).getDate()+'</b></button>').join('')+'</div></div></div>'
+      +'<div class="card" style="padding:4px 14px 12px">'+(isDay?'<div class="p19st" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+box_(dh.toFixed(1),T('hours'))+box_(dw,T('worked'))+box_(dm,T('missing'),dm?'bad':'')+'</div>'
+        :'<div class="p19st">'+box_(tot.toFixed(1),T('hours'))+box_(ot.toFixed(1),T('overtime'))+box_(miss,T('missing'),miss?'bad':'',miss?"setPaySec('fix')":'')+(TRAVEL_ON?box_(money(trv).replace(/\.00$/,''),T('travel')):'')+'</div>')
+      +'</div>'+hn;
+    if(!isDay){top+=sendCard(ws,we)
       +(probN?'<div class="p19words"><button class="'+(onlyProb?'':'on')+'" onclick="P19.prob(false)">'+E(T('Everyone'))+'</button><button class="'+(onlyProb?'on':'')+'" onclick="P19.prob(true)">'+E(T('Only problems'))+' · '+probN+'</button></div>':'');
-    if(onlyProb)G=G.map(g=>Object.assign({},g,{people:g.people.filter(e=>hasProb(e,ws))})).filter(g=>g.people.length);}
-  else{const dayDate=new Date(ws+tcDay*864e5+12*36e5);const DL=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    let dh=0,dw=0,dm=0;all.forEach(e=>{const dp=tcPunches(e.id,ws).filter(p=>dayIndex(p.in,ws)===tcDay);if(dp.length)dw++;if(dp.some(tcMissing))dm++;dh+=dp.reduce((a,p)=>a+((p.out||p.away)?punchDur(p):0),0);});
-    top='<div class="card" style="padding:12px 14px">'+nav('tcDayMove',dayDate.toLocaleDateString(LOCX(),{weekday:'long',month:'short',day:'numeric'}),'<span style="cursor:pointer;color:var(--blue-mid)" onclick="P19.mode(\'week\')">'+E(T('Back to the week'))+'</span>')
-      +'<div class="p19strip">'+DL.map((d,i)=>'<button class="'+(i===tcDay?'on':'')+'" onclick="P19.day('+i+')">'+E(T(d).slice(0,2))+'<b>'+new Date(ws+i*864e5+12*36e5).getDate()+'</b></button>').join('')+'</div>'
-      +'<div class="p19st" style="grid-template-columns:repeat(3,minmax(0,1fr))">'+box_(dh.toFixed(1),T('hours'))+box_(dw,T('worked'))+box_(dm,T('missing'),dm?'bad':'')+'</div></div>'+hn;}
+      if(onlyProb)G=G.map(g=>Object.assign({},g,{people:g.people.filter(e=>hasProb(e,ws))})).filter(g=>g.people.length);}}
   // Baruch 11/17: tap a crew's name to close it (and again to open) — only the crews you want stay open; remembered on this phone
   const CL=p19Closed();
   const body=G.map(g=>{const ids=g.people.map(e=>e.id);const allOn=sel&&ids.every(id=>tcSel.has(id));const shut=CL.has(g.id);
@@ -183,8 +195,8 @@ window.renderTimeCards=function(){const box=$('tcBox');if(!box)return;if(tcEditi
       const right=shut?'<span style="font-size:12px;color:var(--g4)">'+g.people.length+' · '+gh.toFixed(1)+' h</span>':tcMode==='day'?'<span style="font-size:12px;color:var(--blue-mid);font-weight:700;cursor:pointer;letter-spacing:.3px" onclick="tcFixCrew(\''+J(g.id)+'\')">'+T('FIX CREW')+'</span>':'<span style="font-size:12px;color:var(--g4)">'+gh.toFixed(1)+' h</span>';
       const chev='<span onclick="event.stopPropagation();P19.shut(\''+J(g.id)+'\')" style="display:inline-block;width:16px;color:var(--g4);font-size:12px;cursor:pointer;transition:transform .15s;transform:rotate('+(shut?'-90deg':'0deg')+')">▾</span>';
       return '<div class="row" style="align-items:center;margin:14px 2px 6px">'+(sel?'<span style="display:flex;gap:8px;align-items:center;cursor:pointer" onclick="tcToggleCrew(\''+J(g.id)+'\')"><span style="width:20px;height:20px;border-radius:6px;border:2px solid var(--blue-mid);display:inline-flex;align-items:center;justify-content:center;'+(allOn?'background:var(--blue-mid);color:#fff':'')+'">'+(allOn?'✓':'')+'</span>':'<span style="display:flex;align-items:center;gap:4px;cursor:pointer" onclick="P19.shut(\''+J(g.id)+'\')">')+(sel?'':chev)+'<b style="font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--g4)">'+E(g.name)+'</b></span>'+(sel?chev:'')+right+'</div>'+(shut?'':
-        '<div class="card" style="padding:'+(tcMode==='week'?'4px 12px':'0 14px')+'">'+(tcMode==='week'?tcTable(g.people,ws,sel):g.people.map(e=>tcDayRow(e,ws,tcDay)).join('').replace('<div data-p19row','<div data-p19first data-p19row').replace(/(<div data-p19first data-p19row="[^"]*") style="border-top:1px solid var\(--g1\)"/,'$1')
-          )+'</div>');}).join('');
+        (tcMode==='day'?'<div class="card" style="padding:0 14px">'+g.people.map(e=>tcDayRow(e,ws,tcDay)).join('').replace('<div data-p19row','<div data-p19first data-p19row').replace(/(<div data-p19first data-p19row="[^"]*") style="border-top:1px solid var\(--g1\)"/,'$1')+'</div>'
+          :'<div class="card" style="padding:4px 12px">'+tcTable(g.people,ws,sel)+'</div>'));}).join('');
   const foot=tcMode==='week'?(sel?'<div style="position:sticky;bottom:8px;margin-top:10px"><button class="btn" '+(tcSel.size?'':'disabled ')+'onclick="openBulkFix()">'+T('Fix together')+' · '+tcSel.size+' '+T('selected')+'</button></div><button class="btn sec2" style="margin-top:8px" onclick="tcSelMode()">'+T('Cancel')+'</button>':'<button class="btn sec2" style="margin-top:12px" onclick="tcSelMode()">'+T('Select to fix together')+'</button>')
     :'<div style="font-size:12px;color:var(--g4);margin:10px 2px 0">'+E(T('Tap a man to open his day and fix it.'))+'</div>';
   box.innerHTML=top+body+foot;try{P19.lay();}catch(e){}
@@ -240,5 +252,5 @@ try{renderHours=window.renderHours;}catch(e){}
 
 try{Object.assign(ES,{"Week":"Semana","Day":"Día","Open this day":"Abrir este día","Back to the week":"Volver a la semana","worked":"trabajaron","Everyone":"Todos","Only problems":"Solo problemas","Send to Fingercheck":"Enviar a Fingercheck","Hours":"Horas","Travel":"Viaje","Changes":"Cambios","Tap a man to open his day and fix it.":"Toque a un hombre para abrir su día y arreglarlo.",
  "working now":"trabajando","done today":"terminaron hoy","not in yet":"aún no entran","Search a person or job…":"Buscar persona o trabajo…","Working now":"Trabajando ahora","Done today":"Terminaron hoy","Not in yet":"Aún no entran","Not on the time clock":"Sin reloj de tiempo","Nobody is clocked in right now.":"Nadie está marcado ahora.","since":"desde","jobs":"trabajos",
- "Missing punches":"Marcas faltantes","no punch-out":"sin salida","punched out away from the job":"marcó salida fuera del trabajo","out when he left the job":"salida cuando dejó el trabajo","in":"entrada","Fix":"Arreglar","Phone hasn’t checked in since":"El teléfono no reporta desde","Check phone":"Revisar teléfono","How travel pay works":"Cómo funciona el pago de viaje","OT":"HE","min":"min","past midnight":"pasó la medianoche","Someone":"Alguien"});}catch(e){}
+ "Missing punches":"Marcas faltantes","no punch-out":"sin salida","punched out away from the job":"marcó salida fuera del trabajo","out when he left the job":"salida cuando dejó el trabajo","in":"entrada","Fix":"Arreglar","Phone hasn’t checked in since":"El teléfono no reporta desde","Check phone":"Revisar teléfono","How travel pay works":"Cómo funciona el pago de viaje","OT":"HE","min":"min","past midnight":"pasó la medianoche","Someone":"Alguien","Everyone by day":"Todos por día","now":"ahora"});}catch(e){}
 })();
