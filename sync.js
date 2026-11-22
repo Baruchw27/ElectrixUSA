@@ -105,12 +105,14 @@ function bgRow(o){const live=liveRecord(o.coll,o.id);const cur=JSON.parse(JSON.s
     const row={coll:o.coll,id:o.id,patch,unset,by:st.user||null};const ab={};Object.keys(patch).forEach(f=>{if(Array.isArray(patch[f])&&Array.isArray(bb[f]))ab[f]=bb[f];});if(Object.keys(ab).length)row.base=ab;return row;}
   return {coll:o.coll,id:o.id,full:cur,by:st.user||null};}
 let bgT=null;
-function bgPrep(){if(!BG_ON||!REAL)return;clearTimeout(bgT);bgT=setTimeout(async()=>{try{
-  if(st.online&&ready)return;                               // with signal the app sends by itself
+// Baruch 11/22 (Carlos 8:06 → 11:50): a weak signal still says "online" — the send fails, the app goes to the background and the
+// helper had nothing. Now the helper ALWAYS holds the waiting punches (it never sends while the app is open; the app adopts what it sent).
+function bgPrep(now){if(!BG_ON||!REAL)return;clearTimeout(bgT);const go=async()=>{try{
+  if(flushInFlight)return;                                   // the app is sending right now — it hands them over again if that fails
   const rows=[];Object.keys(queue).forEach(k=>{const o=queue[k];if(!o||o.coll!=='punches'||o.del)return;const row=bgRow(o);if(row)rows.push({k,sig:canon(o.data),row});});
   if(!rows.length)return;const cfg=bgCfg||await bgGet('cfg');if(!cfg||!cfg.key)return;
   await bgPut('out',{rows,at:Date.now()});
-  if(BG_SYNC){const reg=await navigator.serviceWorker.ready;if(reg&&reg.sync)await reg.sync.register('ex-punch|'+BG_DB);}}catch(e){}},300);}   // iPhone: sent when a notification arrives
+  if(BG_SYNC){const reg=await navigator.serviceWorker.ready;if(reg&&reg.sync)await reg.sync.register('ex-punch|'+BG_DB);}}catch(e){}};if(now)go();else bgT=setTimeout(go,300);}   // iPhone: sent when a notification arrives
 // what the helper already sent while the app was closed: take it off the queue (only if unchanged since), then refresh
 async function bgAdopt(){if(!BG_ON)return 0;try{const sent=await bgGet('sent');if(!sent||typeof sent!=='object'||!Object.keys(sent).length)return 0;let n=0;
   Object.keys(sent).forEach(k=>{const o=queue[k];if(o&&!o.del&&canon(o.data)===sent[k]){delete queue[k];n++;}});
@@ -118,7 +120,7 @@ async function bgAdopt(){if(!BG_ON)return 0;try{const sent=await bgGet('sent');i
 async function bgForget(){if(!BG_ON)return;try{const c=bgCfg||await bgGet('cfg');if(c&&c.dev&&st.online){try{await withTO(sb.rpc('bg_key_drop',{p_dev:c.dev}),3000,'bg off');}catch(e){}}
   bgCfg=null;await bgPut('cfg',null);await bgPut('out',{rows:[],at:Date.now()});await bgPut('sent',{});}catch(e){}}
 window.EX_bg={on:BG_ON,sync:BG_SYNC,db:BG_DB,get:bgGet,prep:()=>bgPrep(),adopt:bgAdopt,key:bgKey};
-function saveQ(){const n=Object.keys(queue).length;st.pending=n;const ok=storeQ();durState();if(BG_ON&&n&&(!st.online||!ready))bgPrep();return ok;}
+function saveQ(){const n=Object.keys(queue).length;st.pending=n;const ok=storeQ();durState();if(BG_ON&&n)bgPrep();return ok;}
 window.EX_queued=function(coll,id){return !!queue[coll+'\u0001'+id];};
 window.EX_queuedIn=function(coll){return Object.keys(queue).filter(k=>queue[k]&&queue[k].coll===coll).map(k=>queue[k].id);};
 // Changes the server refused (permission, or another phone changed the same day first). Kept on the phone, with what
@@ -242,7 +244,7 @@ let suppressRejectToast=false; // EX_saveNow shows its own message at the point 
 // EX_logout can `await flush()` and be sure the in-flight save has fully finished before it stashes/clears the queue.
 let flushInFlight=null;
 function flush(){if(!REAL||!ready||!st.online)return Promise.resolve();if(flushInFlight)return flushInFlight;
-  flushInFlight=_flush();const done=()=>{flushInFlight=null;};flushInFlight.then(done,done);return flushInFlight;}
+  flushInFlight=_flush();const done=()=>{flushInFlight=null;try{if(BG_ON&&Object.keys(queue).some(k=>queue[k]&&queue[k].coll==='punches'&&!queue[k].del))bgPrep();}catch(e){}};flushInFlight.then(done,done);return flushInFlight;}
 async function _flush(){if(BG_ON){await bgAdopt();try{await bgPut('out',{rows:[],at:Date.now()});}catch(e){}setTimeout(()=>{bgKey();},0);}   // Baruch 11/20: the app sends now — the helper has nothing to send
   Object.keys(queue).forEach(k=>{const o=queue[k];if(o&&(SKIP.has(o.coll)||(o.coll==='_'&&SKIP.has(o.id))))delete queue[k];});const keys=Object.keys(queue);if(!keys.length){lastReject=[];return;}flushing=true;st.flushing=true;paint();
   let skipped=0;const myRej=[];lastFlushError=null;
@@ -424,7 +426,7 @@ async function catchUp1(){if(!REAL||!ready||catching||!st.online)return;catching
     flush();st.err='';paint();}
   catch(e){log('catch-up',e);}finally{catching=false;}}
 window.EX_catchUp=catchUp;
-document.addEventListener('visibilitychange',()=>{if(document.hidden){hiddenSince=Date.now();return;}if(hiddenSince&&Date.now()-hiddenSince>60000)catchUp();hiddenSince=0;});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){hiddenSince=Date.now();try{if(BG_ON&&Object.keys(queue).some(k=>queue[k]&&queue[k].coll==='punches'))bgPrep(true);}catch(e){}return;}if(hiddenSince&&Date.now()-hiddenSince>60000)catchUp();hiddenSince=0;});
 // L2 lists: answers can arrive out of order (this phone's own save answer after another phone's newer change). The
 // server never deletes a list item and every server change raises the item's rev, so a list item (or kept copy /
 // comment) the server already stamped that is missing or older in an incoming row means that row is the older one.

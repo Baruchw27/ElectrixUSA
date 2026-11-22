@@ -157,3 +157,13 @@ OwnTracks on the same phone; not needed.
   gets no Sunday reminders.
 - Booking is done on the crew card now (p26): ⋯ = Edit · Add another job · Copy; swipe right = Send; every save writes the whole
   day (no pieces on top of old ones). Same records as before (crew|day, ONG:crew:id, L:man|day).
+
+## 17. Waiting punches always go to the background helper (live 11/22 1 PM, app vh119)
+- 11/22: Carlos punched in at 8:06 on a weak signal. The phone still said "online", so the app kept the punch to itself (the
+  helper only got punches when the phone said "offline"); the send failed, the app went to the background, and the helper had
+  nothing — every notification woke it with nothing to send (0 punchsync calls all day). It arrived at 11:50 when he opened the app.
+- Now (sync.js): every waiting punch is handed to the helper right away, again after any send that didn't get everything out,
+  and again the moment the app goes to the background. Android keeps retrying by itself (Background Sync); iPhone sends on the
+  next notification. The helper never sends while the app is open, and the app takes back what the helper already sent.
+- How to check a "stuck" punch: private.devices (pending, last_at per phone), private.bg_keys.last_used, edge logs for
+  /functions/v1/punchsync, records_history for the punch insert.
