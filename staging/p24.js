@@ -15,7 +15,7 @@ const $=id=>document.getElementById(id);
 const T=s=>{try{if(lang()==='es'&&L24[s])return L24[s];}catch(e){}try{return t(s);}catch(e){return s;}};
 const E=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const J=s=>{try{return jsq(s);}catch(e){return String(s).replace(/'/g,"\\'");}};
-const L24={"By job":"Por trabajo","By crew":"Por cuadrilla","Updated":"Actualizado","in":"entró","left":"se fue","out":"salió","due":"entra","late":"tarde",
+const L24={"Crews":"Cuadrillas","Jobs":"Trabajos","Updated":"Actualizado","in":"entró","left":"se fue","out":"salió","due":"entra","late":"tarde",
  "no punch":"sin marca","past go-home":"pasó su hora","tracker quiet":"GPS callado","new":"nuevo",
  "Booked":"Reservado","Not booked today":"Sin reserva hoy","Staying late until":"Se queda hasta","Staying late":"Se queda tarde","Sent home at":"Enviado a casa a las","Go home":"Salida",
  "No tracker on his phone":"Sin rastreador en su teléfono","Tracker last seen":"Rastreador visto por última vez","Tracker not connected":"Rastreador no conectado","crew leader":"líder de cuadrilla",
@@ -33,12 +33,12 @@ const ft=ms=>{if(!ms)return '';const d=new Date(ms);return ((d.getHours()+11)%12
 const hm=h=>{const m=Math.max(0,Math.round(h*60));return Math.floor(m/60)+'h '+String(m%60).padStart(2,'0')+'m';};
 const short=s=>(siteName(s)||'').replace(/, NY \d{5}/g,'').split(',')[0];
 const ini=n=>{const p=String(n||'').trim().split(/\s+/);return ((p[0]||'')[0]||'').toUpperCase()+((p.length>1?p[p.length-1]:'')[0]||'').toUpperCase();};
-let mode='job',openId=null,lastDraw=0,anim=true;
-try{mode=localStorage.getItem('p24mode')||'job';}catch(e){}
+let mode='crew',openId=null,lastDraw=0,anim=true;
+try{mode=localStorage.getItem('p24mode')||'crew';}catch(e){}
 
 const css=document.createElement('style');css.textContent=
  '@property --p24a{syntax:"<percentage>";inherits:false;initial-value:0%}'
-+'.p24top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}'
++'.p24top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}'
 +'.p24sw{display:inline-flex;background:var(--g1);border-radius:9px;padding:3px}.p24sw button{font:inherit;font-size:13px;border:0;background:none;padding:5px 12px;border-radius:7px;color:var(--g4);cursor:pointer}'
 +'.p24sw button.on{background:var(--g0,#fff);color:var(--g5);font-weight:600}html[data-theme=dark] .p24sw button.on{background:var(--g3)}'
 +'.p24up{font-size:11.5px;color:var(--g4);white-space:nowrap}.p24up i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#2fb36b;margin-right:5px;vertical-align:1px}'
@@ -163,8 +163,9 @@ window.renderAttendance=function(){const box=$('attWrap');if(!box)return;const k
       +(late?' · '+late+' '+E(T('came late')):'')+(never?' · '+never+' '+E(T('never punched in')):'')+' · '+E(T('everyone punched out'));}
   else{const parts=[n('in')+' '+T('working')];if(n('wait'))parts.push(n('wait')+' '+T('due later'));if(n('none'))parts.push(n('none')+' '+T('missing'));if(n('left'))parts.push(n('left')+' '+T('left the job'));if(n('out'))parts.push(n('out')+' '+T('done'));parts.push(jobs+' '+T(jobs===1?'job':'jobs'));
     sum=E(parts.join(' · '));}
-  const sw='<div class="p24sw"><button class="'+(mode==='job'?'on':'')+'" onclick="P24.mode(\'job\')">'+E(T('By job'))+'</button><button class="'+(mode==='crew'?'on':'')+'" onclick="P24.mode(\'crew\')">'+E(T('By crew'))+'</button></div>';
-  const up='<span class="p24up"><i></i>'+E(T('Updated'))+' '+E(new Date().toLocaleTimeString(LOCX(),{hour:'numeric',minute:'2-digit'}))+'</span>';
+  // Baruch 11/22: two plain words like the tabs (B) — Crews · Jobs; the time small on the right
+  const sw='<div class="p19words" style="margin:0"><button class="'+(mode==='crew'?'on':'')+'" onclick="P24.mode(\'crew\')">'+E(T('Crews'))+'</button><button class="'+(mode==='job'?'on':'')+'" onclick="P24.mode(\'job\')">'+E(T('Jobs'))+'</button></div>';
+  const up='<span class="p24up" title="'+E(T('Updated'))+'">'+E(ft(Date.now()))+'</span>';
   const fc=D.emps.filter(e=>noClock(e)&&!e.inactive&&e.role!=='office'&&e.role!=='owner');
   box.innerHTML='<div class="p24"><div class="p24top">'+sw+up+'</div><div class="p24sum">'+sum+'</div>'
    +groups.map(g=>{const ms=order(g.m);const op=ms.find(r=>r.e.id===openId);
