@@ -3,7 +3,7 @@
    • One ringed circle per man (initials inside). The ring = how far his day is (punch-in → go-home), colored by his phone tracker:
      green = working, orange = quiet, red = no tracker. Past go-home and not kept late = the whole ring red.
    • Under the circle: name (★ crew leader), the job he is at now, "in 7:06 · 2h 36m", and a small red tag only when something is wrong
-     (late, no punch, tracker quiet, past go-home). A grey tag when his punch is still waiting on his phone.
+     (no punch, tracker quiet, past go-home; late only in the grey panel — Baruch 11/22). A grey tag when his punch is still waiting on his phone.
    • Not here yet = empty grey circle with "due 8:00"; after that time with no punch it turns red. Left the job = faded.
      Punched out = small check. First 2 weeks = small "new". Live tracker = soft glow. Each group in arrival order.
    • Switch By job / By crew. Job header: address + each crew's hours there. Tap a man → grey panel with his day + "Time card ›".
@@ -19,7 +19,7 @@ const L24={"By job":"Por trabajo","By crew":"Por cuadrilla","Updated":"Actualiza
  "no punch":"sin marca","past go-home":"pasó su hora","tracker quiet":"GPS callado","new":"nuevo",
  "Booked":"Reservado","Not booked today":"Sin reserva hoy","Staying late until":"Se queda hasta","Staying late":"Se queda tarde","Sent home at":"Enviado a casa a las","Go home":"Salida",
  "No tracker on his phone":"Sin rastreador en su teléfono","Tracker last seen":"Rastreador visto por última vez","Tracker not connected":"Rastreador no conectado","crew leader":"líder de cuadrilla",
- "today":"hoy","Due":"Entra","No punch today":"Sin marca hoy","Time card":"Tarjeta de tiempo","now":"ahora",
+ "today":"hoy","Due":"Entra","No punch today":"Sin marca hoy","Time card":"Tarjeta de tiempo","now":"ahora","came":"llegó","min late":"min tarde",
  "staying until":"se queda hasta","staying late":"se queda tarde","until":"hasta","No crew":"Sin cuadrilla","No job":"Sin trabajo","Done for today":"Terminado por hoy","men":"hombres",
  "job":"trabajo","jobs":"trabajos","came late":"llegaron tarde","never punched in":"nunca marcaron","everyone punched out":"todos marcaron salida","due later":"entran más tarde",
  "missing":"sin marca","left the job":"dejaron el trabajo","done":"terminaron","Nobody is booked or punched in today.":"Nadie está reservado ni marcado hoy.","Not on the time clock":"Sin reloj de tiempo","working":"trabajando","waiting for OK":"esperando aprobación","His punch-in is waiting for your OK":"Su entrada espera su aprobación"};
@@ -99,7 +99,6 @@ function man(e){const k=tk(),nm=nowMin();const s=attStatusOf(e.id);const P=today
 // ── one circle ──
 function circle(r){const tags=[];
   if(r.k==='none')tags.push(r.s.waiting?['g','⏳ '+T('waiting for OK')]:['',T('no punch')]);
-  if(r.late&&r.k!=='none')tags.push(['',T('late')+' '+r.late+'m']);
   if(r.k==='in'&&r.past)tags.push(['',T('past go-home')]);
   else if(r.k==='in'&&r.tr==='quiet')tags.push(['',T('tracker quiet')]);
   let col=r.tr==='quiet'?'#e0a33a':r.tr==='none'?'#d9483b':'#2fb36b';let inC='';
@@ -130,7 +129,7 @@ function panel(r){const k=tk();const cr=(D.crews||[]).find(c=>c.id===r.e.crew);
   const trk=r.e.appClock!==true?T('No tracker on his phone'):tl?T('Tracker last seen')+' '+ft(tl):T('Tracker not connected');
   return '<div class="p24pn"><div style="font-weight:600;font-size:14.5px">'+E(r.e.name)+(r.lead?' · '+E(T('crew leader')):'')+'</div>'
    +'<div class="s">'+E((cr?cr.name+' · ':'')+bk)+(gh?' · '+E(gh):'')+'</div>'
-   +(r.P.length?'<div style="margin-top:6px">'+pp+'</div><div class="s">'+E(hm(r.hours))+' '+E(T('today'))+'</div>':'<div style="margin-top:6px">'+E(r.k==='wait'?T('Due')+' '+fm(r.start):r.s.waiting?T('His punch-in is waiting for your OK'):T('No punch today'))+'</div>')
+   +(r.P.length?'<div style="margin-top:6px">'+pp+'</div><div class="s">'+E(hm(r.hours))+' '+E(T('today'))+(r.late?' · <span style="color:#c0392b">'+E(T('came'))+' '+r.late+' '+E(T('min late'))+'</span>':'')+'</div>':'<div style="margin-top:6px">'+E(r.k==='wait'?T('Due')+' '+fm(r.start):r.s.waiting?T('His punch-in is waiting for your OK'):T('No punch today'))+'</div>')
    +'<div class="s">'+E(trk)+'</div>'
    +'<button onclick="event.stopPropagation();P19.open(\''+J(r.e.id)+'\','+Date.now()+')">'+E(T('Time card'))+' ›</button></div>';}
 
