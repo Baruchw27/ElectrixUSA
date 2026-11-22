@@ -108,9 +108,10 @@ function circle(r){const tags=[];
   if(r.k==='out'||r.k==='left')col='#2fb36b';
   if(r.k==='wait'){col='var(--g2)';inC=' w';}
   if(r.k==='none'){col=r.s.waiting?'var(--g3)':'#d9483b';inC=r.s.waiting?' w':' x';}
-  const line=r.k==='in'?T('in')+' '+ft(r.firstIn)
-    :r.k==='left'?T('left')+' '+ft(r.leftAt)
-    :r.k==='out'?T('out')+' '+ft(r.outAt)
+  // Baruch 11/22 (idea 1): time and hours on one line — "7:10 · 2h 32m"
+  const line=r.k==='in'?ft(r.firstIn)+' · '+hm(r.hours)
+    :r.k==='left'?ft(r.leftAt)+' · '+hm(r.hours)      // faded circle = he left the job
+    :r.k==='out'?ft(r.outAt)+' · '+hm(r.hours)        // the check = he punched out
     :r.k==='wait'?T('due')+' '+fm(r.start)
     :T('due')+' '+fm(r.start);
   const live=r.k==='in'&&r.tr==='ok'&&!r.past;const noCrew=!r.e.crew;
@@ -120,7 +121,7 @@ function circle(r){const tags=[];
     +(r.k==='out'?'<div class="p24ck">✓</div>':'')+(r.bt&&!r.bt.ch&&!r.bt.old&&r.bt.v<=15&&(r.k==='in'||r.k==='wait'||r.k==='none')?'<div class="p24bt">'+r.bt.v+'%</div>':'')+(r.nw?'<span class="p24nw">'+E(T('new'))+'</span>':'')+'</div>'
     +'<div class="p24nm">'+E(r.dn||String(r.e.name||'').split(' ')[0])+(r.lead?' <b>★</b>':'')+'</div>'
     +(r.site&&mode==='crew'&&(r.k==='in'||r.k==='left'||r.k==='out')?'<div class="p24s">'+E(short(r.site))+'</div>':'')
-    +'<div class="p24s">'+E(line)+'</div>'+(r.P.length?'<div class="p24s">'+E(hm(r.hours))+'</div>':'')
+    +'<div class="p24s">'+E(line)+'</div>'
     +tags.map(t=>'<div><span class="p24tag '+t[0]+'">'+E(t[1])+'</span></div>').join('')+'</div>';}
 
 // Baruch 11/22: the grey panel has everything about his day — full times with AM/PM, each punch, what his phone saw, his week
