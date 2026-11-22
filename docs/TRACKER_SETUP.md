@@ -141,11 +141,11 @@ OwnTracks on the same phone; not needed.
   BOOKED today but NOT punched in, counted from his booked start (once per quiet spell; office/owner left out). 11/20: Luis
   Guillen's punch was stuck on his phone and his OwnTracks died at 7:07 — nobody heard anything until 11:11.
 
-## 15. Phone battery on the payroll Today page (11/22 — test app only, NOT live yet)
+## 15. Phone battery on the payroll Today page (live 11/22 2:40 AM: app vh112, owntracks v20 = commit 533a800, sql/ot_battery.sql)
 - OwnTracks sends `batt` (battery %) and `bs` (0 unknown, 1 unplugged, 2 charging, 3 full) with every location report. Nothing
   to set on the phones. The tracker now keeps the newest one: owntracks calls `ot_batt` (service role only) after the login
   check; an older report never overwrites a newer one. Columns private.ot_tokens.batt / bs / batt_at; ot_report returns them.
-  SQL: sql/ot_battery.sql (applied to staging 11/22; live needs it BEFORE the new owntracks commit is deployed).
-- Today (staging/p24.js): a small red "7%" on the corner of his circle when it is 15% or less, not charging, read in the last
+  SQL: sql/ot_battery.sql (applied to staging and live 11/22, before owntracks v20).
+- Today (p24.js): a small red "7%" on the corner of his circle when it is 15% or less, not charging, read in the last
   2 hours, and he is working or booked. Tapping him shows the battery in the grey panel. Nothing under the circle (Baruch 11/22).
 - Only men with OwnTracks (appClock) have a battery. Test: /home/claude/work/ott/run11.mjs.
