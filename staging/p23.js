@@ -234,7 +234,7 @@ function crewCard(c,k){const t0=todayK();const isT=k===t0,past=k<t0;const today=
   if(schExp.has(c.id)&&isT)h+='<div class="sc-more">'+guys.map((g,i)=>'<div class="sc-p"><span class="sc-av '+st[i].k+'">'+scInit(g.name)+'</span><span class="sc-pn">'+E(g.name)+(g.lead?' <em>'+E(T('Lead'))+'</em>':'')+'</span><span class="sc-ps '+st[i].k+'">'+E(st[i].txt)+'</span></div>').join('')+'</div>';
   if(P.pv===c.id&&a0)h+=preview(a0.site);
   const by=changedBy(c.id,k);if(by)h+='<div class="p23by">'+E(by)+'</div>';
-  const inTxt=isT?(app?(nowMin()>=420&&nowMin()<=endOf(k)+120?'<span class="p23in">'+on+'/'+guys.length+' '+E(T('in'))+'</span>':''):'<span class="p23in fc">Fingercheck</span>'):'';
+  const inTxt=isT?(app?(nowMin()>=420&&nowMin()<=endOf(k)+120?'<span class="p23in">'+on+'/'+guys.length+' '+E(lang()==='es'?'adentro':'in')+'</span>':''):'<span class="p23in fc">Fingercheck</span>'):'';
   const right='<div class="p23r">'+inTxt+(ed?'<button type="button" class="p23more" aria-label="More" onclick="event.stopPropagation();P23.crewMenu(\''+jsq(c.id)+'\',\''+k+'\')">'+IC.more+'</button>':'')+'</div>';
   const canLate=ed&&isT&&window.P9L&&!!a0;const home=late.length>0;   // a split crew (no job of its own): each half swipes on its own
   const act=canLate?'<div class="act" onclick="event.stopPropagation();P23.late(\''+jsq(c.id)+'\')">'+(home?IC.home:IC.clock)+'<span>'+E(T(home?'Send home':'Stay late'))+'</span></div>':'';
@@ -256,7 +256,7 @@ renderDayBoard=function(){const m=me();const el=document.getElementById('todayBo
   else{
     const wd=new Date(k+'T12:00').getDay();
     let sum=work.length+' '+T('of')+' '+crews.length+' '+T('crews booked');
-    const appC=work.filter(appClockCrew);if(isT&&appC.length&&nowMin()>=420){appC.forEach(c=>{const g=crewGuys(c);const on=g.filter(x=>scDayState(x,true,new Date().toDateString(),k).k==='in').length;sum+=' · '+c.name+': '+on+' '+T('of')+' '+g.length+' '+T('in');});}
+    const appC=work.filter(appClockCrew);if(isT&&appC.length&&nowMin()>=420){appC.forEach(c=>{const g=crewGuys(c);const on=g.filter(x=>scDayState(x,true,new Date().toDateString(),k).k==='in').length;sum+=' · '+c.name+': '+on+' '+T('of')+' '+g.length+' '+(lang()==='es'?'adentro':'in');});}
     body='<p class="p23sum">'+E(sum)+(isOff(k)?' · '+E(offName(k)):'')+'</p>';
     const cards=(k>=t0&&wd!==6?free.map(c=>noneCard(c,k)):[]).concat(work.map(c=>crewCard(c,k).html));
     body+='<div class="p23list">'+cards.join('')+'</div>';

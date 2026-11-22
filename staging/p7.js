@@ -239,7 +239,7 @@ function hubHome(m,el,att){const d=new Date();const hr=d.getHours();const al=all
   const can=n=>al.includes(n)||m.role==='owner';
   const tom=new Date();tom.setDate(tom.getDate()+1);
   const C={tasks:()=>tasksCard(m),onsite:()=>(can('hours')||m.role==='owner'||m.role==='manager'||m.all)&&!fieldOff()?onsiteCard():'',crews:()=>can('sched')?crewCard(new Date()):'',crewsT:()=>can('sched')?crewCard(tom):'',meets:()=>meetCard(m),mat:()=>matCard(m)};
-  const order=m.role==='worker'?['crews','tasks','crewsT','meets']:hr<11?['crews','onsite','tasks','meets','mat']:hr<16?['tasks','onsite','meets','crews','mat']:['tasks','crewsT','meets','mat','onsite'];
+  const order=m.role==='worker'?['crews','tasks','crewsT','meets']:['crews','onsite','tasks','meets','mat','crewsT'];   // Baruch 11/22: one order all day — sections don't move around
   let toq='';try{toq=typeof timeOffQueue==='function'?timeOffQueue():'';}catch(e){}
   el.innerHTML='<div id="p5hero"><img src="'+(document.documentElement.getAttribute('data-theme')==='dark'||(!document.documentElement.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches)?'logo-dark.svg':'logo-light.svg')+'" alt="Electrix"></div>'
    +'<button id="p7date" onclick="goTab(\'cal\')"><span class="cal"><i>'+esc(d.toLocaleDateString(LOC(),{month:'short'}))+'</i><b>'+d.getDate()+'</b></span><span><span class="d">'+esc(d.toLocaleDateString(LOC(),{weekday:'long',month:'long',day:'numeric'}))+'</span><h2>'+esc(greet)+', '+esc(String(m.name||'').split(' ')[0])+'</h2></span><span class="go">›</span></button>'
