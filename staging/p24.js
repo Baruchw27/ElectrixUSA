@@ -19,7 +19,7 @@ const L24={"By job":"Por trabajo","By crew":"Por cuadrilla","Updated":"Actualiza
  "no punch":"sin marca","past go-home":"pasó su hora","tracker quiet":"GPS callado","new":"nuevo",
  "Booked":"Reservado","Not booked today":"Sin reserva hoy","Staying late until":"Se queda hasta","Staying late":"Se queda tarde","Sent home at":"Enviado a casa a las","Go home":"Salida",
  "No tracker on his phone":"Sin rastreador en su teléfono","Tracker last seen":"Rastreador visto por última vez","Tracker not connected":"Rastreador no conectado","crew leader":"líder de cuadrilla",
- "today":"hoy","Due":"Entra","No punch today":"Sin marca hoy","Time card":"Tarjeta de tiempo","now":"ahora","came":"llegó","min late":"min tarde",
+ "today":"hoy","Due":"Entra","No punch today":"Sin marca hoy","Time card":"Tarjeta de tiempo","now":"ahora","battery":"batería","charging":"cargando","came":"llegó","min late":"min tarde",
  "staying until":"se queda hasta","staying late":"se queda tarde","until":"hasta","No crew":"Sin cuadrilla","No job":"Sin trabajo","Done for today":"Terminado por hoy","men":"hombres",
  "job":"trabajo","jobs":"trabajos","came late":"llegaron tarde","never punched in":"nunca marcaron","everyone punched out":"todos marcaron salida","due later":"entran más tarde",
  "missing":"sin marca","left the job":"dejaron el trabajo","done":"terminaron","Nobody is booked or punched in today.":"Nadie está reservado ni marcado hoy.","Not on the time clock":"Sin reloj de tiempo","working":"trabajando","waiting for OK":"esperando aprobación","His punch-in is waiting for your OK":"Su entrada espera su aprobación"};
@@ -53,7 +53,7 @@ const css=document.createElement('style');css.textContent=
 +'.p24live{animation:p24gl 2.6s ease-in-out infinite}@keyframes p24gl{0%,100%{box-shadow:0 0 0 0 rgba(47,179,107,0)}50%{box-shadow:0 0 10px 2px rgba(47,179,107,.45)}}'
 +'@media (prefers-reduced-motion:reduce){.p24live{animation:none}.p24r{transition:none}}'
 +'.p24ck{position:absolute;right:-1px;bottom:-1px;width:18px;height:18px;border-radius:50%;background:#2fb36b;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center}'
-+'.p24nw{position:absolute;top:-5px;right:-14px;font-size:10px;line-height:15px;padding:0 6px;border-radius:8px;background:var(--g1);color:var(--g5)}'
++'.p24bt{position:absolute;left:-4px;bottom:-2px;min-width:20px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:9px;background:#d9483b;color:#fff;font-size:10px;font-weight:600;line-height:18px;text-align:center}.p24nw{position:absolute;top:-5px;right:-14px;font-size:10px;line-height:15px;padding:0 6px;border-radius:8px;background:var(--g1);color:var(--g5)}'
 +'.p24nm{font-weight:600;font-size:13px;color:var(--g5);margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.p24nm b{color:var(--amber);font-weight:600}'
 +'.p24s{font-size:11px;color:var(--g4);line-height:1.45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
 +'.p24tag{display:inline-block;max-width:92px;overflow:hidden;text-overflow:ellipsis;vertical-align:top;box-sizing:border-box;margin-top:3px;font-size:10.5px;line-height:16px;padding:0 7px;border-radius:9px;background:var(--red-bg);color:#c0392b;white-space:nowrap}.p24tag.g{background:var(--g1);color:var(--g4)}'
@@ -72,6 +72,8 @@ function goHome(e,k,L){if(!L.length)return null;const g=lastGH(e.id);
 function tracker(e){if(e.appClock!==true)return 'none';if(typeof otRep==='undefined'||!otRep)return 'ok';
   const x=(otRep.people||[]).find(p=>p.who===e.id);if(!x||!x.last)return 'none';const last=new Date(x.last).getTime();
   return Date.now()-last<40*60000?'ok':'quiet';}
+// Baruch 11/22: battery from the tracker — low (15% or less), not charging, reading from the last 2 hours
+function batt(e){try{const x=((otRep&&otRep.people)||[]).find(p=>p.who===e.id);if(!x||x.batt==null||!x.batt_at)return null;const at=new Date(x.batt_at).getTime();return {v:+x.batt,ch:x.bs===2||x.bs===3,at,old:Date.now()-at>2*36e5};}catch(z){return null;}}
 function trackerLast(e){try{const x=((otRep&&otRep.people)||[]).find(p=>p.who===e.id);return x&&x.last?new Date(x.last).getTime():0;}catch(z){return 0;}}
 function isNew(e){const ins=(D.punches||[]).filter(p=>p&&p.who===e.id&&!p.voided).map(p=>p.in);if(!ins.length)return false;return Date.now()-Math.min(...ins)<14*864e5;}
 function todayPunches(id){const t0=new Date();t0.setHours(0,0,0,0);return (D.punches||[]).filter(p=>p&&p.who===id&&p.in>=t0.getTime()&&(typeof payCounts==='function'?payCounts(p):!p.voided&&!p.rejected)).sort((a,b)=>a.in-b.in);}
@@ -80,7 +82,7 @@ function man(e){const k=tk(),nm=nowMin();const s=attStatusOf(e.id);const P=today
   const open=P.find(p=>!p.out&&!p.away)||null,away=!open&&P.find(p=>!p.out&&p.away)||null,last=P[P.length-1]||null;
   const start=L.length?(L[0].start==null?DAY_START:L[0].start):null;
   let nowSite=null;try{const ms=mySchedDay(e,k);nowSite=ms&&ms.site;}catch(x){}
-  const r={e,s,P,L,gh,start,tr:tracker(e),lead:!!e.lead,nw:isNew(e)};
+  const r={e,s,P,L,gh,start,tr:tracker(e),lead:!!e.lead,nw:isNew(e),bt:batt(e)};
   const firstIn=P.length?P[0].in:null;const fiMin=firstIn?(new Date(firstIn).getHours()*60+new Date(firstIn).getMinutes()):null;
   r.late=(start!=null&&fiMin!=null&&fiMin-start>=10)?fiMin-start:0;
   if(open||s.status==='working'){r.k='in';r.site=(open&&open.site)||s.site;}
@@ -115,7 +117,7 @@ function circle(r){const tags=[];
   return '<div class="p24m'+(r.k==='left'?' fade':'')+'" onclick="P24.tap(\''+J(r.e.id)+'\')">'
     +'<div class="p24r'+(live?' p24live':'')+(noCrew&&r.k!=='wait'?' dash':'')+'" style="--p24c:'+col+'" data-p24a="'+(r.pct||0)+'">'
     +'<div class="p24in'+inC+'">'+E(ini(r.e.name))+'</div>'
-    +(r.k==='out'?'<div class="p24ck">✓</div>':'')+(r.nw?'<span class="p24nw">'+E(T('new'))+'</span>':'')+'</div>'
+    +(r.k==='out'?'<div class="p24ck">✓</div>':'')+(r.bt&&!r.bt.ch&&!r.bt.old&&r.bt.v<=15&&(r.k==='in'||r.k==='wait'||r.k==='none')?'<div class="p24bt">'+r.bt.v+'%</div>':'')+(r.nw?'<span class="p24nw">'+E(T('new'))+'</span>':'')+'</div>'
     +'<div class="p24nm">'+E(r.dn||String(r.e.name||'').split(' ')[0])+(r.lead?' <b>★</b>':'')+'</div>'
     +(r.site&&mode==='crew'?'<div class="p24s">'+E(short(r.site))+'</div>':'')
     +'<div class="p24s">'+E(line)+'</div>'+(r.P.length?'<div class="p24s">'+E(hm(r.hours))+'</div>':'')
@@ -130,7 +132,7 @@ function panel(r){const k=tk();const cr=(D.crews||[]).find(c=>c.id===r.e.crew);
   return '<div class="p24pn"><div style="font-weight:600;font-size:14.5px">'+E(r.e.name)+(r.lead?' · '+E(T('crew leader')):'')+'</div>'
    +'<div class="s">'+E((cr?cr.name+' · ':'')+bk)+(gh?' · '+E(gh):'')+'</div>'
    +(r.P.length?'<div style="margin-top:6px">'+pp+'</div><div class="s">'+E(hm(r.hours))+' '+E(T('today'))+(r.late?' · <span style="color:#c0392b">'+E(T('came'))+' '+r.late+' '+E(T('min late'))+'</span>':'')+'</div>':'<div style="margin-top:6px">'+E(r.k==='wait'?T('Due')+' '+fm(r.start):r.s.waiting?T('His punch-in is waiting for your OK'):T('No punch today'))+'</div>')
-   +'<div class="s">'+E(trk)+'</div>'
+   +'<div class="s">'+E(trk)+(r.bt?' · <span'+(r.bt.v<=15&&!r.bt.ch?' style="color:#c0392b"':'')+'>'+E(T('battery'))+' '+r.bt.v+'%'+(r.bt.ch?' '+E(T('charging')):'')+' ('+ft(r.bt.at)+')</span>':'')+'</div>'
    +'<button onclick="event.stopPropagation();P19.open(\''+J(r.e.id)+'\','+Date.now()+')">'+E(T('Time card'))+' ›</button></div>';}
 
 // ── groups ──

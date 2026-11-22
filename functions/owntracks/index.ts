@@ -225,6 +225,12 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
   let msg: any = {}; try { msg = await req.json(); } catch (_) { msg = {}; }
   const { emp, site, open, tell, save } = await load(adm, user, now);
   if (emp.inactive) return json([]);
+  // Baruch 11/22: keep the phone's battery level (OwnTracks sends batt % and bs 0 unknown / 1 unplugged / 2 charging / 3 full with every
+  // location report) so Today can show a small "7%" on his circle before his phone dies. Older reports never overwrite a newer one.
+  if (msg._type === "location" && msg.batt != null && Number.isFinite(Number(msg.batt))) {
+    const tb = Number(msg.tst) > 1e9 ? Math.min(Number(msg.tst) * 1000, now) : now;
+    try { await adm.rpc("ot_batt", { p_who: user, p_batt: Math.round(Number(msg.batt)), p_bs: msg.bs != null && Number.isFinite(Number(msg.bs)) ? Number(msg.bs) : null, p_at: tb }); } catch (_) { /* never stops the tracker */ }
+  }
   let kind: string | null = null, kSite: string | null = null, note = "";
   const at = Number(msg.tst) > 1e9 ? Math.min(Number(msg.tst) * 1000, now) : now;
   // Baruch 11/18 (7): a job on his schedule for that day needs no proof — on the clock and arriving there switches him on the
