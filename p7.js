@@ -188,7 +188,7 @@ function crewCard(day){const k=dkey(day);const isT=day.toDateString()===new Date
     return card('myjob',IC('pin')||tabIcon('sched'),'#9b51e0','My job today',null,[],0,big,false);}
   if(own)return card(isT?'myjob':'myjobT',IC('cal')||tabIcon('sched'),'#9b51e0',isT?'My job today':'My job tomorrow',null,rows,6,rows.length?'':'<div class="p7empty">'+esc(tt('No crew assigned.'))+'</div>',false);
   return card(isT?'crews':'crewsT',IC('cal')||tabIcon('sched'),'#9b51e0',isT?'Crews today':'Crews tomorrow',out+'/'+rows.length,rows,6,'',rows.some(r=>r.includes('pill bad'))&&!isT);}
-// Baruch 11/22: owner + Payroll — tapping a job opens Today on that job (who is on it), not the job folder
+// Baruch 11/22: tap the job → the job; tap the men → payroll Today on that job (owner + Payroll)
 // Baruch 11/17: a man whose phone saw him LEAVE the job (p.away) is not "on the job now" — he is listed under it as left,
 // with the time his clock closes by itself (1 hour after he left) — the same as Today and the time cards show.
 // when the server closes an open punch by itself (same rule as private.clock_due): 1 h after the day's end; crew kept late →
@@ -199,7 +199,7 @@ function closeAt(p){const d=new Date(p.in);const end=new Date(d);if(d.getDay()==
   return p.away?Math.min(p.away+36e5,dl):dl;}
 function onsiteCard(){const td=new Date().toDateString();const hr=new Date().getHours();const open=(D.punches||[]).filter(p=>!p.out&&!p.voided&&new Date(p.in).toDateString()===td&&(D.emps||[]).some(e=>e.id===p.who));const live=open.filter(p=>!p.away);const left=open.filter(p=>p.away);
   const by={};live.forEach(p=>{(by[p.site]=by[p.site]||[]).push(p);});const field=(D.emps||[]).filter(e=>e.role==='worker'&&!e.inactive&&!(typeof noClock==='function'&&noClock(e)));
-  const rows=Object.entries(by).sort((a,b)=>b[1].length-a[1].length).map(([sid,ps])=>'<div class="p7r one" onclick="'+(window.P24&&typeof canEditHours==='function'&&canEditHours(me())?'P24.job':'openFolder')+'(\''+jsq(sid)+'\')"><div class="w"><b>'+esc(short(siteName(sid)))+'</b><small>'+ps.sort((a,b)=>a.in-b.in).map(p=>esc(nameOf(p.who).split(' ')[0])+'').join(', ')+'</small></div><span class="pill ok">'+ps.length+'</span></div>');
+  const rows=Object.entries(by).sort((a,b)=>b[1].length-a[1].length).map(([sid,ps])=>'<div class="p7r one" onclick="openFolder(\''+jsq(sid)+'\')"><div class="w"><b>'+esc(short(siteName(sid)))+'</b><small'+(window.P24&&typeof canEditHours==='function'&&canEditHours(me())?' style="cursor:pointer" onclick="event.stopPropagation();P24.job(\''+jsq(sid)+'\')"':'')+'>'+ps.sort((a,b)=>a.in-b.in).map(p=>esc(nameOf(p.who).split(' ')[0])+'').join(', ')+'</small></div><span class="pill ok">'+ps.length+'</span></div>');
   let notIn=[];try{const k=dkey(new Date());notIn=(D.crews||[]).filter(c=>schedDay(c.id+'|'+k)).flatMap(c=>(D.emps||[]).filter(e=>e.crew===c.id&&!e.inactive&&!(typeof noClock==='function'&&noClock(e)))).filter(e=>!(D.punches||[]).some(p=>p.who===e.id&&new Date(p.in).toDateString()===td));}catch(e){}
   const warn=notIn.length&&hr>=6&&hr<17?'<div class="p7warn">⏱ '+esc(tt('Not in yet'))+': '+notIn.map(e=>esc(e.name.split(' ')[0])).join(', ')+'</div>':'';
   const lw=left.length?'<div class="p7warn">🚗 '+esc(tt('Left the job'))+': '+left.sort((a,b)=>a.away-b.away).map(p=>esc(nameOf(p.who).split(' ')[0])+' '+esc(fmtT(p.away))+' ('+esc(tt('clock closes'))+' '+esc(fmtT(closeAt(p)))+')').join(', ')+'</div>':'';
