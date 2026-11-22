@@ -149,3 +149,11 @@ OwnTracks on the same phone; not needed.
 - Today (p24.js): a small red "7%" on the corner of his circle when it is 15% or less, not charging, read in the last
   2 hours, and he is working or booked. Tapping him shows the battery in the grey panel. Nothing under the circle (Baruch 11/22).
 - Only men with OwnTracks (appClock) have a battery. Test: /home/claude/work/ott/run11.mjs.
+
+## 16. Schedule: "Every workday" = Monday–Friday (live 11/22 5 AM, app vh116)
+- Ongoing ("until I change it" / "Every workday") bookings repeat Monday–Friday only; Sunday is booked by hand. Crews 1 and 5's
+  ongoing jobs had Sunday in them (that is why crew 1 showed booked on Sunday 11/22) — changed to Mon–Fri 11/22.
+  The tracker's punch-in reminders and the 8:05 / 8:30 server reminders follow the schedule, so a crew not booked on Sunday
+  gets no Sunday reminders.
+- Booking is done on the crew card now (p26): ⋯ = Edit · Add another job · Copy; swipe right = Send; every save writes the whole
+  day (no pieces on top of old ones). Same records as before (crew|day, ONG:crew:id, L:man|day).
