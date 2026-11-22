@@ -168,7 +168,8 @@ const pinFor=m=>m&&m.role==='worker'?['punch','jobs','sched','mat','code']:(m&&M
 const pcss=`
 #p8pin{position:fixed;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:59;display:none;flex-direction:column;gap:12px;align-items:center}
 body:has(#pg-home.on) #p8pin{display:flex}
-body:has(#pg-home.on) #homeBody{padding-right:66px}
+/* Baruch 11/22: Home stays full width; the page fades softly behind the round buttons so they read clearly */
+#p8pin::before{content:"";position:absolute;top:-26px;bottom:-14px;left:-34px;right:-14px;z-index:-1;pointer-events:none;background:linear-gradient(90deg,transparent,var(--g0) 62%);opacity:.92}
 .pg.on{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))!important}
 /* Baruch 22:44: lists full width again — the glass buttons float on top */
 #p8pin .g{display:flex;flex-direction:column;align-items:center;gap:3px;width:62px;border:none;background:none;padding:0;cursor:pointer;font-family:inherit}
