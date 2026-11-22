@@ -57,7 +57,7 @@ async function put(keys,apply,ok){apply();save();let res;
 // ───────── the small screens (same look as the other schedule screens) ─────────
 function css(){if(document.getElementById('p26css'))return;const base=(document.getElementById('p21css')||{}).textContent||'';const st=document.createElement('style');st.id='p26css';
   st.textContent=base.replace(/#p21Body/g,'#p26Body')
-   +'.p26ov{position:fixed;inset:0;z-index:260;background:rgba(0,0,0,.38);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .18s}.p26ov.on{opacity:1;pointer-events:auto}.p26sh{position:relative;width:100%;max-width:560px;max-height:86vh;display:flex;flex-direction:column;background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -6px 24px rgba(0,0,0,.16);transform:translateY(24px);transition:transform .2s;padding-bottom:env(safe-area-inset-bottom,0)}.p26ov.on .p26sh{transform:none}html[data-theme=dark] .p26sh{background:#1c1c1e;color:#f2f2f7}.p26grab{width:36px;height:5px;border-radius:3px;background:var(--g2);margin:8px auto 0}.p26cl{position:absolute;right:12px;top:10px;width:32px;height:32px;border-radius:50%;border:0;background:var(--g1);color:var(--g5);font-size:15px;cursor:pointer;z-index:2}.p26bd{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 16px 22px}.p26bd h2{padding-right:40px}html.p26lock,html.p26lock body{overflow:hidden}.p26half{border-top:1px solid var(--g2);margin-top:12px;padding-top:12px}.p23card.p26ed{box-shadow:inset 0 0 0 2px #4f7cff}.p26tp{cursor:pointer;border-bottom:2px dotted #4f7cff}.p26x{color:#c0392b;margin-left:8px;cursor:pointer;font-weight:700;font-size:15px;padding:0 4px}'
+   +'.p26ov{position:fixed;inset:0;z-index:260;background:rgba(0,0,0,.38);display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .18s}.p26ov.on{opacity:1;pointer-events:auto}.p26sh{position:relative;width:100%;max-width:480px;max-height:80vh;display:flex;flex-direction:column;background:#fff;border-radius:18px;box-shadow:0 12px 40px rgba(0,0,0,.22);transform:scale(.96);transition:transform .16s}.p26ov.on .p26sh{transform:none}html[data-theme=dark] .p26sh{background:#1c1c1e;color:#f2f2f7}.p26grab{height:6px}.p26cl{position:absolute;right:12px;top:10px;width:32px;height:32px;border-radius:50%;border:0;background:var(--g1);color:var(--g5);font-size:15px;cursor:pointer;z-index:2}.p26bd{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 16px 22px}.p26bd h2{padding-right:40px}html.p26lock,html.p26lock body{overflow:hidden}.p26bd #p26askmd{border-radius:0!important;max-height:none!important;background:transparent!important;padding:8px 0 0!important;box-shadow:none!important;height:auto!important}.p26bd #askTitle{padding-right:40px;font-size:18px!important}.p26bd #p26askmd div:has(>#askOk){flex-direction:column!important}.p26bd #p26askmd div:has(>#askOk)>button{width:100%!important;flex:none!important;margin:0!important}.p26half{border-top:1px solid var(--g2);margin-top:12px;padding-top:12px}.p23card.p26ed{box-shadow:inset 0 0 0 2px #4f7cff}.p26tp{cursor:pointer;border-bottom:2px dotted #4f7cff}.p26x{color:#c0392b;margin-left:8px;cursor:pointer;font-weight:700;font-size:15px;padding:0 4px}'
    +'.p26done{background:none;border:0;color:#4f7cff;font-weight:700;font-size:15px;cursor:pointer;padding:4px 2px}.p26av{cursor:pointer;box-shadow:0 0 0 2px #4f7cff!important}'
    +'.p26pc{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:6px}.p26pc .ad{font-size:16px}.p26pc .hr{white-space:nowrap;color:var(--g4);font-size:13.5px}'
    +'.p26mv{margin-top:8px;font-size:13.5px}.p26snd{position:absolute;left:0;top:0;bottom:0;width:104px;color:#fff;display:none;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-weight:700;font-size:13px;background:#4f7cff}'
@@ -67,19 +67,25 @@ function css(){if(document.getElementById('p26css'))return;const base=(document.
    +'#p26Body .p26rw{display:flex;justify-content:space-between;align-items:center;padding:10px 2px;border-top:1px solid var(--g2);font-size:15px}#p26Body .p26rw:first-of-type{border-top:0}'
    +'#p26Body .p26back{width:100%;text-align:left;background:none;border:1px solid var(--g2);border-radius:12px;padding:10px 12px;font-size:15px;font-weight:600;color:#4f7cff;margin:6px 0;cursor:pointer}';
   document.head.appendChild(st);}
-// Baruch 11/22: a panel that slides up over the schedule — ✕ to close, tap outside to close — instead of a full page with "‹ Back"
+// Baruch 11/22: a box in the middle of the page (he likes it better than from the bottom) — ✕ to close, tap outside to close — instead of a full page with "‹ Back"
 function shell(){let o=document.getElementById('p26ov');if(o)return o;css();o=document.createElement('div');o.id='p26ov';o.className='p26ov';
   o.innerHTML='<div class="p26sh" onclick="event.stopPropagation()"><div class="p26grab"></div><button type="button" class="p26cl" aria-label="Close" onclick="P26.close()">✕</button><div class="p26bd"><div id="p26Body"></div></div></div>';
   o.addEventListener('click',()=>P26.close());document.body.appendChild(o);return o;}
-function openShell(which){const o=shell();const bd=o.querySelector('.p26bd');
+function openShell(which){const o=shell();const bd=o.querySelector('.p26bd');if(which!=='ask')askBack();
   if(which==='p21'){const pb=document.getElementById('p21Body');if(pb&&pb.parentElement!==bd)bd.appendChild(pb);}
-  [...bd.children].forEach(c=>{c.style.display=(c.id===(which==='p21'?'p21Body':'p26Body'))?'':'none';});
+  if(which==='ask'){const m=document.getElementById('m-ask');const md=m&&(m.querySelector('.md')||document.getElementById('p26askmd'));if(md){md.id='p26askmd';if(md.parentElement!==bd)bd.appendChild(md);}if(m)m.classList.add('hid');}
+  const want=which==='p21'?'p21Body':which==='ask'?'p26askmd':'p26Body';[...bd.children].forEach(c=>{c.style.display=c.id===want?'':'none';});
   o.classList.add('on');document.documentElement.classList.add('p26lock');bd.scrollTop=0;}
-function closeShell(){const o=document.getElementById('p26ov');if(o)o.classList.remove('on');document.documentElement.classList.remove('p26lock');}
+function closeShell(){const o=document.getElementById('p26ov');if(o)o.classList.remove('on');document.documentElement.classList.remove('p26lock');askBack();}
+// the app's small question box goes back where it lives, so every other page keeps using it as before
+function askBack(){const md=document.getElementById('p26askmd');const m=document.getElementById('m-ask');if(md&&m&&md.parentElement!==m){md.removeAttribute('id');m.appendChild(md);m.classList.add('hid');}}
 // the Send screen (P21) opens in the same panel
 const _show=window.show,_hide=window.hide;
-show=function(id){if(id==='m-p21'){const m=document.getElementById('m-p21');if(m)m.classList.add('hid');openShell('p21');return;}return _show.apply(this,arguments);};
-hide=function(id){if(id==='m-p21'||id==='m-p26'){closeShell();const m=document.getElementById('m-p21');if(m)m.classList.add('hid');return;}return _hide.apply(this,arguments);};
+// Baruch 11/22: on the Schedule, every box (⋯ menu, Stay late?, Take this job off?, Copy, Days off) opens in the same slide-up panel
+show=function(id){if(id==='m-ask'&&typeof curPage==='function'&&curPage()==='sched'){openShell('ask');return;}
+  if(id==='m-p21'){const m=document.getElementById('m-p21');if(m)m.classList.add('hid');openShell('p21');return;}return _show.apply(this,arguments);};
+hide=function(id){if(id==='m-ask'&&document.getElementById('p26askmd')){closeShell();return;}
+  if(id==='m-p21'||id==='m-p26'){closeShell();const m=document.getElementById('m-p21');if(m)m.classList.add('hid');return;}return _hide.apply(this,arguments);};
 try{window.show=show;window.hide=hide;}catch(e){}
 css();
 let S=null;
