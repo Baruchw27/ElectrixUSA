@@ -156,6 +156,13 @@ const fieldOff=()=>window.EX_FIELD_CLOCK===false;
 const workHours=d=>{d=d||new Date();return window.EX_WORK_HOURS||(tt('8:00 AM')+' – '+tt(new Date(d).getDay()===5?'1:15 PM':'7:00 PM'));};   /* Baruch 10/28 23:48: 8 AM – 7 PM, Friday 8 AM – 1:15 PM */
 const jobPhase=(s,c)=>{const p=(s&&s.phase)||(c&&c.type==='finish'?'finish':'rough');return p==='finish'?'Finishing':'Rough';};
 window.EX_jobPhase=jobPhase;window.EX_workHours=workHours;
+// Baruch 11/22: a man's own day — his real hours (booked start → go-home time) and the jobs still to come today
+window.EX_myPlan=function(m,k){let L=[];try{L=empTimeline(m.id,k).filter(a=>a&&a.site&&a.start!=null).sort((a,b)=>a.start-b.start);}catch(e){}if(!L.length)return null;
+  const def=new Date(k+'T12:00').getDay()===5?795:1140;const end=L.reduce((x,a)=>Math.max(x,a.end==null?def:a.end),0);
+  const d=new Date();const isT=k===dkey(d);const nm=d.getHours()*60+d.getMinutes();let cur=null;try{const s=mySchedDay(m,k);cur=s&&s.site;}catch(e){}
+  const later=L.filter(a=>a.site!==cur&&(isT?a.start>nm:a.start>L[0].start));const es=typeof lang==='function'&&lang()==='es';
+  return {hrs:fMin(L[0].start)+' – '+fMin(end),later:later.map(a=>(es?'Después':'Then')+': '+String(siteName(a.site)||'').split(',')[0]+' '+(es?'a las':'at')+' '+fMin(a.start))};};
+
 function card(k,icon,col,title,n,rows,lim,extra,red){if(!rows.length&&!extra)return '';const show=open_(k)?rows:rows.slice(0,lim);
   return '<div class="p7c'+(fold(k)?' fold':'')+'" data-k="'+k+'"><div class="p7h" onclick="P7.fold(\''+k+'\')"><span class="ic" style="background:'+col+'1f;color:'+col+'">'+icon+'</span><b>'+esc(tt(title))+'</b>'+(n!=null?'<span class="n'+(red?' r':'')+'">'+n+'</span>':'')+'<span class="ch">▾</span></div>'
     +'<div class="bd">'+(extra||'')+show.join('')+(rows.length>lim?'<div class="p7more" onclick="P7.all(\''+k+'\')">'+(open_(k)?esc(tt('Show less')):esc(tt('Show all'))+' ('+rows.length+')')+'</div>':'')+'</div></div>';}
@@ -181,7 +188,7 @@ function crewCard(day){const k=dkey(day);const isT=day.toDateString()===new Date
     rows.push('<div class="p7r one" onclick="'+(own?'goTab(\'sched\')':'openCrew(\''+jsq(c.id)+'\')')+'"><div class="w"><b>'+esc(own?short(siteName(((mySchedDay(me_,k)||sl).site)||'')):c.name)+'</b>'+(sl.time?' <span style="color:var(--g4);font-size:12.5px">'+esc(sl.time)+'</span>':'')+'<small>'+(own?guys.map(e=>esc(e.name.split(' ')[0])+(e.lead?' ★':'')).join(', '):esc(sl.split?sl.splitSites.map(x=>short(siteName(x))).join(' + '):sl.site?short(siteName(sl.site)):(tt('Several jobs'))))+'</small></div>'+(inN!=null?'<span class="pill '+(inN===guys.length?'ok':inN?'am':'bad')+'">'+inN+'/'+guys.length+'</span>':'')+'</div>');});
   if(own&&isT){const c=(own?[(D.crews||[]).find(c=>c.id===me_.crew)]:[])[0]||{};const sl=mySchedDay(me_,k);const st=sl&&(D.sites||[]).find(x=>x.id===sl.site);
     const guys=(D.emps||[]).filter(e=>e.crew===me_.crew&&!e.inactive);
-    const big=sl&&st?'<div class="p9job" onclick="openFolder(\''+jsq(st.id)+'\')"><div class="a">'+esc(st.name.split(',')[0])+'</div><div class="m">'+esc(tt(jobPhase(st,c)))+' · '+esc(workHours())+'</div>'
+    const big=sl&&st?'<div class="p9job" onclick="openFolder(\''+jsq(st.id)+'\')"><div class="a">'+esc(st.name.split(',')[0])+'</div><div class="m">'+esc(tt(jobPhase(st,c)))+' · '+esc((window.EX_myPlan&&EX_myPlan(me_,k)||{}).hrs||workHours())+'</div>'+((window.EX_myPlan&&EX_myPlan(me_,k)||{}).later||[]).map(x=>'<div class="m">'+esc(x)+'</div>').join('')
         +'<div class="g">'+guys.map(e=>'<span>'+esc(e.name.split(' ')[0])+(e.lead?' ★':'')+'</span>').join('')+'</div>'
         +'<div class="b"><a href="'+esc(safeHref(gmapsDir(st)))+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">'+esc(tt('Directions'))+'</a><button onclick="event.stopPropagation();openFolder(\''+jsq(st.id)+'\')">'+esc(tt('Open job'))+'</button></div></div>'
       :'<div class="p7empty">'+esc(tt(new Date().getDay()===6?'No work today.':'No job scheduled yet — ask your crew leader.'))+'</div>';

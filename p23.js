@@ -318,8 +318,8 @@ window.P23={
   pv:cid=>{P.pv=P.pv===cid?null:cid;renderSched();},
   today:()=>{P.stripX=null;boardDay=0;renderSched();},
   lateHalf:(ids,isLate)=>{P.swiped=null;if(isLate)P9L.home(null,ids);else P9L.lateIds(ids);setTimeout(renderSched,300);},
-  late:cid=>{const late=lateIds(cid).length>0;const c=D.crews.find(x=>x.id===cid);
-    askConfirm((late?T('Send this crew home?'):T('Keep this crew late today?'))+' ('+(c?c.name:'')+') — '+T('They get a message.'),()=>{P.swiped=null;if(late)P9L.home(cid);else P21.late(cid);setTimeout(renderSched,300);},T(late?'Send home':'Stay late'));},
+  // Baruch 11/22: one box, not two — Stay late opens "Till when?" right away; Send home opens its own "Send them home now?"
+  late:cid=>{const late=lateIds(cid).length>0;P.swiped=null;document.querySelectorAll('#todayBoard .p23card').forEach(o=>{o.style.transform='';});if(late)P9L.home(cid);else P21.late(cid);},
   crewMenu:(cid,k)=>{const c=D.crews.find(x=>x.id===cid);const own=real(slotAsgs(cid+'|'+k));const halves=[...new Set(crewGuys(c||{id:cid}).flatMap(g=>real(loansFor(g.id,k)).map(a=>a.site)))];const rows=[{l:'↪ '+E(T('Send to another job')),on:"P21.send('"+jsq(cid)+"','"+k+"')"},{l:'✂ '+E(T('Split the crew')),on:"P21.split('"+jsq(cid)+"','"+k+"')"},
       {l:'⧉ '+E(T('Copy')),on:"P21.copy('"+jsq(cid)+"','"+k+"')"},{l:'✎ '+E(T('Change job')),on:(own.length?"editSlot('":"P21.split('")+jsq(cid)+"','"+k+"')"}];   // Baruch 11/19: a crew split by people changes its jobs man by man
     if(k===todayK()&&window.P9L&&(fine()||wide())){const late=lateIds(cid).length>0;rows.push({l:'🕖 '+E(T(late?'Send home':'Stay late')),on:"P23.late('"+jsq(cid)+"')",red:!late});}
