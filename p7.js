@@ -161,7 +161,8 @@ window.EX_myPlan=function(m,k){let L=[];try{L=empTimeline(m.id,k).filter(a=>a&&a
   const def=new Date(k+'T12:00').getDay()===5?795:1140;const end=L.reduce((x,a)=>Math.max(x,a.end==null?def:a.end),0);
   const d=new Date();const isT=k===dkey(d);const nm=d.getHours()*60+d.getMinutes();let cur=null;try{const s=mySchedDay(m,k);cur=s&&s.site;}catch(e){}
   const later=L.filter(a=>a.site!==cur&&(isT?a.start>nm:a.start>L[0].start));const es=typeof lang==='function'&&lang()==='es';
-  return {hrs:fMin(L[0].start)+' – '+fMin(end),later:later.map(a=>(es?'Después':'Then')+': '+String(siteName(a.site)||'').split(',')[0]+' '+(es?'a las':'at')+' '+fMin(a.start))};};
+  let hrs=fMin(L[0].start)+' – '+fMin(end);if(isT){const g=(D.goHomeLog||[]).filter(x=>x&&x.who===m.id&&new Date(x.ts).toDateString()===d.toDateString()).sort((a,b)=>b.ts-a.ts)[0];if(g&&g.kind==='late')hrs=fMin(L[0].start)+' – '+(g.until!=null?fMin(+g.until):(es?'se quedan más tarde':'staying late'));}
+  return {hrs,later:later.map(a=>(es?'Después':'Then')+': '+String(siteName(a.site)||'').split(',')[0]+' '+(es?'a las':'at')+' '+fMin(a.start))};};
 
 function card(k,icon,col,title,n,rows,lim,extra,red){if(!rows.length&&!extra)return '';const show=open_(k)?rows:rows.slice(0,lim);
   return '<div class="p7c'+(fold(k)?' fold':'')+'" data-k="'+k+'"><div class="p7h" onclick="P7.fold(\''+k+'\')"><span class="ic" style="background:'+col+'1f;color:'+col+'">'+icon+'</span><b>'+esc(tt(title))+'</b>'+(n!=null?'<span class="n'+(red?' r':'')+'">'+n+'</span>':'')+'<span class="ch">▾</span></div>'

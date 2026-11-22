@@ -171,6 +171,7 @@ body:has(#pg-home.on) #p8pin{display:flex}
 /* Baruch 11/22: Home stays full width; the page fades softly behind the round buttons so they read clearly */
 #p8pin::before{content:"";position:absolute;top:-26px;bottom:-14px;left:-34px;right:-14px;z-index:-1;pointer-events:none;background:linear-gradient(90deg,transparent,var(--g0) 62%);opacity:.92}
 .pg.on{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))!important}
+#homeBody .p7c.fold{display:block!important;padding:0!important;gap:0!important}
 /* Baruch 22:44: lists full width again — the glass buttons float on top */
 #p8pin .g{display:flex;flex-direction:column;align-items:center;gap:3px;width:62px;border:none;background:none;padding:0;cursor:pointer;font-family:inherit}
 #p8pin .ball{position:relative;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#1d1d1f;
