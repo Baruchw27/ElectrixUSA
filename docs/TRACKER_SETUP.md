@@ -137,3 +137,6 @@ OwnTracks on the same phone; not needed.
 - "You are at the job — punch in": never for office people / the owner (role office/owner, i.e. Shia), and none after the
   workday — 7:00 PM, Friday 1:15 PM, or the "Go home at" time — unless kept late with Stay late.
 - Server: the 8:05 "Time to punch in" reminder and the 8:30 "not punched in yet" list leave out office/owner too.
+- (11/21 night, sql/ot_quiet_not_punched.sql) The "OwnTracks has not sent your location for 1 hour" message also goes to a man
+  BOOKED today but NOT punched in, counted from his booked start (once per quiet spell; office/owner left out). 11/20: Luis
+  Guillen's punch was stuck on his phone and his OwnTracks died at 7:07 — nobody heard anything until 11:11.
