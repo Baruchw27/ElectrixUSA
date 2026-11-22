@@ -259,7 +259,7 @@ function renderOrr(){ensurePage();const pg=$('pg-orr');const m=M();if(!pg||!m)re
   const sb=(k)=>'<button class="'+(whoF===k?'on':'')+'" style="color:'+WHO[k][1]+'" onclick="ORR.whoFilter(\''+k+'\')"><b>'+cnt(k)+'</b><span>'+esc(tt(WHO[k][0]==='O&R'?'O&R’s move':WHO[k][0]==='Customer'?'Customer pays':'Our move'))+'</span></button>';
   pg.innerHTML='<div class="orrhd"><h2>O&amp;R</h2><button class="btn" style="width:auto;padding:7px 12px;font-size:13px" onclick="ORR.add()">+ '+esc(tt('New'))+'</button></div>'
    +'<div class="orrseg"><button class="'+(view==='list'?'on':'')+'" onclick="ORR.view(\'list\')">'+esc(tt('To do'))+'</button><button class="'+(view==='step'?'on':'')+'" onclick="ORR.view(\'step\')">'+esc(tt('By step'))+'</button><button class="'+(view==='mgr'?'on':'')+'" onclick="ORR.view(\'mgr\')">'+esc(tt('By site manager'))+'</button></div>'
-   +'<input type="search" id="orrQ" placeholder="Search address, project #, PM, step" value="'+esc(q)+'" oninput="ORR.search(this.value)">'
+   +'<input type="search" id="orrQ" placeholder="'+esc(t('Search address, project #, PM, step'))+'" value="'+esc(q)+'" oninput="ORR.search(this.value)">'
    +'<div class="orrsum">'+sb('us')+sb('cust')+sb('oru')+'</div>'
    +body
    +(doneL.length?'<div class="orrmore" onclick="ORR.toggleDone()">'+(showDone?'Hide done':'Show done ('+doneL.length+')')+'</div>'+(showDone?doneL.map(row).join(''):''):'');
