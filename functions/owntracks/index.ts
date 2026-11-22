@@ -105,10 +105,48 @@ async function load(adm: any, user: string, now: number) {
   return { emp, site, open, waiting, tell, save };
 }
 
+// see arrived(): a clock the server closed because he left, and a late report shows he was back at that job
+async function reopenIfBack(adm: any, user: string, sid: string, at: number, now: number, S: any, emp: any, save: any): Promise<string> {
+  const { data: pr } = await adm.from("records").select("id,data").eq("coll", "punches").eq("deleted", false).eq("data->>who", user).gte("data->>in", String(at - 20 * 3600000));
+  const L = (pr || []).map((r: any) => ({ id: r.id, d: r.data || {} })).filter((x: any) => !x.d.voided && !x.d.rejected && x.d.src !== "fingercheck");
+  const c = L.filter((x: any) => x.d.site === sid && x.d.out != null && x.d.autoClosed && x.d.autoClosed.how === "left" && dkey(Number(x.d.in)) === dkey(at)
+      && Number(x.d.out) < at).sort((a: any, b: any) => Number(b.d.out) - Number(a.d.out))[0];
+  if (!c) return "";
+  if (L.some((x: any) => x.id !== c.id && Number(x.d.in) > Number(c.d.out))) return "";   // he already punched in again (or was switched) — nothing to fix
+  const out = Number(c.d.out), gap = at - out, es = emp.lang === "es";
+  if (gap <= 3600000) {
+    const d: any = { ...c.d, out: null, seen: Math.max(at, Number(c.d.seen) || 0), trips: [...(c.d.trips || []), { left: out, back: at }],
+      reopened: { at: now, by: "tracker", why: "back at the job at " + hm(at) + " (report arrived late)", closedWas: c.d.autoClosed } };
+    delete d.autoClosed; delete d.awayAsked; delete d.away; delete d.awayBy;
+    await save(c.id, d);
+    const nid = "n" + crypto.randomUUID().replace(/-/g, "");
+    await adm.from("records").upsert({ coll: "inbox", id: nid, deleted: false, updated_by: "server", updated_at: new Date().toISOString(),
+      data: { id: nid, to: user, msg: es ? "✅ Volvió a " + short(S.name) + " a las " + hm(at) + " — su reloj está abierto otra vez." : "✅ You were back at " + short(S.name) + " at " + hm(at) + " — your clock is open again.",
+        kind: "info", ts: Date.now(), read: false, link: { tab: "punch" }, auto: true } }, { onConflict: "coll,id" });
+    return "clock: reopened — back at " + hm(at) + " (" + Math.round(gap / 60000) + " min after he left; report came late)";
+  }
+  // back after more than an hour: tell Payroll once per punch
+  if (c.d.lateBackTold) return "";
+  await save(c.id, { ...c.d, lateBackTold: at });
+  const { data: cfg } = await adm.from("server_config").select("v").eq("k", "clock_check_to").maybeSingle();
+  let to: string[] = ["o1"]; try { const v = JSON.parse(cfg?.v || "null"); if (Array.isArray(v) && v.length) to = v.map(String); } catch (_) { /* default */ }
+  const nm = String(emp.name || user);
+  for (const t of to) { const nid = "n" + crypto.randomUUID().replace(/-/g, "");
+    await adm.from("records").upsert({ coll: "inbox", id: nid, deleted: false, updated_by: "server", updated_at: new Date().toISOString(),
+      data: { id: nid, to: t, msg: "🕒 " + nm + " was back at " + short(S.name) + " at " + hm(at) + ", but his clock was closed at " + hm(out) + " (he was away more than 1 hour). Check his time card.",
+        kind: "warn", ts: Date.now(), read: false, link: { tab: "hours" }, auto: true } }, { onConflict: "coll,id" }); }
+  return "clock stays closed (back " + Math.round(gap / 60000) + " min later) — Payroll told";
+}
+
 // he has been at job `sid` for 5 minutes (arrived at `at`)
 async function arrived(adm: any, user: string, sid: string, at: number, lat: number | null, lng: number | null, now: number, lastAt: number = at) {
   const { emp, site, open, waiting, tell, save } = await load(adm, user, now);
   const S = site[sid]; if (!S || emp.inactive) return "";
+  // Baruch 11/22 (Carlos): the server closed his clock because he "left and wasn't back within 1 hour" — but a report that
+  // reached us LATE shows he was back at this same job. Late is not thrown away: if he was back within the hour, the close
+  // was wrong → his clock opens again (the time away counts as a trip, like any short run). Back after more than an hour →
+  // the clock stays closed, and Payroll is told so they can fix his card.
+  if (!open) { const r = await reopenIfBack(adm, user, sid, at, now, S, emp, save); if (r) return r; }
   if (S.stage === "lost" && !(open && open.d.site === sid)) return "lost bid, not a job in the app — ignored";
   if (!open && waiting) return "waiting for office approval — no reminder";
   if (open && open.d.site === sid) return "";                       // already clocked in here
