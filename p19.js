@@ -21,7 +21,7 @@ const css=document.createElement('style');css.textContent=
  '#pg-hours{max-width:760px;margin-left:auto;margin-right:auto}'
 +'#p19h{display:flex;align-items:center;justify-content:space-between;gap:10px}#p19h h2{margin:0}'
 +'.p19per{font:inherit;font-size:13.5px;font-weight:600;color:var(--g5);background:var(--g1);border:0;border-radius:8px;padding:7px 10px;display:inline-flex;align-items:center;gap:4px;cursor:pointer}'
-+'#paySeg.p19tabs{position:sticky;top:var(--p19t0,47px);z-index:41;background:var(--g0);display:flex;gap:20px;margin:12px 0 14px!important;border-bottom:1px solid var(--g2);overflow-x:auto;scrollbar-width:none}#paySeg.p19tabs::-webkit-scrollbar{display:none}'
++'#paySeg.p19tabs{position:sticky;top:var(--p19t0,47px);z-index:41;background:var(--g0);display:flex;gap:16px;margin:12px 0 14px!important;border-bottom:1px solid var(--g2);overflow-x:auto;scrollbar-width:none}#paySeg.p19tabs::-webkit-scrollbar{display:none}'
 +'#paySeg.p19tabs button{font:inherit;font-size:14.5px;background:none;border:0;padding:8px 0 10px;color:var(--g4);position:relative;white-space:nowrap;cursor:pointer}'
 +'#paySeg.p19tabs button.on{color:var(--g5);font-weight:600}#paySeg.p19tabs button.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;border-radius:2px;background:var(--blue-mid,#d93a2b)}'
 +'#paySeg.p19tabs .n{display:inline-block;min-width:16px;padding:0 5px;margin-left:5px;border-radius:9px;background:#c0392b;color:#fff;font-size:11px;font-weight:600;line-height:17px;text-align:center}'
