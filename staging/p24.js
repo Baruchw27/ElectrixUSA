@@ -15,7 +15,7 @@ const $=id=>document.getElementById(id);
 const T=s=>{try{if(lang()==='es'&&L24[s])return L24[s];}catch(e){}try{return t(s);}catch(e){return s;}};
 const E=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const J=s=>{try{return jsq(s);}catch(e){return String(s).replace(/'/g,"\\'");}};
-const L24={"App last saw him":"La app lo vio por última vez","not at any job":"en ningún trabajo","off job":"fuera","Crews":"Cuadrillas","Jobs":"Trabajos","Updated":"Actualizado","in":"entró","left":"se fue","out":"salió","due":"entra","late":"tarde",
+const L24={"not on Move":"no está en Move","Tracker mode":"Modo del rastreador","not reported yet":"todavía no reportado","Move":"Move","Significant changes":"Cambios significativos","Manual":"Manual","Quiet":"Silencio","App last saw him":"La app lo vio por última vez","not at any job":"en ningún trabajo","off job":"fuera","Crews":"Cuadrillas","Jobs":"Trabajos","Updated":"Actualizado","in":"entró","left":"se fue","out":"salió","due":"entra","late":"tarde",
  "no punch":"sin marca","past go-home":"pasó su hora","tracker quiet":"GPS callado","new":"nuevo",
  "Booked":"Reservado","Not booked today":"Sin reserva hoy","Staying late until":"Se queda hasta","Staying late":"Se queda tarde","Sent home at":"Enviado a casa a las","Go home":"Salida",
  "No tracker on his phone":"Sin rastreador en su teléfono","Tracker last seen":"Rastreador visto por última vez","Tracker not connected":"Rastreador no conectado","crew leader":"líder de cuadrilla",
@@ -75,6 +75,8 @@ function tracker(e){if(e.appClock!==true)return 'none';if(typeof otRep==='undefi
 // Baruch 11/22: battery from the tracker — low (15% or less), not charging, reading from the last 2 hours
 function batt(e){try{const x=((otRep&&otRep.people)||[]).find(p=>p.who===e.id);if(!x||x.batt==null||!x.batt_at)return null;const at=new Date(x.batt_at).getTime();return {v:+x.batt,ch:x.bs===2||x.bs===3,at,old:Date.now()-at>2*36e5};}catch(z){return null;}}
 function appSeen(e){try{const x=((otRep&&otRep.app)||[]).find(p=>p.who===e.id);if(!x||!x.at)return null;const at=Number(x.at);if(new Date(at).toDateString()!==new Date().toDateString())return null;return {site:x.site||null,at};}catch(z){return null;}}
+function otMode(e){try{const x=((otRep&&otRep.people)||[]).find(p=>p.who===e.id);return x&&x.mode!=null?Number(x.mode):null;}catch(z){return null;}}
+const MODE_N={'2':'Move','1':'Significant changes','0':'Manual','-1':'Quiet'};
 function trackerLast(e){try{const x=((otRep&&otRep.people)||[]).find(p=>p.who===e.id);return x&&x.last?new Date(x.last).getTime():0;}catch(z){return 0;}}
 function isNew(e){const ins=(D.punches||[]).filter(p=>p&&p.who===e.id&&!p.voided).map(p=>p.in);if(!ins.length)return false;return Date.now()-Math.min(...ins)<14*864e5;}
 function todayPunches(id){const t0=new Date();t0.setHours(0,0,0,0);return (D.punches||[]).filter(p=>p&&p.who===id&&p.in>=t0.getTime()&&(typeof payCounts==='function'?payCounts(p):!p.voided&&!p.rejected)).sort((a,b)=>a.in-b.in);}
@@ -104,6 +106,7 @@ function circle(r){const tags=[];
   if(r.k==='none')tags.push(r.s.waiting?['g','⏳ '+T('waiting for OK')]:['',T('no punch')]);
   if(r.k!=='in'&&r.k!=='wait'){const ap=appSeen(r.e);const lastP=r.P.length?Math.max(...r.P.map(p=>p.out||p.away||p.in)):0;
     if(ap&&ap.at>lastP&&Date.now()-ap.at<90*60000)tags.push(ap.site?['g','📍 '+short(ap.site)+' '+ft(ap.at)]:['',T('off job')+' '+ft(ap.at)]);}
+  {const md=r.e.appClock===true?otMode(r.e):null;if(md!=null&&md!==2&&(r.k==='in'||r.k==='wait'||r.k==='none'))tags.push(['',T('not on Move')]);}
   if(r.k==='in'&&r.past)tags.push(['',T('past go-home')]);
   else if(r.k==='in'&&r.tr==='quiet')tags.push(['',T('tracker quiet')]);
   let col=r.tr==='quiet'?'#e0a33a':r.tr==='none'?'#d9483b':'#2fb36b';let inC='';
@@ -155,6 +158,7 @@ function panel(r){const k=tk();const cr=(D.crews||[]).find(c=>c.id===r.e.crew);c
   if(r.e.appClock!==true)x+='<div class="s">'+E(T('No tracker on his phone'))+'</div>';
   else{const tl=trackerLast(r.e);x+=row(T('Last check-in'),tl?E(FT(tl)):E(T('never')),r.tr==='quiet'||!tl);
     {const ap=appSeen(r.e);if(ap)x+=row(T('App last saw him'),E(ap.site?short(ap.site):T('not at any job'))+' · '+E(FT(ap.at)));}
+    {const md=otMode(r.e);x+=row(T('Tracker mode'),E(md==null?T('not reported yet'):T(MODE_N[String(md)]||String(md))),md!=null&&md!==2);}
     if(r.bt)x+=row(T('Battery'),r.bt.v+'%'+(r.bt.ch?' '+E(T('charging')):'')+' · '+E(FT(r.bt.at)),r.bt.v<=15&&!r.bt.ch);
     let ev=[];try{ev=((otRep&&otRep.events)||[]).filter(v=>v.who===r.e.id&&(v.kind==='arrive'||v.kind==='leave')&&v.site);}catch(z){}
     ev.slice(-6).forEach(v=>{x+=row((v.kind==='arrive'?T('Arrived'):T('Left'))+' '+short(v.site),E(FT(v.at)));});}

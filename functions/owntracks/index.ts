@@ -244,6 +244,11 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
     const tb = Number(msg.tst) > 1e9 ? Math.min(Number(msg.tst) * 1000, now) : now;
     try { await adm.rpc("ot_batt", { p_who: user, p_batt: Math.round(Number(msg.batt)), p_bs: msg.bs != null && Number.isFinite(Number(msg.bs)) ? Number(msg.bs) : null, p_at: tb }); } catch (_) { /* never stops the tracker */ }
   }
+  // Baruch 11/23: keep the phone's OwnTracks mode (m: -1 quiet, 0 manual, 1 significant, 2 move) — the Today page warns when not on Move
+  if (msg._type === "location" && msg.m != null && Number.isFinite(Number(msg.m))) {
+    const tm = Number(msg.tst) > 1e9 ? Math.min(Number(msg.tst) * 1000, now) : now;
+    try { await adm.rpc("ot_mode", { p_who: user, p_m: Math.round(Number(msg.m)), p_at: tm }); } catch (_) { /* never stops the tracker */ }
+  }
   let kind: string | null = null, kSite: string | null = null, note = "";
   const at = Number(msg.tst) > 1e9 ? Math.min(Number(msg.tst) * 1000, now) : now;
   // Baruch 11/18 (7): a job on his schedule for that day needs no proof — on the clock and arriving there switches him on the
