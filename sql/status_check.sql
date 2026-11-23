@@ -32,15 +32,17 @@ ev as (select who, count(*) n,
          array_to_string((array_agg(kind || ' ' || to_char(at at time zone 'America/New_York','HH12:MI') || coalesce(' ' || split_part((select s.data->>'name' from records s where s.coll='sites' and s.id=e.site),',',1),'') order by at desc))[1:6], ' ← ') list
        from private.ot_events e, b where at >= b.ts0 and at < b.ts1 group by who),
 tk as (select who, last_at, batt, batt_at from private.ot_tokens),
-dv as (select who, sum(pending) pending from private.devices group by who)
+dv as (select who, sum(pending) pending from private.devices group by who),
+ap as (select who, site, at from private.app_seen)   -- 5) where the Electrix app last saw him (job or none), see TRACKER_SETUP §21
 select e.crew, e.n, case when e.app then 'app clock' else 'no app clock' end clock,
        coalesce(pu.p, '— no punch') punches,
        coalesce(ev.n || ' events, newest first: ' || ev.list, '— no tracker events') tracker,
        coalesce(to_char(tk.last_at at time zone 'America/New_York','Dy HH12:MI AM'), 'no tracker') tracker_last_seen,
+       case when ap.at is not null then coalesce(split_part((select s.data->>'name' from records s where s.coll='sites' and s.id=ap.site),',',1),'not at any job') || ' · ' || to_char(to_timestamp(ap.at/1000.0) at time zone 'America/New_York','HH12:MI AM') end app_last_saw,
        case when tk.batt is not null then tk.batt || '%' || ' (' || to_char(tk.batt_at at time zone 'America/New_York','HH12:MI AM') || ')' end battery,
        case when dv.pending > 0 then dv.pending || ' WAITING ON PHONE' else '' end ||
        case when pu.p like '%OPEN%' and (tk.last_at is null or tk.last_at < now() - interval '40 minutes') then ' ⚠ open punch + tracker quiet: a punch-out made with no signal may not have arrived yet' else '' end ||
        case when pu.p is null and ev.n > 0 then ' ⚠ tracker saw him working but NO punch' else '' end flags
-from emps e left join pu on pu.who=e.id left join ev on ev.who=e.id left join tk on tk.who=e.id left join dv on dv.who=e.id
+from emps e left join pu on pu.who=e.id left join ev on ev.who=e.id left join tk on tk.who=e.id left join dv on dv.who=e.id left join ap on ap.who=e.id
 where e.app or pu.p is not null or ev.n > 0
 order by e.crew nulls last, e.n;
