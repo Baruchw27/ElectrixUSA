@@ -221,3 +221,9 @@ sched and he is on the app clock:
 - clock closed because he LEFT A, seen at B the same day → ≤1 h: B from when he left A; later: B from when seen, Payroll told
 - never for a clock waiting for approval, never after the workday (or the stay-late time). Not on his schedule → only recorded.
 Older phones still call `public.app_here` (no switch) until they update.
+
+## 23. Each phone's OwnTracks mode (live 11/23 4:37 PM: app vh130, owntracks v23 = commit 552e3fe, sql/ot_mode_1123.sql)
+Baruch 11/23 ("make sure his OwnTracks is on Move"): every location report carries `m` (-1 quiet, 0 manual, 1 significant
+changes, 2 move). The server keeps the newest in `private.ot_tokens.mode / mode_at` (`public.ot_mode`), `ot_report` gives it to
+the Today page: red "not on Move" tag (on the clock / due today) and "Tracker mode" in his details. Not reported (some Android
+phones) → "not reported yet", no warning. Our `otMove` setting only SENDS Move; this shows what the phone really runs.
