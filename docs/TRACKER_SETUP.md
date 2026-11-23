@@ -203,3 +203,11 @@ only the tracker could reopen a clock): "If it sees them back on a job, whatever
   workday end (or while kept late, before the stay-late time). Once per clock (`backDone`). He punched out himself → nothing.
 - Back within 1 hour → the same clock opens again (the time away = a trip). Back after more than 1 hour → a NEW clock from the
   time he was seen back (`auto:'back'`, `backFrom`); the time away is not paid; he and Payroll (clock_check_to) are told.
+
+## 21. Where the app last saw him (live 11/23 3:40 PM: app vh128, sql/app_here_1123.sql)
+Baruch 11/23 (Fernando: tracker silent since 9:31, app opened 1:31, not clocked in — "where is he now?"). With the Electrix app
+open, the phone calls `public.app_here(site|null)` at most every 5 min or when it changes: which job he stands at (inside the
+fence) or none — never the position, only 6 AM–9 PM. Stored in `private.app_seen` (one row per man, not readable by workers);
+`ot_report.app` gives it to the owner/Payroll → Today page tag "📍 job 3:15" / "off job 2:53" and "App last saw him" in his
+details. Seen at a job also feeds `private.back_on_job` (section 20). It does NOT punch anyone in by itself.
+In the where-is-everyone check, read `private.app_seen` too.

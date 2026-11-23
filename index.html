@@ -59,7 +59,7 @@ html[data-theme=dark] .pn-sl i{background:#f2f2f7;color:#111}
 #pg-punch:not(.pnopen) #punchExtra{display:none!important}
 #pg-punch #punchSched,#pg-punch #myListPunch,#pg-punch #quickExp,#pg-punch #mySites{display:none!important}
 .cfimg{display:block;max-width:230px;max-height:260px;border-radius:8px;cursor:pointer;object-fit:cover}.cfile{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:rgba(0,0,0,.06);cursor:pointer;min-width:190px;max-width:260px}html[data-theme=dark] .cfile{background:rgba(255,255,255,.08)}.cfic{font-size:26px;line-height:1}.cfnm{display:flex;flex-direction:column;min-width:0}.cfnm b{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cfnm small{font-size:12px;opacity:.65}.crow .cclip{width:34px;margin-right:-6px}</style>
-<script>window.EX_VER='vh127c1123';</script><script src="config.js"></script>
+<script>window.EX_VER='vh128c1123';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="sync.js?vh119c1122"></script>
 <script src="extras.js?vh59c1112"></script>
@@ -2833,6 +2833,7 @@ function autoSite(){if(D.demo||!navigator.geolocation)return;const now=Date.now(
     if(best&&!open&&!pnPickOn){const sel=document.getElementById('punchSite');const pf=document.getElementById('punchFind');if(pf)pf.value='';renderPunchSites();sel.value=best.id;checkGPS();}
     try{if(best&&!open&&m){const t0=new Date();t0.setHours(0,0,0,0);const L=(D.punches||[]).filter(x=>x&&x.who===m.id&&!x.voided&&!x.rejected&&x.src!=='fingercheck'&&x.in>=t0.getTime()).sort((x,y)=>x.in-y.in);const lp=L[L.length-1];
       if(lp&&lp.out&&lp.site===best.id&&!lp.backDone&&((lp.autoClosed&&lp.autoClosed.how==='left')||lp.autoOut)&&Date.now()-lp.out>120000&&(!lp.backSeen||Date.now()-lp.backSeen>5*60000)){lp.backSeen=Date.now();save();}}}catch(e){}
+    try{if(m&&m.appClock===true&&typeof otRpc==='function'){const sid=best?best.id:null,rp=autoSite._rep;if(!rp||rp.site!==sid||Date.now()-rp.t>5*60000){autoSite._rep={site:sid,t:Date.now()};otRpc('app_here',{p_site:sid,p_at:Date.now(),p_open:!!open}).catch(()=>{});}}}catch(e){}
     autoSite._best=best?best.id:null;autoSite._done=true;if(el)el.innerHTML=oneTapHtml(best,open);try{pnRender();}catch(e){}},()=>{},{enableHighAccuracy:true,timeout:10000,maximumAge:30000});}
 // Baruch 11/11 (1) one tap: the app already knows where he stands — one big button to punch in or switch jobs.
 // (5) a job that is not in the app: punch in right away, the office matches it. (7) the schedule is a guide: any job he
@@ -5701,7 +5702,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vh49c1111"></script><script src="scanner-v2-ui.js?vh49c1111"></script><script src="sched-v21.js?vh49c1111"></script><script src="p2.js?vh49c1111"></script><script src="p4.js?vh49c1111"></script><script src="p5.js?vh49c1111"></script><script src="p6.js?vh49c1111"></script><script src="p7.js?vh125c1122"></script><script src="p8.js?vh125c1122"></script><script src="p9.js?vh124c1122"></script><script src="p10.js?vh57c1112"></script><script src="p11.js?vh49c1111"></script><script src="p12.js?vh49c1111"></script><script src="p13.js?vh63c1112"></script><script src="p14.js?vh49c1111"></script><script src="p15.js?vh66c1112"></script><script src="p16.js?vh49c1111"></script><script src="p17.js?vh88c1116"></script><script src="p18.js?vh89c1116"></script><script src="p19.js?vh124c1122"></script><script src="p20.js?vh88c1116"></script><script src="p21.js?vh116c1122"></script><script src="p22.js?vh92c1117"></script><script src="p23.js?vh126c1123"></script><script src="p24.js?vh113c1122"></script><script src="p26.js?vh118c1122"></script>
+<script src="scanner-v2.js?vh49c1111"></script><script src="scanner-v2-ui.js?vh49c1111"></script><script src="sched-v21.js?vh49c1111"></script><script src="p2.js?vh49c1111"></script><script src="p4.js?vh49c1111"></script><script src="p5.js?vh49c1111"></script><script src="p6.js?vh49c1111"></script><script src="p7.js?vh125c1122"></script><script src="p8.js?vh125c1122"></script><script src="p9.js?vh124c1122"></script><script src="p10.js?vh57c1112"></script><script src="p11.js?vh49c1111"></script><script src="p12.js?vh49c1111"></script><script src="p13.js?vh63c1112"></script><script src="p14.js?vh49c1111"></script><script src="p15.js?vh66c1112"></script><script src="p16.js?vh49c1111"></script><script src="p17.js?vh88c1116"></script><script src="p18.js?vh89c1116"></script><script src="p19.js?vh124c1122"></script><script src="p20.js?vh88c1116"></script><script src="p21.js?vh116c1122"></script><script src="p22.js?vh92c1117"></script><script src="p23.js?vh126c1123"></script><script src="p24.js?vh128c1123"></script><script src="p26.js?vh118c1122"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
