@@ -105,37 +105,12 @@ async function load(adm: any, user: string, now: number) {
   return { emp, site, open, waiting, tell, save };
 }
 
-// see arrived(): a clock the server closed because he left, and a late report shows he was back at that job
-async function reopenIfBack(adm: any, user: string, sid: string, at: number, now: number, S: any, emp: any, save: any): Promise<string> {
-  const { data: pr } = await adm.from("records").select("id,data").eq("coll", "punches").eq("deleted", false).eq("data->>who", user).gte("data->>in", String(at - 20 * 3600000));
-  const L = (pr || []).map((r: any) => ({ id: r.id, d: r.data || {} })).filter((x: any) => !x.d.voided && !x.d.rejected && x.d.src !== "fingercheck");
-  const c = L.filter((x: any) => x.d.site === sid && x.d.out != null && x.d.autoClosed && x.d.autoClosed.how === "left" && dkey(Number(x.d.in)) === dkey(at)
-      && Number(x.d.out) < at).sort((a: any, b: any) => Number(b.d.out) - Number(a.d.out))[0];
-  if (!c) return "";
-  if (L.some((x: any) => x.id !== c.id && Number(x.d.in) > Number(c.d.out))) return "";   // he already punched in again (or was switched) — nothing to fix
-  const out = Number(c.d.out), gap = at - out, es = emp.lang === "es";
-  if (gap <= 3600000) {
-    const d: any = { ...c.d, out: null, seen: Math.max(at, Number(c.d.seen) || 0), trips: [...(c.d.trips || []), { left: out, back: at }],
-      reopened: { at: now, by: "tracker", why: "back at the job at " + hm(at) + " (report arrived late)", closedWas: c.d.autoClosed } };
-    delete d.autoClosed; delete d.awayAsked; delete d.away; delete d.awayBy;
-    await save(c.id, d);
-    const nid = "n" + crypto.randomUUID().replace(/-/g, "");
-    await adm.from("records").upsert({ coll: "inbox", id: nid, deleted: false, updated_by: "server", updated_at: new Date().toISOString(),
-      data: { id: nid, to: user, msg: es ? "✅ Volvió a " + short(S.name) + " a las " + hm(at) + " — su reloj está abierto otra vez." : "✅ You were back at " + short(S.name) + " at " + hm(at) + " — your clock is open again.",
-        kind: "info", ts: Date.now(), read: false, link: { tab: "punch" }, auto: true } }, { onConflict: "coll,id" });
-    return "clock: reopened — back at " + hm(at) + " (" + Math.round(gap / 60000) + " min after he left; report came late)";
-  }
-  // back after more than an hour: tell Payroll once per punch
-  if (c.d.lateBackTold) return "";
-  await save(c.id, { ...c.d, lateBackTold: at });
-  const { data: cfg } = await adm.from("server_config").select("v").eq("k", "clock_check_to").maybeSingle();
-  let to: string[] = ["o1"]; try { const v = JSON.parse(cfg?.v || "null"); if (Array.isArray(v) && v.length) to = v.map(String); } catch (_) { /* default */ }
-  const nm = String(emp.name || user);
-  for (const t of to) { const nid = "n" + crypto.randomUUID().replace(/-/g, "");
-    await adm.from("records").upsert({ coll: "inbox", id: nid, deleted: false, updated_by: "server", updated_at: new Date().toISOString(),
-      data: { id: nid, to: t, msg: "🕒 " + nm + " was back at " + short(S.name) + " at " + hm(at) + ", but his clock was closed at " + hm(out) + " (he was away more than 1 hour). Check his time card.",
-        kind: "warn", ts: Date.now(), read: false, link: { tab: "hours" }, auto: true } }, { onConflict: "coll,id" }); }
-  return "clock stays closed (back " + Math.round(gap / 60000) + " min later) — Payroll told";
+// see arrived(): a clock the server closed because he left, and a report shows he is back at that job.
+// Baruch 11/23 (Luis Guala): ONE rule on the server for every source (tracker, his phone's GPS in the app, the fences):
+// back within 1 hour → the same clock opens again (the time away is a trip); back after more than 1 hour → a NEW clock
+// from the time he was seen back (the time away is not paid), he and Payroll are told. See sql/back_on_job_1123.sql.
+async function reopenIfBack(adm: any, user: string, sid: string, at: number, _now: number, _S: any, _emp: any, _save: any): Promise<string> {
+  try { const { data } = await adm.rpc("ot_back", { p_who: user, p_site: sid, p_at: at }); return String(data || ""); } catch (_) { return ""; }
 }
 
 // he has been at job `sid` for 5 minutes (arrived at `at`)
