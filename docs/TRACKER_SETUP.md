@@ -211,3 +211,13 @@ fence) or none — never the position, only 6 AM–9 PM. Stored in `private.app_
 `ot_report.app` gives it to the owner/Payroll → Today page tag "📍 job 3:15" / "off job 2:53" and "App last saw him" in his
 details. Seen at a job also feeds `private.back_on_job` (section 20). It does NOT punch anyone in by itself.
 In the where-is-everyone check, read `private.app_seen` too.
+
+## 22. The app's sighting switches / starts his clock at a job on his schedule (live 11/23 4:00 PM: app vh129, sql/app_switch_1123.sql)
+Baruch 11/23: "in the middle of the day, if he switched to a different job but the tracker didn't catch it, only the app — it
+should punch him in on that job if it was on his schedule". The phone calls `public.app_here2(site, at, open, sched)`; `sched` =
+that job is in his own timeline today (empTimeline). Server: `back_on_job` first (same job), else `private.app_switch` when
+sched and he is on the app clock:
+- clocked in at A, seen at B → A closes at the time the phone saw him leave A (within the hour) else now; B starts then (drive paid)
+- clock closed because he LEFT A, seen at B the same day → ≤1 h: B from when he left A; later: B from when seen, Payroll told
+- never for a clock waiting for approval, never after the workday (or the stay-late time). Not on his schedule → only recorded.
+Older phones still call `public.app_here` (no switch) until they update.
