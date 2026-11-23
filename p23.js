@@ -171,7 +171,7 @@ function avs(guys,k,isT,today,dragOk){return '<div class="sc-avs">'+guys.map(g=>
 function lineBar(list,k){// Baruch 11/18: the bar runs past the end of the day when a job does (a move at 6:47 PM must show)
   const L=list.slice().sort((a,b)=>a.start-b.start);const endB=Math.max(endOf(k),...L.map(a=>a.end!=null?a.end:a.start+60));const span=endB-DAY_START;let i=0;
   const segs=L.map((a,j)=>{const nx=L[j+1];const s=Math.max(a.start,DAY_START),e=Math.min(a.end!=null?a.end:(nx?nx.start:endB),endB);const l=(s-DAY_START)/span*100,w=Math.max(4,(e-s)/span*100);
-    return '<i style="left:'+l.toFixed(1)+'%;width:'+w.toFixed(1)+'%;background:'+COLS[(i++)%COLS.length]+'" title="'+E(siteName(a.site))+' · '+E(slotAsgLabel(a))+'">'+scAddr(a.site).a+'</i>';}).join('');
+    return '<i style="left:'+l.toFixed(1)+'%;width:'+w.toFixed(1)+'%;background:'+COLS[(i++)%COLS.length]+'" title="'+E(siteName(a.site))+' · '+E(slotAsgLabel(a,k))+'">'+scAddr(a.site).a+'</i>';}).join('');
   const mid=endB>endOf(k)?endOf(k):Math.round((DAY_START+endB)/2);return '<div class="p23line"><div class="p23bar">'+segs+'</div><div class="p23ax"><span>'+fMin(DAY_START)+'</span><span>'+fMin(mid)+'</span><span>'+fMin(endB)+'</span></div></div>';}
 // Baruch 11/18: on today, the crew's job is where they should be NOW — the latest booking that has started (a move later in the
 // day takes over the card); before the first start, the first one. Other days: the first booking, as before.
@@ -191,7 +191,7 @@ function crewCard(c,k){const t0=todayK();const isT=k===t0,past=k<t0;const today=
   if(!a0)h='';   // Baruch 11/19: crew split by people (no job of its own) — each half is drawn below as its own full job
   h+='<div class="p23t">'+ad.b+(aPrev?' · '+E(T('from'))+' '+E(fMin(a0.start)):'')+'</div>';
   if(aPrev)h+='<div class="p23hr" style="opacity:.75">'+scAddr(aPrev.site).a+' · '+E(fMin(aPrev.start))+' – '+E(fMin(a0.start))+'</div>';   // Baruch 11/18: where they were before the move
-  if(asgs.length>1){h+=lineBar(asgs,k);}else if(a0)h+='<div class="p23hr">'+E(slotAsgLabel(a0))+'</div>';   // Baruch 11/18: the hours on every crew, under the town
+  if(asgs.length>1){h+=lineBar(asgs,k);}else if(a0)h+='<div class="p23hr">'+E(slotAsgLabel(a0,k))+'</div>';   // Baruch 11/18: the hours on every crew, under the town
   if(a0&&a0.note)h+='<div class="p23hr">'+E(a0.note)+'</div>';
   // the men (sent-elsewhere men go under their own little line)
   const main=new Set(asgs.map(a=>a.site));const moved={};guys.forEach(g=>{real(loansFor(g.id,k)).filter(a=>!main.has(a.site)).forEach(a=>{const gk=a.site+'|'+a.start+'|'+(a.end==null?'':a.end);(moved[gk]=moved[gk]||{a,men:[]}).men.push(g);});});
@@ -214,7 +214,7 @@ function crewCard(c,k){const t0=todayK();const isT=k===t0,past=k<t0;const today=
       h+='<div class="p23c p23sub'+(lateH?' home':'')+(canH?'':' nolate')+(gi?' p23half':'')+'" data-crew="'+E(hk)+'">'+(canH?'<div class="act" onclick="event.stopPropagation();P23.lateHalf('+E(JSON.stringify(ids))+','+(lateH?1:0)+')">'+(lateH?IC.home:IC.clock)+'<span>'+E(T(lateH?'Send home':'Stay late'))+'</span></div>':'')+'<div class="p23card p23subcard" data-crew="'+E(hk)+'"><div style="flex:1;min-width:0">'
       +'<div class="p23a"><span class="ad" onclick="event.stopPropagation();P23.pv(\''+jsq(pk)+'\')">'+ad2.a+'</span></div><div class="p23t">'+ad2.b+(prev?' · '+E(T('from'))+' '+E(fMin(cur.start)):'')+'</div>'
       +(prev?'<div class="p23hr" style="opacity:.75">'+scAddr(prev.site).a+' · '+E(fMin(prev.start))+' – '+E(fMin(cur.start))+'</div>':'')
-      +(G.L.length>1?lineBar(G.L,k):'<div class="p23hr">'+E(slotAsgLabel(cur))+'</div>')+(cur.note?'<div class="p23hr">'+E(cur.note)+'</div>':'')
+      +(G.L.length>1?lineBar(G.L,k):'<div class="p23hr">'+E(slotAsgLabel(cur,k))+'</div>')+(cur.note?'<div class="p23hr">'+E(cur.note)+'</div>':'')
       +avs(G.men,k,isT,today,ed&&fine()&&wide())
       +(P.pv===pk?preview(cur.site):'')+'</div></div></div>';});
     const fr=guys.filter(g=>!movedIds.has(g.id));
@@ -222,7 +222,7 @@ function crewCard(c,k){const t0=todayK();const isT=k===t0,past=k<t0;const today=
       +(ed?'<button type="button" class="p23bk" onclick="event.stopPropagation();P21.book(\''+jsq(c.id)+'\',\''+k+'\')">'+E(T('+ Book a job'))+'</button>':'')+'</div>';}
   }else{
   {const fr=guys.filter(g=>!movedIds.has(g.id));if(fr.length)h+=avs(fr,k,isT,today,ed&&fine()&&wide());}
-  Object.values(moved).sort((x,y)=>x.a.start-y.a.start).forEach(G=>{h+='<div class="p21mv" onclick="event.stopPropagation();openLoan(\''+k+'\',\''+jsq(G.men[0].id)+'\')"><div class="sc-top"><span class="sc-addr">↪ '+scAddr(G.a.site).a+'</span><span class="sc-time">'+E(slotAsgLabel(G.a))+'</span></div>'+(G.a.note?'<div class="sc-sub" style="margin:0 0 2px">'+E(G.a.note)+'</div>':'')+avs(G.men,k,isT,today,ed&&fine()&&wide())+'</div>';});
+  Object.values(moved).sort((x,y)=>x.a.start-y.a.start).forEach(G=>{h+='<div class="p21mv" onclick="event.stopPropagation();openLoan(\''+k+'\',\''+jsq(G.men[0].id)+'\')"><div class="sc-top"><span class="sc-addr">↪ '+scAddr(G.a.site).a+'</span><span class="sc-time">'+E(slotAsgLabel(G.a,k))+'</span></div>'+(G.a.note?'<div class="sc-sub" style="margin:0 0 2px">'+E(G.a.note)+'</div>':'')+avs(G.men,k,isT,today,ed&&fine()&&wide())+'</div>';});
   }
   const late=isT?lateIds(c.id):[];if(late.length)h+='<div class="p23late">'+IC.clock.replace('width="20" height="20"','width="13" height="13"')+' '+E(T('Staying late'))+(()=>{try{const t0=new Date().toDateString();const u=late.map(id=>{const L=(D.goHomeLog||[]).filter(x=>x&&x.who===id&&new Date(x.ts).toDateString()===t0).sort((a,b)=>b.ts-a.ts)[0];return L&&L.until!=null?+L.until:null;}).filter(x=>x!=null);return u.length?' · '+E(lang()==='es'?'hasta las':'till')+' '+E(fMin(Math.max(...u))):'';}catch(e){return '';}})()+(late.length<guys.length?' · '+late.map(id=>String(nameOf(id)).split(' ')[0]).join(', '):'')+'</div>';
   // warnings
