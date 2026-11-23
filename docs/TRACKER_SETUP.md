@@ -193,3 +193,13 @@ day on its first line) and answer from all of it:
   phone). Fernando punched out at 7:05 PM, it arrived at 9:23 PM. So an OPEN punch with a quiet tracker = say
   "his punch-out may not have arrived yet", never "he is still clocked in".
 - **A late tracker report** can reopen a clock (section 18) — same caution about calling anything final.
+
+## 20. Back at the job after the server closed his clock — every source counts (live 11/23 1:05 PM: app vh127, owntracks v22 = commit af1bda0, sql/back_on_job_1123.sql)
+Baruch 11/23 (Luis Guala: left 213 NY-59 at 8:33, clock closed, his phone's GPS saw him back at 11:05 — nothing happened because
+only the tracker could reopen a clock): "If it sees them back on a job, whatever way, it should catch it up."
+- ONE server rule `private.back_on_job(who, site, at, src)`. Fed by: the tracker (owntracks `reopenIfBack` → `public.ot_back`),
+  and his phone's GPS in the app (`seen` / `backSeen` on the closed clock → `private.back_sweep` inside clock_tick every 5 min).
+- Only a clock the server/phone closed because he LEFT (`autoClosed.how='left'` or `autoOut`), same job, same day, before the
+  workday end (or while kept late, before the stay-late time). Once per clock (`backDone`). He punched out himself → nothing.
+- Back within 1 hour → the same clock opens again (the time away = a trip). Back after more than 1 hour → a NEW clock from the
+  time he was seen back (`auto:'back'`, `backFrom`); the time away is not paid; he and Payroll (clock_check_to) are told.
