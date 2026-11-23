@@ -179,3 +179,17 @@ OwnTracks on the same phone; not needed.
   - back after more than 1 hour → the clock stays closed; Payroll (server_config clock_check_to) gets one message to check
     his card (`lateBackTold` stops repeats).
 - Late is never thrown away (rule from 11/19): only repeats and reports older than 12 h / another day are dropped.
+
+## 19. How Claude answers "where is everyone / the tracker / punches" (Baruch 11/22 10 PM)
+Three wrong answers in one day came from looking in only one place. ALWAYS run `sql/status_check.sql` (read only; change the
+day on its first line) and answer from all of it:
+- **Tracker last seen = `private.ot_tokens.last_at`** — every OwnTracks report. It is exactly what the app's Time cards
+  screen shows ("Tracker last seen", `public.ot_report`). The app was right; I was wrong.
+- **Never use `private.devices.last_at` for the tracker.** It is only when the app last synced. I said Fernando's and
+  Carlos's phones were silent from 9 AM / 5 PM while their trackers worked.
+- **The punch itself** holds what the phone saw: `away` (left the job), `seen`, `trips`, `autoClosed`, `keepOpen`.
+  Luis Guala's "left 7:07 PM" was on his punch, not in the tracker events.
+- **A punch made with no signal reaches the office later** (`offline:true`; `devices.pending > 0` = still waiting on the
+  phone). Fernando punched out at 7:05 PM, it arrived at 9:23 PM. So an OPEN punch with a quiet tracker = say
+  "his punch-out may not have arrived yet", never "he is still clocked in".
+- **A late tracker report** can reopen a clock (section 18) — same caution about calling anything final.
