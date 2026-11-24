@@ -15,7 +15,7 @@ const $=id=>document.getElementById(id);
 const T=s=>{try{if(lang()==='es'&&L24[s])return L24[s];}catch(e){}try{return t(s);}catch(e){return s;}};
 const E=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const J=s=>{try{return jsq(s);}catch(e){return String(s).replace(/'/g,"\\'");}};
-const L24={"not on Move":"no está en Move","Tracker mode":"Modo del rastreador","not reported yet":"todavía no reportado","Move":"Move","Significant changes":"Cambios significativos","Manual":"Manual","Quiet":"Silencio","App last saw him":"La app lo vio por última vez","not at any job":"en ningún trabajo","off job":"fuera","Crews":"Cuadrillas","Jobs":"Trabajos","Updated":"Actualizado","in":"entró","left":"se fue","out":"salió","due":"entra","late":"tarde",
+const L24={"not on Move":"no está en Move","OwnTracks on Quiet":"OwnTracks en Silencio","GPS stuck":"GPS trabado","phone silent":"teléfono callado","clock open — waiting for his phone":"reloj abierto — esperando su teléfono","Last GPS fix":"Última posición GPS","Tracker mode":"Modo del rastreador","not reported yet":"todavía no reportado","Move":"Move","Significant changes":"Cambios significativos","Manual":"Manual","Quiet":"Silencio","App last saw him":"La app lo vio por última vez","not at any job":"en ningún trabajo","off job":"fuera","Crews":"Cuadrillas","Jobs":"Trabajos","Updated":"Actualizado","in":"entró","left":"se fue","out":"salió","due":"entra","late":"tarde",
  "no punch":"sin marca","past go-home":"pasó su hora","tracker quiet":"GPS callado","new":"nuevo",
  "Booked":"Reservado","Not booked today":"Sin reserva hoy","Staying late until":"Se queda hasta","Staying late":"Se queda tarde","Sent home at":"Enviado a casa a las","Go home":"Salida",
  "No tracker on his phone":"Sin rastreador en su teléfono","Tracker last seen":"Rastreador visto por última vez","Tracker not connected":"Rastreador no conectado","crew leader":"líder de cuadrilla",
@@ -76,6 +76,10 @@ function tracker(e){if(e.appClock!==true)return 'none';if(typeof otRep==='undefi
 function batt(e){try{const x=((otRep&&otRep.people)||[]).find(p=>p.who===e.id);if(!x||x.batt==null||!x.batt_at)return null;const at=new Date(x.batt_at).getTime();return {v:+x.batt,ch:x.bs===2||x.bs===3,at,old:Date.now()-at>2*36e5};}catch(z){return null;}}
 function appSeen(e){try{const x=((otRep&&otRep.app)||[]).find(p=>p.who===e.id);if(!x||!x.at)return null;const at=Number(x.at);if(new Date(at).toDateString()!==new Date().toDateString())return null;return {site:x.site||null,at};}catch(z){return null;}}
 function otMode(e){try{const x=((otRep&&otRep.people)||[]).find(p=>p.who===e.id);return x&&x.mode!=null?Number(x.mode):null;}catch(z){return null;}}
+// Baruch 11/24: reports keep coming but the position inside them is old → GPS stuck (Shauly)
+function otFix(e){try{const x=((otRep&&otRep.people)||[]).find(p=>p.who===e.id);return x&&x.fix?Number(x.fix):0;}catch(z){return 0;}}
+function gpsStuck(e){if(e.appClock!==true)return false;const l=trackerLast(e),f=otFix(e);return !!(l&&f&&Date.now()-l<40*60000&&l-f>60*60000);}
+function quietMin(e){const l=trackerLast(e);return l?Math.max(0,Math.round((Date.now()-l)/60000)):null;}
 const MODE_N={'2':'Move','1':'Significant changes','0':'Manual','-1':'Quiet'};
 function trackerLast(e){try{const x=((otRep&&otRep.people)||[]).find(p=>p.who===e.id);return x&&x.last?new Date(x.last).getTime():0;}catch(z){return 0;}}
 function isNew(e){const ins=(D.punches||[]).filter(p=>p&&p.who===e.id&&!p.voided).map(p=>p.in);if(!ins.length)return false;return Date.now()-Math.min(...ins)<14*864e5;}
@@ -106,9 +110,11 @@ function circle(r){const tags=[];
   if(r.k==='none')tags.push(r.s.waiting?['g','⏳ '+T('waiting for OK')]:['',T('no punch')]);
   if(r.k!=='in'&&r.k!=='wait'){const ap=appSeen(r.e);const lastP=r.P.length?Math.max(...r.P.map(p=>p.out||p.away||p.in)):0;
     if(ap&&ap.at>lastP&&Date.now()-ap.at<90*60000)tags.push(ap.site?['g','📍 '+short(ap.site)+' '+ft(ap.at)]:['',T('off job')+' '+ft(ap.at)]);}
-  {const md=r.e.appClock===true?otMode(r.e):null;if(md!=null&&md!==2&&(r.k==='in'||r.k==='wait'||r.k==='none'))tags.push(['',T('not on Move')]);}
+  {const md=r.e.appClock===true?otMode(r.e):null;if(md!=null&&md!==2&&(r.k==='in'||r.k==='left'||r.k==='wait'||r.k==='none'))tags.push(['',T(md===-1?'OwnTracks on Quiet':'not on Move')]);}
+  if((r.k==='in'||r.k==='left'||r.k==='wait'||r.k==='none')&&gpsStuck(r.e))tags.push(['',T('GPS stuck')]);
+  if(r.k==='left')tags.push(['',T('clock open — waiting for his phone')]);   // Baruch 11/24: the server waits for a report before closing
   if(r.k==='in'&&r.past)tags.push(['',T('past go-home')]);
-  else if(r.k==='in'&&r.tr==='quiet')tags.push(['',T('tracker quiet')]);
+  else if((r.k==='in'||r.k==='left')&&r.tr==='quiet'){const q=quietMin(r.e);tags.push(['',T('phone silent')+(q!=null?' '+hm(q/60):'')]);}
   let col=r.tr==='quiet'?'#e0a33a':r.tr==='none'?'#d9483b':'#2fb36b';let inC='';
   if(r.k==='in'&&r.past)col='#d9483b';
   if(r.k==='out'||r.k==='left')col='#2fb36b';
@@ -159,6 +165,7 @@ function panel(r){const k=tk();const cr=(D.crews||[]).find(c=>c.id===r.e.crew);c
   else{const tl=trackerLast(r.e);x+=row(T('Last check-in'),tl?E(FT(tl)):E(T('never')),r.tr==='quiet'||!tl);
     {const ap=appSeen(r.e);if(ap)x+=row(T('App last saw him'),E(ap.site?short(ap.site):T('not at any job'))+' · '+E(FT(ap.at)));}
     {const md=otMode(r.e);x+=row(T('Tracker mode'),E(md==null?T('not reported yet'):T(MODE_N[String(md)]||String(md))),md!=null&&md!==2);}
+    {const f=otFix(r.e);if(f)x+=row(T('Last GPS fix'),E(FT(f)),gpsStuck(r.e));}
     if(r.bt)x+=row(T('Battery'),r.bt.v+'%'+(r.bt.ch?' '+E(T('charging')):'')+' · '+E(FT(r.bt.at)),r.bt.v<=15&&!r.bt.ch);
     let ev=[];try{ev=((otRep&&otRep.events)||[]).filter(v=>v.who===r.e.id&&(v.kind==='arrive'||v.kind==='leave')&&v.site);}catch(z){}
     ev.slice(-6).forEach(v=>{x+=row((v.kind==='arrive'?T('Arrived'):T('Left'))+' '+short(v.site),E(FT(v.at)));});}
