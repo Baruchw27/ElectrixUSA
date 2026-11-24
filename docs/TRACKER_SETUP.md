@@ -240,3 +240,11 @@ I should have counted him from 8:15". Two changes in `functions/owntracks/index.
   job", "rough reading ignored (300 m ± 250 m …)", "far from the job", "no change"). **No position is kept** (Baruch: "I don't need
   the full position"). Repeats are not logged. To answer "what was the 8:15 report": read ot_reads for him (status_check.sql §6).
 Fences: the app keeps the fence in feet, the phone/server use meters, minimum 100 m (150 ft → 100 m; 300 ft → 100 m).
+
+## 25. Tapping the OwnTracks message opens OwnTracks (live 11/23 ~10:05 PM: app vh131 p27.js, sql/ot_open_link_1123.sql)
+Baruch 11/23: "the second you open the notification, it drives you straight to OwnTracks" — the 8 AM "Good morning — make sure
+OwnTracks is open" and the 1-hour "OwnTracks has not sent your location" messages carry link {tab:'punch', ot:true}. A phone
+only lets a notification open the app that sent it, so the tap opens Electrix, and p27.js jumps on into OwnTracks at once
+(Android: intent to org.owntracks.android, not installed → Play Store; iPhone: owntracks:///). If the phone blocks the jump
+without a tap, a big "Open OwnTracks" button is on screen (one tap). Works from a closed app, the background, and the bell list.
+Not yet seen on a real phone at release time — check with the first man who taps it.

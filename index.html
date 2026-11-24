@@ -59,7 +59,7 @@ html[data-theme=dark] .pn-sl i{background:#f2f2f7;color:#111}
 #pg-punch:not(.pnopen) #punchExtra{display:none!important}
 #pg-punch #punchSched,#pg-punch #myListPunch,#pg-punch #quickExp,#pg-punch #mySites{display:none!important}
 .cfimg{display:block;max-width:230px;max-height:260px;border-radius:8px;cursor:pointer;object-fit:cover}.cfile{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:rgba(0,0,0,.06);cursor:pointer;min-width:190px;max-width:260px}html[data-theme=dark] .cfile{background:rgba(255,255,255,.08)}.cfic{font-size:26px;line-height:1}.cfnm{display:flex;flex-direction:column;min-width:0}.cfnm b{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cfnm small{font-size:12px;opacity:.65}.crow .cclip{width:34px;margin-right:-6px}</style>
-<script>window.EX_VER='vh130c1123';</script><script src="config.js"></script>
+<script>window.EX_VER='vh131c1123';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="sync.js?vh119c1122"></script>
 <script src="extras.js?vh59c1112"></script>
@@ -152,7 +152,7 @@ textarea{height:80px;resize:none}
 .note{background:var(--amber-bg);color:var(--amber);font-size:12px;padding:8px 10px;border-radius:8px;margin-bottom:10px}
 .toast{position:fixed;left:12px;right:12px;bottom:76px;background:#2c3347;color:#fff;padding:12px 14px;border-radius:10px;font-size:14px;z-index:300;box-shadow:0 4px 14px rgba(0,0,0,.25);animation:ti .2s}.toast{pointer-events:none}body:has(.ov:not(.hid)) .toast{top:calc(env(safe-area-inset-top) + 12px);bottom:auto}@keyframes ti{from{transform:translateY(10px);opacity:0}}.toast.red{background:#c0392b}.toast.green{background:var(--green)}
 .empty{text-align:center;padding:30px;color:var(--g4);font-size:14px}
-.tog{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--g1);font-size:14px}
+.tog{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--g1);font-size:14px}.tog>span{min-width:0;padding-right:10px}.tog .sw{flex:none}
 .sw{width:44px;height:26px;background:var(--g2);border-radius:13px;position:relative;cursor:pointer}
 .sw.on{background:var(--green)}
 .sw::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s}
@@ -523,7 +523,7 @@ body.exro #pg-jobs .acts button,body.exro #pg-jobs .bsel,body.exro #addJobTop,bo
   <div style="display:flex;gap:6px;margin-bottom:10px;background:#fff;border:1px solid var(--g2);border-radius:10px;padding:4px"><button class="chip" id="gvTools" style="flex:1;border:none;text-align:center" onclick="garageView='tools';renderTools()">🔧 <span data-i18n="Tools">Tools</span></button><button class="chip" id="gvStock" style="flex:1;border:none;text-align:center" onclick="garageView='stock';renderTools()">📦 <span data-i18n="Garage stock">Garage stock</span></button></div>
   <div class="scanBar"><button class="btn" onclick="scanQuick('out')">▦ <span data-i18n="Scan — taking out">Scan — taking out</span></button><button class="btn gr" onclick="scanQuick('in')">▦ <span data-i18n="Scan — putting back">Scan — putting back</span></button></div>
   <div id="toolsView">
-  <input id="tlSearch" placeholder="Where is the… (snake, scaffold, vacuum)" oninput="renderTools()" style="margin-bottom:10px">
+  <input id="tlSearch" placeholder="Where is the… (snake, scaffold, vacuum)" data-i18n-ph="Where is the… (snake, scaffold, vacuum)" oninput="renderTools()" style="margin-bottom:10px">
   <div style="display:flex;gap:8px;margin-bottom:10px"><button class="btn" style="flex:1" onclick="openTake('take')">📤 <span data-i18n="I'm taking something">I'm taking something</span></button><button class="btn gr" style="flex:1" onclick="openTake('return')">📥 <span data-i18n="Putting it back">Putting it back</span></button></div>
   <div class="chips" id="tlChips"></div>
   <div id="tlList"></div>
@@ -636,7 +636,7 @@ body.exro #pg-jobs .acts button,body.exro #pg-jobs .bsel,body.exro #addJobTop,bo
 <!-- SITES / SETTINGS -->
 <div class="pg" id="pg-sites">
   <div class="row" style="margin-bottom:10px;align-items:center"><h2 style="margin:0" data-i18n="Jobs">Jobs</h2><button class="btn" id="addSiteBtnTop" style="width:auto;padding:9px 14px" onclick="openNewJob()">+ <span data-i18n="New job">New job</span></button></div>
-  <div style="position:relative;margin:4px 0 10px"><input id="siteFind" type="search" placeholder="🔍 Search address" oninput="renderSites()" autocomplete="off" style="padding-left:14px;font-size:16px;border-radius:12px"></div>
+  <div style="position:relative;margin:4px 0 10px"><input id="siteFind" type="search" placeholder="🔍 Search address" data-i18n-ph="🔍 Search address" oninput="renderSites()" autocomplete="off" style="padding-left:14px;font-size:16px;border-radius:12px"></div>
   <div id="siteList"></div>
   <button class="btn gr" onclick="openNewJob()" style="margin-top:12px" id="addSiteBtn">🏗 <span data-i18n="New job">New job</span></button>
   <div class="sec" data-i18n="Notifications">Notifications</div>
@@ -693,7 +693,7 @@ body.exro #pg-jobs .acts button,body.exro #pg-jobs .bsel,body.exro #addJobTop,bo
   <div class="trans" id="trans" hidden>Transcript will appear here. Say something like: "Yossi, tomorrow morning 29 Oxford, fix the LED in the hallway."</div>
   <label data-i18n="Assign to">Assign to</label><div class="note" style="margin-bottom:6px" data-i18n="Tap more than one for a joint task">Tap more than one for a joint task</div><div id="jAssign" class="pick" style="max-height:200px;overflow-y:auto"></div>
   <label id="jSiteLab" data-i18n="Job site">Job site</label><select id="jSite"></select>
-  <label data-i18n="What needs to be done">What needs to be done</label><textarea id="jDesc" onblur="if(this.value.trim())parseVoice(this.value,true)" placeholder="Type, or send a voice note / video below"></textarea><div id="jMediaBar"></div><div id="jMediaList"></div>
+  <label data-i18n="What needs to be done">What needs to be done</label><textarea id="jDesc" onblur="if(this.value.trim())parseVoice(this.value,true)" placeholder="Type, or send a voice note / video below" data-i18n-ph="Type, or send a voice note / video below"></textarea><div id="jMediaBar"></div><div id="jMediaList"></div>
   <div class="tog" style="margin-top:12px;border:none"><span><b style="color:#c0392b">🔴 <span data-i18n="Priority">Priority</span></b><div style="font-size:11px;color:var(--g4)" data-i18n="Pinned on top · reminder every hour until done">Pinned on top · reminder every hour until done</div></span><div class="sw" id="jPri" onclick="this.classList.toggle('on')"></div></div>
   <label data-i18n="Due">Due</label><select id="jDue"><option value="" data-i18n="— When? (optional) —">— When? (optional) —</option><option value="Tomorrow morning" data-i18n="Tomorrow morning">Tomorrow morning</option><option value="Today" data-i18n="Today">Today</option><option value="This week" data-i18n="This week">This week</option><option value="ASAP" data-i18n="ASAP">ASAP</option></select>
   <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" onclick="saveJob()" data-i18n="Send job">Send job</button><button class="btn sec2" style="width:auto;padding:12px 18px" onclick="hide('m-job')" data-i18n="Cancel">Cancel</button></div>
@@ -719,7 +719,7 @@ body.exro #pg-jobs .acts button,body.exro #pg-jobs .bsel,body.exro #addJobTop,bo
   <div class="tog" id="eAllWrap"><span><span data-i18n="All access (like the owner)">All access (like the owner)</span><div style="font-size:11px;color:var(--g4)" data-i18n="Sees everything, every tab">Sees everything, every tab</div></span><div class="sw" id="eAll" onclick="this.classList.toggle('on')"></div></div></div>
   <div class="tog"><span data-i18n="Driver's license">Driver's license</span><div class="sw" id="eDL" onclick="this.classList.toggle('on')"></div></div>
   <div class="tog" id="ePayMWrap"><span><span data-i18n="Time clock">Time clock</span><div style="font-size:11px;color:var(--g4)" data-i18n="Off = doesn't punch, never reminded, not counted as missing. Old clock entries are kept. Owner, all-access or Payroll only.">Off = doesn't punch, never reminded, not counted as missing. Old clock entries are kept. Owner, all-access or Payroll only.</div></span><div class="sw" id="ePayM" onclick="this.classList.toggle('on')"></div></div>
-  <label data-i18n="Password (leave blank to keep)">Password (leave blank to keep)</label><input id="ePass" type="text" placeholder="6+ characters" autocomplete="off">
+  <label data-i18n="Password (leave blank to keep)">Password (leave blank to keep)</label><input id="ePass" type="text" placeholder="8+ characters, letters and numbers" data-i18n-ph="8+ characters, letters and numbers" autocomplete="off">
   <div id="eCrewWrap"><label data-i18n="Crew">Crew</label><select id="eCrew"></select></div>
   <div class="tog" style="margin-top:12px"><span><span data-i18n="Crew leader — gets tasks">Crew leader — gets tasks</span><div style="font-size:11px;color:var(--g4)" data-i18n="Off = punch + schedule only">Off = punch + schedule only</div></span><div class="sw" id="eLead" onclick="this.classList.toggle('on')"></div></div>
   <div class="tog" id="eActiveWrap" style="display:none"><span><span data-i18n="Active">Active</span><div style="font-size:11px;color:var(--g4)" data-i18n="Off = can't log in, keeps the hours history">Off = can't log in, keeps the hours history</div></span><div class="sw on" id="eActive" onclick="this.classList.toggle('on')"></div></div>
@@ -765,10 +765,10 @@ body.exro #pg-jobs .acts button,body.exro #pg-jobs .bsel,body.exro #addJobTop,bo
   <label data-i18n="Assigned crew">Assigned crew</label><select id="sCrew"></select>
   <label data-i18n="Phase">Phase</label><select id="sPhase"><option value="rough" data-i18n="Rough">Rough</option><option value="finish" data-i18n="Finishing">Finishing</option></select>
   <label data-i18n="GPS fence radius (feet)">GPS fence radius (feet)</label><input id="sRad" type="number" value="300">
-  <div class="note" style="margin-top:10px">Tap "Use my location" while standing at the site, or enter coordinates.</div>
+  <div class="note" style="margin-top:10px" data-i18n="Tap &quot;Use my location&quot; while standing at the site, or enter coordinates.">Tap "Use my location" while standing at the site, or enter coordinates.</div>
   <button class="btn sec2" onclick="useMyLoc()" data-i18n="📍 Use my location">📍 Use my location</button>
-  <label>Latitude</label><input id="sLat" placeholder="41.11">
-  <label>Longitude</label><input id="sLng" placeholder="-74.04">
+  <label data-i18n="Latitude">Latitude</label><input id="sLat" placeholder="41.11">
+  <label data-i18n="Longitude">Longitude</label><input id="sLng" placeholder="-74.04">
   <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" onclick="saveSite()" data-i18n="Save site">Save site</button><button class="btn sec2" style="width:auto;padding:12px 18px" onclick="hide('m-site')" data-i18n="Cancel">Cancel</button></div>
 </div></div>
 
@@ -789,7 +789,7 @@ body.exro #pg-jobs .acts button,body.exro #pg-jobs .bsel,body.exro #addJobTop,bo
   <div id="exPrev" style="margin-top:8px"></div>
   <div style="font-size:12px;color:var(--g4);margin-top:8px" id="exAuto"></div>
   <div style="display:flex;gap:8px;margin-top:10px"><div style="flex:1"><label data-i18n="Amount (if you know it)">Amount (if you know it)</label><input id="exAmtIn" inputmode="decimal" placeholder="0.00"></div></div>
-  <label data-i18n="Note">Note</label><input id="exNoteIn" placeholder="What it was for — e.g. GFIs for Oxford bath, filled the van">
+  <label data-i18n="Note">Note</label><input id="exNoteIn" placeholder="What it was for — e.g. GFIs for Oxford bath, filled the van" data-i18n-ph="What it was for — e.g. GFIs for Oxford bath, filled the van">
   <div style="display:flex;gap:8px;margin-top:14px"><button class="btn gr" id="exSaveBtn" onclick="saveExp()" disabled style="opacity:.45">🔒 <span data-i18n="Add the receipt first">Add the receipt first</span></button><button class="btn sec2" style="width:auto;padding:12px 18px" onclick="hide('m-exp')" data-i18n="Cancel">Cancel</button></div>
 </div></div>
 
@@ -799,7 +799,7 @@ body.exro #pg-jobs .acts button,body.exro #pg-jobs .bsel,body.exro #addJobTop,bo
   <label data-i18n="Job site">Job site</label><select id="fxSite"></select>
   <label data-i18n="Date">Date</label><input id="fxDate" type="date">
   <div style="display:flex;gap:8px"><div style="flex:1"><label data-i18n="Punch in">Punch in</label><input id="fxIn" type="time" value="" required></div><div style="flex:1"><label data-i18n="Punch out">Punch out</label><input id="fxOut" type="time" value=""></div></div>
-  <label data-i18n="What happened">What happened</label><input id="fxWhy" placeholder="Phone died, forgot to punch out">
+  <label data-i18n="What happened">What happened</label><input id="fxWhy" placeholder="Phone died, forgot to punch out" data-i18n-ph="Phone died, forgot to punch out">
   <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" onclick="sendFix()" data-i18n="Send request">Send request</button><button class="btn sec2" style="width:auto;padding:12px 18px" onclick="hide('m-fix')" data-i18n="Cancel">Cancel</button></div>
 </div></div>
 
@@ -829,7 +829,7 @@ body.exro #pg-jobs .acts button,body.exro #pg-jobs .bsel,body.exro #addJobTop,bo
   <label data-i18n="Phone">Phone</label><input id="svPhone" placeholder="845-555-0100">
   <label data-i18n="Address">Address</label><input id="svAddr" placeholder="47 Maple Ave, Monsey">
   <label data-i18n="Or one of our job sites">Or one of our job sites</label><select id="svSite"><option value="">—</option></select>
-  <label data-i18n="What's wrong">What's wrong</label><textarea id="svIssue" style="height:80px" placeholder="GFI in the kitchen keeps tripping"></textarea>
+  <label data-i18n="What's wrong">What's wrong</label><textarea id="svIssue" style="height:80px" placeholder="GFI in the kitchen keeps tripping" data-i18n-ph="GFI in the kitchen keeps tripping"></textarea>
   <div class="tog" style="border:none"><span><b style="color:#c0392b">🔴 <span data-i18n="Priority">Priority</span></b></span><div class="sw" id="svPri" onclick="this.classList.toggle('on')"></div></div>
   <div id="svAssignBox"><label data-i18n="Send to">Send to</label><select id="svTo"><option value="">— <span data-i18n="not yet">not yet</span> —</option></select>
   <label data-i18n="When">When</label><select id="svWhen"><option value="">—</option><option value="Today" data-i18n="Today">Today</option><option value="Tomorrow morning" data-i18n="Tomorrow morning">Tomorrow morning</option><option value="This week" data-i18n="This week">This week</option><option value="ASAP" data-i18n="ASAP">ASAP</option></select></div>
@@ -1158,10 +1158,10 @@ body.exro #pg-jobs .acts button,body.exro #pg-jobs .bsel,body.exro #addJobTop,bo
 <!-- MEETING MODAL (simple: what, when, who; extras under More options) -->
 <div class="ov hid" id="m-meet"><div class="md"><div class="hd"></div>
   <h2 id="meetTitle" data-i18n="Add meeting">Add meeting</h2>
-  <label data-i18n="What">What</label><input id="meTitle" placeholder="Walkthrough with homeowner">
+  <label data-i18n="What">What</label><input id="meTitle" placeholder="Walkthrough with homeowner" data-i18n-ph="Walkthrough with homeowner">
   <div style="display:flex;gap:8px"><div style="flex:1"><label data-i18n="Date">Date</label><input id="meDate" type="date"></div><div style="flex:1"><label data-i18n="Time">Time</label><input id="meTime" type="time" value="10:00"></div></div>
   <div class="chips" style="margin-top:8px" id="meDayChips"><div class="chip" onclick="meDay(0)" data-i18n="Today">Today</div><div class="chip" onclick="meDay(1)" data-i18n="Tomorrow">Tomorrow</div></div>
-  <label data-i18n="Add people (optional)">Add people (optional)</label><input id="meWhoQ" type="search" placeholder="🔍 Type a name to add…" oninput="meWhoDraw()" autocomplete="off" style="font-size:16px;margin-bottom:6px"><div id="meWho" style="display:flex;flex-wrap:wrap;gap:6px;max-height:210px;overflow:auto"></div>
+  <label data-i18n="Add people (optional)">Add people (optional)</label><input id="meWhoQ" type="search" placeholder="🔍 Type a name to add…" data-i18n-ph="🔍 Type a name to add…" oninput="meWhoDraw()" autocomplete="off" style="font-size:16px;margin-bottom:6px"><div id="meWho" style="display:flex;flex-wrap:wrap;gap:6px;max-height:210px;overflow:auto"></div>
   <div class="note" id="meInfo" style="margin-top:10px"></div>
   <a href="#" id="meMoreLink" style="display:block;margin-top:8px;color:var(--blue-mid);font-size:14px" onclick="meShowMore();return false" data-i18n="+ More options (job, type, note)">+ More options (job, type, note)</a>
   <div id="meMore" style="display:none"><label data-i18n="Job site">Job site</label><select id="meSite"><option value="">—</option></select>
@@ -5702,7 +5702,7 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 })();
 
 </script>
-<script src="scanner-v2.js?vh49c1111"></script><script src="scanner-v2-ui.js?vh49c1111"></script><script src="sched-v21.js?vh49c1111"></script><script src="p2.js?vh49c1111"></script><script src="p4.js?vh49c1111"></script><script src="p5.js?vh49c1111"></script><script src="p6.js?vh49c1111"></script><script src="p7.js?vh125c1122"></script><script src="p8.js?vh125c1122"></script><script src="p9.js?vh124c1122"></script><script src="p10.js?vh57c1112"></script><script src="p11.js?vh49c1111"></script><script src="p12.js?vh49c1111"></script><script src="p13.js?vh63c1112"></script><script src="p14.js?vh49c1111"></script><script src="p15.js?vh66c1112"></script><script src="p16.js?vh49c1111"></script><script src="p17.js?vh88c1116"></script><script src="p18.js?vh89c1116"></script><script src="p19.js?vh124c1122"></script><script src="p20.js?vh88c1116"></script><script src="p21.js?vh116c1122"></script><script src="p22.js?vh92c1117"></script><script src="p23.js?vh126c1123"></script><script src="p24.js?vh130c1123"></script><script src="p26.js?vh118c1122"></script>
+<script src="scanner-v2.js?vh49c1111"></script><script src="scanner-v2-ui.js?vh49c1111"></script><script src="sched-v21.js?vh49c1111"></script><script src="p2.js?vh49c1111"></script><script src="p4.js?vh49c1111"></script><script src="p5.js?vh49c1111"></script><script src="p6.js?vh49c1111"></script><script src="p7.js?vh125c1122"></script><script src="p8.js?vh125c1122"></script><script src="p9.js?vh124c1122"></script><script src="p10.js?vh57c1112"></script><script src="p11.js?vh49c1111"></script><script src="p12.js?vh49c1111"></script><script src="p13.js?vh63c1112"></script><script src="p14.js?vh49c1111"></script><script src="p15.js?vh66c1112"></script><script src="p16.js?vh49c1111"></script><script src="p17.js?vh88c1116"></script><script src="p18.js?vh89c1116"></script><script src="p19.js?vh124c1122"></script><script src="p20.js?vh88c1116"></script><script src="p21.js?vh116c1122"></script><script src="p22.js?vh92c1117"></script><script src="p23.js?vh126c1123"></script><script src="p24.js?vh130c1123"></script><script src="p26.js?vh118c1122"></script><script src="p27.js?vh131c1123"></script>
 
 <script>
 // T1 personal Trello: a person's own Trello boards (all of them) on their own Tasks page. Only they see it (and the owner,
