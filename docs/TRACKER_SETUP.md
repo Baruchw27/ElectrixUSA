@@ -23,6 +23,8 @@ Tell the men in Spanish, one message, both phone types:
 4. iPhone Settings → OwnTracks: Location **Always**, **Precise** ON, **Background App Refresh** ON.
 5. iPhone Settings → Battery: **Low Power Mode OFF**.
 6. Never swipe OwnTracks closed (a closed iPhone app only wakes on a region event or when opened).
+   (11/24: Shia's iPhone, swiped away for days, still reported every 5 min — iOS relaunches it on a region event and Move
+   keeps it running. Swiping is NOT the main cause of silent iPhones; check Quiet mode, signal and Low Power first.)
    Mayquin 11/19: app not closed but paused for 1 h 30 min (no signal at 220 Prospect) — opening it sent everything.
 
 **Android**
@@ -248,3 +250,22 @@ only lets a notification open the app that sent it, so the tap opens Electrix, a
 (Android: intent to org.owntracks.android, not installed → Play Store; iPhone: owntracks:///). If the phone blocks the jump
 without a tap, a big "Open OwnTracks" button is on screen (one tap). Works from a closed app, the background, and the bell list.
 Not yet seen on a real phone at release time — check with the first man who taps it.
+
+## 26. A clock closes only when a report CONFIRMS he is away (live 11/24 ~3 PM: sql/away_confirm_1124.sql, app vh134 p24.js)
+Baruch 11/24 (Luis Guala: phone perfect 7:02 AM–1:02 PM then dead; his clock closed at 12:58 while he was at Islandtime):
+"the server should wait for the next report. If the next report confirms that he's not in, then it's gonna punch him out."
+- clock_tick (6): he left (`away`) + 1 hour → `private.away_confirmed(who, site, aw)`: a NEW reading in `private.ot_reads` from
+  ≥ 1 h after he left, surely outside his job (distance − accuracy > fence) and not at another job (near_m − acc > 152 m), or
+  the Electrix app saw him "not at any job" ≥ 1 h after. Confirmed → close at the time he left (as before).
+- Not confirmed → clock stays OPEN; once per leave (`silentTold` = away time) Baruch (u1) + clock_check_to get
+  "📵 <name> left <job> at <time> — his phone's last report was at <time>… his clock stays open until his phone reports."
+- At the day close-out (clock_due) still nothing → closes at the time he left with `autoClosed.unconfirmed = true`
+  (Baruch: "leave it like this"); the morning list says "(left the job — phone went silent, never confirmed)".
+- Today page (p24): tags "Quiet mode" (mode −1), "GPS stuck" (reports fresh but newest fix > 1 h older — `ot_report.fix` =
+  ot_tokens.last_tst), "silent 1h 13m" (no report while clocked in / left), "waiting for phone" (left, clock still open);
+  his details: "Last GPS fix" (red when stuck).
+- Deep dive 11/24 (8 app-clock men): Mario, Mayquin (iPhone), Lennin (Android) every 5 min all day — Mario/Lennin switched to
+  Islandtime by themselves at 1:28/1:30. Problems are per phone: Luis Guala (Android) died at 1:02 · Luis Guillen (iPhone)
+  no signal at 220 Prospect (reports up to 1 h late) · Carlos (Android) sleeps once standing still (battery not Unrestricted) ·
+  Fernando (iPhone) on Quiet · Shauly (Android) GPS stuck since 11/23 8:59 (location permission/precise).
+  Phone type per man: match ot_reads.got_at to function_edge_logs user agent at the same second.
