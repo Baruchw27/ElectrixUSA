@@ -269,3 +269,16 @@ Baruch 11/24 (Luis Guala: phone perfect 7:02 AM–1:02 PM then dead; his clock c
   no signal at 220 Prospect (reports up to 1 h late) · Carlos (Android) sleeps once standing still (battery not Unrestricted) ·
   Fernando (iPhone) on Quiet · Shauly (Android) GPS stuck since 11/23 8:59 (location permission/precise).
   Phone type per man: match ot_reads.got_at to function_edge_logs user agent at the same second.
+
+## 27. A closed clock starts again at ANOTHER job (live 11/24 4:36 PM: owntracks v25 = commit ccfe0f0, sql/switch_after_left_1124.sql)
+Baruch 11/24 (Luis Guillen: Monroe clock closed at 1:31 when he left; his phone then showed him at Islandtime, not on his
+schedule — the server only sent "punch in" reminders). Now, when his clock was closed because he LEFT a job (autoClosed 'left'
+or autoOut) and his phone shows him at ANOTHER job of ours the same day, before the workday end:
+- job on his schedule → first report is enough (pend_sweep → app_switch, already live 11/23);
+- job NOT on his schedule → 5 minutes there / 2 reports (ot_due → owntracks arrived() → public.ot_switch → private.app_switch).
+- within 1 h of leaving → the new clock starts when he left (drive paid); later → from when he was first seen there, and
+  Payroll (clock_check_to) gets "🕒 <name> is at <job> since … — <gap> is not paid — check with him". Once per closed clock (backDone).
+- app_switch messages say "(on his schedule)" only when it is.
+- Also learned 11/24: Luis Guillen's iPhone had no signal at Islandtime — his 1:31–1:34 readings arrived at 4:02 when it joined the
+  job Wi-Fi, and it took no new positions 1:34–4:07 while in the background (check Location Always / Background App Refresh).
+  Low Power Mode alone does NOT stop reports (Shia's iPhone reports every 5 min in Low Power Mode).
