@@ -8,7 +8,7 @@ Columns: A job, B project cost, C invoiced, D money received, F **Commission** (
 Baruch 11/24: the job cost is the **Commission column (F)** — the full amount earned on that job. Paid / unpaid do NOT matter. YL's monthly $4,000/$5,800 checks and M Linko's checks stay OUT (not job costs).
 
 In the app: records coll=qbexp, id `comm_<siteid>`, data {site, src:"Commission sheets", lines:[{c:"sub", d, v:"YL Touch Ups"|"M Linko (Menachem)", a:"Commission 3%", m, amt, src:"comm", k:"yl|<sheet job>"|"mn|<sheet job>", t:"Commission"}]}. Owner + Payroll only (qbexp).
-Opening load 11/24/2026: 38 jobs, $58,669.24, dated 2026-11-24. Rows with no app job ($1,455.60) were left out: 5 Birch St, 30 Bergen Turnpike, 15 Meron, 17 Devan, 15 & 34 Bailie Ln, 34 Peddler Hill, Livland Office, the unnamed $600 row.
+Opening load 11/24/2026: 38 jobs, $58,669.24, dated 2026-11-24. Rows with no app job ($1,455.60) were left out: 5 Birch St, 30 Bergen Turnpike, 15 Meron, 17 Devan, 15 & 34 Bailie Ln, 34 Peddler Hill, Livland Office, (the unnamed $600 row = 14 Dorset Rd, added 11/24 by Baruch).
 
 ## Weekly check (Monday)
 1. Read both sheets (A:H). For each row with a job name: commission F.
@@ -86,7 +86,7 @@ Opening load 11/24/2026: 38 jobs, $58,669.24, dated 2026-11-24. Rows with no app
 | YL Touch Ups | B-29 4 Pear Court | t23 | 659.78 |
 | YL Touch Ups | B-30 2 Pear Court | t26 | 742.13 |
 | YL Touch Ups | B-48  3 Cliff Rose Ct | t154 | 1,463.09 |
-| YL Touch Ups | (no job name) | — none (left out) | 600.00 |
+| YL Touch Ups | 14 Dorset Rd (Baruch 11/24: the row with NO name, $20,000 received; key yl|14 Dorset Rd — if the name is later typed on the sheet as "14 Dorset…", it is the same row) | t70 | 600.00 |
 | M Linko (Menachem) | 5 Mirror Lake Rd, Spring Valley, NY 10977 | t133 | 2,304.00 |
 | M Linko (Menachem) | 18 Hazel Ct, Spring Valley, NY 10977 | t63 | 2,215.50 |
 | M Linko (Menachem) | 9 Summit Ave, Monsey, NY 10952 | t47 | 912.87 |
