@@ -480,7 +480,9 @@ const handle = async (req: Request): Promise<Response> => {
         const d = await fc(it.co, "v1/Employees/GetEmployeeDeductionsByEmployeeNumber/" + encodeURIComponent(numOf[it.who].fc));
         const L = asList(d.body); it.profile = L.filter((x: any) => String(x.DeductionType || "").trim() === "TR").map((x: any) => ({ id: x.EmployeeDeductionID, amt: x.Amount, start: String(x.StartDate || "").slice(0, 10), end: String(x.EndDate || "").slice(0, 10), ref: x.PayeeReferenceNumber || "" }));
         if (d.status !== 200) it.problem = it.problem || "could not read his Fingercheck deductions (" + d.status + ")";
-        else if (it.lines.length && it.profile.length) it.problem = it.problem || (it.profile.some((x: any) => x.ref === ref) ? "already on his profile for this week" : "he already has a Travel line on his profile — check it in Fingercheck first");
+        // Baruch 11/24: a Travel line for an EARLIER paycheck (end date before this week's check date) was already processed —
+        // it does not come into this payroll, so it does not block the new line
+        else if (it.lines.length && it.profile.some((x: any) => x.ref === ref || !payroll[it.co] || !x.end || x.end >= payroll[it.co].checkDate)) it.problem = it.problem || (it.profile.some((x: any) => x.ref === ref) ? "already on his profile for this week" : "he already has a Travel line on his profile — check it in Fingercheck first");
       }
       if (a.remove === true) return await trRemove(items as any[], numOf, ref, writeOn);
       for (const c in payroll) if (payroll[c]) payroll[c].dates = datesOf(c);
