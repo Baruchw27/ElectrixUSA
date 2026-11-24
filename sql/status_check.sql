@@ -47,7 +47,7 @@ from emps e left join pu on pu.who=e.id left join ev on ev.who=e.id left join tk
 where e.app or pu.p is not null or ev.n > 0
 order by e.crew nulls last, e.n;
 
--- 6) (Baruch 11/23, once sql/ot_reads_1123.sql is live) every location reading of one man today — how sure the phone was,
+-- 6) (Baruch 11/23, live 9:48 PM) every location reading of one man today — how sure the phone was,
 --    how far from the job he was clocked in at and from the nearest job, and what the server did. No position is kept.
 -- select to_char(at at time zone 'America/New_York','HH12:MI:SS AM') t, acc, open_site, open_m, open_fence,
 --        near_site, near_m, note from private.ot_reads where who = 'u16' and at >= current_date order by at;
