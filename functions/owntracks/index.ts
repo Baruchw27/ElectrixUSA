@@ -127,6 +127,13 @@ async function arrived(adm: any, user: string, sid: string, at: number, lat: num
   if (!open) { const r = await reopenIfBack(adm, user, sid, at, now, S, emp, save); if (r) return r; }
   if (S.stage === "lost" && !(open && open.d.site === sid)) return "lost bid, not a job in the app — ignored";
   if (!open && waiting) return "waiting for office approval — no reminder";
+  // Baruch 11/24 (Luis Guillen: Monroe clock closed at 1:31 when he left, his phone then showed him at Islandtime): his clock was
+  // closed because he LEFT a job and he has been at ANOTHER job of ours for 5 minutes (2 reports) the same day → start his clock
+  // there (private.app_switch: within 1 h of leaving → from when he left, the drive is paid; later → from when he was seen
+  // there, Payroll told). A job on his schedule already starts on the first report (pend_sweep).
+  if (!open && emp.appClock === true) {
+    try { const { data } = await adm.rpc("ot_switch", { p_who: user, p_site: sid, p_at: at }); if (data) return "clock: " + String(data); } catch (_) { /* falls back to the reminder */ }
+  }
   if (open && open.d.site === sid) return "";                       // already clocked in here
   if (open && (open.d.site || open.d.newJob) && Number(open.d.in) < at) {
     const A = placeOf(open.d, site) || ({} as any); let lv = open.d.away && at - Number(open.d.away) <= 3600000 ? Number(open.d.away) : at;
