@@ -27,7 +27,7 @@ Object.assign(ES,{'Send to another job':'Mandar a otro trabajo','Split the crew'
  'every workday from':'cada día de trabajo desde','Sunday–Friday':'domingo a viernes','Monday–Friday':'lunes a viernes','Fri till 1:15 PM':'viernes hasta 1:15 PM',
  'They get a message right away.':'Reciben un mensaje enseguida.','They get a message now and again at':'Reciben un mensaje ahora y otra vez a las',
  'Other days already booked stay as they are.':'Los otros días ya reservados quedan como están.','stays at':'se queda en','stay at':'se quedan en',
- 'Go home at':'Se van a casa a las','then home':'y luego a casa','Booked':'Reservado','Sent':'Mandado','Saved on this phone — it will be sent automatically':'Guardado en este teléfono — se mandará automáticamente',
+ 'Go home at':'Se van a casa a las','then home':'y luego a casa','Stay late — until I send them home':'Se quedan tarde — hasta que los mande a casa','and they stay late until you send them home':'y se quedan tarde hasta que usted los mande a casa','Booked':'Reservado','Sent':'Mandado','Saved on this phone — it will be sent automatically':'Guardado en este teléfono — se mandará automáticamente',
  'Not saved':'No se guardó','Someone else changed this day first. Open it again and try once more.':'Otra persona cambió este día primero. Ábralo otra vez e intente de nuevo.',
  'The server did not accept this change.':'El servidor no aceptó este cambio.','Tap a man, then pick his job':'Toque a un hombre y elija su trabajo',
  'Same as the crew':'Igual que la cuadrilla','Crew job':'Trabajo de la cuadrilla','Nobody was changed':'No se cambió a nadie','Split':'Dividir',
@@ -135,7 +135,7 @@ function draw(){const b=document.getElementById('p21Body');if(!b||!S)return;cons
   if(S.who==='people')h+='<div class="p21pp">'+men.map(m=>'<button type="button" class="'+(S.people.includes(m.id)?'on':'')+'" onclick="P21.person(\''+jsq(m.id)+'\')">'+E(short(m,men))+'</button>').join('')+'</div>';
   if(S.mode==='send'){h+='<div class="p21g">'+E(T('When?'))+'</div>'+sel('when',(isT?[['now',T('Right now')]]:[['all',T('All day')]]).concat([['at',T('At a time')]]));
     if(S.when==='at')h+='<div style="margin:4px 2px"><input type="time" id="p21at" value="'+min2hhmm(S.at==null?720:S.at)+'" onchange="P21.at(this.value)"></div>';
-    h+='<div class="p21g">'+E(T('Until?'))+'</div>'+sel('until',[['day',T('Rest of the day')],['back',T(S.who==='people'?'Back to his crew at':'Back to the first job at')],['home',T('Go home at')]]);
+    h+='<div class="p21g">'+E(T('Until?'))+'</div>'+sel('until',[['day',T('Rest of the day')],['back',T(S.who==='people'?'Back to his crew at':'Back to the first job at')],['home',T('Go home at')]].concat(isT?[['late',T('Stay late — until I send them home')]]:[]));
     if(S.until==='back')h+='<div style="margin:4px 2px"><input type="time" value="'+min2hhmm(backMin())+'" onchange="P21.back2(this.value)"></div>';
     if(S.until==='home')h+='<div style="margin:4px 2px"><input type="time" id="p21home" value="'+min2hhmm(homeMin())+'" onchange="P21.home(this.value)"></div>';}
   else h+='<div class="p21g">'+E(T('How long?'))+'</div>'+sel('how',[['today',isT?T('Just today'):T('Just this day')],['week',T('Rest of the week')]].concat(S.who==='crew'?[['ong',T('Until I change it')]]:[]));
@@ -149,6 +149,13 @@ const backOn=()=>S.mode==='send'&&S.until==='back';
 // the automatic close and the tracker follow it (server: private.man_sched_end). Default: 2 hours after the normal end.
 function homeMin(){const st=startMin();const h=S.home==null?Math.min(22*60,endOf(S.day)+120):S.home;return Math.max(st+15,Math.min(h,23*60+45));}
 const homeOn=()=>S.mode==='send'&&S.until==='home';
+// Baruch 11/23 (crew 4 → 22 Concord, "stay there till they are done"): move them AND keep them late in one step — the booking runs
+// the rest of the day and each man gets the same 'late' record as Stay late → "I'll send them home" (no end until Send home).
+const lateOn=()=>S.mode==='send'&&S.until==='late'&&S.day===todayK();
+function keepLate(ids){const m=me();const ts=Date.now();ids=(ids||[]).filter(Boolean);if(!ids.length)return;
+  D.goHomeLog=D.goHomeLog||[];ids.forEach(who=>D.goHomeLog.push({id:nid('g'),who,by:m.id,ts,kind:'late'}));try{save();}catch(e){}
+  const n=new Date();const nowM=n.getHours()*60+n.getMinutes();const endD=n.getDay()===5?795:1140;const pk=nowM>=endD-15;
+  try{pushTo(ids,()=>('🕖 '+(pk?t('Ignore the go-home message — you are staying late today. You\'ll get a message when to go home.'):t('Stay later today — don\'t leave at the usual time. You\'ll get a message when to go home.'))),'info',{tab:'home'});}catch(e){}}
 // the job the crew is on at a given time that day (where the men go back to)
 function jobAt(crew,day,m){const L=real(effectiveAsgs(crew,day));const a=L.find(x=>x.start<=m&&(x.end==null||x.end>m))||L.filter(x=>x.start<=m).pop()||L[0];return a?a.site:null;}
 function names(ids){const n=ids.map(id=>(D.emps.find(e=>e.id===id)||{}).name||'').map(x=>x.split(' ')[0]);return n.length<=1?n.join(''):n.slice(0,-1).join(', ')+' '+T('and')+' '+n[n.length-1];}
@@ -160,7 +167,7 @@ function summary(){const st=startMin();const s=S.site?siteName(S.site).split(','
   const who=S.who==='crew'?crewName(S.crew):names(S.people);
   if(S.mode==='send'){const rest=S.who==='people'?crewMembers(S.crew).filter(m=>!S.people.includes(m.id)).map(m=>m.id):[];
     const bk=backOn()?backMin():homeOn()?homeMin():endOf(S.day);const home=backOn()?jobAt(S.crew,S.day,st):null;
-    return '<b>'+E(who)+'</b> → <b>'+E(s)+'</b> '+E(T('from'))+' '+E(fMin(st))+' '+E(T('till'))+' '+E(fMin(bk))+(home?', '+E(T('then back to'))+' '+E(siteName(home).split(',')[0]):'')+(homeOn()?', '+E(T('then home')):'')+'. '
+    return '<b>'+E(who)+'</b> → <b>'+E(s)+'</b> '+E(T('from'))+' '+E(fMin(st))+(lateOn()?'':' '+E(T('till'))+' '+E(fMin(bk)))+(home?', '+E(T('then back to'))+' '+E(siteName(home).split(',')[0]):'')+(homeOn()?', '+E(T('then home')):'')+(lateOn()?', '+E(T('and they stay late until you send them home')):'')+'. '
       +(rest.length?E(names(rest))+' '+E(T(rest.length===1?'stays at':'stay at'))+' '+E(siteName((real(effectiveAsgs(S.crew,S.day))[0]||{}).site||'').split(',')[0])+'. ':'')
       +E(S.when==='at'&&remindTxt?T('They get a message now and again at')+' '+fMin(st)+'.':T('They get a message right away.'));}
   if(S.how==='ong')return '<b>'+E(who)+'</b> → <b>'+E(s)+'</b> '+E(T('every workday from'))+' '+E(fmtDay(S.day))+', '+E(T('Monday–Friday'))+', 8:00 AM – 7:00 PM ('+E(T('Fri till 1:15 PM'))+'). '+E(T('Other days already booked stay as they are.'));
@@ -182,14 +189,17 @@ async function go(){const st=startMin();const isT=S.day===todayK();
   if(S.who==='people'){const days=S.mode==='send'?[day]:daysFor();const keys=[];days.forEach(k=>S.people.forEach(id=>keys.push(loanKey(id,k))));
     const bk=backOn()?backMin():null;const home=bk!=null?jobAt(crew,day,st):null;
     const ok=await put(keys,()=>{days.forEach(k=>S.people.forEach(id=>{const key=loanKey(id,k);const s0=k===day?st:DAY_START;const keep=cutAt(loansFor(id,k),s0);
-      const hm=homeOn()&&k===day?homeMin():null;const add=[{site,start:s0,end:bk!=null&&k===day?bk:hm!=null?hm:endOf(k),note,remind:remind&&k===day,home:hm!=null}];
+      const hm=homeOn()&&k===day?homeMin():null;const add=[{site,start:s0,end:bk!=null&&k===day?bk:hm!=null?hm:lateOn()&&k===day?Math.max(endOf(k),s0+30):endOf(k),note,remind:remind&&k===day,home:hm!=null}];
       // back to his crew's job at that time: a reminder 'time to go' goes out then
       if(bk!=null&&k===day&&home)add.push({site:home,start:bk,end:endOf(k),note:'',remind:true});
       D.sched[key]=loanRow(id,key,keep.concat(add));}));},T(S.mode==='send'?'Sent':'Booked'));
+    if(ok&&lateOn())keepLate(S.people.slice());
     if(ok)hide('m-p21');return;}
   if(S.mode==='send'){const key=crew+'|'+day;const keep=st>DAY_START?cutAt(effectiveAsgs(crew,day),st):[];const bk=backOn()?backMin():null;const home=bk!=null?jobAt(crew,day,st):null;
-    const hm=homeOn()?homeMin():null;const add=[{site,start:st,end:bk!=null?bk:hm!=null?hm:endOf(day),note,remind,home:hm!=null}];if(bk!=null&&home)add.push({site:home,start:bk,end:endOf(day),note:'',remind:true});
-    const ok=await put([key],()=>{D.sched[key]=crewRow(key,keep.concat(add));},T('Sent'));if(ok)hide('m-p21');return;}
+    const hm=homeOn()?homeMin():null;const add=[{site,start:st,end:bk!=null?bk:hm!=null?hm:lateOn()?Math.max(endOf(day),st+30):endOf(day),note,remind,home:hm!=null}];if(bk!=null&&home)add.push({site:home,start:bk,end:endOf(day),note:'',remind:true});
+    const ok=await put([key],()=>{D.sched[key]=crewRow(key,keep.concat(add));},T('Sent'));
+    if(ok&&lateOn())keepLate(crewMembers(crew).filter(m=>!m.inactive).map(m=>m.id));
+    if(ok)hide('m-p21');return;}
   if(S.how==='ong'){const cur=activeRule(crew);const rid=Date.now().toString(36);const rk='ONG:'+crew+':'+rid;const keys=[rk];const dayKey=crew+'|'+day;
     if(cur)keys.push('ONG:'+crew+':'+cur.ruleId);const hadDay=!!D.sched[dayKey];if(hadDay)keys.push(dayKey);
     const ok=await put(keys,()=>{if(cur){const ck='ONG:'+crew+':'+cur.ruleId;const prev=addD(day,-1);
