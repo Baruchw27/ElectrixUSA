@@ -227,3 +227,16 @@ Baruch 11/23 ("make sure his OwnTracks is on Move"): every location report carri
 changes, 2 move). The server keeps the newest in `private.ot_tokens.mode / mode_at` (`public.ot_mode`), `ot_report` gives it to
 the Today page: red "not on Move" tag (on the clock / due today) and "Tracker mode" in his details. Not reported (some Android
 phones) → "not reported yet", no warning. Our `otMove` setting only SENDS Move; this shows what the phone really runs.
+
+## 24. Rough readings + the reading log (BUILT 11/23 9:45 PM, NOT live — waiting for Baruch; sql/ot_reads_1123.sql)
+Baruch 11/23 (Luis Guala, 8:15 PM): the 8:15 report changed nothing and left no trace — "maybe he was already out of the fence,
+I should have counted him from 8:15". Two changes in `functions/owntracks/index.ts`:
+- **Rough reading** (the phone's own accuracy worse than 150 m, up to 3 km): before, always thrown away. Now, when he is on the
+  clock: if even the CLOSEST spot the reading allows (distance − accuracy) is past the "far" line (400 m, or 3 × the fence) →
+  away from that reading's time (`awayBy: "phone-rough"`). Could still be at the job → no change. Never switches jobs (only a
+  good reading or an arrive event does). Worse than 3 km (cell-tower guesses) → never used.
+- **Reading log** `private.ot_reads` (`public.ot_read`, service_role only, 14 days): one line per NEW location reading — accuracy,
+  the job he was clocked in at + distance + its fence, the nearest job in the app + distance, and what the server did ("at the
+  job", "rough reading ignored (300 m ± 250 m …)", "far from the job", "no change"). **No position is kept** (Baruch: "I don't need
+  the full position"). Repeats are not logged. To answer "what was the 8:15 report": read ot_reads for him (status_check.sql §6).
+Fences: the app keeps the fence in feet, the phone/server use meters, minimum 100 m (150 ft → 100 m; 300 ft → 100 m).

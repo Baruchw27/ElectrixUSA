@@ -2,7 +2,8 @@
 // The free OwnTracks phone app watches each man's Electrix job areas by itself (even with every app closed) and POSTs here
 // when he arrives at or leaves a job. Login: HTTP Basic, user = Electrix person id, password = his own token (ot_setup).
 // What is kept: only "arrived at / left" an Electrix job, and the last time his phone was seen inside the job he is clocked
-// in at. Every other location the phone sends is thrown away.
+// in at. The position itself is never kept (Baruch 11/23: only how far each reading was from his job and the nearest job, and
+// how sure the phone was — private.ot_reads, 14 days).
 //   leave the job he is clocked in at  → away = time he left (the server closes the clock there if he isn't back within 1 h)
 //   back at that job within 1 h         → the time away stays on the clock (material run), as the app does
 //   arrive at ANOTHER job               → only after he has been there 5 minutes (Baruch: driving past a job must not switch):
@@ -39,6 +40,8 @@ const STALE = 10 * 60000;   // a "punch in" reminder only goes out when the phon
 // sends a burst: each reading counts, in order). A reading we already had (Android re-sends its last fix again and again)
 // is a repeat and is dropped. Readings from another day, or more than 12 hours old, are dropped.
 const MAXAGE = 12 * 3600000;
+// Baruch 11/23: a reading rougher than this (cell-tower guesses, several km) is never used
+const ROUGH_MAX = 3000;
 async function schedSites(adm: any, emp: any, user: string, day: string): Promise<Set<string>> {
   const out = new Set<string>(); const add = (s: any) => { if (s) out.add(String(s)); };
   const dow = new Date(day + "T12:00:00Z").getUTCDay();
@@ -323,12 +326,38 @@ export const handle = async (req: Request, adm: any): Promise<Response> => {
       if (dm <= S.rad + Math.min(Number(msg.acc) || 0, 150) && at > (Number(open.d.seen) || 0)) {
         const d = { ...open.d, seen: at };
         if (open.d.away && at > Number(open.d.away)) { const gap = at - Number(open.d.away); if (gap <= 3600000) d.trips = [...(open.d.trips || []), { left: Number(open.d.away), back: at }]; delete d.away; delete d.awayBy; }
-        await save(open.id, d);
+        await save(open.id, d); if (!note) note = open.d.away ? "back at the job" : "at the job";
       } else if (dm > Math.max(400, 3 * S.rad) && !open.d.away && Number(open.d.in) < at) {
         // far from his job and no "left" came (the phone wasn't watching this job yet) → away from now
         await save(open.id, { ...open.d, away: Math.max(at, Number(open.d.seen) || 0), awayBy: "phone-far" }); kind = "leave"; kSite = open.d.site || "nj_" + open.id; note = "far from the job" + (note ? "; " + note : "");
       }
     }
+  } else if (msg._type === "location" && msg.lat != null && Number(msg.acc) > 150 && Number(msg.acc) <= ROUGH_MAX && open) {
+    // Baruch 11/23 (Luis Guala, 8:15 PM): a ROUGH reading (the phone itself is unsure by more than 150 m) was thrown away even
+    // when it proved he had left. Now: if even the CLOSEST spot the reading allows (distance minus its error) is far from the
+    // job he is clocked in at — the same "far" line as a good reading (400 m, or 3 × the fence) — he has left: away from then.
+    // A rough reading that could still be at the job changes nothing, as before. It never switches him to another job.
+    const S = placeOf(open.d, site);
+    if (S && S.lat != null) {
+      const dm = distM(+msg.lat, +msg.lon, +S.lat, +S.lng), acc = Number(msg.acc);
+      if (dm - acc > Math.max(400, 3 * S.rad) && !open.d.away && Number(open.d.in) < at) {
+        await save(open.id, { ...open.d, away: Math.max(at, Number(open.d.seen) || 0), awayBy: "phone-rough" }); kind = "leave"; kSite = open.d.site || "nj_" + open.id;
+        note = "far from the job (rough reading: " + Math.round(dm) + " m ± " + Math.round(acc) + " m)";
+      } else note = "rough reading ignored (" + Math.round(dm) + " m ± " + Math.round(acc) + " m from the job)";
+    }
+  }
+
+  // Baruch 11/23: keep a short log of every location reading — NOT where he was, only how far from the job he is clocked in at
+  // and from the nearest job in the app, how sure the phone was (accuracy), and what the server did with it. 14 days.
+  if (msg._type === "location" && !repeat && msg.lat != null && Number.isFinite(Number(msg.lat)) && Number.isFinite(Number(msg.lon))) {
+    try {
+      const la = +msg.lat, lo = +msg.lon; const P = open ? placeOf(open.d, site) : null;
+      let nb: string | null = null, nd = Infinity;
+      for (const id in site) { const J = site[id]; if (J.lat == null || J.lng == null || !inApp(J)) continue; const dm = distM(la, lo, +J.lat, +J.lng); if (dm < nd) { nd = dm; nb = id; } }
+      await adm.rpc("ot_read", { p_who: user, p_at: at, p_acc: Number.isFinite(Number(msg.acc)) ? Math.round(Number(msg.acc)) : null,
+        p_open: open ? (open.d.site || "nj_" + open.id) : null, p_open_m: P && P.lat != null ? Math.round(distM(la, lo, +P.lat, +P.lng)) : null, p_open_fence: P ? Math.round(P.rad) : null,
+        p_near: nb, p_near_m: nb ? Math.round(nd) : null, p_note: (note || (kind ? kind : "no change")).slice(0, 200) });
+    } catch (_) { /* never stops the tracker */ }
   }
 
   // the jobs his phone should watch: the job he is on + today's schedule for his crew + his jobs of the last 3 weeks, up to 20
