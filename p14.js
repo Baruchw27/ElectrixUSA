@@ -390,4 +390,27 @@ html[data-theme=dark] .p14cxbtn{color:#ff6b5e}
 html[data-theme=dark] .p14cxb{background:#2c2c2e;color:#e5e5ea}html[data-theme=dark] .p14cxu{background:#1c1c1e;color:#f2f2f7;box-shadow:0 0 0 1px #3a3a3c}
 `;document.head.appendChild(st);})();
 try{if(typeof ES==='object')Object.assign(ES,{"get it ready":"preparar","Get it ready by":"Preparar para","Get it ready today":"Preparar hoy","Get it ready tomorrow":"Preparar mañana","Get it ready on":"Preparar el","Pick a day…":"Elegir día…","Day":"Día","Open the request":"Abrir el pedido","Mark urgent":"Marcar urgente","Not urgent":"Quitar urgente","Hide it until a day you pick":"Ocultar hasta el día que elijas","Options":"Opciones","tomorrow":"mañana","Material request":"Pedido de material","Partly ready":"Parcialmente listo","needed":"para","request":"pedido","Cancelled":"Cancelada","by":"por","Cancelled by":"Cancelada por","Cancel this task":"Cancelar esta tarea","Cancel task — not needed":"Cancelar tarea — no hace falta","It was not done — cancel it":"No se hizo — cancelarla","Why? (optional)":"¿Por qué? (opcional)","Task cancelled":"Tarea cancelada","Back on the list":"De vuelta en la lista"});}catch(e){}
+
+/* ── Baruch 11/24: a job that moved into Confirmed jobs → the server asks Baruch "Does X need a temp service?" (orrAuto 'tempq').
+   Yes → a task for Matty "Apply to O&R for a temp service" (orrAuto 'apply' — it closes by itself once the O&R request is in
+   the app). No → closed, nothing else. ── */
+P14.tempq=(id,yes)=>{const j=(D.jobs||[]).find(x=>x.id===id);const m=M();if(!j||!m||j.status==='done')return;
+  const s=(D.sites||[]).find(x=>x.id===j.site);const nm=s?String(s.name||'').split(',')[0]:'';
+  if(yes){const mt=(D.emps||[]).find(e=>!e.deleted&&/^mat+y\b/i.test(String(e.name||'')))||{id:'o4'};const key='orrA_'+j.site+'_apply';
+    if(!(D.jobs||[]).some(x=>x.id===key))D.jobs.push({id:key,ts:Date.now(),to:[mt.id],from:m.id,site:j.site,desc:'Apply to O&R for a temp service — '+nm,
+      descLang:'en',descTr:'',due:'This week',status:'open',photo:'na',pri:false,media:[],orrAuto:'apply'});
+    j.tempAns='yes';}
+  else{j.tempAns='no';if(s)s.tempNone=true;}
+  j.status='done';j.doneAt=Date.now();j.doneBy=m.id;save();try{hide('m-jobd');}catch(e){}try{renderJobs();}catch(e){}try{if(typeof renderHome==='function')renderHome();}catch(e){}
+  toast(tt(yes?'Task sent to Matty':'No temp service — done'),'green');};
+if(typeof window.openJobDetail==='function'){const _tq=window.openJobDetail;window.openJobDetail=function(id){const r=_tq.apply(this,arguments);try{
+    const old=$('p14tq');if(old)old.remove();const j=(D.jobs||[]).find(x=>x.id===id);const m=M();const ch=$('jdChat');
+    if(!j||!m||!ch||j.orrAuto!=='tempq'||j.status==='done'||!(boss(m)||m.role==='office'))return r;
+    document.querySelectorAll('#m-jobd .orrtaskbar').forEach(x=>x.remove());
+    const d=document.createElement('div');d.id='p14tq';d.style.cssText='display:flex;gap:8px;margin:10px 0';const I=jsq(j.id);
+    d.innerHTML='<button class="btn" style="flex:1" onclick="P14.tempq(\''+I+'\',true)">'+esc(tt('Yes — task for Matty'))+'</button>'
+      +'<button class="btn sec2" style="flex:1" onclick="P14.tempq(\''+I+'\',false)">'+esc(tt('No temp service'))+'</button>';
+    ch.parentNode.insertBefore(d,ch);}catch(e){}return r;};try{openJobDetail=window.openJobDetail;}catch(x){}}
+try{if(typeof ES==='object')Object.assign(ES,{"Yes — task for Matty":"Sí — tarea para Matty","No temp service":"Sin servicio temporal","Task sent to Matty":"Tarea enviada a Matty","No temp service — done":"Sin servicio temporal — listo"});}catch(e){}
+try{window.YI=Object.assign(window.YI||{},{"Yes — task for Matty":"יא — א טאסק פאר מאטי","No temp service":"קיין טעמפ סערוויס","Task sent to Matty":"טאסק געשיקט צו מאטי","No temp service — done":"קיין טעמפ סערוויס — פארטיג"});}catch(e){}
 })();
