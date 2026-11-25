@@ -11,6 +11,8 @@ import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
 const json = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info" } });
 const DONE_LIST = /^\s*(done|complete|completed|finished|terminado|listo)\b/i;
+// JSON text that ignores object key order (the database stores keys in its own order)
+const canon = (v: unknown): string => Array.isArray(v) ? `[${v.map(canon).join(",")}]` : v && typeof v === "object" ? `{${Object.keys(v as object).sort().map((k) => JSON.stringify(k) + ":" + canon((v as any)[k])).join(",")}}` : JSON.stringify(v ?? null);
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return json({ ok: true });
@@ -126,11 +128,16 @@ async function syncOne(adm: any, emp: string, token: string, KEY: string, BASE: 
   // 3) archived / no longer on his boards → gone (never deleted)
   let gone = 0;
   for (const r of mine) if (r.data.card && !seen.has(r.data.card) && !r.data.gone && r.data.push !== true) { ups.push({ coll: "ptask", id: r.id, data: { ...r.data, id: r.id, gone: true, goneAt: now }, deleted: false }); gone++; }
-  // boards and lists (for "add a task" in the app)
-  ups.push({ coll: "ptask", id: `ptmeta_${emp}`, data: { id: `ptmeta_${emp}`, owner: emp, meta: true, boards: meta, syncedAt: now }, deleted: false });
+  // boards and lists (for "add a task" in the app): rewritten only when they really changed (2026-11-25: rewriting this
+  // ~7 KB record every 5 minutes just to move its clock made ~4 MB of change history a day).
+  const metaId = `ptmeta_${emp}`, syncId = `ptsync_${emp}`;
+  const prevMeta = rows.find((r: any) => r.id === metaId)?.data;
+  if (!prevMeta || canon(prevMeta.boards) !== canon(meta)) ups.push({ coll: "ptask", id: metaId, data: { id: metaId, owner: emp, meta: true, boards: meta, syncedAt: now }, deleted: false });
+  // "Last synced" lives in its own small record (meta:true, so every task list skips it, like ptmeta).
+  ups.push({ coll: "ptask", id: syncId, data: { id: syncId, owner: emp, meta: true, syncedAt: now }, deleted: false });
   const last: Record<string, any> = {};
-  for (const u of ups) last[u.id] = u;                                                // one write per record
+  for (const u of ups) last[u.id] = { ...u, updated_by: "trello-personal" };          // one write per record; history names the writer
   const list = Object.values(last);
   for (let i = 0; i < list.length; i += 200) { const { error } = await adm.from("records").upsert(list.slice(i, i + 200), { onConflict: "coll,id" }); if (error) throw error; }
-  return { emp, boards: meta.length, cards: cardsN, written: list.length - 1, pushed, pushErr, mirrored, gone };
+  return { emp, boards: meta.length, cards: cardsN, written: list.filter((u: any) => u.id !== metaId && u.id !== syncId).length, pushed, pushErr, mirrored, gone };
 }

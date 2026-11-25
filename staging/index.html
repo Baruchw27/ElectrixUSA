@@ -59,7 +59,7 @@ html[data-theme=dark] .pn-sl i{background:#f2f2f7;color:#111}
 #pg-punch:not(.pnopen) #punchExtra{display:none!important}
 #pg-punch #punchSched,#pg-punch #myListPunch,#pg-punch #quickExp,#pg-punch #mySites{display:none!important}
 .cfimg{display:block;max-width:230px;max-height:260px;border-radius:8px;cursor:pointer;object-fit:cover}.cfile{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:rgba(0,0,0,.06);cursor:pointer;min-width:190px;max-width:260px}html[data-theme=dark] .cfile{background:rgba(255,255,255,.08)}.cfic{font-size:26px;line-height:1}.cfnm{display:flex;flex-direction:column;min-width:0}.cfnm b{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cfnm small{font-size:12px;opacity:.65}.crow .cclip{width:34px;margin-right:-6px}</style>
-<script>window.EX_VER='vs206c1124';</script><script src="config.js"></script>
+<script>window.EX_VER='vs207c1125';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="sync.js?vs190c1122"></script>
 <script src="extras.js?vs190c1122"></script>
@@ -5977,6 +5977,7 @@ function ptOwners(){const m=me();return m&&ptAvail()?[m.id]:[];}
 let PT_PEOPLE=null,PT_PEOPLE_T=0;
 function ptPeople(){const m=me();if(!m||m.role!=='owner')return [];if((!PT_PEOPLE||Date.now()-PT_PEOPLE_T>600000)&&window.EX_sb&&navigator.onLine&&!ptPeople.busy){ptPeople.busy=true;window.EX_sb.rpc('trello_people').then(r=>{PT_PEOPLE=((r&&r.data)||[]).map(x=>x.emp).filter(Boolean);PT_PEOPLE_T=Date.now();}).catch(()=>{}).finally(()=>{ptPeople.busy=false;});}return PT_PEOPLE||[];}
 function ptGet(id){return (D.ptask||[]).find(x=>x&&x.id===id);}
+function ptLastSync(o){const a=ptGet('ptsync_'+o),b=ptGet('ptmeta_'+o);return Math.max(+(a&&a.syncedAt)||0,+(b&&b.syncedAt)||0);}
 function ptYmd(d){const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}
 // billing cards and the Stock list (quotes for stock) are every-day work, not priority
 function ptEvery(x,cfg){return (cfg&&x.board===cfg.main&&/^\s*stock\s*$/i.test(x.listName||''))||(x.labels||[]).some(l=>/bill/i.test(l))||/\bbilling\b/i.test(x.t||'')||(/bill/i.test(x.boardName||'')&&!ptIsMirror(x));}
@@ -6039,7 +6040,7 @@ function renderPT(){const m=me();const own=ptOwners();if(!ptWho||!own.includes(p
   const chipsW=own.length>1||ptWho!==m.id?own.map(o=>'<div class="chip '+(o===ptWho?'on':'')+'" onclick="ptWho=\''+jsq(o)+'\';ptEdit=null;ptAdding=false;ptDayOpen=null;renderTrello()">'+esc(o===m.id?t('Mine'):nameOf(o).split(' ')[0])+'</div>').join(''):'';
   const chipsV=cfg?'<div class="chip '+(ptView==='job'?'on':'')+'" id="ptVJob" onclick="ptView=\'job\';renderTrello()">🗂 '+t('By job')+'</div><div class="chip '+(ptView==='day'?'on':'')+'" id="ptVDay" onclick="ptView=\'day\';renderTrello()">📅 '+t('By day')+'</div>':'';
   document.getElementById('ptChips').innerHTML=chipsW+chipsV;
-  let h=(ptRO()?'<div class="note ptro" style="margin-bottom:8px;border-color:var(--blue-mid)">👁 '+esc(t('Looking at')+' '+nameOf(ptWho).split(' ')[0]+"'s Trello — "+t('read-only, nothing can be changed'))+'</div>':'')+'<div class="note" style="margin-bottom:8px">📋 '+(mine?t('Your own Trello — only you see this.'):esc(nameOf(ptWho))+': '+t('their own Trello — only they and the owner see this.'))+' '+t('Last synced')+' '+(meta.syncedAt?when(meta.syncedAt):'—')+(mine?' <button class="bs" id="ptSyncBtn" onclick="ptSync(true)">↻ '+t('Sync now')+'</button>':'')+'</div>';
+  let h=(ptRO()?'<div class="note ptro" style="margin-bottom:8px;border-color:var(--blue-mid)">👁 '+esc(t('Looking at')+' '+nameOf(ptWho).split(' ')[0]+"'s Trello — "+t('read-only, nothing can be changed'))+'</div>':'')+'<div class="note" style="margin-bottom:8px">📋 '+(mine?t('Your own Trello — only you see this.'):esc(nameOf(ptWho))+': '+t('their own Trello — only they and the owner see this.'))+' '+t('Last synced')+' '+(ptLastSync(ptWho)?when(ptLastSync(ptWho)):'—')+(mine?' <button class="bs" id="ptSyncBtn" onclick="ptSync(true)">↻ '+t('Sync now')+'</button>':'')+'</div>';
   const boards=cfg?allB.filter(b=>b.id===cfg.main):allB;
   if(mine&&boards.some(b=>(b.lists||[]).length)){h+='<button class="btn" id="ptAddBtn" style="margin-bottom:8px" onclick="ptAdding=!ptAdding;renderTrello()">+ '+t('Add to my Trello')+'</button>';
     if(ptAdding)h+='<div class="card" style="padding:10px 12px;margin-bottom:10px"><select id="ptList" style="margin-bottom:6px">'+boards.map(b=>'<optgroup label="'+esc(b.name)+'">'+(b.lists||[]).map(l=>'<option value="'+esc(b.id+'|'+l.id)+'"'+(ptAddList===b.id+'|'+l.id?' selected':'')+'>'+esc(l.name)+'</option>').join('')+'</optgroup>').join('')+'</select><input id="ptNewT" placeholder="'+t('Task')+'" style="margin-bottom:6px"><textarea id="ptNewD" rows="3" placeholder="'+t('Notes (optional)')+'"></textarea><button class="btn" style="margin-top:6px" onclick="ptAdd()">'+t('Add')+'</button></div>';}
