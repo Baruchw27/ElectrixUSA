@@ -8,6 +8,10 @@ Everything here was learned on crew 5 (Nov 11–19 2026). Do not drop a step bec
 - He needs a Fingercheck number in `rates` (fc + co) so his app hours and travel can be sent.
 - His jobs need a GPS fence (lat/lng/rad). Small fences (150 ft) cause "not at the job" — 300 ft is normal.
 - Every clock rule keys on `appClock` only — nothing is tied to crew 5. No other setting is needed.
+- Who is on (11/25 night): crew 5 (Mario, Mayquin, Lennin, Luis Guillen), crew 4 (Fernando, Luis Guala, Carlos), Shia, Shauly,
+  and crew 1 added 11/25 by Baruch: John Guallpa u6, Gabriel Lema u7, Angel Lema u8, Pato Co u10 (Pato is crew 1 in the app;
+  Juan Jose Pina Lema u21 is crew 2 and NOT on). Phones still to set up (section 2). Reminders start only after a phone connects.
+  Crew 1's job 14 Dorset Rd (t70) fence is 150 ft — below the normal 300 ft.
 
 ## 2. Phone steps — EVERY phone, no exceptions
 (Since live vh101c1119 the setup link turns Android Remote configuration on by itself and the Punch-page setup card lists all
