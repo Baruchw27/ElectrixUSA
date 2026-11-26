@@ -5,9 +5,8 @@
 if(window.EX_P9_OFF)return;
 const $=id=>document.getElementById(id);
 // Baruch 22:44 picked: 1–10, 13, 14, 15, 16 (17 and 18 not now)
-// H07: 18 (hide the "+" button) stays OFF until the + actions also live in the ☰ menu — Baruch: "17 and 18 not now"
-// Baruch 10/28 19:35: the time clock was off for the field. Baruch 11/8: back on — the guys punch in the app instead of Fingercheck.
-window.EX_FIELD_CLOCK=true;
+// Baruch 10/28 19:35: the time clock is not set up yet — off for the field (nothing is deleted; set true to bring it back)
+window.EX_FIELD_CLOCK=true;   // Baruch 11/8: back on — the guys punch in the app
 // switching person at the top right opens that person's own start page (Home for everyone now)
 try{if(typeof window.setRole==='function'){const _sr=window.setRole;window.setRole=function(v){const r=_sr.apply(this,arguments);try{const m=me();if(m&&String(m.id)===String(v)&&typeof goTab==='function')goTab(primaryFor(m)[0]);}catch(e){}return r;};try{setRole=window.setRole;}catch(x){}}}catch(e){}
 try{if(typeof window.noClock==='function'){const _nc=window.noClock;window.noClock=function(e){return _nc(e)||(window.EX_FIELD_CLOCK===false&&!!e&&e.role==='worker');};try{noClock=window.noClock;}catch(x){}}}catch(e){}
@@ -46,9 +45,7 @@ html.o11 #p7date .d{font-size:12.5px!important}
 /* 12 three lines per section */
 html.o12 .p7c .bd>.p7r:nth-of-type(n+4){display:none!important}
 /* 13 quiet sections start closed (only problems open) */
-html.o13 .p7c:not([data-k=att]):not([data-k=tasks]):not([data-k=myjob]):not([data-k=myjobT]):not(.p9bad):not(.p9open) .bd{display:none!important}
-/* H10: a tap on the title opens a quiet section (and closes it again) */
-html.o13 .p7c.p9open.fold .bd{display:none!important}
+html.o13 .p7c:not([data-k=att]):not([data-k=tasks]):not([data-k=myjob]):not([data-k=myjobT]):not(.p9bad) .bd{display:none!important}
 /* 14 no arrows */
 html.o14 .p7c .p7h .ch,html.o14 .p7r .chev,html.o14 .p7c[data-k=att] .p7r>span:last-child,html.o14 #p7date .go{display:none!important}
 /* 15 "not in yet" as a normal row */
@@ -95,13 +92,11 @@ html.o18 #p7fm{right:max(16px,env(safe-area-inset-right,0px))!important}
 const st=document.createElement('style');st.id='p9css';st.textContent=css;document.body.appendChild(st);
 function apply(){const h=document.documentElement;for(let i=1;i<=18;i++)h.classList.toggle('o'+i,window.P9_ON.includes(i)||h.classList.contains('o'+i)&&window.__p9keep);
   try{// 13: a section with a problem stays open
-    document.querySelectorAll('#homeBody .p7c').forEach(c=>c.classList.toggle('p9bad',!!c.querySelector('.pill.bad,.p7warn,.n.r')));
-    // H10: a quiet section the person opened stays open (remembered per section)
-    document.querySelectorAll('#homeBody .p7c').forEach(c=>{let o=false;try{o=localStorage.getItem('p9o_'+c.dataset.k)==='1';}catch(e){}c.classList.toggle('p9open',o);});}catch(e){}
+    document.querySelectorAll('#homeBody .p7c').forEach(c=>c.classList.toggle('p9bad',!!c.querySelector('.pill.bad,.p7warn,.n.r')));}catch(e){}
   try{document.querySelectorAll('#homeBody .p7c[data-k=att] .p7r').forEach(r=>{const d=r.querySelector('span');r.classList.toggle('p9red',!!d&&/d93a2b/.test(d.getAttribute('style')||''));});}catch(e){}
   try{// 17: the pinned buttons move under the greeting
     const p=$('p8pin'),hb=$('homeBody');if(p&&hb){if(h.classList.contains('o17')){const d=$('p7date');const at=d&&d.nextSibling;if(p.parentNode!==hb)hb.insertBefore(p,at||hb.firstChild);}else if(p.parentNode!==document.body)document.body.appendChild(p);}}catch(e){}}
-function fmLab(){const b=$('p7fm');if(b)b.setAttribute('data-lab',typeof tt==='function'?tt('Settings'):typeof t==='function'?t('Settings'):'Settings');}   // M01: same name everywhere
+function fmLab(){const b=$('p7fm');if(b)b.setAttribute('data-lab',typeof t==='function'?t('More'):'More');}
 try{fmLab();}catch(e){}
 if(typeof window.applyTabs==='function'){const _a9=window.applyTabs;window.applyTabs=function(){
   // Baruch 10/28 00:10: with no bottom bar every bar button is hidden, so the old "your page's button is hidden → go Home"
@@ -112,11 +107,6 @@ if(typeof window.applyTabs==='function'){const _a9=window.applyTabs;window.apply
   try{const m=me();const who=m&&m.id;if(who&&window.__p9who&&window.__p9who!==who&&typeof goTab==='function')goTab((typeof primaryFor==='function'&&primaryFor(m)[0])||'home');window.__p9who=who;}catch(e){}   // a different person signed in → their start page
   return r;};}
 window.P9={apply,set(L){window.P9_ON=L.slice();window.__p9keep=false;apply();}};
-// H10: with "quiet sections start closed" on, tapping a section title opens it (tap again to close)
-if(window.P7&&typeof P7.fold==='function'){const _fold=P7.fold;P7.fold=function(k){const c=document.querySelector('#homeBody .p7c[data-k="'+k+'"]');
-  if(c&&document.documentElement.classList.contains('o13')&&k!=='att'&&k!=='tasks'&&!c.classList.contains('p9bad')){const o=!c.classList.contains('p9open');
-    c.classList.toggle('p9open',o);c.classList.remove('fold');try{localStorage.setItem('p9o_'+k,o?'1':'0');localStorage.setItem('p7f_'+k,'0');}catch(e){}return;}
-  return _fold.apply(this,arguments);};}
 if(typeof window.renderHome==='function'){const _rh=window.renderHome;window.renderHome=function(){const r=_rh.apply(this,arguments);try{apply();}catch(e){}return r;};}
 
 /* ───────── Baruch 10/28 23:36: the field guys' app — their days, their job page ───────── */
@@ -236,7 +226,7 @@ if(typeof window.renderGoHomeIn==='function'){window.renderGoHomeIn=function(box
   try{renderGoHomeIn=window.renderGoHomeIn;}catch(x){}}
 // the red button on the schedule: "Stay late" — or "Send them home" while someone is staying late
 if(typeof window.renderSched==='function'){const _rs2=window.renderSched;window.renderSched=function(){const r=_rs2.apply(this,arguments);try{document.querySelectorAll('.sc-home').forEach(b=>{b.textContent=lateNow().length?'🏠 '+tt('Send them home'):'🕖 '+tt('Stay late');});}catch(e){}return r;};try{renderSched=window.renderSched;}catch(x){}}
-try{if(typeof ES==='object')Object.assign(ES,{"Till when?":"¿Hasta qué hora?","I'll send them home":"Yo los mando a casa","Until a time":"Hasta una hora","Pick a later time":"Elija una hora más tarde","Stay later today — until":"Hoy se quedan más tarde — hasta las","You'll get a message when to go home.":"Recibirán un mensaje cuando puedan irse a casa.","Stay late":"Quedarse más tarde","Ignore the go-home message — you are staying late today. You'll get a message when to go home.":"Ignoren el mensaje de irse a casa — hoy se quedan más tarde. Recibirán un mensaje cuando puedan irse.","Earlier":"Antes","until":"hasta","Keep late":"Quedarse más tarde","Keep these guys late today?":"¿Quedan estos trabajadores más tarde hoy?","staying late":"se quedan más tarde","Nobody to keep late":"No hay nadie para dejar más tarde","Send them home":"Mandarlos a casa","Send them home now?":"¿Mandarlos a casa ahora?","Send home":"Mandar a casa","Staying late now":"Se quedan más tarde ahora","They get a message right away to stay later, and no \"time to leave\" reminder today.":"Reciben un mensaje ahora para quedarse más tarde, y hoy no reciben el aviso de salida.","Stay later today — don't leave at the usual time. You'll get a message when to go home.":"Hoy se quedan más tarde — no salgan a la hora de siempre. Recibirán un mensaje cuando puedan irse a casa."});}catch(e){}
+try{if(typeof ES==='object')Object.assign(ES,{"Till when?":"¿Hasta qué hora?","I'll send them home":"Yo los mando a casa","Until a time":"Hasta una hora","Pick a later time":"Elija una hora más tarde","Stay later today — until":"Hoy se quedan más tarde — hasta las","You'll get a message when to go home.":"Recibirán un mensaje cuando puedan irse a casa.","Stay late":"Quedarse más tarde","Earlier":"Antes","until":"hasta","Ignore the go-home message — you are staying late today. You'll get a message when to go home.":"Ignoren el mensaje de irse a casa — hoy se quedan más tarde. Recibirán un mensaje cuando puedan irse.","Keep late":"Quedarse más tarde","Keep these guys late today?":"¿Quedan estos trabajadores más tarde hoy?","staying late":"se quedan más tarde","Nobody to keep late":"No hay nadie para dejar más tarde","Send them home":"Mandarlos a casa","Send them home now?":"¿Mandarlos a casa ahora?","Send home":"Mandar a casa","Staying late now":"Se quedan más tarde ahora","They get a message right away to stay later, and no \"time to leave\" reminder today.":"Reciben un mensaje ahora para quedarse más tarde, y hoy no reciben el aviso de salida.","Stay later today — don't leave at the usual time. You'll get a message when to go home.":"Hoy se quedan más tarde — no salgan a la hora de siempre. Recibirán un mensaje cuando puedan irse a casa."});}catch(e){}
 window.P9F={view(fid){try{const s=(D.sites||[]).find(x=>x.id===fdSite);const f=s&&(s.files||[]).find(x=>x.id===fid);if(!f)return;const u=safeSrc(f.d||f.url);if(!u)return;
   let v=document.getElementById('p9view');if(!v){v=document.createElement('div');v.id='p9view';v.style.cssText='position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center';v.onclick=()=>v.remove();document.body.appendChild(v);}
   v.innerHTML='<img src="'+esc(u)+'" style="max-width:100%;max-height:100%;object-fit:contain">';}catch(e){}}};

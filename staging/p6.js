@@ -42,9 +42,9 @@ const dk=d=>{const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+
 const today=()=>dk(new Date());
 const fd=(s,o)=>s?new Date(s+'T12:00').toLocaleDateString(LOC(),o||{month:'short',day:'numeric'}):'—';
 function workDays(fromMs,toMs){const a=new Date(fromMs);a.setHours(12,0,0,0);const b=new Date(toMs);b.setHours(12,0,0,0);let n=0;
-  for(let d=new Date(a);d<b;){d.setDate(d.getDate()+1);if(d.getDay()!==6)n++;if(n>2000)break;}return n;}   // H51: work days are Sunday–Friday
-function addDays(n){const d=new Date();d.setHours(12,0,0,0);if(n>=10){d.setDate(d.getDate()+n);}else{let k=0;while(k<n){d.setDate(d.getDate()+1);if(d.getDay()!==6)k++;}}
-  while(d.getDay()===6)d.setDate(d.getDate()+1);return dk(d);}   // H51: Sunday–Friday (only Saturday is skipped)
+  for(let d=new Date(a);d<b;){d.setDate(d.getDate()+1);const w=d.getDay();if(w>0&&w<6)n++;if(n>2000)break;}return n;}
+function addDays(n){const d=new Date();d.setHours(12,0,0,0);if(n>=10){d.setDate(d.getDate()+n);}else{let k=0;while(k<n){d.setDate(d.getDate()+1);const w=d.getDay();if(w>0&&w<6)k++;}}
+  while(d.getDay()===0||d.getDay()===6)d.setDate(d.getDate()+1);return dk(d);}
 const daysSince=ms=>ms?Math.max(0,Math.floor((Date.now()-ms)/86400000)):0;
 const people=()=>(D.emps||[]).filter(e=>!e.inactive&&staff(e)&&e.role!=='manager');
 const pname=id=>{try{return (nameOf(id)||'').split(' ')[0]||'—';}catch(e){return '—';}};
@@ -313,8 +313,7 @@ P6.pmBook=()=>{const areas=[...new Set(PMB.map(c=>c.area))];
 function siteOpts(sel){return '<option value="">—</option>'+liveSites().slice().sort((a,b)=>String(a.name).localeCompare(String(b.name))).map(s=>'<option value="'+esc(s.id)+'"'+(s.id===sel?' selected':'')+'>'+esc(s.name)+'</option>').join('');}
 function ownerOpts(sel){return people().map(e=>'<option value="'+esc(e.id)+'"'+(e.id===sel?' selected':'')+'>'+esc(e.name)+'</option>').join('');}
 function pmList(){return [...new Set(list().map(x=>x.pm).filter(Boolean))].sort();}
-// H05: the default O&R handler is server_config 'orr_owner' (via job_perms), not a name match
-const defOwner=m=>{if(m.role==='office')return m.id;let o='';try{o=((window.EX_jobPerms&&window.EX_jobPerms())||{}).orrOwner||'';}catch(e){}return (o&&people().some(e=>e.id===o))?o:m.id;};
+const defOwner=m=>m.role==='office'?m.id:((people().find(e=>/^shia/i.test(e.name))||{}).id||m.id);
 function stepOpts(type,gas,sel){return (FLOWS[type]||FLOWS._).filter(s=>!s[4]||gas).filter(s=>s[0]!=='done').map(s=>'<option value="'+s[0]+'"'+(s[0]===sel?' selected':'')+'>'+esc(s[1])+'</option>').join('');}
 P6.add=(siteId,type)=>{const m=M();if(!staff(m))return;type=type||'temp';
   sheet('<h3 style="margin:0 0 4px">'+esc(tt('New O&R request'))+'</h3>'
@@ -386,11 +385,8 @@ function gasBox(g){const I=jsq(g.id),c=cur(g),w=who(g),L=steps(g);const nx=L[Mat
    +'<label>'+esc(tt('Gas steps'))+'</label><ul class="orrchk">'+L.filter(s=>s[0]!=='done').map((s,i)=>{const ok=!OPEN(g)||i<idx(g);const now=OPEN(g)&&i===idx(g);const dd=(g.did||{})[s[0]];
       return '<li class="'+(ok?'ok':now?'now':'')+'" onclick="ORR.jump(\''+I+'\',\''+s[0]+'\')"><span class="c">'+(ok?'✓':'')+'</span><span>'+esc(s[1])+(ok&&dd?'<small>'+new Date(dd).toLocaleDateString(LOC(),{month:'short',day:'numeric'})+'</small>':'')+'</span><span class="wh" style="color:'+WHO[s[2]||'oru'][1]+'">'+esc(s[2]==='us'?'us':s[2]==='cust'?'customer':'O&R')+'</span></li>';}).join('')+'</ul></div>';}
 function bump(x,txt,extra,reopen){const m=M();const now=Date.now();Object.assign(x,extra||{});x.upd=now;x.log=(x.log||[]).concat([{ts:now,by:m.id,txt}]);save();renderOrr();refreshFolder();if(reopen!==false)P6.open(x.id);}
-// H53: only the AUTOMATIC tasks of a request close by themselves; a task someone made by hand ("+ Task") stays open
-const AUTO=['us','follow','sched','step','fwd'];
-function closeTasks(x,kinds){const m=M();kinds=kinds||AUTO;(D.jobs||[]).forEach(j=>{if(j.orr===x.id&&j.status!=='done'&&kinds.includes(j.orrAuto)){j.status='done';j.doneAt=Date.now();j.doneBy=m.id;}});}
-function manualOpen(x){return (D.jobs||[]).filter(j=>j.orr===x.id&&j.status!=='done'&&!j.deleted&&!AUTO.includes(j.orrAuto));}
-function closeAutoFor(site,type){const m=M();(D.jobs||[]).forEach(j=>{if(j.site===site&&j.status!=='done'&&(j.orrAuto==='apply'||(j.orrAuto==='meter'&&(type==='meter'||type==='newsvc'||type==='upgrade'))||(j.orrAuto==='tempout'&&type==='tempout'))){j.status='done';j.doneAt=Date.now();j.doneBy=m.id;}});}
+function closeTasks(x,kinds){const m=M();(D.jobs||[]).forEach(j=>{if(j.orr===x.id&&j.status!=='done'&&(!kinds||kinds.includes(j.orrAuto))){j.status='done';j.doneAt=Date.now();j.doneBy=m.id;}});}
+function closeAutoFor(site,type){const m=M();(D.jobs||[]).forEach(j=>{if(j.site===site&&j.status!=='done'&&(j.orrAuto==='apply'||(j.orrAuto==='meter'&&type==='meter')||(j.orrAuto==='tempout'&&type==='tempout'))){j.status='done';j.doneAt=Date.now();j.doneBy=m.id;}});}
 const get=id=>list().find(y=>y.id===id);
 // ✓ current step done → next step (with a normal follow-up date)
 P6.next=(id,reopen)=>{const x=get(id);if(!x||!OPEN(x))return;const L=steps(x),i=idx(x),c=L[i],n=L[Math.min(i+1,L.length-1)];const now=Date.now();
@@ -420,8 +416,7 @@ P6.needs=id=>{const x=get(id);if(!x)return;askPrompt('O&R needs from us',[{label
 P6.delivered=(id,reopen)=>{const x=get(id);if(!x)return;closeTasks(x,['us']);const c=cur(x);
   bump(x,'Sent to O&R what they needed'+(x.need?': '+x.need:''),{need:'',status:c[2]==='us'?'us':'sent',fuOn:c[2]==='us'?'':addDays(3)},reopen);};
 P6.gas=id=>{const x=get(id);if(!x||gasOf(x))return;const g=gasLine(x);bump(x,'Gas added',{gas:true});toast('✓ Gas added','green');};
-P6.cancel=id=>{const x=get(id);if(!x)return;const man=manualOpen(x);
-  askConfirm('Cancel this O&R request?'+(man.length?' Its '+man.length+' task'+(man.length===1?'':'s')+' made by hand will be closed too.':''),()=>{closeTasks(x,AUTO.concat([undefined,null,'']));bump(x,'Cancelled',{status:'cancel',closedAt:Date.now(),fuOn:''});},'Cancel it');};
+P6.cancel=id=>{const x=get(id);if(!x)return;askConfirm('Cancel this O&R request?',()=>{closeTasks(x);bump(x,'Cancelled',{status:'cancel',closedAt:Date.now(),fuOn:''});},'Cancel it');};
 P6.edit=id=>{const x=get(id);if(!x)return;
   askPrompt('Edit',[{label:'O&R project #',value:x.wo||''},{label:'O&R site manager',value:x.pm||''},{label:'Who handles it',options:[{v:x.owner||'',l:pname(x.owner)}].concat(people().filter(e=>e.id!==x.owner).map(e=>({v:e.id,l:e.name})))},{label:'Date sent',value:x.sent||'',type:'date'}],
    ([wo,pm,own,se])=>{const ch=[];if((wo||'')!==(x.wo||''))ch.push('project # '+(wo||'—'));if((pm||'')!==(x.pm||''))ch.push('site manager '+(pm||'—'));if(own&&own!==x.owner)ch.push('handled by '+pname(own));if(se&&se!==x.sent)ch.push('sent '+se);if(!ch.length)return;
