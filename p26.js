@@ -1,4 +1,5 @@
-/* p26 — Booking made simple, on the card itself (Baruch 11/22, the 10 pictures he OK'd).
+/* Baruch 11/26: job search never offers a merged-away copy or a job whose Trello card is gone (crew 4 was booked on the old 379 Anderson).
+   p26 — Booking made simple, on the card itself (Baruch 11/22, the 10 pictures he OK'd).
    The Schedule page looks the same. What changes:
    • ⋯ on a crew = Edit · Add another job · Copy (Send to another job / Split the crew / Change job are gone from it).
    • Edit: the card gets a blue outline and "Done". Tap the job → another job (This day · This week · Every workday, one tap saves);
@@ -94,7 +95,7 @@ function recent(cid,k){const seen=new Map();for(let i=0;i<21;i++){const d=addD(k
   return [...seen.keys()].map(id=>D.sites.find(s=>s.id===id)).filter(s=>s&&s.stage!=='lost'&&s.stage!=='done');}
 const active=()=>D.sites.filter(s=>s&&!s.deleted&&s.stage!=='lost'&&s.stage!=='done').sort((a,b)=>String(a.name).localeCompare(String(b.name)));
 function jobList(){const q=S.q.trim().toLowerCase();const row=s=>'<button type="button" class="p21j" onclick="P26.job(\''+jsq(s.id)+'\')"><span>'+E(s.name)+'</span></button>';
-  if(q){const h=D.sites.filter(s=>s&&!s.deleted&&String(s.name||'').toLowerCase().includes(q)).slice(0,40);return h.length?h.map(row).join(''):'<div class="p21s" style="margin-top:10px">'+E(T('No jobs found'))+'</div>';}
+  if(q){const h=D.sites.filter(s=>s&&!s.deleted&&!s.mergedInto&&!s.tgone&&String(s.name||'').toLowerCase().includes(q)).slice(0,40);return h.length?h.map(row).join(''):'<div class="p21s" style="margin-top:10px">'+E(T('No jobs found'))+'</div>';}
   const rc=recent(S.cid,S.k);const ids=new Set(rc.map(s=>s.id));
   return (rc.length?'<div class="p21g">'+E(T("This crew's recent jobs"))+'</div>'+rc.map(row).join(''):'')+'<div class="p21g">'+E(T('Active jobs'))+'</div>'+active().filter(s=>!ids.has(s.id)).map(row).join('');}
 const seg=(key,opts)=>'<div class="p26seg">'+opts.map(([v,l])=>'<button type="button" class="'+(S[key]===v?'on':'')+'" onclick="P26.set(\''+key+'\',\''+v+'\')">'+E(l)+'</button>').join('')+'</div>';

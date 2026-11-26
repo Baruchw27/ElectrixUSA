@@ -110,7 +110,7 @@ function title(){return E(crewName(S.crew))+' · '+E(fmtDay(S.day));}
 function sel(key,opts){return '<div class="p21sel">'+opts.map(([v,l])=>'<button type="button" class="'+(S[key]===v?'on':'')+'" onclick="P21.set(\''+key+'\',\''+v+'\')">'+E(l)+'</button>').join('')+'</div>';}
 function list(){const q=S.q.trim().toLowerCase();const cur=S.pick?S.men[S.pick]:S.site;
   const row=(s,small)=>'<button type="button" class="p21j'+(s.id===cur?' on':'')+'" onclick="P21.job(\''+jsq(s.id)+'\')"><span>'+E(s.name)+'</span><small>'+E(small||'')+'</small></button>';
-  if(q){const hits=D.sites.filter(s=>s&&!s.deleted&&String(s.name||'').toLowerCase().includes(q)).slice(0,40);
+  if(q){const hits=D.sites.filter(s=>s&&!s.deleted&&!s.mergedInto&&!s.tgone&&String(s.name||'').toLowerCase().includes(q)).slice(0,40);
     return hits.length?hits.map(s=>row(s,T(STAGE[s.stage]||''))).join(''):'<div class="p21s" style="margin-top:10px">'+E(T('No jobs found'))+'</div>';}
   const rec=recentFor(S.crew,S.day);const recIds=new Set(rec.map(r=>r.id));
   return (rec.length?'<div class="p21g">'+E(T("This crew's recent jobs"))+'</div>'+rec.map(r=>row(D.sites.find(x=>x.id===r.id),relDay(r.k,S.day))).join(''):'')
