@@ -59,7 +59,7 @@ html[data-theme=dark] .pn-sl i{background:#f2f2f7;color:#111}
 #pg-punch:not(.pnopen) #punchExtra{display:none!important}
 #pg-punch #punchSched,#pg-punch #myListPunch,#pg-punch #quickExp,#pg-punch #mySites{display:none!important}
 .cfimg{display:block;max-width:230px;max-height:260px;border-radius:8px;cursor:pointer;object-fit:cover}.cfile{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:rgba(0,0,0,.06);cursor:pointer;min-width:190px;max-width:260px}html[data-theme=dark] .cfile{background:rgba(255,255,255,.08)}.cfic{font-size:26px;line-height:1}.cfnm{display:flex;flex-direction:column;min-width:0}.cfnm b{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cfnm small{font-size:12px;opacity:.65}.crow .cclip{width:34px;margin-right:-6px}</style>
-<script>window.EX_VER='vh135c1124';</script><script src="config.js"></script>
+<script>window.EX_VER='vh136c1126';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="sync.js?vh119c1122"></script>
 <script src="extras.js?vh59c1112"></script>
@@ -796,11 +796,14 @@ body.exro #pg-jobs .acts button,body.exro #pg-jobs .bsel,body.exro #addJobTop,bo
 <!-- FIX REQUEST MODAL -->
 <div class="ov hid" id="m-fix"><div class="md"><div class="hd"></div>
   <h2 data-i18n="Request a punch fix">Request a punch fix</h2>
-  <label data-i18n="Job site">Job site</label><select id="fxSite"></select>
-  <label data-i18n="Date">Date</label><input id="fxDate" type="date">
-  <div style="display:flex;gap:8px"><div style="flex:1"><label data-i18n="Punch in">Punch in</label><input id="fxIn" type="time" value="" required></div><div style="flex:1"><label data-i18n="Punch out">Punch out</label><input id="fxOut" type="time" value=""></div></div>
+  <label data-i18n="Date">Date</label><input id="fxDate" type="date" onchange="fxDay()">
+  <label data-i18n="Your clocks that day — tap the one that is wrong">Your clocks that day — tap the one that is wrong</label><div id="fxDayList"></div>
+  <label data-i18n="What happened?">What happened?</label><div id="fxKinds"></div>
+  <div id="fxSiteRow"><label data-i18n="Job site">Job site</label><select id="fxSite" onchange="fxCheck()"></select></div>
+  <div style="display:flex;gap:8px"><div style="flex:1" id="fxInBox"><label data-i18n="Punch in">Punch in</label><input id="fxIn" type="time" value="" oninput="fxCheck()"><div class="fx-say" id="fxInSay" style="font-size:12px;color:var(--g4);margin-top:2px"></div></div><div style="flex:1" id="fxOutBox"><label data-i18n="Punch out">Punch out</label><input id="fxOut" type="time" value="" oninput="fxCheck()"><div class="fx-say" id="fxOutSay" style="font-size:12px;color:var(--g4);margin-top:2px"></div></div></div>
+  <div id="fxWarn"></div>
   <label data-i18n="What happened">What happened</label><input id="fxWhy" placeholder="Phone died, forgot to punch out" data-i18n-ph="Phone died, forgot to punch out">
-  <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" onclick="sendFix()" data-i18n="Send request">Send request</button><button class="btn sec2" style="width:auto;padding:12px 18px" onclick="hide('m-fix')" data-i18n="Cancel">Cancel</button></div>
+  <div style="display:flex;gap:8px;margin-top:14px"><button class="btn" id="fxSend" onclick="sendFix()" data-i18n="Send request">Send request</button><button class="btn sec2" style="width:auto;padding:12px 18px" onclick="hide('m-fix')" data-i18n="Cancel">Cancel</button></div>
 </div></div>
 
 <!-- ESTIMATE REQUEST MODAL -->
@@ -2559,11 +2562,11 @@ function geoOk(x){if(!x||!x.in||Date.now()-x.in>14*36e5)return false;if(window.E
 function onLeave(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out&&(x.src!=='fingercheck'||!m.appClock)&&!x.away&&geoOk(x));if(!p)return;
   p.away=Date.now();save();renderPunch();
   {const msg=()=>('🚗 '+t('You left')+' '+pnName(p)+'. '+t('At another job? Open the app and switch.')+' '+t('Not back within 1 hour: your clock closes at')+' '+fmtT(p.away));notify(msg());try{pushTo([m.id],msg,'warn',{tab:'punch'},null,true);}catch(e){}}
-  setTimeout(()=>{const q=D.punches.find(x=>x===p);if(q&&q.away&&!q.out){q.out=q.away;delete q.away;save();renderPunch();notify('1 hour passed — punch-out at '+fmtT(q.out)+' is now final.');}},60*60*1000);
 }
-function onReturn(){const m=me();if(!geoOk({in:Date.now()}))return;finalizeAway(m.id);const p=D.punches.find(x=>x.who===m.id&&x.away&&!x.out&&geoOk(x));if(!p)return;
+function onReturn(){const m=me();if(!geoOk({in:Date.now()}))return;const p=D.punches.find(x=>x.who===m.id&&x.away&&!x.out&&geoOk(x));if(!p)return;
   const gap=Date.now()-p.away;
   if(gap<=60*60*1000){p.trips=p.trips||[];p.trips.push({left:p.away,back:Date.now()});delete p.away;save();renderPunch();notify('Back on site — punched back in. The '+Math.round(gap/60000)+' min away was kept on your clock (material run).');}
+  else settleAway(p,true).then(d=>{if(d&&d.kept)notify('Back on site — punched back in. The '+Math.round(gap/60000)+' min away was kept on your clock (material run).');});
 }
 // ---- GO HOME: boss taps → worker's phone rings "pack up, 15 min". Still punched in after 15 min → buzz every minute until punch out ----
 
@@ -2649,8 +2652,9 @@ function checkGPS(){
     else{box.className='gps no';box.innerHTML='✗ '+t('Not at the job site — you are')+' '+(d>5280?(d/5280).toFixed(1)+' '+t('miles'):Math.round(d)+' ft')+' '+t('away. Punch in when you arrive.')+'<div style="font-size:12px;margin-top:4px">'+t('At the right house and still blocked?')+'</div>'+fenceHelpBtn(s.id);gpsOk=false;}
   },err=>{box.className='gps no';const c=err&&err.code;box.innerHTML=(c===1?'🚫 '+t('Your phone is not giving the app its location.')+'<div style="font-size:12px;margin-top:4px">'+t('Turn on Location for this app / browser in phone settings. Inside the Claude app, location can be blocked by Claude itself.')+'</div>':c===3?'⏳ '+t('GPS took too long. Step outside or near a window and tap the job again.'):'📡 '+t('No GPS signal right now. Try again in a moment.'))+fenceHelpBtn(s.id);gpsOk=false;},c=>distFt(c.latitude,c.longitude,s.lat,s.lng)<=fenceFt(c));
 }
-function doPunch(){
-  const m=me();finalizeAway(m.id);const open=D.punches.find(p=>p.who===m.id&&!p.out&&(p.src!=='fingercheck'||!m.appClock));
+function doPunch(settled){
+  const m=me();const open=D.punches.find(p=>p.who===m.id&&!p.out&&(p.src!=='fingercheck'||!m.appClock));
+  if(open&&open.away&&Date.now()-open.away>3600000&&settled!==true){if(doPunch._busy)return;doPunch._busy=1;settleAway(open,gpsOk).then(d=>{if(!d)closeAtLeft(m.id);}).finally(()=>{doPunch._busy=0;doPunch(true);});return;}
   if(open){openPunchOut(open);return;}
   if(!gpsOk){toast(t('You need to be at the job site to punch in.'));return;}
   if(D.selfie){const i=document.getElementById('punchSelfie');i.value='';i.click();toast('📷 '+t('Quick selfie, then you are in'));return;}
@@ -2666,7 +2670,7 @@ function poSet(k,v){poAns[k]=v;if(k==='inj'){document.getElementById('poInjNo').
   else{document.getElementById('poBrkYes').className=v?'btn gr':'btn sec2';document.getElementById('poBrkNo').className=v?'btn sec2':'btn';document.getElementById('poBrk').style.display=v?'none':'block';}
   document.getElementById('poDone').disabled=!(poAns.inj!==null&&poAns.brk!==null);}
 function poInjPhoto(inp){[...(inp.files||[])].forEach(f=>shrink(f,d=>{poPhotos.push(d);document.getElementById('poInjPrev').innerHTML=poPhotos.map(d=>'<img src="'+safeSrc(d)+'">').join('');}));}
-function poFinish(){const p=poPunch;if(!p)return;const m=me();if(p.away&&!p.out&&Date.now()-p.away>3600000){finalizeAway(m.id);hide('m-pout');renderPunch();toast(t('You were already punched out at')+' '+fmtT(p.out)+' '+t('when you left the site.'));return;}if(poAns.inj&&!document.getElementById('poInjWhat').value.trim()){toast(t('Tell us what happened'));document.getElementById('poInjWhat').focus();return;}
+function poFinish(){const p=poPunch;if(!p)return;const m=me();if(p.away&&!p.out&&Date.now()-p.away>3600000){closeAtLeft(m.id);hide('m-pout');renderPunch();toast(t('You were already punched out at')+' '+fmtT(p.out)+' '+t('when you left the site.'));return;}if(poAns.inj&&!document.getElementById('poInjWhat').value.trim()){toast(t('Tell us what happened'));document.getElementById('poInjWhat').focus();return;}
   if(p.breakStart)endBreak(p);p.out=Date.now();if(navigator.onLine===false){p.offline=true;p.synced=false;}p.check=Object.assign({injured:!!poAns.inj,ts:Date.now()},poAns.brk==='skip'?{}:{mealBreak:!!poAns.brk,noBreakWhy:poAns.brk?null:document.getElementById('poBrkWhy').value});
   if(poAns.inj){const told=document.getElementById('poInjTold').value;p.check.injury={what:document.getElementById('poInjWhat').value.trim(),time:document.getElementById('poInjTime').value,part:document.getElementById('poInjPart').value.trim(),told,care:document.getElementById('poInjCare').value,photos:poPhotos.slice()};
     (D.incidents=D.incidents||[]).push({id:nid('inc'),who:m.id,site:p.site,date:dkey(new Date()),...p.check.injury,ts:Date.now(),status:'open'});
@@ -3544,28 +3548,99 @@ setInterval(()=>{if(window.EX_REAL)return;const now=Date.now();D.meets.forEach(x
 
 
 // ───────────── PUNCH FIX REQUESTS — workers ask, payroll approves (only payroll + owner touch the clock) ─────────────
-const fxLabel=f=>new Date(f.date+'T12:00').toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'})+' '+f.in+'–'+f.out;
-function openFix(){const m=me();document.getElementById('fxSite').innerHTML=liveSites().map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');const sl=mySchedDay(m,dkey(new Date()));if(sl)document.getElementById('fxSite').value=sl.site;document.getElementById('fxDate').value=dkey(new Date());document.getElementById('fxWhy').value='';try{document.getElementById('fxIn').value='';document.getElementById('fxOut').value='';}catch(e){}show('m-fix');}
-function sendFix(){const m=me();const f={id:nid('f'),who:m.id,site:document.getElementById('fxSite').value,date:document.getElementById('fxDate').value,in:document.getElementById('fxIn').value,out:document.getElementById('fxOut').value,why:document.getElementById('fxWhy').value.trim(),status:'pending',ts:Date.now()};
-  if(!f.in){toast(t('Write what time you started'));try{document.getElementById('fxIn').focus();}catch(e){}return;}   // Baruch 11/19: the start time must be written by him
-  if(!f.date||!f.in||!f.why){toast(t('Fill in date, time and what happened'));return;}
+const fxLabel=f=>f.kind?new Date(f.date+'T12:00').toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'}):(new Date(f.date+'T12:00').toLocaleDateString(LOC(),{weekday:'short',month:'short',day:'numeric'})+' '+f.in+'–'+f.out);
+// Fix #3 (Baruch 11/25): a fix request corrects that day's clocks — it never adds a second clock over the same time.
+// The man picks the clock that is wrong and what happened; times show with AM/PM and odd times are flagged;
+// Payroll sees Before → After for the whole day; approving edits / joins the existing clocks (joined ones are voided, kept in history).
+let fx={kind:null,punch:null};
+const FX_KINDS=[['earlier','I started earlier'],['later','I left later'],['gap','The app closed my clock but I was still working'],['missing','My whole day is missing']];
+function fxDayPunches(who,date){return (D.punches||[]).filter(p=>p&&p.who===who&&!p.voided&&!p.rejected&&p.in&&dkey(new Date(p.in))===date).sort((x,y)=>x.in-y.in);}
+function fxMs(date,hm){if(!date||!hm)return null;const v=new Date(date+'T'+hm).getTime();return isNaN(v)?null:v;}
+function fxSite(id){return String(siteName(id)||'').replace(/,?\s*N[YJ]\s*\d{5}.*$/,'');}
+function fxClock(p){return fmtT(p.in)+' – '+(p.out?fmtT(p.out):t('still on'))+' · '+esc(fxSite(p.site));}
+// the plan: pure — same answer on the man's phone (warnings) and on Payroll's screen (Before → After)
+function fxPlan(f,punches,now){now=now||Date.now();const day=punches.filter(p=>p&&p.who===f.who&&!p.voided&&!p.rejected&&p.in&&dkey(new Date(p.in))===f.date).sort((x,y)=>x.in-y.in);
+  const R={ok:false,err:null,errSite:null,night:[],before:day.map(p=>({id:p.id,in:p.in,out:p.out||null,site:p.site})),after:null,ops:[]};
+  const tgt=f.punch?day.find(p=>p.id===f.punch):null;const inT=fxMs(f.date,f.in);let outT=fxMs(f.date,f.out);
+  if(f.kind!=='missing'&&!tgt){R.err='Tap the clock that is wrong';return R;}
+  let lo,hi,site;
+  if(f.kind==='earlier'){if(!inT){R.err='Write what time you started';return R;}if(inT>=tgt.in){R.err='The new start must be earlier than this clock';return R;}lo=inT;hi=tgt.out||null;site=tgt.site;}
+  else if(f.kind==='later'||f.kind==='gap'){if(!outT){R.err='Write what time you finished';return R;}if(outT<tgt.in)outT+=86400000;if(tgt.out&&outT<=tgt.out){R.err='The new finish must be later than this clock';return R;}lo=tgt.in;hi=outT;site=tgt.site;}
+  else if(f.kind==='missing'){if(!inT){R.err='Write what time you started';return R;}if(!outT){R.err='Write what time you finished';return R;}if(outT<=inT)outT+=86400000;lo=inT;hi=outT;site=f.site;if(!site){R.err='Pick the job';return R;}}
+  else{R.err='Pick what happened';return R;}
+  if(lo>now||(hi&&hi>now+60000&&dkey(new Date(now))!==f.date)){R.err='That time has not come yet';return R;}
+  if(hi&&hi-lo>16*3600000){R.err='That is more than 16 hours — check AM / PM';return R;}
+  // AM/PM check: a START in the evening (Carlos 11/25 picked 8:25 PM for 8:25 AM) or a finish in the middle of the night
+  {const hs=new Date(lo).getHours();if(hs>=18||hs<5)R.night.push(lo);if(hi){const he=new Date(hi).getHours();if(he>=23||he<5)R.night.push(hi);}}
+  const over=day.filter(p=>p.in<(hi||Infinity)&&(p.out||Infinity)>lo);
+  const other=over.find(p=>p.site!==site);if(other){R.err='This overlaps your clock at';R.errSite=other.site;return R;}
+  const open=hi===null||over.some(p=>!p.out)||(hi&&hi>now);
+  if(!over.length&&!tgt){R.ops.push({type:'add',in:lo,out:open?null:hi,site});}
+  else{const keep=tgt||over[0];const all=over.includes(keep)?over:[keep].concat(over);
+    const nin=Math.min(lo,...all.map(p=>p.in));const nout=open?null:Math.max(hi,...all.map(p=>p.out||0));
+    if(nin!==keep.in||(nout||null)!==(keep.out||null))R.ops.push({type:'edit',id:keep.id,from:{in:keep.in,out:keep.out||null},to:{in:nin,out:nout}});
+    all.filter(p=>p!==keep).forEach(p=>R.ops.push({type:'void',id:p.id}));
+    if(!R.ops.length){R.err='Nothing to change — this clock already covers that time';return R;}}
+  const ids=new Set(R.ops.filter(o=>o.type==='void').map(o=>o.id));const ed=R.ops.find(o=>o.type==='edit');
+  R.after=day.filter(p=>!ids.has(p.id)).map(p=>ed&&p.id===ed.id?{id:p.id,in:ed.to.in,out:ed.to.out,site:p.site}:{id:p.id,in:p.in,out:p.out||null,site:p.site});
+  R.ops.filter(o=>o.type==='add').forEach(o=>R.after.push({id:null,in:o.in,out:o.out,site:o.site}));R.after.sort((x,y)=>x.in-y.in);
+  R.ok=true;return R;}
+function fxErrText(P){return P.err==='This overlaps your clock at'?t(P.err)+' '+siteName(P.errSite)+' — '+t('ask the office'):t(P.err);}
+function fxNightText(x){return t('Check AM / PM:')+' '+fmtT(x)+' '+t('is at night');}
+function fxRows(list,all){const one=(all||list).every(c=>c.site===(all||list)[0].site);return list.length?list.map(c=>'<div style="font-size:13px">'+fmtT(c.in)+' – '+(c.out?fmtT(c.out):t('still on'))+(one?'':' <span style="color:var(--g4)">· '+esc(fxSite(c.site))+'</span>')+'</div>').join(''):'<div style="font-size:13px;color:var(--g4)">'+t('No clocks')+'</div>';}
+function openFix(){const m=me();fx={kind:null,punch:null};document.getElementById('fxSite').innerHTML=liveSites().map(s=>'<option value="'+s.id+'">'+esc(s.name)+'</option>').join('');const sl=mySchedDay(m,dkey(new Date()));if(sl)document.getElementById('fxSite').value=sl.site;document.getElementById('fxDate').value=dkey(new Date());document.getElementById('fxWhy').value='';try{document.getElementById('fxIn').value='';document.getElementById('fxOut').value='';}catch(e){}fxDay();show('m-fix');}
+function fxDay(){const m=me();const date=document.getElementById('fxDate').value;const day=fxDayPunches(m.id,date);
+  if(fx.punch&&!day.some(p=>p.id===fx.punch))fx.punch=null;if(!day.length){fx.kind='missing';fx.punch=null;}
+  document.getElementById('fxDayList').innerHTML=day.length?day.map(p=>'<div class="plog" style="cursor:pointer'+(fx.punch===p.id?';border-color:var(--blue);background:var(--blue-l,rgba(37,99,235,.08))':'')+'" onclick="fxPick(\''+jsq(p.id)+'\')"><span>'+(fx.punch===p.id?'◉ ':'○ ')+fxClock(p)+'</span></div>').join(''):'<div class="pn-mut" style="margin:4px 0 6px">'+t('No clocks that day')+'</div>';
+  document.getElementById('fxKinds').innerHTML=FX_KINDS.filter(k=>day.length?true:k[0]==='missing').map(k=>'<div class="plog" style="cursor:pointer'+(fx.kind===k[0]?';border-color:var(--blue);background:var(--blue-l,rgba(37,99,235,.08))':'')+'" onclick="fxKind(\''+k[0]+'\')"><span>'+(fx.kind===k[0]?'◉ ':'○ ')+t(k[1])+'</span></div>').join('');
+  const k=fx.kind;document.getElementById('fxSiteRow').style.display=k==='missing'?'':'none';
+  document.getElementById('fxInBox').style.display=(k==='earlier'||k==='missing')?'':'none';document.getElementById('fxOutBox').style.display=(k==='later'||k==='gap'||k==='missing')?'':'none';
+  if(fx.punch){const p=day.find(x=>x.id===fx.punch);if(p){if(k==='earlier'&&!document.getElementById('fxIn').value)document.getElementById('fxIn').value=new Date(p.in).toTimeString().slice(0,5);if((k==='later'||k==='gap')&&!document.getElementById('fxOut').value&&p.out)document.getElementById('fxOut').value=new Date(p.out).toTimeString().slice(0,5);}}
+  fxCheck();}
+function fxPick(id){fx.punch=id;if(fx.kind==='missing')fx.kind=null;fxDay();}
+function fxKind(k){fx.kind=k;if(k==='missing')fx.punch=null;fxDay();}
+function fxForm(){const m=me();return {who:m.id,date:document.getElementById('fxDate').value,kind:fx.kind,punch:fx.punch,site:fx.kind==='missing'?document.getElementById('fxSite').value:((D.punches||[]).find(p=>p.id===fx.punch)||{}).site,in:fx.kind==='earlier'||fx.kind==='missing'?document.getElementById('fxIn').value:'',out:fx.kind==='later'||fx.kind==='gap'||fx.kind==='missing'?document.getElementById('fxOut').value:''};}
+function fxSay(id,date,hm){const el=document.getElementById(id);if(!el)return;const v=fxMs(date,hm);el.textContent=v?'= '+fmtT(v):'';}
+function fxCheck(){const f=fxForm();fxSay('fxInSay',f.date,f.in);fxSay('fxOutSay',f.date,f.out);const w=document.getElementById('fxWarn');if(!f.kind){w.innerHTML='';return;}
+  const P=fxPlan(f,D.punches||[]);let h='';
+  if(P.err&&(f.in||f.out||f.kind==='earlier'||f.kind==='later'||f.kind==='gap'))h+='<div class="note" style="border-color:var(--red,#c62828);margin-top:8px">⚠ '+esc(fxErrText(P))+'</div>';
+  P.night.forEach(x=>{h+='<div class="note" style="border-color:var(--amber);margin-top:8px">⚠ '+esc(fxNightText(x))+'</div>';});
+  if(P.ok)h+='<div class="note" style="margin-top:8px"><b>'+t('Your day after the fix')+'</b>'+fxRows(P.after)+'</div>';
+  w.innerHTML=h;}
+function sendFix(){const m=me();const f0=fxForm();const why=document.getElementById('fxWhy').value.trim();
+  if(!f0.kind){toast(t('Pick what happened'));return;}
+  if((f0.kind==='earlier'||f0.kind==='missing')&&!f0.in){toast(t('Write what time you started'));try{document.getElementById('fxIn').focus();}catch(e){}return;}   // Baruch 11/19: the start time must be written by him
+  const P=fxPlan(f0,D.punches||[]);if(!P.ok){toast(fxErrText(P));return;}
+  if(why.length<3){toast(t('Fill in date, time and what happened'));return;}
+  const f={id:nid('f'),who:m.id,site:f0.site,date:f0.date,in:f0.in,out:f0.out,kind:f0.kind,punch:f0.punch||null,before:P.before,why,status:'pending',ts:Date.now()};
   D.fixes.unshift(f);save();hide('m-fix');renderFixMine();
   pushTo(D.emps.filter(e=>canEditHours(e)&&e.role!=='owner').map(e=>e.id),()=>('🕒 '+t('Punch fix request from')+' '+nameOf(m.id)+': '+fxLabel(f)+' — '+f.why));
   toast('✓ '+t('Sent to Shia and Miriam'),'green');}
 function renderFixMine(){const m=me();const el=document.getElementById('fixMine');if(!el)return;const mine=D.fixes.filter(f=>f.who===m.id).slice(0,5);
-  el.innerHTML=mine.map(f=>'<div class="plog" style="flex-direction:column;align-items:stretch"><div style="display:flex;justify-content:space-between"><span>'+fxLabel(f)+'</span><span class="badge '+({pending:'b-prog',approved:'b-done',denied:'b-ov'}[f.status])+'">'+t({pending:'Pending',approved:'Approved',denied:'Denied'}[f.status])+'</span></div><div style="font-size:12px;color:var(--g4)">'+esc(siteName(f.site))+' · '+esc(f.why)+(f.note?' — <i>'+esc(f.note)+'</i>':'')+'</div></div>').join('');}
+  el.innerHTML=mine.map(f=>'<div class="plog" style="flex-direction:column;align-items:stretch"><div style="display:flex;justify-content:space-between"><span>'+fxLabel(f)+'</span><span class="badge '+({pending:'b-prog',approved:'b-done',denied:'b-ov'}[f.status])+'">'+t({pending:'Pending',approved:'Approved',denied:'Denied'}[f.status])+'</span></div><div style="font-size:12px;color:var(--g4)">'+(f.kind?esc(t((FX_KINDS.find(k=>k[0]===f.kind)||['',''])[1]))+' · ':'')+esc(siteName(f.site))+' · '+esc(f.why)+(f.note?' — <i>'+esc(f.note)+'</i>':'')+'</div></div>').join('');}
 function renderFixQueue(){const el=document.getElementById('fixQueue');if(!el)return;const q=D.fixes.filter(f=>f.status==='pending');
   if(!q.length){el.innerHTML='';return;}
-  el.innerHTML='<div class="sec" style="margin-top:0">'+t('Punch fix requests')+' ('+q.length+')</div>'+q.map(f=>'<div class="card" style="border-left:3px solid var(--amber)"><div class="row"><div><b>'+esc(nameOf(f.who))+'</b><div class="site">'+fxLabel(f)+' · '+esc(siteName(f.site))+'</div></div><span class="badge b-prog">'+t('Pending')+'</span></div><div class="desc">'+esc(f.why)+'</div><div class="foot"><span class="due">'+fmtT(f.ts)+'</span><div class="acts"><button class="bs r" onclick="fixSet(\''+jsq(f.id)+'\',\'denied\')">'+t('Deny')+'</button><button class="bs g" onclick="fixSet(\''+jsq(f.id)+'\',\'approved\')">'+t('Approve & add')+'</button></div></div></div>').join('');}
-function fixSet(id,st){const f=D.fixes.find(x=>x.id===id);f.status=st;f.by=me().id;
-  if(st==='approved'){const inT=new Date(f.date+'T'+f.in).getTime();let outT=f.out?new Date(f.date+'T'+f.out).getTime():null;if(outT&&outT<inT)outT+=86400000;
+  el.innerHTML='<div class="sec" style="margin-top:0">'+t('Punch fix requests')+' ('+q.length+')</div>'+q.map(f=>{const P=f.kind?fxPlan(f,D.punches||[]):null;
+    const plan=P?(P.ok?'<div style="display:flex;gap:10px;margin:8px 0"><div style="flex:1"><div class="pn-mut" style="margin:0 0 2px">'+t('Before')+'</div>'+fxRows(P.before,P.before.concat(P.after))+'</div><div style="flex:0 0 auto;align-self:center">→</div><div style="flex:1"><div class="pn-mut" style="margin:0 0 2px">'+t('After')+'</div>'+fxRows(P.after,P.before.concat(P.after))+'</div></div>'+P.night.map(x=>'<div style="font-size:12px;color:var(--amber)">⚠ '+esc(fxNightText(x))+'</div>').join(''):'<div class="note" style="border-color:var(--red,#c62828);margin:8px 0">⚠ '+esc(t('This request no longer fits the day — check it in Time cards'))+'</div>'):'';
+    return '<div class="card" style="border-left:3px solid var(--amber)"><div class="row"><div><b>'+esc(nameOf(f.who))+'</b><div class="site">'+fxLabel(f)+' · '+esc(fxSite(f.site))+'</div></div><span class="badge b-prog">'+t('Pending')+'</span></div>'+(f.kind?'<div style="font-size:13px;margin-top:4px">'+esc(t((FX_KINDS.find(k=>k[0]===f.kind)||['',''])[1]))+'</div>':'')+plan+'<div class="desc">'+esc(f.why)+'</div><div class="foot"><span class="due">'+fmtT(f.ts)+'</span><div class="acts"><button class="bs r" onclick="fixSet(\''+jsq(f.id)+'\',\'denied\')">'+t('Deny')+'</button>'+(P&&!P.ok?'':'<button class="bs g" onclick="fixSet(\''+jsq(f.id)+'\',\'approved\')">'+t(f.kind?'Approve':'Approve & add')+'</button>')+'</div></div></div>';}).join('');}
+function fixSet(id,st){const f=D.fixes.find(x=>x.id===id);const by=me().id,now=Date.now();
+  if(st==='approved'&&f.kind){const P=fxPlan(f,D.punches||[]);if(!P.ok){toast(t('This request no longer fits the day — check it in Time cards'));renderFixQueue();return;}
+    P.ops.forEach(o=>{if(o.type==='edit'){const ex=D.punches.find(p=>p.id===o.id);if(!ex)return;(ex.edits=ex.edits||[]).push({by,at:now,why:t('Fix request')+': '+f.why,from:o.from,to:o.to});ex.in=o.to.in;ex.out=o.to.out;delete ex.away;}
+      else if(o.type==='void'){const ex=D.punches.find(p=>p.id===o.id);if(ex)ex.voided={at:now,by,why:t('Joined into one clock by a fix request')+': '+f.why};}
+      else if(o.type==='add')D.punches.push({who:f.who,site:o.site,in:o.in,out:o.out,edits:[{by,at:now,why:t('Fix request')+': '+f.why,from:{in:o.in,out:o.out},to:{in:o.in,out:o.out}}]});});
+    f.status=st;f.by=by;f.done=P.after;}
+  else if(st==='approved'){f.status=st;f.by=by;fixSetLegacy(f);}
+  else{f.status=st;f.by=by;}
+  save();renderHours();renderFixMine();pushTo([f.who],()=>('🕒 '+t('Punch fix')+' '+fxLabel(f)+': '+t(st==='approved'?'Approved':'Denied')+' ('+nameOf(me().id)+')'));}
+// requests sent before fix #3 (no 'kind') keep the old rule
+function fixSetLegacy(f){const inT=new Date(f.date+'T'+f.in).getTime();let outT=f.out?new Date(f.date+'T'+f.out).getTime():null;if(outT&&outT<inT)outT+=86400000;
     // Baruch 11/19: a punch that is still going (today, end time not reached yet) stays open — approving fixes only the start
     if(outT&&outT>Date.now())outT=null;
-    // if an open punch exists that day for this person, close it instead of duplicating
     const ex=D.punches.find(p=>p.who===f.who&&new Date(p.in).toDateString()===new Date(inT).toDateString()&&!p.out);
     if(ex){(ex.edits=ex.edits||[]).push({by:me().id,at:Date.now(),why:t('Fix request')+': '+f.why,from:{in:ex.in,out:null},to:{in:inT,out:outT}});ex.in=inT;ex.out=outT;delete ex.away;}
     else D.punches.push({who:f.who,site:f.site,in:inT,out:outT,edits:[{by:me().id,at:Date.now(),why:t('Fix request')+': '+f.why,from:{in:inT,out:outT},to:{in:inT,out:outT}}]});}
-  save();renderHours();renderFixMine();pushTo([f.who],()=>('🕒 '+t('Punch fix')+' '+fxLabel(f)+': '+t(st==='approved'?'Approved':'Denied')+' ('+nameOf(me().id)+')'));}
+try{Object.assign(ES,{"Your clocks that day — tap the one that is wrong":"Sus relojes de ese día — toque el que está mal","What happened?":"¿Qué pasó?","I started earlier":"Empecé más temprano","I left later":"Salí más tarde","The app closed my clock but I was still working":"La app cerró mi reloj pero yo seguía trabajando","My whole day is missing":"Falta todo mi día","No clocks that day":"No hay relojes ese día","No clocks":"Sin relojes","still on":"sigue abierto","Your day after the fix":"Su día después de la corrección","Tap the clock that is wrong":"Toque el reloj que está mal","Write what time you finished":"Escriba a qué hora terminó","The new start must be earlier than this clock":"La nueva entrada tiene que ser más temprano que este reloj","The new finish must be later than this clock":"La nueva salida tiene que ser más tarde que este reloj","Pick the job":"Escoja el trabajo","Pick what happened":"Escoja qué pasó","That time has not come yet":"Esa hora todavía no llegó","That is more than 16 hours — check AM / PM":"Son más de 16 horas — revise AM / PM","Check AM / PM:":"Revise AM / PM:","is at night":"es de noche","This overlaps your clock at":"Esto se cruza con su reloj en","ask the office":"pregunte a la oficina","This overlaps another clock — ask the office":"Esto se cruza con otro reloj — pregunte a la oficina","Nothing to change — this clock already covers that time":"No hay nada que cambiar — este reloj ya cubre esa hora","Before":"Antes","After":"Después","Approve":"Aprobar","This request no longer fits the day — check it in Time cards":"Este pedido ya no cuadra con el día — revíselo en Tarjetas de tiempo","Joined into one clock by a fix request":"Unido en un solo reloj por un pedido de corrección"});}catch(e){}
+try{if(window.YI)Object.assign(window.YI,{"Before":"פריער","After":"נאכדעם","Approve":"באשטעטיג","Check AM / PM:":"קוק איבער AM / PM:","is at night":"איז ביינאכט","This request no longer fits the day — check it in Time cards":"די בקשה פאסט נישט מער מיטן טאג — קוק עס איבער אין טיים קארדס","I started earlier":"איך האב אנגעהויבן פריער","I left later":"איך בין אוועק שפעטער","The app closed my clock but I was still working":"די אפ האט פארמאכט מיין זייגער אבער איך האב נאך געארבעט","My whole day is missing":"מיין גאנצער טאג פעלט","still on":"נאך אפן","No clocks":"קיין זייגערס"});}catch(e){}
 // ───────────── late entries, removals, history (server-checked: db/audit_a5_payroll.sql) ─────────────
 function punchFlags(p){const L=[];
   if(p.voided)L.push('<div style="font-size:11px;color:#c0392b;padding-left:8px">🗑 '+t('Removed')+' — '+esc(p.voided.why||'')+' ('+esc(nameOf(p.voided.by))+')</div>');
@@ -3606,7 +3681,14 @@ function staleOpen(p){return !p.out&&!p.away&&Date.now()-p.in>STALE_OPEN_MS;}
 function addDaysMs(ms,n){const d=new Date(ms);d.setDate(d.getDate()+n);return d.getTime();}
 function dayIndex(ms,ws){const d=new Date(ms);d.setHours(0,0,0,0);return Math.round((d.getTime()-ws)/86400000);}
 // an automatic punch-out (left the site) becomes final after 60 minutes even if the phone was asleep or the app closed
-function finalizeAway(who){let ch=false;(D.punches||[]).forEach(p=>{if((!who||p.who===who)&&p.away&&!p.out&&Date.now()-p.away>3600000&&p.away-p.in<14*36e5){p.out=p.away;delete p.away;p.autoOut=true;ch=true;}});if(ch){try{save();}catch(e){}}return ch;}
+// Fix #1 (Baruch 11/25): the phone no longer closes a clock by itself because the man left — the server decides (public.punch_settle,
+// same rule as clock_tick: closes at the time he left only when leaving is confirmed). finalizeAway stays as a no-op for old callers.
+function finalizeAway(who){return false;}
+async function settleAway(p,back){if(!p||!p.away||p.out||Date.now()-p.away<=3600000||!window.EX_sb||!window.EX_REAL)return null;
+  try{const r=await window.EX_sb.rpc('punch_settle',{p_id:p.id,p_back:!!back});if(r&&r.error)return null;const d=r&&r.data;
+    try{if(typeof window.EX_catchUp==='function')await window.EX_catchUp();}catch(e){}renderPunch();return d||null;}catch(e){return null;}}
+// Manual punch-out while away (Baruch's rule: he gets the time he left), and the offline fallback when the server can't be asked.
+function closeAtLeft(who){let ch=false;(D.punches||[]).forEach(p=>{if((!who||p.who===who)&&p.away&&!p.out&&Date.now()-p.away>3600000&&p.away-p.in<14*36e5){p.out=p.away;delete p.away;p.autoOut=true;ch=true;}});if(ch){try{save();}catch(e){}}return ch;}
 const OT_AFTER=40;
 // L1 paid lunch: up to PAID_LUNCH_MIN minutes of lunch per person per workday (the day of the clock-in, so an overnight
 // shift belongs to the day it started) are paid; the rest is unpaid. All of that person's counted clock entries that

@@ -67,6 +67,13 @@ OwnTracks on the same phone; not needed.
   Bursts are handled in order: same place → only 'last seen', a new job / leaving → counted at its real time.
   'Punch in' reminders only from fresh readings (≤15 min). Needs private.ot_tokens.last_tst + public.ot_tst (sql/ot_tst.sql).
 - Away > 1 h → clock closes at the time he left. Open punch closed 1 h after day end at last seen time.
+- (11/26, vh136, sql/punch_settle_1126.sql) ONLY THE SERVER closes a clock because he left. The phone app no longer closes it
+  itself (old 1-hour phone timer, close-on-return and close-before-punch removed): it asks public.punch_settle, which uses the
+  same rule as clock_tick (private.away_confirmed). Unconfirmed 'left' + back at the job → clock stays open, the gap counts.
+  Exception kept (Baruch): tapping punch-out while away = the time he left. Offline phone → old behaviour until it can ask.
+  Why: 11/25 Carlos — one reading 190 m out (fence 152 m) at 4:48 PM; the server kept his clock open, the phone closed it at 6:21 PM.
+- (11/26, vh136) Fix requests: the man picks the clock that is wrong + what happened; Payroll sees Before → After; approving
+  edits/joins that day's clocks (joined ones voided with a reason), never adds a duplicate. Old requests keep the old rule.
 - 🏠 pack-up message 15 min before day end, not to men kept late; kept late after it → "ignore the go-home message".
 - Punch saved on the phone with no signal and sent late → waits for Payroll approval (lateEntry).
 
