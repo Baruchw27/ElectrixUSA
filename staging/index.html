@@ -59,7 +59,7 @@ html[data-theme=dark] .pn-sl i{background:#f2f2f7;color:#111}
 #pg-punch:not(.pnopen) #punchExtra{display:none!important}
 #pg-punch #punchSched,#pg-punch #myListPunch,#pg-punch #quickExp,#pg-punch #mySites{display:none!important}
 .cfimg{display:block;max-width:230px;max-height:260px;border-radius:8px;cursor:pointer;object-fit:cover}.cfile{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:rgba(0,0,0,.06);cursor:pointer;min-width:190px;max-width:260px}html[data-theme=dark] .cfile{background:rgba(255,255,255,.08)}.cfic{font-size:26px;line-height:1}.cfnm{display:flex;flex-direction:column;min-width:0}.cfnm b{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cfnm small{font-size:12px;opacity:.65}.crow .cclip{width:34px;margin-right:-6px}</style>
-<script>window.EX_VER='vs208c1126';</script><script src="config.js"></script>
+<script>window.EX_VER='vs209c1126';</script><script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous"></script>
 <script src="sync.js?vh119c1122"></script>
 <script src="extras.js?vh59c1112"></script>
@@ -2559,11 +2559,11 @@ function geoOk(x){if(!x||!x.in||Date.now()-x.in>14*36e5)return false;if(window.E
 function onLeave(){const m=me();const p=D.punches.find(x=>x.who===m.id&&!x.out&&(x.src!=='fingercheck'||!m.appClock)&&!x.away&&geoOk(x));if(!p)return;
   p.away=Date.now();save();renderPunch();
   {const msg=()=>('🚗 '+t('You left')+' '+pnName(p)+'. '+t('At another job? Open the app and switch.')+' '+t('Not back within 1 hour: your clock closes at')+' '+fmtT(p.away));notify(msg());try{pushTo([m.id],msg,'warn',{tab:'punch'},null,true);}catch(e){}}
-  setTimeout(()=>{const q=D.punches.find(x=>x===p);if(q&&q.away&&!q.out){q.out=q.away;delete q.away;save();renderPunch();notify('1 hour passed — punch-out at '+fmtT(q.out)+' is now final.');}},60*60*1000);
 }
-function onReturn(){const m=me();if(!geoOk({in:Date.now()}))return;finalizeAway(m.id);const p=D.punches.find(x=>x.who===m.id&&x.away&&!x.out&&geoOk(x));if(!p)return;
+function onReturn(){const m=me();if(!geoOk({in:Date.now()}))return;const p=D.punches.find(x=>x.who===m.id&&x.away&&!x.out&&geoOk(x));if(!p)return;
   const gap=Date.now()-p.away;
   if(gap<=60*60*1000){p.trips=p.trips||[];p.trips.push({left:p.away,back:Date.now()});delete p.away;save();renderPunch();notify('Back on site — punched back in. The '+Math.round(gap/60000)+' min away was kept on your clock (material run).');}
+  else settleAway(p,true).then(d=>{if(d&&d.kept)notify('Back on site — punched back in. The '+Math.round(gap/60000)+' min away was kept on your clock (material run).');});
 }
 // ---- GO HOME: boss taps → worker's phone rings "pack up, 15 min". Still punched in after 15 min → buzz every minute until punch out ----
 
@@ -2649,8 +2649,9 @@ function checkGPS(){
     else{box.className='gps no';box.innerHTML='✗ '+t('Not at the job site — you are')+' '+(d>5280?(d/5280).toFixed(1)+' '+t('miles'):Math.round(d)+' ft')+' '+t('away. Punch in when you arrive.')+'<div style="font-size:12px;margin-top:4px">'+t('At the right house and still blocked?')+'</div>'+fenceHelpBtn(s.id);gpsOk=false;}
   },err=>{box.className='gps no';const c=err&&err.code;box.innerHTML=(c===1?'🚫 '+t('Your phone is not giving the app its location.')+'<div style="font-size:12px;margin-top:4px">'+t('Turn on Location for this app / browser in phone settings. Inside the Claude app, location can be blocked by Claude itself.')+'</div>':c===3?'⏳ '+t('GPS took too long. Step outside or near a window and tap the job again.'):'📡 '+t('No GPS signal right now. Try again in a moment.'))+fenceHelpBtn(s.id);gpsOk=false;},c=>distFt(c.latitude,c.longitude,s.lat,s.lng)<=fenceFt(c));
 }
-function doPunch(){
-  const m=me();finalizeAway(m.id);const open=D.punches.find(p=>p.who===m.id&&!p.out&&(p.src!=='fingercheck'||!m.appClock));
+function doPunch(settled){
+  const m=me();const open=D.punches.find(p=>p.who===m.id&&!p.out&&(p.src!=='fingercheck'||!m.appClock));
+  if(open&&open.away&&Date.now()-open.away>3600000&&settled!==true){if(doPunch._busy)return;doPunch._busy=1;settleAway(open,gpsOk).then(d=>{if(!d)closeAtLeft(m.id);}).finally(()=>{doPunch._busy=0;doPunch(true);});return;}
   if(open){openPunchOut(open);return;}
   if(!gpsOk){toast(t('You need to be at the job site to punch in.'));return;}
   if(D.selfie){const i=document.getElementById('punchSelfie');i.value='';i.click();toast('📷 '+t('Quick selfie, then you are in'));return;}
@@ -2666,7 +2667,7 @@ function poSet(k,v){poAns[k]=v;if(k==='inj'){document.getElementById('poInjNo').
   else{document.getElementById('poBrkYes').className=v?'btn gr':'btn sec2';document.getElementById('poBrkNo').className=v?'btn sec2':'btn';document.getElementById('poBrk').style.display=v?'none':'block';}
   document.getElementById('poDone').disabled=!(poAns.inj!==null&&poAns.brk!==null);}
 function poInjPhoto(inp){[...(inp.files||[])].forEach(f=>shrink(f,d=>{poPhotos.push(d);document.getElementById('poInjPrev').innerHTML=poPhotos.map(d=>'<img src="'+safeSrc(d)+'">').join('');}));}
-function poFinish(){const p=poPunch;if(!p)return;const m=me();if(p.away&&!p.out&&Date.now()-p.away>3600000){finalizeAway(m.id);hide('m-pout');renderPunch();toast(t('You were already punched out at')+' '+fmtT(p.out)+' '+t('when you left the site.'));return;}if(poAns.inj&&!document.getElementById('poInjWhat').value.trim()){toast(t('Tell us what happened'));document.getElementById('poInjWhat').focus();return;}
+function poFinish(){const p=poPunch;if(!p)return;const m=me();if(p.away&&!p.out&&Date.now()-p.away>3600000){closeAtLeft(m.id);hide('m-pout');renderPunch();toast(t('You were already punched out at')+' '+fmtT(p.out)+' '+t('when you left the site.'));return;}if(poAns.inj&&!document.getElementById('poInjWhat').value.trim()){toast(t('Tell us what happened'));document.getElementById('poInjWhat').focus();return;}
   if(p.breakStart)endBreak(p);p.out=Date.now();if(navigator.onLine===false){p.offline=true;p.synced=false;}p.check=Object.assign({injured:!!poAns.inj,ts:Date.now()},poAns.brk==='skip'?{}:{mealBreak:!!poAns.brk,noBreakWhy:poAns.brk?null:document.getElementById('poBrkWhy').value});
   if(poAns.inj){const told=document.getElementById('poInjTold').value;p.check.injury={what:document.getElementById('poInjWhat').value.trim(),time:document.getElementById('poInjTime').value,part:document.getElementById('poInjPart').value.trim(),told,care:document.getElementById('poInjCare').value,photos:poPhotos.slice()};
     (D.incidents=D.incidents||[]).push({id:nid('inc'),who:m.id,site:p.site,date:dkey(new Date()),...p.check.injury,ts:Date.now(),status:'open'});
@@ -3606,7 +3607,14 @@ function staleOpen(p){return !p.out&&!p.away&&Date.now()-p.in>STALE_OPEN_MS;}
 function addDaysMs(ms,n){const d=new Date(ms);d.setDate(d.getDate()+n);return d.getTime();}
 function dayIndex(ms,ws){const d=new Date(ms);d.setHours(0,0,0,0);return Math.round((d.getTime()-ws)/86400000);}
 // an automatic punch-out (left the site) becomes final after 60 minutes even if the phone was asleep or the app closed
-function finalizeAway(who){let ch=false;(D.punches||[]).forEach(p=>{if((!who||p.who===who)&&p.away&&!p.out&&Date.now()-p.away>3600000&&p.away-p.in<14*36e5){p.out=p.away;delete p.away;p.autoOut=true;ch=true;}});if(ch){try{save();}catch(e){}}return ch;}
+// Fix #1 (Baruch 11/25): the phone no longer closes a clock by itself because the man left — the server decides (public.punch_settle,
+// same rule as clock_tick: closes at the time he left only when leaving is confirmed). finalizeAway stays as a no-op for old callers.
+function finalizeAway(who){return false;}
+async function settleAway(p,back){if(!p||!p.away||p.out||Date.now()-p.away<=3600000||!window.EX_sb||!window.EX_REAL)return null;
+  try{const r=await window.EX_sb.rpc('punch_settle',{p_id:p.id,p_back:!!back});if(r&&r.error)return null;const d=r&&r.data;
+    try{if(typeof window.EX_catchUp==='function')await window.EX_catchUp();}catch(e){}renderPunch();return d||null;}catch(e){return null;}}
+// Manual punch-out while away (Baruch's rule: he gets the time he left), and the offline fallback when the server can't be asked.
+function closeAtLeft(who){let ch=false;(D.punches||[]).forEach(p=>{if((!who||p.who===who)&&p.away&&!p.out&&Date.now()-p.away>3600000&&p.away-p.in<14*36e5){p.out=p.away;delete p.away;p.autoOut=true;ch=true;}});if(ch){try{save();}catch(e){}}return ch;}
 const OT_AFTER=40;
 // L1 paid lunch: up to PAID_LUNCH_MIN minutes of lunch per person per workday (the day of the clock-in, so an overnight
 // shift belongs to the day it started) are paid; the rest is unpaid. All of that person's counted clock entries that
